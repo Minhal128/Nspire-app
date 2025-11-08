@@ -1,0 +1,37 @@
+{
+  "expo": {
+    "name": "Nspire",
+    "slug": "nspire-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./logo.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./logo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#7DD3FC"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.nspire.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./logo.png",
+        "backgroundColor": "#7DD3FC"
+      },
+      "package": "com.nspire.app"
+    },
+    "web": {
+      "favicon": "./logo.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "4b0e70a4-16f3-4684-befa-6f4450240b58"
+      }
+    }
+  }
+}
