@@ -20,5 +20,10 @@ allprojects {
   }
 }
 
+// Force NDK 25 for React Native 0.81 compatibility
+ext {
+  ndkVersion = "25.2.9519653"
+}
+
 apply plugin: "expo-root-project"
 apply plugin: "com.facebook.react.rootproject"
