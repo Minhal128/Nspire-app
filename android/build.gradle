@@ -2,8 +2,9 @@
 
 buildscript {
   ext {
-    kotlinVersion = project.findProperty('kotlin.version') ?: '2.0.21'
-    androidGradlePluginVersion = project.findProperty('androidGradlePluginVersion') ?: '8.5.0'
+    kotlinVersion = "2.0.21" // Force this version explicitly
+    androidGradlePluginVersion = "8.5.0"
+    kspVersion = "2.0.21-1.0.28" // KSP version compatible with Kotlin 2.0.21
     
     buildToolsVersion = "34.0.0"
     compileSdkVersion = 34
@@ -27,6 +28,17 @@ allprojects {
     google()
     mavenCentral()
     maven { url 'https://www.jitpack.io' }
+  }
+  
+  // Force all subprojects to use the same Kotlin version
+  configurations.all {
+    resolutionStrategy {
+      eachDependency { details ->
+        if (details.requested.group == 'org.jetbrains.kotlin') {
+          details.useVersion kotlinVersion
+        }
+      }
+    }
   }
 }
 
