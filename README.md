@@ -1,23 +1,29 @@
 # Nspire - Property Management Mobile App
 
-A professional React Native mobile application built with Expo 54 for property inspection and management.
+A professional React Native mobile application built with Expo SDK 54 for property inspection and management.
 
-## Features
+## ✨ Features
 
 - 🎯 **Onboarding Flow**: Choose between Inspector and Management roles
 - 🔐 **Authentication**: Sign In and Sign Up screens with social login options
 - 📊 **Dashboard**: Property listings with search and filter capabilities
-- 📱 **Cross-Platform**: Works on both iOS and Android
+- 📱 **Cross-Platform**: Works on iOS, Android, and Web
 - 🎨 **Modern UI**: Beautiful, responsive design with smooth animations
+- 💾 **Data Persistence**: AsyncStorage for local data storage
+- 🎭 **Type Safety**: Full TypeScript support with strict mode
+- 🎬 **Smooth Animations**: React Native Reanimated integration
 
-## Tech Stack
+## 🛠 Tech Stack
 
-- **Framework**: React Native 0.76.5
-- **Platform**: Expo SDK 54
-- **Language**: TypeScript
-- **Navigation**: React Navigation (Stack Navigator)
-- **UI Components**: React Native Paper, Vector Icons
-- **Form Controls**: React Native Picker
+- **Framework**: React Native 0.81.4
+- **Platform**: Expo SDK 54.0.13
+- **Language**: TypeScript 5.9.2
+- **UI Framework**: React 19.1.0
+- **Navigation**: React Navigation 6.1.18 (Stack Navigator)
+- **Animations**: React Native Reanimated 4.1.1
+- **Icons**: Expo Vector Icons 15.0.2
+- **Form Controls**: React Native Picker 2.9.0
+- **Storage**: AsyncStorage 2.2.0
 
 ## Installation
 
@@ -29,6 +35,8 @@ A professional React Native mobile application built with Expo 54 for property i
 2. **Start the development server**:
    ```bash
    npm start
+   # or for dev client
+   npm run start
    ```
 
 3. **Run on specific platform**:
@@ -43,23 +51,43 @@ A professional React Native mobile application built with Expo 54 for property i
    npm run web
    ```
 
+4. **Clean start (clear cache)**:
+   ```bash
+   npm run clean
+   ```
+
+> **Note**: For detailed setup instructions, see [SETUP_GUIDE.md](./SETUP_GUIDE.md)
+
 ## Project Structure
 
 ```
 app/
-├── App.tsx                 # Main app entry point
+├── App.tsx                          # Main app entry point
 ├── src/
-│   ├── screens/
-│   │   ├── BoardingScreen.tsx      # Onboarding screen
-│   │   ├── SignInScreen.tsx        # Login screen
-│   │   ├── SignUpScreen.tsx        # Registration screen
-│   │   └── DashboardScreen.tsx     # Main dashboard
-│   └── types/
-│       └── navigation.ts           # Navigation types
-├── logo.png                # App logo
-├── package.json
-├── tsconfig.json
-└── app.json
+│   ├── screens/                     # Screen components
+│   │   ├── BoardingScreen.tsx       # Onboarding screen
+│   │   ├── SignInScreen.tsx         # Login screen
+│   │   ├── SignUpScreen.tsx         # Registration screen
+│   │   └── DashboardScreen.tsx      # Main dashboard
+│   ├── types/                       # TypeScript definitions
+│   │   └── navigation.ts            # Navigation types
+│   ├── constants/                   # App constants
+│   │   ├── Colors.ts                # Color palette
+│   │   ├── Layout.ts                # Layout & spacing
+│   │   └── index.ts                 # Exports
+│   └── utils/                       # Utility functions
+│       ├── validation.ts            # Form validation
+│       ├── storage.ts               # AsyncStorage helpers
+│       └── index.ts                 # Exports
+├── logo.png                         # App logo
+├── package.json                     # Dependencies
+├── tsconfig.json                    # TypeScript config
+├── app.json                         # Expo config
+├── babel.config.js                  # Babel config
+├── metro.config.js                  # Metro bundler config
+├── eas.json                         # EAS Build config
+├── README.md                        # This file
+└── SETUP_GUIDE.md                   # Detailed setup guide
 ```
 
 ## Screens Overview

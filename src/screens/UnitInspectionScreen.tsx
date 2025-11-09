@@ -1,0 +1,310 @@
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Image,
+  TouchableOpacity,
+  SafeAreaView,
+  ScrollView,
+  Modal
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import Sidebar from '../components/Sidebar';
+
+interface UnitInspectionScreenProps {
+  navigation: any;
+  route: any;
+}
+
+interface Unit {
+  id: string;
+  name: string;
+  status: 'needs-attention' | 'completed' | 'non-compliant';
+}
+
+export default function UnitInspectionScreen({ navigation, route }: UnitInspectionScreenProps) {
+  const [sidebarVisible, setSidebarVisible] = useState(false);
+  const { property } = route.params || {};
+
+  const handleMenuPress = () => {
+    setSidebarVisible(true);
+  };
+
+  const handleSidebarNavigate = (screen: string) => {
+    setSidebarVisible(false);
+    if (screen === 'Dashboard') {
+      navigation.navigate('Dashboard' as never);
+    } else if (screen === 'MyInspections') {
+      navigation.navigate('MyInspections' as never);
+    } else if (screen === 'Reports') {
+      navigation.navigate('Reports' as never);
+    } else if (screen === 'Analytics') {
+      navigation.navigate('Analytics' as never);
+    } else if (screen === 'Settings') {
+      navigation.navigate('Settings' as never);
+    }
+  };
+
+  const handleLogout = () => {
+    setSidebarVisible(false);
+    navigation.navigate('Boarding' as never);
+  };
+
+  const handleStartInspection = (unit: Unit) => {
+    navigation.navigate('InspectionChecklist' as never, { 
+      property: property,
+      unit: unit 
+    } as never);
+  };
+
+  // Sample units data
+  const units: Unit[] = [
+    { id: '101', name: 'Unit 101', status: 'needs-attention' },
+    { id: '102', name: 'Unit 102', status: 'completed' },
+    { id: '103', name: 'Unit 103', status: 'non-compliant' },
+  ];
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'needs-attention':
+        return '#FF9800';
+      case 'completed':
+        return '#84CC16';
+      case 'non-compliant':
+        return '#EF4444';
+      default:
+        return '#9CA3AF';
+    }
+  };
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'needs-attention':
+        return 'Needs Attention';
+      case 'completed':
+        return 'Completed';
+      case 'non-compliant':
+        return 'Non-Compliant';
+      default:
+        return '';
+    }
+  };
+
+  return (
+    <>
+      {/* Sidebar Modal */}
+      <Modal
+        visible={sidebarVisible}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setSidebarVisible(false)}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setSidebarVisible(false)}
+        >
+          <View style={styles.sidebarContainer}>
+            <Sidebar
+              onClose={() => setSidebarVisible(false)}
+              onNavigate={handleSidebarNavigate}
+              onLogout={handleLogout}
+            />
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      <SafeAreaView style={styles.container}>
+        {/* Header */}
+        <View style={styles.headerContainer}>
+          <View style={styles.headerBar}>
+            <TouchableOpacity onPress={handleMenuPress}>
+              <Ionicons name="menu" size={28} color="#1F2937" />
+            </TouchableOpacity>
+            <Image 
+              source={require('../../logo.png')} 
+              style={styles.headerLogo}
+              resizeMode="contain"
+            />
+            <TouchableOpacity>
+              <Ionicons name="notifications-outline" size={28} color="#1F2937" />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+          {/* Title */}
+          <Text style={styles.title}>Select Unit For Inspection</Text>
+
+          {/* Property Info Card */}
+          <View style={styles.propertyCard}>
+            <Text style={styles.propertyName}>
+              {property?.name || 'Sunset Apartments'}
+            </Text>
+            <Text style={styles.propertyAddress}>New York</Text>
+          </View>
+
+          {/* Units List */}
+          <View style={styles.unitsList}>
+            {units.map((unit) => (
+              <View key={unit.id} style={styles.unitCard}>
+                <View style={styles.unitHeader}>
+                  <Text style={styles.unitName}>{unit.name}</Text>
+                  <View style={styles.statusContainer}>
+                    <View 
+                      style={[
+                        styles.statusDot, 
+                        { backgroundColor: getStatusColor(unit.status) }
+                      ]} 
+                    />
+                    <Text style={[styles.statusText, { color: getStatusColor(unit.status) }]}>
+                      {getStatusText(unit.status)}
+                    </Text>
+                  </View>
+                </View>
+                
+                <TouchableOpacity 
+                  style={styles.startButton}
+                  onPress={() => handleStartInspection(unit)}
+                >
+                  <Text style={styles.startButtonText}>Start Inspection</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
+
+          <View style={{ height: 40 }} />
+        </ScrollView>
+      </SafeAreaView>
+    </>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#CEF8FF',
+  },
+  headerContainer: {
+    backgroundColor: '#CEF8FF',
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 10,
+  },
+  headerBar: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 15,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    marginTop: 15,
+  },
+  headerLogo: {
+    width: 180,
+    height: 50,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1F2937',
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 20,
+  },
+  propertyCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 20,
+    marginHorizontal: 20,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  propertyName: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 5,
+  },
+  propertyAddress: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  unitsList: {
+    paddingHorizontal: 20,
+  },
+  unitCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 20,
+    marginBottom: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  unitHeader: {
+    marginBottom: 15,
+  },
+  unitName: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 8,
+  },
+  statusContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 6,
+  },
+  statusText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  startButton: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    borderColor: '#1F2937',
+    borderRadius: 8,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  startButtonText: {
+    color: '#1F2937',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-start',
+    alignItems: 'flex-start',
+  },
+  sidebarContainer: {
+    width: 280,
+    height: '100%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 2, height: 0 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+});

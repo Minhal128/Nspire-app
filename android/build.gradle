@@ -1,25 +1,14 @@
 // Top-level build file where you can add configuration options common to all sub-projects/modules.
 
 buildscript {
-  ext {
-    kotlinVersion = "2.0.21" // Force this version explicitly
-    androidGradlePluginVersion = "8.5.0"
-    kspVersion = "2.0.21-1.0.28" // KSP version compatible with Kotlin 2.0.21
-    
-    buildToolsVersion = "34.0.0"
-    compileSdkVersion = 34
-    targetSdkVersion = 34
-    minSdkVersion = 23
-    ndkVersion = "26.1.10909125"
-  }
   repositories {
     google()
     mavenCentral()
   }
   dependencies {
-    classpath("com.android.tools.build:gradle:$androidGradlePluginVersion")
+    classpath('com.android.tools.build:gradle')
     classpath('com.facebook.react:react-native-gradle-plugin')
-    classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion")
+    classpath('org.jetbrains.kotlin:kotlin-gradle-plugin')
   }
 }
 
@@ -28,17 +17,6 @@ allprojects {
     google()
     mavenCentral()
     maven { url 'https://www.jitpack.io' }
-  }
-  
-  // Force all subprojects to use the same Kotlin version
-  configurations.all {
-    resolutionStrategy {
-      eachDependency { details ->
-        if (details.requested.group == 'org.jetbrains.kotlin') {
-          details.useVersion kotlinVersion
-        }
-      }
-    }
   }
 }
 

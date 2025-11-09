@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./logo.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "runtimeVersion": {
       "policy": "appVersion"
     },
@@ -22,7 +22,12 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.nspire.app"
+      "bundleIdentifier": "com.nspire.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "This app uses the camera for document scanning and property inspection.",
+        "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to save and upload inspection photos.",
+        "NSLocationWhenInUseUsageDescription": "This app uses your location to tag property inspections."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -30,13 +35,38 @@
         "backgroundColor": "#7DD3FC"
       },
       "package": "com.nspire.app",
+      "permissions": [
+        "android.permission.INTERNET",
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION"
+      ],
       "gradleProperties": {
         "kotlin.version": "2.0.21"
       }
     },
     "web": {
-      "favicon": "./logo.png"
+      "favicon": "./logo.png",
+      "bundler": "metro"
     },
+    "plugins": [
+      "expo-font",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 35,
+            "targetSdkVersion": 35,
+            "buildToolsVersion": "35.0.0"
+          },
+          "ios": {
+            "deploymentTarget": "15.1"
+          }
+        }
+      ]
+    ],
     "extra": {
       "eas": {
         "projectId": "4b0e70a4-16f3-4684-befa-6f4450240b58"

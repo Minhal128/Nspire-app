@@ -6,6 +6,16 @@ export type RootStackParamList = {
   SignIn: { userType?: string };
   SignUp: undefined;
   Dashboard: undefined;
+  MyInspections: undefined;
+  Reports: undefined;
+  Settings: undefined;
+  AddProperty: undefined;
+  RequestInspection: undefined;
+  EditProperty: { property: any };
+  Analytics: undefined;
+  UnitInspection: { property: any };
+  InspectionChecklist: { property: any; unit: any };
+  ManagementDashboard: undefined;
 };
 
 export type BoardingScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Boarding'>;

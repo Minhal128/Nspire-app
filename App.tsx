@@ -8,12 +8,32 @@ import BoardingScreen from './src/screens/BoardingScreen';
 import SignInScreen from './src/screens/SignInScreen';
 import SignUpScreen from './src/screens/SignUpScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
+import MyInspectionsScreen from './src/screens/MyInspectionsScreen';
+import ReportsScreen from './src/screens/ReportsScreen';
+import AddPropertyScreen from './src/screens/AddPropertyScreen';
+import RequestInspectionScreen from './src/screens/RequestInspectionScreen';
+import EditPropertyScreen from './src/screens/EditPropertyScreen';
+import AnalyticsScreen from './src/screens/AnalyticsScreen';
+import UnitInspectionScreen from './src/screens/UnitInspectionScreen';
+import InspectionChecklistScreen from './src/screens/InspectionChecklistScreen';
+import SettingsScreen from './src/screens/SettingsScreen';
+import ManagementDashboardScreen from './src/screens/ManagementDashboardScreen';
 
 export type RootStackParamList = {
   Boarding: undefined;
   SignIn: { userType?: string };
   SignUp: undefined;
   Dashboard: undefined;
+  MyInspections: undefined;
+  Reports: undefined;
+  Settings: undefined;
+  AddProperty: undefined;
+  RequestInspection: undefined;
+  EditProperty: { property: any };
+  Analytics: undefined;
+  UnitInspection: { property: any };
+  InspectionChecklist: { property: any; unit: any };
+  ManagementDashboard: undefined;
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -34,6 +54,16 @@ export default function App() {
           <Stack.Screen name="SignIn" component={SignInScreen} />
           <Stack.Screen name="SignUp" component={SignUpScreen} />
           <Stack.Screen name="Dashboard" component={DashboardScreen} />
+          <Stack.Screen name="MyInspections" component={MyInspectionsScreen} />
+          <Stack.Screen name="Reports" component={ReportsScreen} />
+          <Stack.Screen name="AddProperty" component={AddPropertyScreen} />
+          <Stack.Screen name="RequestInspection" component={RequestInspectionScreen} />
+          <Stack.Screen name="EditProperty" component={EditPropertyScreen} />
+          <Stack.Screen name="Analytics" component={AnalyticsScreen} />
+          <Stack.Screen name="UnitInspection" component={UnitInspectionScreen} />
+          <Stack.Screen name="InspectionChecklist" component={InspectionChecklistScreen} />
+          <Stack.Screen name="Settings" component={SettingsScreen} />
+          <Stack.Screen name="ManagementDashboard" component={ManagementDashboardScreen} />
         </Stack.Navigator>
       </NavigationContainer>
     </>

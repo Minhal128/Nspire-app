@@ -1,22 +1,21 @@
 import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  Image, 
-  TextInput, 
-  TouchableOpacity, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  Image,
+  TextInput,
+  TouchableOpacity,
   SafeAreaView,
   ScrollView,
   Modal
 } from 'react-native';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
-import { DashboardScreenNavigationProp } from '../types/navigation';
 import Sidebar from '../components/Sidebar';
 
-interface DashboardScreenProps {
-  navigation: DashboardScreenNavigationProp;
+interface MyInspectionsScreenProps {
+  navigation: any;
   onMenuPress?: () => void;
 }
 
@@ -29,10 +28,13 @@ interface Property {
   address: string;
 }
 
-export default function DashboardScreen({ navigation, onMenuPress }: DashboardScreenProps) {
+export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspectionsScreenProps) {
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [actionModalVisible, setActionModalVisible] = useState(false);
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
+  const [searchText, setSearchText] = useState('');
+  const [location, setLocation] = useState('');
+  const [compliance, setCompliance] = useState('');
   
   const handleMenuPress = () => {
     setSidebarVisible(true);
@@ -41,9 +43,9 @@ export default function DashboardScreen({ navigation, onMenuPress }: DashboardSc
   const handleSidebarNavigate = (screen: string) => {
     setSidebarVisible(false);
     if (screen === 'Dashboard') {
-      // Already on dashboard
+      navigation.navigate('Dashboard' as never);
     } else if (screen === 'MyInspections') {
-      navigation.navigate('MyInspections' as never);
+      // Already on MyInspections
     } else if (screen === 'Reports') {
       navigation.navigate('Reports' as never);
     } else if (screen === 'Analytics') {
@@ -55,7 +57,7 @@ export default function DashboardScreen({ navigation, onMenuPress }: DashboardSc
   
   const handleLogout = () => {
     setSidebarVisible(false);
-    navigation.navigate('Boarding');
+    navigation.navigate('Boarding' as never);
   };
   
   const handleEditPress = (property: Property) => {
@@ -65,46 +67,43 @@ export default function DashboardScreen({ navigation, onMenuPress }: DashboardSc
   
   const handleEditProperty = () => {
     setActionModalVisible(false);
-    navigation.navigate('EditProperty', { property: selectedProperty });
+    navigation.navigate('EditProperty' as never, { property: selectedProperty } as never);
   };
   
   const handleReadyForInspection = () => {
     setActionModalVisible(false);
-    console.log('Ready for inspection:', selectedProperty);
+    if (selectedProperty) {
+      navigation.navigate('UnitInspection' as never, { property: selectedProperty } as never);
+    }
+  };
+
+  const handlePropertyCardPress = (property: Property) => {
+    navigation.navigate('UnitInspection' as never, { property: property } as never);
   };
   
   const handleRemoveProperty = () => {
     setActionModalVisible(false);
     console.log('Remove property:', selectedProperty);
   };
-  
-  const [propertyName, setPropertyName] = useState('');
-  const [state, setState] = useState('');
-  const [city, setCity] = useState('');
-  const [showSearch, setShowSearch] = useState(true);
 
   const properties: Property[] = [
     {
       id: '1',
       name: "STEPHEN'S PARK APARTMENTS",
-      propertyId: 'R00000017',
+      propertyId: '800000017',
       buildings: 12,
       units: 160,
-      address: 'Lane , Anchorage, Alaska, 99508'
+      address: 'Lato..., Anchorage, Alaska, 99508'
     },
     {
       id: '2',
       name: 'Demure St-Hilaire',
-      propertyId: 'R00000017',
+      propertyId: '800000017',
       buildings: 12,
       units: 160,
-      address: 'Lane , Anchorage, Alaska, 99508'
+      address: 'Lato..., Anchorage, Alaska, 99508'
     }
   ];
-
-  const clearPropertyName = () => {
-    setPropertyName('');
-  };
 
   return (
     <>
@@ -153,10 +152,10 @@ export default function DashboardScreen({ navigation, onMenuPress }: DashboardSc
             </TouchableOpacity>
             
             <TouchableOpacity 
-              style={[styles.actionButton, styles.inspectionModalButton]}
+              style={[styles.actionButton, styles.inspectionButton]}
               onPress={handleReadyForInspection}
             >
-              <Text style={[styles.actionButtonText, styles.inspectionModalButtonText]}>Ready For Inspection</Text>
+              <Text style={[styles.actionButtonText, styles.inspectionButtonText]}>Ready For Inspection</Text>
             </TouchableOpacity>
             
             <TouchableOpacity 
@@ -188,138 +187,120 @@ export default function DashboardScreen({ navigation, onMenuPress }: DashboardSc
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* User Greeting */}
-        <View style={styles.greetingContainer}>
-          <View style={styles.greetingContent}>
-            <View style={styles.avatarContainer}>
-              <Ionicons name="person" size={32} color="#FFFFFF" />
-            </View>
-            <Text style={styles.greetingText}>Hi, Emma</Text>
-          </View>
+        {/* Title Section */}
+        <View style={styles.titleSection}>
+          <Text style={styles.title}>My Inspection</Text>
+          <TouchableOpacity 
+            style={styles.addButton}
+            onPress={() => navigation.navigate('AddProperty')}
+          >
+            <Text style={styles.addButtonText}>Add Property</Text>
+          </TouchableOpacity>
         </View>
 
-        {/* Search Section */}
-        <View style={styles.searchSection}>
-          <Text style={styles.searchTitle}>Search By Name, City Or State</Text>
-          
-          {/* Action Buttons */}
-          <View style={styles.actionButtons}>
-            <TouchableOpacity 
-              style={styles.addButton}
-              onPress={() => navigation.navigate('AddProperty')}
-            >
-              <Text style={styles.addButtonText}>Add Property</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.inspectionButton}
-              onPress={() => navigation.navigate('RequestInspection')}
-            >
-              <Text style={styles.inspectionButtonText}>Get Inspection by certified</Text>
-            </TouchableOpacity>
-          </View>
+        {/* Search Bar */}
+        <View style={styles.searchContainer}>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search property Here......"
+            placeholderTextColor="#9CA3AF"
+            value={searchText}
+            onChangeText={setSearchText}
+          />
+        </View>
 
-          {/* Property Name Input */}
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Property Name</Text>
-            <View style={styles.inputWithClear}>
-              <TextInput
-                style={styles.input}
-                placeholder="Property Name"
-                placeholderTextColor="#9CA3AF"
-                value={propertyName}
-                onChangeText={setPropertyName}
-              />
-              {propertyName !== '' && (
-                <TouchableOpacity 
-                  onPress={clearPropertyName}
-                  style={styles.clearButton}
-                >
-                  <Ionicons name="close" size={20} color="#6B7280" />
-                </TouchableOpacity>
-              )}
-            </View>
-          </View>
-
-          {/* State Picker */}
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>State</Text>
+        {/* Filters */}
+        <Text style={styles.filtersLabel}>Filters</Text>
+        <View style={styles.filtersContainer}>
+          <View style={styles.filterItem}>
             <View style={styles.pickerContainer}>
               <Picker
-                selectedValue={state}
-                onValueChange={(itemValue: string) => setState(itemValue)}
+                selectedValue={location}
+                onValueChange={(itemValue: string) => setLocation(itemValue)}
                 style={styles.picker}
               >
-                <Picker.Item label="Select State" value="" color="#1F2937" />
-                <Picker.Item label="Alaska" value="alaska" color="#1F2937" />
-                <Picker.Item label="California" value="california" color="#1F2937" />
-                <Picker.Item label="Texas" value="texas" color="#1F2937" />
+                <Picker.Item label="Location" value="" />
+                <Picker.Item label="Alaska" value="alaska" />
+                <Picker.Item label="California" value="california" />
               </Picker>
               <Ionicons 
                 name="chevron-down" 
-                size={20} 
+                size={18} 
                 color="#6B7280" 
                 style={styles.pickerIcon}
               />
             </View>
           </View>
 
-          {/* City Picker */}
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>City</Text>
+          <View style={styles.filterItem}>
             <View style={styles.pickerContainer}>
               <Picker
-                selectedValue={city}
-                onValueChange={(itemValue: string) => setCity(itemValue)}
+                selectedValue={compliance}
+                onValueChange={(itemValue: string) => setCompliance(itemValue)}
                 style={styles.picker}
               >
-                <Picker.Item label="Select City" value="" color="#1F2937" />
-                <Picker.Item label="Anchorage" value="anchorage" color="#1F2937" />
-                <Picker.Item label="Fairbanks" value="fairbanks" color="#1F2937" />
-                <Picker.Item label="Juneau" value="juneau" color="#1F2937" />
+                <Picker.Item label="Compliance" value="" />
+                <Picker.Item label="Compliant" value="compliant" />
+                <Picker.Item label="Non-Compliant" value="non-compliant" />
               </Picker>
               <Ionicons 
                 name="chevron-down" 
-                size={20} 
+                size={18} 
                 color="#6B7280" 
                 style={styles.pickerIcon}
               />
             </View>
           </View>
-
-          {/* Search Button */}
-          <TouchableOpacity style={styles.searchButton}>
-            <Text style={styles.searchButtonText}>Search</Text>
-          </TouchableOpacity>
         </View>
 
         {/* Property List */}
         <View style={styles.propertyList}>
           {properties.map((property) => (
-            <View key={property.id} style={styles.propertyCard}>
-              <Text style={styles.propertyName}>{property.name}</Text>
+            <TouchableOpacity 
+              key={property.id} 
+              style={styles.propertyCard}
+              activeOpacity={0.7}
+              onPress={() => handlePropertyCardPress(property)}
+            >
+              <View style={styles.propertyHeader}>
+                <Text style={styles.propertyName}>{property.name}</Text>
+                <TouchableOpacity 
+                  style={styles.moreButton}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    handleEditPress(property);
+                  }}
+                >
+                  <Ionicons name="ellipsis-vertical" size={20} color="#1F2937" />
+                </TouchableOpacity>
+              </View>
               <Text style={styles.propertyDetail}>
                 Property ID: <Text style={styles.propertyId}>{property.propertyId}</Text>
               </Text>
               <Text style={styles.propertyDetail}>
-                No. of Buildings: {property.buildings}
+                No. of Buildings: <Text style={styles.propertyValue}>{property.buildings}</Text>
               </Text>
               <Text style={styles.propertyDetail}>
-                Units: {property.units}
+                Units: <Text style={styles.propertyValue}>{property.units}</Text>
               </Text>
               <Text style={styles.propertyDetail}>
                 Address: <Text style={styles.addressLink}>{property.address}</Text>
               </Text>
+              
+              {/* Edit/Update Button */}
               <TouchableOpacity 
                 style={styles.editButton}
-                onPress={() => handleEditPress(property)}
+                onPress={(e) => {
+                  e.stopPropagation();
+                  handleEditPress(property);
+                }}
               >
                 <Text style={styles.editButtonText}>Edit/Update</Text>
               </TouchableOpacity>
-            </View>
+            </TouchableOpacity>
           ))}
         </View>
 
-        {/* Bottom Spacing */}
         <View style={{ height: 40 }} />
       </ScrollView>
     </SafeAreaView>
@@ -333,7 +314,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#CEF8FF',
   },
   headerContainer: {
-    backgroundColor: '#0E7490',
+    backgroundColor: '#CEF8FF',
     paddingHorizontal: 20,
     paddingTop: 20,
     paddingBottom: 20,
@@ -355,136 +336,73 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
-  greetingContainer: {
-    backgroundColor: '#0E7490',
-    paddingHorizontal: 20,
-    paddingTop: 15,
-    paddingBottom: 12,
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
-  },
-  greetingContent: {
-    backgroundColor: '#0E7490',
-    borderRadius: 10,
+  titleSection: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 12,
-  },
-  avatarContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#CEF8FF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 10,
-  },
-  greetingText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  searchSection: {
-    backgroundColor: '#CEF8FF',
     paddingHorizontal: 20,
-    paddingTop: 15,
+    paddingTop: 20,
     paddingBottom: 15,
   },
-  searchTitle: {
-    fontSize: 14,
+  title: {
+    fontSize: 20,
     fontWeight: '700',
     color: '#1F2937',
-    marginBottom: 10,
-  },
-  actionButtons: {
-    flexDirection: 'row',
-    gap: 10,
-    marginBottom: 12,
   },
   addButton: {
-    backgroundColor: '#FF4D67',
-    borderRadius: 20,
-    paddingVertical: 10,
-    paddingHorizontal: 15,
-    flex: 1,
+    backgroundColor: '#0E7490',
+    borderRadius: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
   },
   addButtonText: {
     color: '#FFFFFF',
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
-    textAlign: 'center',
   },
-  inspectionButton: {
-    backgroundColor: '#84CC16',
-    borderRadius: 20,
-    paddingVertical: 10,
-    paddingHorizontal: 15,
-    flex: 1,
+  searchContainer: {
+    paddingHorizontal: 20,
+    marginBottom: 20,
   },
-  inspectionButtonText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  inputContainer: {
-    marginBottom: 12,
-  },
-  label: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: 6,
-  },
-  inputWithClear: {
-    position: 'relative',
-  },
-  input: {
+  searchInput: {
     backgroundColor: '#FFFFFF',
     borderRadius: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    paddingRight: 36,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     fontSize: 14,
     color: '#374151',
-    borderWidth: 0,
   },
-  clearButton: {
-    position: 'absolute',
-    right: 10,
-    top: 10,
+  filtersLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1F2937',
+    paddingHorizontal: 20,
+    marginBottom: 10,
+  },
+  filtersContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    gap: 10,
+    marginBottom: 20,
+  },
+  filterItem: {
+    flex: 1,
   },
   pickerContainer: {
     backgroundColor: '#FFFFFF',
     borderRadius: 8,
-    borderWidth: 0,
     overflow: 'hidden',
     position: 'relative',
   },
   picker: {
     height: 45,
-    color: '#1F2937',
-    backgroundColor: 'transparent',
+    color: '#374151',
   },
   pickerIcon: {
     position: 'absolute',
     right: 12,
-    top: 12,
+    top: 13,
     pointerEvents: 'none',
-  },
-  searchButton: {
-    backgroundColor: '#0E7490',
-    borderRadius: 8,
-    paddingVertical: 10,
-    marginTop: 8,
-    marginBottom: 10,
-    width: 100,
-  },
-  searchButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-    textAlign: 'center',
   },
   propertyList: {
     paddingHorizontal: 20,
@@ -492,45 +410,39 @@ const styles = StyleSheet.create({
   propertyCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
-    padding: 20,
+    padding: 16,
     marginBottom: 15,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+  },
+  propertyHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 8,
   },
   propertyName: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
     color: '#1F2937',
-    marginBottom: 10,
+    flex: 1,
+  },
+  moreButton: {
+    padding: 4,
   },
   propertyDetail: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#374151',
-    marginBottom: 5,
+    marginBottom: 4,
   },
   propertyId: {
     color: '#0E7490',
     fontWeight: '600',
   },
+  propertyValue: {
+    color: '#1F2937',
+    fontWeight: '600',
+  },
   addressLink: {
     color: '#0E7490',
-    textDecorationLine: 'underline',
-  },
-  editButton: {
-    backgroundColor: '#84CC16',
-    borderRadius: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    marginTop: 15,
-    alignSelf: 'flex-start',
-  },
-  editButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
   },
   modalOverlay: {
     flex: 1,
@@ -549,6 +461,19 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 4,
     elevation: 5,
+  },
+  editButton: {
+    backgroundColor: '#84CC16',
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    marginTop: 12,
+    alignSelf: 'flex-start',
+  },
+  editButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
   },
   actionModalOverlay: {
     flex: 1,
@@ -589,12 +514,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
   },
-  inspectionModalButton: {
+  inspectionButton: {
     backgroundColor: '#006B8F',
     borderColor: '#006B8F',
     borderWidth: 0,
   },
-  inspectionModalButtonText: {
+  inspectionButtonText: {
     color: '#FFFFFF',
   },
   removeButton: {

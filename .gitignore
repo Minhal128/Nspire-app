@@ -1,17 +1,53 @@
+# Dependencies
 node_modules/
+.pnp
+.pnp.js
+
+# Expo
 .expo/
+.expo-shared/
 dist/
-npm-debug.*
+web-build/
+
+# Native
 *.jks
 *.p8
 *.p12
 *.key
 *.mobileprovision
 *.orig.*
-web-build/
+ios/Pods/
+ios/build/
+android/.gradle
+android/build/
+android/app/build/
+
+# Logs
+*.log
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# Environment variables
+.env
+.env.local
+.env.*.local
 
 # macOS
 .DS_Store
+*.pem
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
 
 # TypeScript
 *.tsbuildinfo
+
+# Temporary files
+*.tmp
+.temp/
+tmp/

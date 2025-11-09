@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, Image, TextInput, TouchableOpacity, SafeAreaView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SignInScreenNavigationProp, SignInScreenRouteProp } from '../types/navigation';
+import { Colors, Spacing, BorderRadius, FontSizes } from '../constants';
 
 interface SignInScreenProps {
   navigation: SignInScreenNavigationProp;
@@ -13,8 +14,14 @@ export default function SignInScreen({ navigation, route }: SignInScreenProps) {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
+  const userType = route.params?.userType;
+
   const handleLogin = () => {
-    navigation.navigate('Dashboard');
+    if (userType === 'Management') {
+      navigation.navigate('ManagementDashboard' as never);
+    } else {
+      navigation.navigate('Dashboard' as never);
+    }
   };
 
   return (
@@ -118,8 +125,8 @@ const styles = StyleSheet.create({
     paddingTop: 20,
   },
   logo: {
-    width: 250,
-    height: 80,
+    width: 300,
+    height: 100,
     marginBottom: 30,
   },
   welcomeCard: {
