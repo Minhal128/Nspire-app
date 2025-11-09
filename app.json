@@ -6,6 +6,12 @@
     "orientation": "portrait",
     "icon": "./logo.png",
     "userInterfaceStyle": "light",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/4b0e70a4-16f3-4684-befa-6f4450240b58"
+    },
     "splash": {
       "image": "./logo.png",
       "resizeMode": "contain",
@@ -23,7 +29,10 @@
         "foregroundImage": "./logo.png",
         "backgroundColor": "#7DD3FC"
       },
-      "package": "com.nspire.app"
+      "package": "com.nspire.app",
+      "gradleProperties": {
+        "kotlin.version": "2.0.21"
+      }
     },
     "web": {
       "favicon": "./logo.png"
