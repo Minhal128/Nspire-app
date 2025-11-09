@@ -88,11 +88,6 @@ android {
     compileSdk rootProject.ext.compileSdkVersion
 
     namespace 'com.nspire.app'
-    
-    buildFeatures {
-        prefab true
-    }
-    
     defaultConfig {
         applicationId 'com.nspire.app'
         minSdkVersion rootProject.ext.minSdkVersion
@@ -101,6 +96,7 @@ android {
         versionName "1.0.0"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
+        missingDimensionStrategy 'reactnativecpp', 'reactnativecpp'
     }
     signingConfigs {
         debug {
@@ -130,6 +126,7 @@ android {
         jniLibs {
             def enableLegacyPackaging = findProperty('expo.useLegacyPackaging') ?: 'false'
             useLegacyPackaging enableLegacyPackaging.toBoolean()
+            pickFirsts += ['**/libc++_shared.so', '**/libfbjni.so']
         }
     }
     androidResources {

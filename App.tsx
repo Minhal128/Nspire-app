@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
-import { createStackNavigator } from '@react-navigation/stack';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 
 // Import screens
@@ -36,7 +36,7 @@ export type RootStackParamList = {
   ManagementDashboard: undefined;
 };
 
-const Stack = createStackNavigator<RootStackParamList>();
+const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {
   return (
@@ -47,7 +47,7 @@ export default function App() {
           initialRouteName="Boarding"
           screenOptions={{
             headerShown: false,
-            cardStyle: { backgroundColor: '#7DD3FC' }
+            contentStyle: { backgroundColor: '#7DD3FC' }
           }}
         >
           <Stack.Screen name="Boarding" component={BoardingScreen} />
