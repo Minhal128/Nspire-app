@@ -88,6 +88,11 @@ android {
     compileSdk rootProject.ext.compileSdkVersion
 
     namespace 'com.nspire.app'
+    
+    buildFeatures {
+        prefab true
+    }
+    
     defaultConfig {
         applicationId 'com.nspire.app'
         minSdkVersion rootProject.ext.minSdkVersion
