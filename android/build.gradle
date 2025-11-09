@@ -18,6 +18,16 @@ allprojects {
     mavenCentral()
     maven { url 'https://www.jitpack.io' }
   }
+  
+  // Force C++17 for NDK 25 compatibility (NDK 25 doesn't fully support C++20 concepts)
+  afterEvaluate { project ->
+    if (project.hasProperty('android')) {
+      project.android.defaultConfig.externalNativeBuild.cmake {
+        arguments "-DANDROID_STL=c++_shared"
+        cppFlags "-std=c++17"
+      }
+    }
+  }
 }
 
 // Force NDK 25 for React Native 0.81 compatibility
