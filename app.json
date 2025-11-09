@@ -60,8 +60,7 @@
             "compileSdkVersion": 35,
             "targetSdkVersion": 35,
             "buildToolsVersion": "35.0.0",
-            "newArchEnabled": true,
-            "cppStandard": "c++17"
+            "newArchEnabled": false
           },
           "ios": {
             "deploymentTarget": "15.1"
