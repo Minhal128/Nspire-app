@@ -391,17 +391,20 @@ const styles = StyleSheet.create({
   pickerContainer: {
     backgroundColor: '#FFFFFF',
     borderRadius: 8,
-    overflow: 'hidden',
     position: 'relative',
+    minHeight: 55,
+    justifyContent: 'center',
   },
   picker: {
-    height: 45,
+    height: 55,
     color: '#374151',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
   pickerIcon: {
     position: 'absolute',
     right: 12,
-    top: 13,
+    top: 18,
     pointerEvents: 'none',
   },
   propertyList: {

@@ -210,18 +210,20 @@ const styles = StyleSheet.create({
   pickerContainer: {
     backgroundColor: '#CEF8FF',
     borderRadius: 8,
-    overflow: 'hidden',
     position: 'relative',
+    minHeight: 55,
+    justifyContent: 'center',
   },
   picker: {
-    height: 50,
+    height: 55,
     color: '#374151',
     backgroundColor: 'transparent',
+    paddingVertical: 8,
   },
   pickerIcon: {
     position: 'absolute',
     right: 15,
-    top: 15,
+    top: 18,
     pointerEvents: 'none',
   },
   updateButton: {

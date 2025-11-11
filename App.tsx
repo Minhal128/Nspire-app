@@ -18,6 +18,7 @@ import UnitInspectionScreen from './src/screens/UnitInspectionScreen';
 import InspectionChecklistScreen from './src/screens/InspectionChecklistScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import ManagementDashboardScreen from './src/screens/ManagementDashboardScreen';
+import ReportDetailScreen from './src/screens/ReportDetailScreen';
 
 export type RootStackParamList = {
   Boarding: undefined;
@@ -34,6 +35,7 @@ export type RootStackParamList = {
   UnitInspection: { property: any };
   InspectionChecklist: { property: any; unit: any };
   ManagementDashboard: undefined;
+  ReportDetail: { report: any };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -47,7 +49,7 @@ export default function App() {
           initialRouteName="Boarding"
           screenOptions={{
             headerShown: false,
-            contentStyle: { backgroundColor: '#7DD3FC' }
+            contentStyle: { backgroundColor: '#97F0FF' }
           }}
         >
           <Stack.Screen name="Boarding" component={BoardingScreen} />
@@ -64,6 +66,7 @@ export default function App() {
           <Stack.Screen name="InspectionChecklist" component={InspectionChecklistScreen} />
           <Stack.Screen name="Settings" component={SettingsScreen} />
           <Stack.Screen name="ManagementDashboard" component={ManagementDashboardScreen} />
+          <Stack.Screen name="ReportDetail" component={ReportDetailScreen} />
         </Stack.Navigator>
       </NavigationContainer>
     </>

@@ -240,11 +240,19 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
               
               {/* Action Buttons */}
               <View style={styles.actionButtons}>
-                <TouchableOpacity style={styles.iconButton}>
+                <TouchableOpacity 
+                  style={styles.iconButton}
+                  onPress={() => navigation.navigate('ReportDetail' as never, { report } as never)}
+                >
                   <Ionicons name="document-text-outline" size={24} color="#0E7490" />
+                  <Text style={styles.iconButtonLabel}>View Report</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.iconButton}>
+                <TouchableOpacity 
+                  style={styles.iconButton}
+                  onPress={() => console.log('Share report:', report.property)}
+                >
                   <Ionicons name="share-social-outline" size={24} color="#0E7490" />
+                  <Text style={styles.iconButtonLabel}>Share</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -331,17 +339,20 @@ const styles = StyleSheet.create({
   pickerContainer: {
     backgroundColor: '#FFFFFF',
     borderRadius: 8,
-    overflow: 'hidden',
     position: 'relative',
+    minHeight: 55,
+    justifyContent: 'center',
   },
   picker: {
-    height: 45,
+    height: 55,
     color: '#374151',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
   pickerIcon: {
     position: 'absolute',
     right: 12,
-    top: 13,
+    top: 18,
     pointerEvents: 'none',
   },
   reportsList: {
@@ -399,6 +410,13 @@ const styles = StyleSheet.create({
   },
   iconButton: {
     padding: 4,
+    alignItems: 'center',
+    gap: 4,
+  },
+  iconButtonLabel: {
+    fontSize: 11,
+    color: '#0E7490',
+    fontWeight: '600',
   },
   modalOverlay: {
     flex: 1,

@@ -22,6 +22,8 @@ export default function AnalyticsScreen({ navigation, onMenuPress }: AnalyticsSc
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [property, setProperty] = useState('');
   const [timePeriod, setTimePeriod] = useState('');
+  const [successModalVisible, setSuccessModalVisible] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
 
   const handleMenuPress = () => {
     setSidebarVisible(true);
@@ -145,7 +147,13 @@ export default function AnalyticsScreen({ navigation, onMenuPress }: AnalyticsSc
               </View>
             </View>
 
-            <TouchableOpacity style={styles.applyButton}>
+            <TouchableOpacity 
+              style={styles.applyButton}
+              onPress={() => {
+                console.log('Applying filters:', { property, timePeriod });
+                // Filter analytics data based on selections
+              }}
+            >
               <Text style={styles.applyButtonText}>Apply</Text>
             </TouchableOpacity>
           </View>
@@ -271,10 +279,26 @@ export default function AnalyticsScreen({ navigation, onMenuPress }: AnalyticsSc
 
           {/* Action Buttons */}
           <View style={styles.actionButtonsContainer}>
-            <TouchableOpacity style={styles.exportButton}>
+            <TouchableOpacity 
+              style={styles.exportButton}
+              onPress={() => {
+                console.log('Exporting analytics data');
+                setSuccessMessage('Analytics data exported successfully! Check your downloads folder.');
+                setSuccessModalVisible(true);
+              }}
+            >
+              <Ionicons name="download-outline" size={18} color="#FFFFFF" />
               <Text style={styles.exportButtonText}>Export Analytics</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.shareButton}>
+            <TouchableOpacity 
+              style={styles.shareButton}
+              onPress={() => {
+                console.log('Sharing dashboard');
+                setSuccessMessage('Dashboard link copied to clipboard! Share with your team.');
+                setSuccessModalVisible(true);
+              }}
+            >
+              <Ionicons name="share-social-outline" size={18} color="#0E7490" />
               <Text style={styles.shareButtonText}>Share Dashboard</Text>
             </TouchableOpacity>
           </View>
@@ -282,6 +306,28 @@ export default function AnalyticsScreen({ navigation, onMenuPress }: AnalyticsSc
           <View style={{ height: 40 }} />
         </ScrollView>
       </SafeAreaView>
+
+      {/* Success Modal */}
+      <Modal
+        visible={successModalVisible}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setSuccessModalVisible(false)}
+      >
+        <View style={styles.successModalOverlay}>
+          <View style={styles.successModalContent}>
+            <Ionicons name="checkmark-circle" size={64} color="#10B981" />
+            <Text style={styles.successModalTitle}>Success!</Text>
+            <Text style={styles.successModalMessage}>{successMessage}</Text>
+            <TouchableOpacity 
+              style={styles.successModalButton}
+              onPress={() => setSuccessModalVisible(false)}
+            >
+              <Text style={styles.successModalButtonText}>OK</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </>
   );
 }
@@ -351,19 +397,22 @@ const styles = StyleSheet.create({
   pickerContainer: {
     backgroundColor: '#FFFFFF',
     borderRadius: 8,
-    overflow: 'hidden',
     position: 'relative',
     borderWidth: 1,
     borderColor: '#E5E7EB',
+    minHeight: 55,
+    justifyContent: 'center',
   },
   picker: {
-    height: 45,
+    height: 55,
     color: '#1F2937',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
   pickerIcon: {
     position: 'absolute',
     right: 12,
-    top: 13,
+    top: 18,
     pointerEvents: 'none',
   },
   applyButton: {
@@ -604,15 +653,16 @@ const styles = StyleSheet.create({
   },
   exportButton: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 2,
-    borderColor: '#1F2937',
+    backgroundColor: '#0E7490',
     borderRadius: 8,
     paddingVertical: 12,
     alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
   },
   exportButtonText: {
-    color: '#1F2937',
+    color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '600',
   },
@@ -620,13 +670,16 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFFFFF',
     borderWidth: 2,
-    borderColor: '#1F2937',
+    borderColor: '#0E7490',
     borderRadius: 8,
     paddingVertical: 12,
     alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
   },
   shareButtonText: {
-    color: '#1F2937',
+    color: '#0E7490',
     fontSize: 14,
     fontWeight: '600',
   },
@@ -647,5 +700,49 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 4,
     elevation: 5,
+  },
+  successModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  successModalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 32,
+    alignItems: 'center',
+    width: '80%',
+    maxWidth: 400,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  successModalTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  successModalMessage: {
+    fontSize: 15,
+    color: '#6B7280',
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 22,
+  },
+  successModalButton: {
+    backgroundColor: '#0E7490',
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 48,
+  },
+  successModalButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

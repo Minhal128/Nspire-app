@@ -115,11 +115,7 @@ export default function DashboardScreen({ navigation, onMenuPress }: DashboardSc
         transparent={true}
         onRequestClose={() => setSidebarVisible(false)}
       >
-        <TouchableOpacity 
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setSidebarVisible(false)}
-        >
+        <View style={styles.modalOverlay}>
           <View style={styles.sidebarContainer}>
             <Sidebar
               onClose={() => setSidebarVisible(false)}
@@ -127,7 +123,12 @@ export default function DashboardScreen({ navigation, onMenuPress }: DashboardSc
               onLogout={handleLogout}
             />
           </View>
-        </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.modalBackdrop}
+            activeOpacity={1}
+            onPress={() => setSidebarVisible(false)}
+          />
+        </View>
       </Modal>
 
       {/* Action Modal */}
@@ -287,7 +288,13 @@ export default function DashboardScreen({ navigation, onMenuPress }: DashboardSc
           </View>
 
           {/* Search Button */}
-          <TouchableOpacity style={styles.searchButton}>
+          <TouchableOpacity 
+            style={styles.searchButton}
+            onPress={() => {
+              console.log('Searching properties:', { propertyName, state, city });
+              // Filter logic would go here
+            }}
+          >
             <Text style={styles.searchButtonText}>Search</Text>
           </TouchableOpacity>
         </View>
@@ -458,18 +465,21 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 8,
     borderWidth: 0,
-    overflow: 'hidden',
     position: 'relative',
+    minHeight: 55,
+    justifyContent: 'center',
   },
   picker: {
-    height: 45,
+    height: 55,
     color: '#1F2937',
     backgroundColor: 'transparent',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
   pickerIcon: {
     position: 'absolute',
     right: 12,
-    top: 12,
+    top: 18,
     pointerEvents: 'none',
   },
   searchButton: {
@@ -534,9 +544,11 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
+    flexDirection: 'row',
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-start',
-    alignItems: 'flex-start',
+  },
+  modalBackdrop: {
+    flex: 1,
   },
   sidebarContainer: {
     width: 280,

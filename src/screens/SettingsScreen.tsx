@@ -26,6 +26,11 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
   const [role, setRole] = useState('Inspector');
   const [language, setLanguage] = useState('English US');
   const [timezone, setTimezone] = useState('GMT +05:00');
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [editField, setEditField] = useState('');
+  const [editValue, setEditValue] = useState('');
+  const [successModalVisible, setSuccessModalVisible] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
   
   // Notification preferences
   const [inspectionReminderEmail, setInspectionReminderEmail] = useState(true);
@@ -66,8 +71,36 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
     navigation.navigate('Boarding' as never);
   };
 
+  const handleEditField = (field: string, currentValue: string) => {
+    setEditField(field);
+    setEditValue(currentValue);
+    setEditModalVisible(true);
+  };
+
+  const handleSaveEdit = () => {
+    switch(editField) {
+      case 'name':
+        setName(editValue);
+        break;
+      case 'email':
+        setEmail(editValue);
+        break;
+      case 'phone':
+        setPhone(editValue);
+        break;
+      case 'role':
+        setRole(editValue);
+        break;
+    }
+    setEditModalVisible(false);
+    setSuccessMessage(`${editField.charAt(0).toUpperCase() + editField.slice(1)} updated successfully!`);
+    setSuccessModalVisible(true);
+  };
+
   const handleSaveChanges = () => {
     console.log('Saving changes...');
+    setSuccessMessage('Settings saved successfully!');
+    setSuccessModalVisible(true);
   };
 
   const handleLogoutSession = () => {
@@ -143,7 +176,7 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
             <View style={styles.fieldContainer}>
               <View style={styles.fieldHeader}>
                 <Text style={styles.fieldLabel}>Name</Text>
-                <TouchableOpacity>
+                <TouchableOpacity onPress={() => handleEditField('name', name)}>
                   <Text style={styles.editLink}>Edit</Text>
                 </TouchableOpacity>
               </View>
@@ -156,7 +189,7 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
             <View style={styles.fieldContainer}>
               <View style={styles.fieldHeader}>
                 <Text style={styles.fieldLabel}>Email</Text>
-                <TouchableOpacity>
+                <TouchableOpacity onPress={() => handleEditField('email', email)}>
                   <Text style={styles.editLink}>Edit</Text>
                 </TouchableOpacity>
               </View>
@@ -169,7 +202,7 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
             <View style={styles.fieldContainer}>
               <View style={styles.fieldHeader}>
                 <Text style={styles.fieldLabel}>Phone</Text>
-                <TouchableOpacity>
+                <TouchableOpacity onPress={() => handleEditField('phone', phone)}>
                   <Text style={styles.editLink}>Edit</Text>
                 </TouchableOpacity>
               </View>
@@ -182,7 +215,7 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
             <View style={styles.fieldContainer}>
               <View style={styles.fieldHeader}>
                 <Text style={styles.fieldLabel}>Role</Text>
-                <TouchableOpacity>
+                <TouchableOpacity onPress={() => handleEditField('role', role)}>
                   <Text style={styles.editLink}>Edit</Text>
                 </TouchableOpacity>
               </View>
@@ -434,6 +467,63 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
           <View style={{ height: 40 }} />
         </ScrollView>
       </SafeAreaView>
+
+      {/* Edit Field Modal */}
+      <Modal
+        visible={editModalVisible}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setEditModalVisible(false)}
+      >
+        <View style={styles.editModalOverlay}>
+          <View style={styles.editModalContent}>
+            <Text style={styles.editModalTitle}>Edit {editField.charAt(0).toUpperCase() + editField.slice(1)}</Text>
+            <TextInput
+              style={styles.editModalInput}
+              value={editValue}
+              onChangeText={setEditValue}
+              placeholder={`Enter ${editField}`}
+              placeholderTextColor="#9CA3AF"
+            />
+            <View style={styles.editModalButtons}>
+              <TouchableOpacity 
+                style={styles.editModalCancelButton}
+                onPress={() => setEditModalVisible(false)}
+              >
+                <Text style={styles.editModalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.editModalSaveButton}
+                onPress={handleSaveEdit}
+              >
+                <Text style={styles.editModalSaveText}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Success Modal */}
+      <Modal
+        visible={successModalVisible}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setSuccessModalVisible(false)}
+      >
+        <View style={styles.successModalOverlay}>
+          <View style={styles.successModalContent}>
+            <Ionicons name="checkmark-circle" size={64} color="#10B981" />
+            <Text style={styles.successModalTitle}>Success!</Text>
+            <Text style={styles.successModalMessage}>{successMessage}</Text>
+            <TouchableOpacity 
+              style={styles.successModalButton}
+              onPress={() => setSuccessModalVisible(false)}
+            >
+              <Text style={styles.successModalButtonText}>OK</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </>
   );
 }
@@ -559,19 +649,21 @@ const styles = StyleSheet.create({
   pickerContainer: {
     backgroundColor: '#F3F4F6',
     borderRadius: 8,
-    overflow: 'hidden',
     position: 'relative',
     marginTop: 8,
+    minHeight: 55,
+    justifyContent: 'center',
   },
   picker: {
-    height: 50,
+    height: 55,
     color: '#6B7280',
     backgroundColor: 'transparent',
+    paddingVertical: 8,
   },
   pickerIcon: {
     position: 'absolute',
     right: 12,
-    top: 16,
+    top: 18,
     pointerEvents: 'none',
   },
   saveButton: {
@@ -736,5 +828,112 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 4,
     elevation: 5,
+  },
+  editModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  editModalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 24,
+    width: '85%',
+    maxWidth: 400,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  editModalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 20,
+  },
+  editModalInput: {
+    backgroundColor: '#F3F4F6',
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    fontSize: 16,
+    color: '#1F2937',
+    marginBottom: 24,
+  },
+  editModalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  editModalCancelButton: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    borderColor: '#D1D5DB',
+    borderRadius: 8,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  editModalCancelText: {
+    color: '#6B7280',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  editModalSaveButton: {
+    flex: 1,
+    backgroundColor: '#0E7490',
+    borderRadius: 8,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  editModalSaveText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  successModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  successModalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 32,
+    alignItems: 'center',
+    width: '80%',
+    maxWidth: 400,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  successModalTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  successModalMessage: {
+    fontSize: 15,
+    color: '#6B7280',
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 22,
+  },
+  successModalButton: {
+    backgroundColor: '#0E7490',
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 48,
+  },
+  successModalButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

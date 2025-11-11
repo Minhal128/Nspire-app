@@ -58,11 +58,7 @@ export default function ManagementDashboardScreen({ navigation }: ManagementDash
         transparent={true}
         onRequestClose={() => setSidebarVisible(false)}
       >
-        <TouchableOpacity 
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setSidebarVisible(false)}
-        >
+        <View style={styles.modalOverlay}>
           <View style={styles.sidebarContainer}>
             <Sidebar
               onClose={() => setSidebarVisible(false)}
@@ -70,7 +66,12 @@ export default function ManagementDashboardScreen({ navigation }: ManagementDash
               onLogout={handleLogout}
             />
           </View>
-        </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.modalBackdrop}
+            activeOpacity={1}
+            onPress={() => setSidebarVisible(false)}
+          />
+        </View>
       </Modal>
 
       <SafeAreaView style={styles.container}>
@@ -121,17 +122,25 @@ export default function ManagementDashboardScreen({ navigation }: ManagementDash
               <Text style={styles.propertyUnits}>24 Units</Text>
               
               <View style={styles.propertyActions}>
-                <TouchableOpacity style={styles.viewUnitsButton}>
+                <TouchableOpacity 
+                  style={styles.viewUnitsButton}
+                  onPress={() => navigation.navigate('UnitInspection' as never)}
+                >
                   <Text style={styles.viewUnitsText}>View Units</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.startInspectionButton}>
+                <TouchableOpacity 
+                  style={styles.startInspectionButton}
+                  onPress={() => navigation.navigate('InspectionChecklist' as never)}
+                >
                   <Text style={styles.startInspectionText}>Start Inspection</Text>
                 </TouchableOpacity>
               </View>
             </View>
 
-            <TouchableOpacity>
-              <Text style={styles.viewAllLink}>View All</Text>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('Dashboard' as never)}
+            >
+              <Text style={styles.viewAllLink}>View All Properties</Text>
             </TouchableOpacity>
           </View>
 
@@ -139,7 +148,10 @@ export default function ManagementDashboardScreen({ navigation }: ManagementDash
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Inspections Overview</Text>
-              <TouchableOpacity style={styles.startInspectionHeaderButton}>
+              <TouchableOpacity 
+                style={styles.startInspectionHeaderButton}
+                onPress={() => navigation.navigate('InspectionChecklist' as never)}
+              >
                 <Text style={styles.startInspectionHeaderText}>Start New Inspection</Text>
               </TouchableOpacity>
             </View>
@@ -152,7 +164,9 @@ export default function ManagementDashboardScreen({ navigation }: ManagementDash
               </View>
             </View>
 
-            <TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('MyInspections' as never)}
+            >
               <Text style={styles.viewAllLink}>View All Inspections</Text>
             </TouchableOpacity>
           </View>
@@ -297,6 +311,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
+    flexWrap: 'wrap',
+    gap: 10,
   },
   sectionTitleRow: {
     flexDirection: 'row',
@@ -508,9 +524,11 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
+    flexDirection: 'row',
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-start',
-    alignItems: 'flex-start',
+  },
+  modalBackdrop: {
+    flex: 1,
   },
   sidebarContainer: {
     width: 280,

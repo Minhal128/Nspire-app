@@ -17,11 +17,14 @@ export default function SignInScreen({ navigation, route }: SignInScreenProps) {
   const userType = route.params?.userType;
 
   const handleLogin = () => {
-    if (userType === 'Management') {
-      navigation.navigate('ManagementDashboard' as never);
-    } else {
-      navigation.navigate('Dashboard' as never);
-    }
+    // Add small delay to prevent view hierarchy issues
+    setTimeout(() => {
+      if (userType === 'Management') {
+        navigation.navigate('ManagementDashboard' as never);
+      } else {
+        navigation.navigate('Dashboard' as never);
+      }
+    }, 100);
   };
 
   return (

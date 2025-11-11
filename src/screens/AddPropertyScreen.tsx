@@ -33,14 +33,24 @@ export default function AddPropertyScreen({ navigation }: AddPropertyScreenProps
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="arrow-back" size={24} color="#1F2937" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Add Property</Text>
+        <View style={styles.placeholder} />
+      </View>
+
       <ScrollView 
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
         <View style={styles.formContainer}>
-          {/* Title */}
-          <Text style={styles.title}>Add Property</Text>
 
           {/* Property ID (Optional) */}
           <View style={styles.inputGroup}>
@@ -151,6 +161,14 @@ export default function AddPropertyScreen({ navigation }: AddPropertyScreenProps
               keyboardType="number-pad"
             />
           </View>
+
+          {/* Submit Button */}
+          <TouchableOpacity 
+            style={styles.submitButton}
+            onPress={handleSubmit}
+          >
+            <Text style={styles.submitButtonText}>Add Property</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -162,23 +180,43 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F3F4F6',
   },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  placeholder: {
+    width: 40,
+  },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
     padding: 20,
+    alignItems: 'center',
   },
   formContainer: {
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
     padding: 24,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1F2937',
-    textAlign: 'center',
-    marginBottom: 24,
+    width: '100%',
+    maxWidth: 500,
   },
   inputGroup: {
     marginBottom: 18,
@@ -200,18 +238,32 @@ const styles = StyleSheet.create({
   pickerContainer: {
     backgroundColor: '#D1F2EB',
     borderRadius: 8,
-    overflow: 'hidden',
     position: 'relative',
+    minHeight: 55,
+    justifyContent: 'center',
   },
   picker: {
-    height: 48,
+    height: 55,
     color: '#374151',
     backgroundColor: 'transparent',
+    paddingVertical: 8,
   },
   pickerIcon: {
     position: 'absolute',
     right: 12,
-    top: 15,
+    top: 18,
     pointerEvents: 'none',
+  },
+  submitButton: {
+    backgroundColor: '#0E7490',
+    borderRadius: 8,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: 24,
+  },
+  submitButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

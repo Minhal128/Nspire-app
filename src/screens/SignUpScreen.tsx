@@ -15,7 +15,10 @@ export default function SignUpScreen({ navigation }: SignUpScreenProps) {
   const [loginType, setLoginType] = useState('');
 
   const handleCreateAccount = () => {
-    navigation.navigate('Dashboard' as never);
+    // Add small delay to prevent view hierarchy issues
+    setTimeout(() => {
+      navigation.navigate('Dashboard' as never);
+    }, 100);
   };
 
   return (
@@ -190,11 +193,13 @@ const styles = StyleSheet.create({
   pickerContainer: {
     backgroundColor: '#D1F2EB',
     borderRadius: 12,
-    overflow: 'hidden',
+    minHeight: 55,
+    justifyContent: 'center',
   },
   picker: {
-    height: 50,
+    height: 55,
     color: '#374151',
+    paddingVertical: 8,
   },
   createButton: {
     backgroundColor: '#0E7490',
