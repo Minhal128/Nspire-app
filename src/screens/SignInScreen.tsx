@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Image, TextInput, TouchableOpacity, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, Image, TextInput, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SignInScreenNavigationProp, SignInScreenRouteProp } from '../types/navigation';
 import { Colors, Spacing, BorderRadius, FontSizes } from '../constants';
@@ -28,7 +28,7 @@ export default function SignInScreen({ navigation, route }: SignInScreenProps) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <View style={styles.content}>
         {/* Logo */}
         <Image 
@@ -113,7 +113,7 @@ export default function SignInScreen({ navigation, route }: SignInScreenProps) {
           </View>
         </View>
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -128,16 +128,17 @@ const styles = StyleSheet.create({
     paddingTop: 20,
   },
   logo: {
-    width: 300,
-    height: 100,
-    marginBottom: 30,
+    width: 350,
+    height: 140,
+    marginBottom: 20,
   },
   welcomeCard: {
     backgroundColor: '#F0F9E8',
     borderRadius: 30,
     padding: 30,
-    width: '90%',
+    width: '100%',
     maxWidth: 400,
+    flex: 1,
   },
   welcomeTitle: {
     fontSize: 32,

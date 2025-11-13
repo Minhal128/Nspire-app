@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, SafeAreaView, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { BoardingScreenNavigationProp } from '../types/navigation';
 import { Colors, Spacing, BorderRadius, FontSizes } from '../constants';
@@ -10,61 +10,56 @@ interface BoardingScreenProps {
 
 export default function BoardingScreen({ navigation }: BoardingScreenProps) {
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView 
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.content}>
-          {/* Logo */}
-          <Image 
-            source={require('../../logo.png')} 
-            style={styles.logo}
-            resizeMode="contain"
-          />
+    <View style={styles.container}>
+      <View style={styles.content}>
+        {/* Logo */}
+        <Image 
+          source={require('../../logo.png')} 
+          style={styles.logo}
+          resizeMode="contain"
+        />
 
-          {/* Welcome Card */}
-          <View style={styles.welcomeCard}>
-            <Text style={styles.welcomeTitle}>Welcome</Text>
-            <Text style={styles.welcomeSubtitle}>Choose how you want to continue.</Text>
+        {/* Welcome Card */}
+        <View style={styles.welcomeCard}>
+          <Text style={styles.welcomeTitle}>Welcome</Text>
+          <Text style={styles.welcomeSubtitle}>Choose how you want to continue.</Text>
 
-            {/* Inspector Option */}
-            <View style={styles.optionCard}>
-              <View style={styles.iconContainer}>
-                <MaterialCommunityIcons name="clipboard-text" size={60} color="#FF4D67" />
-              </View>
-              <Text style={styles.optionTitle}>Inspector</Text>
-              <Text style={styles.optionDescription}>
-                For field inspectors conducting{'\n'}property compliance checks.
-              </Text>
-              <TouchableOpacity 
-                style={styles.button}
-                onPress={() => navigation.navigate('SignIn', { userType: 'Inspector' })}
-              >
-                <Text style={styles.buttonText}>Continue as Inspector</Text>
-              </TouchableOpacity>
+          {/* Inspector Option */}
+          <View style={styles.optionCard}>
+            <View style={styles.iconContainer}>
+              <MaterialCommunityIcons name="clipboard-text" size={60} color="#FF4D67" />
             </View>
+            <Text style={styles.optionTitle}>Inspector</Text>
+            <Text style={styles.optionDescription}>
+              For field inspectors conducting{'\n'}property compliance checks.
+            </Text>
+            <TouchableOpacity 
+              style={styles.button}
+              onPress={() => navigation.navigate('SignIn', { userType: 'Inspector' })}
+            >
+              <Text style={styles.buttonText}>Continue as Inspector</Text>
+            </TouchableOpacity>
+          </View>
 
-            {/* Management Option */}
-            <View style={styles.optionCard}>
-              <View style={styles.iconContainer}>
-                <MaterialCommunityIcons name="office-building" size={60} color="#FF4D67" />
-              </View>
-              <Text style={styles.optionTitle}>Management</Text>
-              <Text style={styles.optionDescription}>
-                For property managers and supervisors{'\n'}reviewing reports and analytics.
-              </Text>
-              <TouchableOpacity 
-                style={styles.button}
-                onPress={() => navigation.navigate('SignIn', { userType: 'Management' })}
-              >
-                <Text style={styles.buttonText}>Continue as Management</Text>
-              </TouchableOpacity>
+          {/* Management Option */}
+          <View style={[styles.optionCard, styles.lastOptionCard]}>
+            <View style={styles.iconContainer}>
+              <MaterialCommunityIcons name="office-building" size={60} color="#FF4D67" />
             </View>
+            <Text style={styles.optionTitle}>Management</Text>
+            <Text style={styles.optionDescription}>
+              For property managers and supervisors{'\n'}reviewing reports and analytics.
+            </Text>
+            <TouchableOpacity 
+              style={styles.button}
+              onPress={() => navigation.navigate('SignIn', { userType: 'Management' })}
+            >
+              <Text style={styles.buttonText}>Continue as Management</Text>
+            </TouchableOpacity>
           </View>
         </View>
-      </ScrollView>
-    </SafeAreaView>
+      </View>
+    </View>
   );
 }
 
@@ -72,26 +67,25 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background.primary,
-  },
-  scrollContent: {
-    flexGrow: 1,
+    paddingTop: 20,
   },
   content: {
     flex: 1,
     alignItems: 'center',
-    paddingTop: Spacing.xl,
+    justifyContent: 'flex-start',
   },
   logo: {
     width: 300,
-    height: 100,
-    marginBottom: Spacing.xxxl,
+    height: 120,
+    marginBottom: -20,
   },
   welcomeCard: {
     backgroundColor: Colors.background.secondary,
     borderRadius: BorderRadius.xxxl,
     padding: Spacing.xl,
-    width: '90%',
+    width: '100%',
     maxWidth: 400,
+    flex: 1,
   },
   welcomeTitle: {
     fontSize: FontSizes.xxxl,
@@ -104,19 +98,22 @@ const styles = StyleSheet.create({
     fontSize: FontSizes.md,
     color: Colors.text.secondary,
     textAlign: 'center',
-    marginBottom: Spacing.xxxl,
+    marginBottom: Spacing.xl,
   },
   optionCard: {
     backgroundColor: Colors.neutral.white,
     borderRadius: BorderRadius.xl,
     padding: Spacing.xl,
-    marginBottom: Spacing.xl,
+    marginBottom: Spacing.sm,
     alignItems: 'center',
     shadowColor: Colors.neutral.black,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 3,
+  },
+  lastOptionCard: {
+    marginBottom: 0,
   },
   iconContainer: {
     marginBottom: Spacing.lg,
@@ -138,7 +135,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary.teal,
     borderRadius: BorderRadius.md,
     paddingVertical: Spacing.lg,
-    paddingHorizontal: 40,
+    paddingHorizontal: 30,
     width: '100%',
   },
   buttonText: {

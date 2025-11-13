@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Image, TextInput, TouchableOpacity, SafeAreaView, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, Image, TextInput, TouchableOpacity, ScrollView } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { SignUpScreenNavigationProp } from '../types/navigation';
 
@@ -22,7 +22,7 @@ export default function SignUpScreen({ navigation }: SignUpScreenProps) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <ScrollView 
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -130,7 +130,7 @@ export default function SignUpScreen({ navigation }: SignUpScreenProps) {
           </View>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -148,15 +148,15 @@ const styles = StyleSheet.create({
     paddingTop: 20,
   },
   logo: {
-    width: 300,
-    height: 100,
-    marginBottom: 30,
+    width: 350,
+    height: 140,
+    marginBottom: 20,
   },
   registrationCard: {
     backgroundColor: '#F0F9E8',
     borderRadius: 30,
     padding: 30,
-    width: '90%',
+    width: '100%',
     maxWidth: 400,
   },
   title: {
