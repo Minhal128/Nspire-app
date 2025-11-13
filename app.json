@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Inspire",
-    "slug": "nspire-app",
+    "slug": "inspire-app",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./logo.png",
@@ -22,7 +22,7 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.nspire.app",
+      "bundleIdentifier": "com.inspire.app",
       "infoPlist": {
         "NSCameraUsageDescription": "This app uses the camera for document scanning and property inspection.",
         "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to save and upload inspection photos.",
