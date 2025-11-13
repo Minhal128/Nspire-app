@@ -51,7 +51,7 @@ npx expo prebuild --platform android --clean
 ```
 
 If asked questions, choose:
-- **Package name**: com.nspire.app (already in app.json)
+- **Package name**: com.inspire.app (already in app.json)
 - **Overwrite files**: Yes
 
 ### 2. Verify Kotlin Version (Optional)

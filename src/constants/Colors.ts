@@ -1,5 +1,5 @@
 /**
- * Color constants for the Nspire app
+ * Color constants for the Inspire app
  * Organized by semantic usage
  */
 

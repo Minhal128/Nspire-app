@@ -1,4 +1,4 @@
-# Nspire - Property Management Mobile App
+# Inspire - Property Management Mobile App
 
 A professional React Native mobile application built with Expo SDK 54 for property inspection and management.
 
@@ -146,4 +146,4 @@ app/
 
 ## License
 
-Private - Nspire Property Management
+Private - Inspire Property Management

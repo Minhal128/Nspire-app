@@ -34,7 +34,7 @@
         "foregroundImage": "./logo.png",
         "backgroundColor": "#7DD3FC"
       },
-      "package": "com.nspire.app",
+      "package": "com.inspire.app",
       "permissions": [
         "android.permission.INTERNET",
         "android.permission.CAMERA",

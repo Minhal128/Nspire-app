@@ -58,9 +58,9 @@ export const clearAllData = async (): Promise<void> => {
  * Storage keys constants
  */
 export const StorageKeys = {
-  USER_TOKEN: '@nspire:user_token',
-  USER_DATA: '@nspire:user_data',
-  USER_TYPE: '@nspire:user_type',
-  REMEMBER_ME: '@nspire:remember_me',
-  THEME_PREFERENCE: '@nspire:theme',
+  USER_TOKEN: '@inspire:user_token',
+  USER_DATA: '@inspire:user_data',
+  USER_TYPE: '@inspire:user_type',
+  REMEMBER_ME: '@inspire:remember_me',
+  THEME_PREFERENCE: '@inspire:theme',
 };

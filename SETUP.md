@@ -4,7 +4,7 @@
 
 1. **Navigate to the project directory**:
    ```bash
-   cd H:\Development\Nspire\app
+   cd H:\Development\Inspire\app
    ```
 
 2. **Install all dependencies**:

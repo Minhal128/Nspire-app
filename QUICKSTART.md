@@ -1,4 +1,4 @@
-# 🚀 Quick Start Guide - Nspire App
+# 🚀 Quick Start Guide - Inspire App
 
 ## Getting Started in 3 Steps
 

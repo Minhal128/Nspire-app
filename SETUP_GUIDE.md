@@ -1,7 +1,7 @@
-# Nspire App - Setup Guide
+# Inspire App - Setup Guide
 
 ## Overview
-Nspire is a property inspection management application built with React Native and Expo SDK 54. It provides separate interfaces for property inspectors and management personnel.
+Inspire is a property inspection management application built with React Native and Expo SDK 54. It provides separate interfaces for property inspectors and management personnel.
 
 ## Features
 - 🏢 **Dual Interface**: Separate workflows for Inspectors and Management
@@ -33,7 +33,7 @@ Before you begin, ensure you have the following installed:
 
 ### 1. Clone the Repository
 ```bash
-cd H:\Development\Nspire\app
+cd H:\Development\Inspire\app
 ```
 
 ### 2. Install Dependencies
@@ -96,7 +96,7 @@ npm run clean
 ## Project Structure
 
 ```
-nspire-app/
+inspire-app/
 ├── src/
 │   ├── screens/          # Screen components
 │   │   ├── BoardingScreen.tsx
