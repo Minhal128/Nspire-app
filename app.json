@@ -7,9 +7,6 @@
     "icon": "./logo.png",
     "userInterfaceStyle": "automatic",
     "runtimeVersion": "1.0.0",
-    "updates": {
-      "url": "https://u.expo.dev/09cadeaf-d356-4a0a-b962-83166e56327a"
-    },
     "splash": {
       "image": "./logo.png",
       "resizeMode": "contain",
