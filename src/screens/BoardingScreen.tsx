@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { BoardingScreenNavigationProp } from '../types/navigation';
 import { Colors, Spacing, BorderRadius, FontSizes } from '../constants';
@@ -20,7 +20,7 @@ export default function BoardingScreen({ navigation }: BoardingScreenProps) {
         />
 
         {/* Welcome Card */}
-        <View style={styles.welcomeCard}>
+        <ScrollView style={styles.welcomeCard} showsVerticalScrollIndicator={true}>
           <Text style={styles.welcomeTitle}>Welcome</Text>
           <Text style={styles.welcomeSubtitle}>Choose how you want to continue.</Text>
 
@@ -42,7 +42,7 @@ export default function BoardingScreen({ navigation }: BoardingScreenProps) {
           </View>
 
           {/* Management Option */}
-          <View style={[styles.optionCard, styles.lastOptionCard]}>
+          <View style={styles.optionCard}>
             <View style={styles.iconContainer}>
               <MaterialCommunityIcons name="office-building" size={60} color="#FF4D67" />
             </View>
@@ -57,7 +57,41 @@ export default function BoardingScreen({ navigation }: BoardingScreenProps) {
               <Text style={styles.buttonText}>Continue as Management</Text>
             </TouchableOpacity>
           </View>
-        </View>
+
+          {/* Other Option */}
+          <View style={styles.optionCard}>
+            <View style={styles.iconContainer}>
+              <MaterialCommunityIcons name="list-box" size={60} color="#FF4D67" />
+            </View>
+            <Text style={styles.optionTitle}>Other</Text>
+            <Text style={styles.optionDescription}>
+              For order management and{'\n'}tracking operations.
+            </Text>
+            <TouchableOpacity 
+              style={styles.button}
+              onPress={() => navigation.navigate('SignIn', { userType: 'Other' })}
+            >
+              <Text style={styles.buttonText}>Continue as Other</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Assets Manager Option */}
+          <View style={[styles.optionCard, styles.lastOptionCard]}>
+            <View style={styles.iconContainer}>
+              <MaterialCommunityIcons name="package-variant" size={60} color="#FF4D67" />
+            </View>
+            <Text style={styles.optionTitle}>Assets Manager</Text>
+            <Text style={styles.optionDescription}>
+              For managing and tracking{'\n'}assets and inventory.
+            </Text>
+            <TouchableOpacity 
+              style={[styles.button, styles.lastButton]}
+              onPress={() => navigation.navigate('SignIn', { userType: 'AssetsManager' })}
+            >
+              <Text style={styles.buttonText}>Continue as Assets Manager</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
       </View>
     </View>
   );
@@ -137,6 +171,9 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.lg,
     paddingHorizontal: 30,
     width: '100%',
+  },
+  lastButton: {
+    marginBottom: '5%',
   },
   buttonText: {
     color: Colors.text.inverse,

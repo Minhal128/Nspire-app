@@ -19,6 +19,9 @@ import InspectionChecklistScreen from './src/screens/InspectionChecklistScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import ManagementDashboardScreen from './src/screens/ManagementDashboardScreen';
 import ReportDetailScreen from './src/screens/ReportDetailScreen';
+import OrderDashboardScreen from './src/screens/OrderDashboardScreen';
+import OthersScreen from './src/screens/OthersScreen';
+import AssetsManagerDashboardScreen from './src/screens/AssetsManagerDashboardScreen';
 
 export type RootStackParamList = {
   Boarding: undefined;
@@ -36,6 +39,9 @@ export type RootStackParamList = {
   InspectionChecklist: { property: any; unit: any };
   ManagementDashboard: undefined;
   ReportDetail: { report: any };
+  OrderDashboard: undefined;
+  Others: undefined;
+  AssetsManagerDashboard: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -67,6 +73,9 @@ export default function App() {
           <Stack.Screen name="Settings" component={SettingsScreen} />
           <Stack.Screen name="ManagementDashboard" component={ManagementDashboardScreen} />
           <Stack.Screen name="ReportDetail" component={ReportDetailScreen} />
+          <Stack.Screen name="OrderDashboard" component={OrderDashboardScreen} />
+          <Stack.Screen name="Others" component={OthersScreen} />
+          <Stack.Screen name="AssetsManagerDashboard" component={AssetsManagerDashboardScreen} />
         </Stack.Navigator>
       </NavigationContainer>
     </>

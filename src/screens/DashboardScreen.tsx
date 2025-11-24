@@ -121,6 +121,7 @@ export default function DashboardScreen({ navigation, onMenuPress }: DashboardSc
               onClose={() => setSidebarVisible(false)}
               onNavigate={handleSidebarNavigate}
               onLogout={handleLogout}
+              userType="Inspector"
             />
           </View>
           <TouchableOpacity 

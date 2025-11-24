@@ -6,16 +6,35 @@ interface SidebarProps {
   onClose: () => void;
   onNavigate: (screen: string) => void;
   onLogout: () => void;
+  userType?: string;
 }
 
-export default function Sidebar({ onClose, onNavigate, onLogout }: SidebarProps) {
-  const menuItems = [
-    { id: 'Dashboard', label: 'Dashboard', icon: 'speedometer-outline' as const },
-    { id: 'MyInspections', label: 'My Inspections', icon: 'business-outline' as const },
-    { id: 'Reports', label: 'Reports', icon: 'reader-outline' as const },
-    { id: 'Analytics', label: 'Analytics/Insights', icon: 'stats-chart-outline' as const },
-    { id: 'Settings', label: 'Settings', icon: 'settings-outline' as const },
-  ];
+export default function Sidebar({ onClose, onNavigate, onLogout, userType }: SidebarProps) {
+  const getMenuItems = () => {
+    if (userType === 'AssetsManager') {
+      return [
+        { id: 'Dashboard', label: 'Dashboard', icon: 'speedometer-outline' as const },
+      ];
+    }
+
+    if (userType === 'Other') {
+      return [
+        { id: 'Dashboard', label: 'Dashboard', icon: 'speedometer-outline' as const },
+        { id: 'Others', label: 'Others', icon: 'people-outline' as const },
+      ];
+    }
+    
+    // Default menu for Inspector and Management
+    return [
+      { id: 'Dashboard', label: 'Dashboard', icon: 'speedometer-outline' as const },
+      { id: 'MyInspections', label: 'My Inspections', icon: 'business-outline' as const },
+      { id: 'Reports', label: 'Reports', icon: 'reader-outline' as const },
+      { id: 'Analytics', label: 'Analytics/Insights', icon: 'stats-chart-outline' as const },
+      { id: 'Settings', label: 'Settings', icon: 'settings-outline' as const },
+    ];
+  };
+
+  const menuItems = getMenuItems();
 
   return (
     <View style={styles.container}>

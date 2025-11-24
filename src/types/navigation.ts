@@ -16,6 +16,7 @@ export type RootStackParamList = {
   UnitInspection: { property: any };
   InspectionChecklist: { property: any; unit: any };
   ManagementDashboard: undefined;
+  OrderDashboard: undefined;
 };
 
 export type BoardingScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Boarding'>;

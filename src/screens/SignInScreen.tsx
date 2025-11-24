@@ -21,6 +21,10 @@ export default function SignInScreen({ navigation, route }: SignInScreenProps) {
     setTimeout(() => {
       if (userType === 'Management') {
         navigation.navigate('ManagementDashboard' as never);
+      } else if (userType === 'AssetsManager') {
+        navigation.navigate('AssetsManagerDashboard' as never);
+      } else if (userType === 'Other') {
+        navigation.navigate('OrderDashboard' as never);
       } else {
         navigation.navigate('Dashboard' as never);
       }

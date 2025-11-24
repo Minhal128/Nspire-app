@@ -64,6 +64,7 @@ export default function ManagementDashboardScreen({ navigation }: ManagementDash
               onClose={() => setSidebarVisible(false)}
               onNavigate={handleSidebarNavigate}
               onLogout={handleLogout}
+              userType="Management"
             />
           </View>
           <TouchableOpacity 
