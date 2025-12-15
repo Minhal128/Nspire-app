@@ -1,0 +1,208 @@
+/**
+ * API Service Configuration
+ * Central configuration and utility functions for API calls
+ */
+
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { StorageKeys } from '../utils/storage';
+
+// API Base URL - Always use production URL since the backend is deployed on Vercel
+const API_BASE_URL = 'https://inspirebackend-eight.vercel.app/api';
+
+// For local development with a local backend:
+// - Android emulator: 'http://10.0.2.2:5000/api'
+// - iOS simulator: 'http://localhost:5000/api'
+// - Physical device: 'http://YOUR_COMPUTER_IP:5000/api'
+
+export const API_CONFIG = {
+  BASE_URL: API_BASE_URL,
+  TIMEOUT: 30000,
+};
+
+// Type definitions for API responses
+export interface ApiResponse<T = any> {
+  success: boolean;
+  message?: string;
+  data?: T;
+  errors?: string[];
+}
+
+export interface User {
+  id: string;
+  fullName: string;
+  email: string;
+  role: string;
+  lastLogin?: string;
+  phone?: string;
+  profileImage?: string;
+}
+
+export interface AuthResponse {
+  success: boolean;
+  message: string;
+  token: string;
+  user: User;
+}
+
+export interface Property {
+  _id: string;
+  propertyId: string;
+  name: string;
+  address: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  buildings: number;
+  units: number;
+  status: string;
+  owner: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Inspection {
+  _id: string;
+  inspectionId: string;
+  property: Property | string;
+  building?: string;
+  unit?: string;
+  inspectionType: string;
+  inspectionLevel: string;
+  inspector: string;
+  scheduledDate: string;
+  completedDate?: string;
+  status: string;
+  complianceScore?: number;
+  findings?: any[];
+  notes?: string;
+  createdAt: string;
+}
+
+export interface Order {
+  _id: string;
+  orderId: string;
+  customer: {
+    name: string;
+    email: string;
+    phone?: string;
+  };
+  items: any[];
+  totalItems: number;
+  subtotal: number;
+  tax: number;
+  total: number;
+  status: string;
+  paymentStatus: string;
+  orderDate: string;
+  deliveryDate?: string;
+}
+
+export interface Asset {
+  _id: string;
+  assetId: string;
+  name: string;
+  category: string;
+  description?: string;
+  location: string;
+  value: number;
+  status: string;
+  condition: string;
+  purchaseDate?: string;
+  lastUpdated: string;
+}
+
+export interface PaginatedResponse<T> {
+  success: boolean;
+  data?: T[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    pages: number;
+  };
+}
+
+// Generic API request function
+export const apiRequest = async <T = any>(
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<T> => {
+  // Get token from storage - it's stored with JSON.stringify, so we need to parse it
+  const storedToken = await AsyncStorage.getItem(StorageKeys.USER_TOKEN);
+  const token = storedToken ? JSON.parse(storedToken) : null;
+  
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+
+  // Merge any custom headers
+  if (options.headers) {
+    const customHeaders = options.headers as Record<string, string>;
+    Object.assign(headers, customHeaders);
+  }
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.TIMEOUT);
+
+  try {
+    const response = await fetch(`${API_CONFIG.BASE_URL}${endpoint}`, {
+      ...options,
+      headers,
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || `HTTP error! status: ${response.status}`);
+    }
+
+    return data as T;
+  } catch (error: any) {
+    clearTimeout(timeoutId);
+    
+    if (error.name === 'AbortError') {
+      throw new Error('Request timeout. Please check your connection.');
+    }
+    
+    throw error;
+  }
+};
+
+// API Methods object for easy importing
+export const api = {
+  get: <T = any>(endpoint: string, options?: RequestInit) =>
+    apiRequest<T>(endpoint, { ...options, method: 'GET' }),
+    
+  post: <T = any>(endpoint: string, body?: any, options?: RequestInit) =>
+    apiRequest<T>(endpoint, {
+      ...options,
+      method: 'POST',
+      body: body ? JSON.stringify(body) : undefined,
+    }),
+    
+  put: <T = any>(endpoint: string, body?: any, options?: RequestInit) =>
+    apiRequest<T>(endpoint, {
+      ...options,
+      method: 'PUT',
+      body: body ? JSON.stringify(body) : undefined,
+    }),
+    
+  patch: <T = any>(endpoint: string, body?: any, options?: RequestInit) =>
+    apiRequest<T>(endpoint, {
+      ...options,
+      method: 'PATCH',
+      body: body ? JSON.stringify(body) : undefined,
+    }),
+    
+  delete: <T = any>(endpoint: string, options?: RequestInit) =>
+    apiRequest<T>(endpoint, { ...options, method: 'DELETE' }),
+};
+
+export default api;

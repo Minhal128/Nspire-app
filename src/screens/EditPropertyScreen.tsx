@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,9 +7,12 @@ import {
   TouchableOpacity,
   SafeAreaView,
   ScrollView,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { Ionicons } from '@expo/vector-icons';
+import { propertyService } from '../services';
 
 interface EditPropertyScreenProps {
   navigation: any;
@@ -19,23 +22,77 @@ interface EditPropertyScreenProps {
 export default function EditPropertyScreen({ navigation, route }: EditPropertyScreenProps) {
   const { property } = route.params || {};
   
-  const [propertyId, setPropertyId] = useState(property?.propertyId || '');
+  const [loading, setLoading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [propertyId, setPropertyId] = useState(property?._id || property?.propertyId || '');
   const [propertyName, setPropertyName] = useState(property?.name || '');
   const [address, setAddress] = useState(property?.address || '');
-  const [state, setState] = useState('');
-  const [numberOfBuildings, setNumberOfBuildings] = useState(property?.buildings?.toString() || '');
-  const [city, setCity] = useState('');
-  const [numberOfUnits, setNumberOfUnits] = useState(property?.units?.toString() || '');
-  const [zipCode, setZipCode] = useState('');
+  const [state, setState] = useState(property?.state || '');
+  const [numberOfBuildings, setNumberOfBuildings] = useState(property?.buildings?.toString() || property?.totalBuildings?.toString() || '');
+  const [city, setCity] = useState(property?.city || '');
+  const [numberOfUnits, setNumberOfUnits] = useState(property?.units?.toString() || property?.totalUnits?.toString() || '');
+  const [zipCode, setZipCode] = useState(property?.zipCode || '');
 
-  const handleUpdate = () => {
-    console.log('Update property');
-    navigation.goBack();
+  const handleUpdate = async () => {
+    if (!propertyName.trim()) {
+      Alert.alert('Error', 'Property name is required');
+      return;
+    }
+    
+    if (!address.trim()) {
+      Alert.alert('Error', 'Address is required');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      const updateData = {
+        name: propertyName.trim(),
+        address: address.trim(),
+        city: city.trim(),
+        state: state,
+        zipCode: zipCode.trim(),
+        totalBuildings: parseInt(numberOfBuildings) || 0,
+        totalUnits: parseInt(numberOfUnits) || 0,
+      };
+
+      await propertyService.updateProperty(propertyId, updateData);
+      Alert.alert('Success', 'Property updated successfully', [
+        { text: 'OK', onPress: () => navigation.goBack() }
+      ]);
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to update property');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleDelete = () => {
-    console.log('Delete property');
-    navigation.goBack();
+    Alert.alert(
+      'Delete Property',
+      'Are you sure you want to delete this property? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Delete', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setDeleting(true);
+              await propertyService.deleteProperty(propertyId);
+              Alert.alert('Success', 'Property deleted successfully', [
+                { text: 'OK', onPress: () => navigation.goBack() }
+              ]);
+            } catch (error: any) {
+              Alert.alert('Error', error.message || 'Failed to delete property');
+            } finally {
+              setDeleting(false);
+            }
+          }
+        },
+      ]
+    );
   };
 
   return (
@@ -156,13 +213,29 @@ export default function EditPropertyScreen({ navigation, route }: EditPropertySc
           </View>
 
           {/* Update Button */}
-          <TouchableOpacity style={styles.updateButton} onPress={handleUpdate}>
-            <Text style={styles.updateButtonText}>Update</Text>
+          <TouchableOpacity 
+            style={[styles.updateButton, loading && styles.buttonDisabled]} 
+            onPress={handleUpdate}
+            disabled={loading || deleting}
+          >
+            {loading ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Text style={styles.updateButtonText}>Update</Text>
+            )}
           </TouchableOpacity>
 
           {/* Delete Button */}
-          <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
-            <Text style={styles.deleteButtonText}>Delete</Text>
+          <TouchableOpacity 
+            style={[styles.deleteButton, deleting && styles.buttonDisabled]} 
+            onPress={handleDelete}
+            disabled={loading || deleting}
+          >
+            {deleting ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Text style={styles.deleteButtonText}>Delete</Text>
+            )}
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -232,6 +305,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     marginTop: 20,
     marginBottom: 15,
+    alignItems: 'center',
   },
   updateButtonText: {
     color: '#FFFFFF',
@@ -244,11 +318,15 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingVertical: 14,
     marginBottom: 20,
+    alignItems: 'center',
   },
   deleteButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
     textAlign: 'center',
+  },
+  buttonDisabled: {
+    opacity: 0.6,
   },
 });

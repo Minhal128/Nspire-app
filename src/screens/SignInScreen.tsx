@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Image, TextInput, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Image, TextInput, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SignInScreenNavigationProp, SignInScreenRouteProp } from '../types/navigation';
 import { Colors, Spacing, BorderRadius, FontSizes } from '../constants';
+import authService from '../services/authService';
 
 interface SignInScreenProps {
   navigation: SignInScreenNavigationProp;
@@ -13,22 +14,81 @@ export default function SignInScreen({ navigation, route }: SignInScreenProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
 
   const userType = route.params?.userType;
 
-  const handleLogin = () => {
-    // Add small delay to prevent view hierarchy issues
-    setTimeout(() => {
+  const handleLogin = async () => {
+    // Validate inputs
+    if (!email.trim()) {
+      Alert.alert('Error', 'Please enter your email');
+      return;
+    }
+    if (!password.trim()) {
+      Alert.alert('Error', 'Please enter your password');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      // Map userType to role for API
+      let role = 'inspector';
       if (userType === 'Management') {
-        navigation.navigate('ManagementDashboard' as never);
+        role = 'management';
       } else if (userType === 'AssetsManager') {
-        navigation.navigate('AssetsManagerDashboard' as never);
+        role = 'asset-manager';
       } else if (userType === 'Other') {
-        navigation.navigate('OrderDashboard' as never);
-      } else {
-        navigation.navigate('Dashboard' as never);
+        role = 'other';
       }
-    }, 100);
+
+      const response = await authService.login({
+        email: email.trim().toLowerCase(),
+        password,
+        rememberMe,
+        role,
+      });
+
+      if (response.success) {
+        // Verify user role matches the portal they're trying to access
+        const userRole = response.user.role;
+        const allowedRolesMap: { [key: string]: string[] } = {
+          'Inspector': ['inspector', 'property-manager'],
+          'Management': ['management', 'supervisor', 'admin'],
+          'AssetsManager': ['asset-manager', 'admin'],
+          'Other': ['other', 'order', 'admin'],
+        };
+
+        const allowedRoles = allowedRolesMap[userType || 'Inspector'] || ['inspector'];
+        
+        if (!allowedRoles.includes(userRole)) {
+          // Logout and show error
+          await authService.logout();
+          Alert.alert(
+            'Access Denied',
+            `Your account role (${userRole}) does not have permission to access the ${userType} portal. Please select the correct portal for your account.`
+          );
+          return;
+        }
+
+        // Navigate based on user's actual role from backend
+        const dashboardRoute = authService.getDashboardRoute(response.user.role);
+        
+        setTimeout(() => {
+          navigation.reset({
+            index: 0,
+            routes: [{ name: dashboardRoute as any }],
+          });
+        }, 100);
+      } else {
+        Alert.alert('Login Failed', response.message || 'Invalid credentials');
+      }
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to login. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -56,6 +116,7 @@ export default function SignInScreen({ navigation, route }: SignInScreenProps) {
               onChangeText={setEmail}
               keyboardType="email-address"
               autoCapitalize="none"
+              editable={!loading}
             />
           </View>
 
@@ -70,10 +131,12 @@ export default function SignInScreen({ navigation, route }: SignInScreenProps) {
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry={!showPassword}
+                editable={!loading}
               />
               <TouchableOpacity 
                 onPress={() => setShowPassword(!showPassword)}
                 style={styles.eyeIcon}
+                disabled={loading}
               >
                 <Ionicons 
                   name={showPassword ? "eye-outline" : "eye-off-outline"} 
@@ -84,12 +147,31 @@ export default function SignInScreen({ navigation, route }: SignInScreenProps) {
             </View>
           </View>
 
+          {/* Remember Me */}
+          <TouchableOpacity 
+            style={styles.rememberMeContainer}
+            onPress={() => setRememberMe(!rememberMe)}
+            disabled={loading}
+          >
+            <Ionicons 
+              name={rememberMe ? "checkbox" : "square-outline"} 
+              size={24} 
+              color="#0E7490" 
+            />
+            <Text style={styles.rememberMeText}>Remember me</Text>
+          </TouchableOpacity>
+
           {/* Log In Button */}
           <TouchableOpacity 
-            style={styles.loginButton}
+            style={[styles.loginButton, loading && styles.loginButtonDisabled]}
             onPress={handleLogin}
+            disabled={loading}
           >
-            <Text style={styles.loginButtonText}>Log in</Text>
+            {loading ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.loginButtonText}>Log in</Text>
+            )}
           </TouchableOpacity>
 
           {/* Forgot Password */}
@@ -192,6 +274,9 @@ const styles = StyleSheet.create({
     marginTop: 10,
     marginBottom: 15,
   },
+  loginButtonDisabled: {
+    backgroundColor: '#9CA3AF',
+  },
   loginButtonText: {
     color: '#FFFFFF',
     fontSize: 18,
@@ -239,5 +324,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 2,
     borderColor: '#374151',
+  },
+  rememberMeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  rememberMeText: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: '#374151',
   },
 });

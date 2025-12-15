@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Image, TextInput, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, Image, TextInput, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { SignUpScreenNavigationProp } from '../types/navigation';
+import authService from '../services/authService';
 
 interface SignUpScreenProps {
   navigation: SignUpScreenNavigationProp;
@@ -13,12 +14,73 @@ export default function SignUpScreen({ navigation }: SignUpScreenProps) {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loginType, setLoginType] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleCreateAccount = () => {
-    // Add small delay to prevent view hierarchy issues
-    setTimeout(() => {
-      navigation.navigate('Dashboard' as never);
-    }, 100);
+  const handleCreateAccount = async () => {
+    // Validate inputs
+    if (!email.trim()) {
+      Alert.alert('Error', 'Please enter your email');
+      return;
+    }
+    if (!name.trim()) {
+      Alert.alert('Error', 'Please enter your full name');
+      return;
+    }
+    if (!password) {
+      Alert.alert('Error', 'Please enter a password');
+      return;
+    }
+    if (password.length < 8) {
+      Alert.alert('Error', 'Password must be at least 8 characters');
+      return;
+    }
+    if (password !== confirmPassword) {
+      Alert.alert('Error', 'Passwords do not match');
+      return;
+    }
+    if (!loginType) {
+      Alert.alert('Error', 'Please select a login type');
+      return;
+    }
+
+    // Check password requirements
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/;
+    if (!passwordRegex.test(password)) {
+      Alert.alert('Error', 'Password must contain uppercase, lowercase, and number');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const response = await authService.signup({
+        fullName: name.trim(),
+        email: email.trim().toLowerCase(),
+        password,
+        role: loginType,
+      });
+
+      if (response.success) {
+        Alert.alert('Success', 'Account created successfully!', [
+          {
+            text: 'OK',
+            onPress: () => {
+              const dashboardRoute = authService.getDashboardRoute(response.user.role);
+              navigation.reset({
+                index: 0,
+                routes: [{ name: dashboardRoute as any }],
+              });
+            },
+          },
+        ]);
+      } else {
+        Alert.alert('Registration Failed', response.message || 'Failed to create account');
+      }
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to create account. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -102,20 +164,30 @@ export default function SignUpScreen({ navigation }: SignUpScreenProps) {
                   selectedValue={loginType}
                   onValueChange={(itemValue: string) => setLoginType(itemValue)}
                   style={styles.picker}
+                  enabled={!loading}
                 >
                   <Picker.Item label="Select..." value="" />
                   <Picker.Item label="Inspector" value="inspector" />
+                  <Picker.Item label="Property Manager" value="property-manager" />
                   <Picker.Item label="Management" value="management" />
+                  <Picker.Item label="Supervisor" value="supervisor" />
+                  <Picker.Item label="Asset Manager" value="asset-manager" />
+                  <Picker.Item label="Other" value="other" />
                 </Picker>
               </View>
             </View>
 
             {/* Create Account Button */}
             <TouchableOpacity 
-              style={styles.createButton}
+              style={[styles.createButton, loading && styles.createButtonDisabled]}
               onPress={handleCreateAccount}
+              disabled={loading}
             >
-              <Text style={styles.createButtonText}>Create Account</Text>
+              {loading ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <Text style={styles.createButtonText}>Create Account</Text>
+              )}
             </TouchableOpacity>
 
             {/* Sign In Link */}
@@ -207,6 +279,9 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     marginTop: 10,
     marginBottom: 15,
+  },
+  createButtonDisabled: {
+    backgroundColor: '#9CA3AF',
   },
   createButtonText: {
     color: '#FFFFFF',

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,42 +8,128 @@ import {
   TouchableOpacity,
   SafeAreaView,
   ScrollView,
-  Modal
+  Modal,
+  RefreshControl,
+  ActivityIndicator,
+  Alert
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import Sidebar from '../components/Sidebar';
+import { authService, inspectionService, propertyService } from '../services';
+import { Inspection, Property as PropertyType, User } from '../services/api';
+import { US_STATES } from '../constants/usStates';
 
 interface MyInspectionsScreenProps {
   navigation: any;
   onMenuPress?: () => void;
 }
 
-interface Property {
-  id: string;
-  name: string;
-  propertyId: string;
-  buildings: number;
-  units: number;
-  address: string;
-}
-
 export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspectionsScreenProps) {
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [actionModalVisible, setActionModalVisible] = useState(false);
-  const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
+  const [selectedProperty, setSelectedProperty] = useState<PropertyType | null>(null);
   const [searchText, setSearchText] = useState('');
   const [location, setLocation] = useState('');
   const [compliance, setCompliance] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [properties, setProperties] = useState<PropertyType[]>([]);
+  const [inspections, setInspections] = useState<Inspection[]>([]);
+
+  const loadInitialData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const storedUser = await authService.getStoredUser();
+      setUser(storedUser);
+      await fetchData();
+    } catch (error) {
+      console.error('Error loading initial data:', error);
+      Alert.alert('Error', 'Failed to load initial data');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      // Fetch properties with error handling
+      try {
+        const propertiesResponse = await propertyService.getProperties();
+        if (propertiesResponse?.success && Array.isArray(propertiesResponse.properties)) {
+          setProperties(propertiesResponse.properties);
+        } else {
+          setProperties([]);
+        }
+      } catch (propError) {
+        console.error('Error fetching properties:', propError);
+        setProperties([]);
+      }
+
+      // Fetch inspections with error handling
+      try {
+        const inspectionsResponse = await inspectionService.getInspections();
+        if (inspectionsResponse?.success && Array.isArray(inspectionsResponse.inspections)) {
+          setInspections(inspectionsResponse.inspections);
+        } else {
+          setInspections([]);
+        }
+      } catch (inspError) {
+        console.error('Error fetching inspections:', inspError);
+        setInspections([]);
+      }
+    } catch (error) {
+      console.error('Error in fetchData:', error);
+    }
+  };
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchData();
+    setRefreshing(false);
+  }, []);
+
+  useEffect(() => {
+    loadInitialData();
+  }, [loadInitialData]);
+
+  // Filter properties based on search and filters with null safety
+  const filteredProperties = (properties || []).filter((property) => {
+    if (!property) return false;
+    
+    const matchesSearch = !searchText || 
+      property.name?.toLowerCase()?.includes(searchText.toLowerCase()) ||
+      property._id?.toLowerCase()?.includes(searchText.toLowerCase());
+    
+    const matchesLocation = !location || 
+      property.state?.toLowerCase() === location.toLowerCase();
+    
+    // Find inspection status for this property with null safety
+    const propertyInspections = (inspections || []).filter(i => {
+      if (!i || !property?._id) return false;
+      const inspectionPropertyId = typeof i.property === 'object' ? i.property?._id : i.property;
+      return inspectionPropertyId === property._id;
+    });
+    const isCompliant = propertyInspections.some(i => i?.status === 'completed');
+    const matchesCompliance = !compliance || 
+      (compliance === 'compliant' && isCompliant) ||
+      (compliance === 'non-compliant' && !isCompliant);
+    
+    return matchesSearch && matchesLocation && matchesCompliance;
+  });
   
   const handleMenuPress = () => {
     setSidebarVisible(true);
   };
   
-  const handleSidebarNavigate = (screen: string) => {
+  const handleSidebarNavigate = async (screen: string) => {
     setSidebarVisible(false);
     if (screen === 'Dashboard') {
-      navigation.navigate('Dashboard' as never);
+      // Navigate to correct dashboard based on user role
+      const userRole = user?.role || 'inspector';
+      const dashboardRoute = authService.getDashboardRoute(userRole);
+      navigation.navigate(dashboardRoute as never);
     } else if (screen === 'MyInspections') {
       // Already on MyInspections
     } else if (screen === 'Reports') {
@@ -55,12 +141,16 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
     }
   };
   
-  const handleLogout = () => {
+  const handleLogout = async () => {
     setSidebarVisible(false);
-    navigation.navigate('Boarding' as never);
+    await authService.logout();
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'Boarding' as never }],
+    });
   };
   
-  const handleEditPress = (property: Property) => {
+  const handleEditPress = (property: PropertyType) => {
     setSelectedProperty(property);
     setActionModalVisible(true);
   };
@@ -70,40 +160,52 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
     navigation.navigate('EditProperty' as never, { property: selectedProperty } as never);
   };
   
-  const handleReadyForInspection = () => {
+  const handleReadyForInspection = async () => {
     setActionModalVisible(false);
     if (selectedProperty) {
-      navigation.navigate('UnitInspection' as never, { property: selectedProperty } as never);
+      try {
+        await propertyService.setReadyForInspection(selectedProperty._id!);
+        navigation.navigate('UnitInspection' as never, { property: selectedProperty } as never);
+      } catch (error) {
+        console.error('Error setting ready for inspection:', error);
+        navigation.navigate('UnitInspection' as never, { property: selectedProperty } as never);
+      }
     }
   };
 
-  const handlePropertyCardPress = (property: Property) => {
+  const handlePropertyCardPress = (property: PropertyType) => {
     navigation.navigate('UnitInspection' as never, { property: property } as never);
   };
   
-  const handleRemoveProperty = () => {
-    setActionModalVisible(false);
-    console.log('Remove property:', selectedProperty);
+  const handleRemoveProperty = async () => {
+    if (!selectedProperty?._id) return;
+    
+    Alert.alert(
+      'Remove Property',
+      `Are you sure you want to remove "${selectedProperty.name}"?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            setActionModalVisible(false);
+            try {
+              const response = await propertyService.deleteProperty(selectedProperty._id!);
+              if (response.success) {
+                setProperties(prev => prev.filter(p => p._id !== selectedProperty._id));
+                Alert.alert('Success', 'Property removed successfully');
+              } else {
+                Alert.alert('Error', response.error || 'Failed to remove property');
+              }
+            } catch (error) {
+              Alert.alert('Error', 'Failed to remove property');
+            }
+          }
+        }
+      ]
+    );
   };
-
-  const properties: Property[] = [
-    {
-      id: '1',
-      name: "STEPHEN'S PARK APARTMENTS",
-      propertyId: '800000017',
-      buildings: 12,
-      units: 160,
-      address: 'Lato..., Anchorage, Alaska, 99508'
-    },
-    {
-      id: '2',
-      name: 'Demure St-Hilaire',
-      propertyId: '800000017',
-      buildings: 12,
-      units: 160,
-      address: 'Lato..., Anchorage, Alaska, 99508'
-    }
-  ];
 
   return (
     <>
@@ -186,7 +288,18 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
         </View>
       </View>
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.scrollView} 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#0E7490']}
+            tintColor="#0E7490"
+          />
+        }
+      >
         {/* Title Section */}
         <View style={styles.titleSection}>
           <Text style={styles.title}>My Inspection</Text>
@@ -219,9 +332,14 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
                 onValueChange={(itemValue: string) => setLocation(itemValue)}
                 style={styles.picker}
               >
-                <Picker.Item label="Location" value="" />
-                <Picker.Item label="Alaska" value="alaska" />
-                <Picker.Item label="California" value="california" />
+                <Picker.Item label="All States" value="" />
+                {US_STATES.map((stateItem) => (
+                  <Picker.Item 
+                    key={stateItem.value} 
+                    label={stateItem.label} 
+                    value={stateItem.value} 
+                  />
+                ))}
               </Picker>
               <Ionicons 
                 name="chevron-down" 
@@ -254,52 +372,64 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
         </View>
 
         {/* Property List */}
-        <View style={styles.propertyList}>
-          {properties.map((property) => (
-            <TouchableOpacity 
-              key={property.id} 
-              style={styles.propertyCard}
-              activeOpacity={0.7}
-              onPress={() => handlePropertyCardPress(property)}
-            >
-              <View style={styles.propertyHeader}>
-                <Text style={styles.propertyName}>{property.name}</Text>
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#0E7490" />
+          </View>
+        ) : filteredProperties.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Ionicons name="home-outline" size={48} color="#D1D5DB" />
+            <Text style={styles.emptyText}>No properties found</Text>
+            <Text style={styles.emptySubtext}>Add a property to get started</Text>
+          </View>
+        ) : (
+          <View style={styles.propertyList}>
+            {filteredProperties.map((property) => property && (
+              <TouchableOpacity 
+                key={property._id || Math.random().toString()} 
+                style={styles.propertyCard}
+                activeOpacity={0.7}
+                onPress={() => handlePropertyCardPress(property)}
+              >
+                <View style={styles.propertyHeader}>
+                  <Text style={styles.propertyName}>{property.name || 'Unnamed Property'}</Text>
+                  <TouchableOpacity 
+                    style={styles.moreButton}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      handleEditPress(property);
+                    }}
+                  >
+                    <Ionicons name="ellipsis-vertical" size={20} color="#1F2937" />
+                  </TouchableOpacity>
+                </View>
+                <Text style={styles.propertyDetail}>
+                  Property ID: <Text style={styles.propertyId}>{property._id?.slice(-8)?.toUpperCase() || 'N/A'}</Text>
+                </Text>
+                <Text style={styles.propertyDetail}>
+                  No. of Buildings: <Text style={styles.propertyValue}>{property.buildingCount || 0}</Text>
+                </Text>
+                <Text style={styles.propertyDetail}>
+                  Units: <Text style={styles.propertyValue}>{property.unitCount || 0}</Text>
+                </Text>
+                <Text style={styles.propertyDetail}>
+                  Address: <Text style={styles.addressLink}>{[property.address, property.city, property.state, property.zipCode].filter(Boolean).join(', ') || 'No address'}</Text>
+                </Text>
+                
+                {/* Edit/Update Button */}
                 <TouchableOpacity 
-                  style={styles.moreButton}
+                  style={styles.editButton}
                   onPress={(e) => {
                     e.stopPropagation();
                     handleEditPress(property);
                   }}
                 >
-                  <Ionicons name="ellipsis-vertical" size={20} color="#1F2937" />
+                  <Text style={styles.editButtonText}>Edit/Update</Text>
                 </TouchableOpacity>
-              </View>
-              <Text style={styles.propertyDetail}>
-                Property ID: <Text style={styles.propertyId}>{property.propertyId}</Text>
-              </Text>
-              <Text style={styles.propertyDetail}>
-                No. of Buildings: <Text style={styles.propertyValue}>{property.buildings}</Text>
-              </Text>
-              <Text style={styles.propertyDetail}>
-                Units: <Text style={styles.propertyValue}>{property.units}</Text>
-              </Text>
-              <Text style={styles.propertyDetail}>
-                Address: <Text style={styles.addressLink}>{property.address}</Text>
-              </Text>
-              
-              {/* Edit/Update Button */}
-              <TouchableOpacity 
-                style={styles.editButton}
-                onPress={(e) => {
-                  e.stopPropagation();
-                  handleEditPress(property);
-                }}
-              >
-                <Text style={styles.editButtonText}>Edit/Update</Text>
               </TouchableOpacity>
-            </TouchableOpacity>
-          ))}
-        </View>
+            ))}
+          </View>
+        )}
 
         <View style={{ height: 40 }} />
       </ScrollView>
@@ -532,5 +662,29 @@ const styles = StyleSheet.create({
   },
   removeButtonText: {
     color: '#FFFFFF',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  emptyContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 20,
+  },
+  emptyText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#6B7280',
+    marginTop: 12,
+    marginBottom: 4,
+  },
+  emptySubtext: {
+    fontSize: 13,
+    color: '#9CA3AF',
+    textAlign: 'center',
   },
 });

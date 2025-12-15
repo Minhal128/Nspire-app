@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,14 +7,22 @@ import {
   TouchableOpacity,
   SafeAreaView,
   ScrollView,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
+import { inspectionService, propertyService } from '../services';
+import { Property } from '../services/api';
 
 interface RequestInspectionScreenProps {
   navigation: any;
 }
 
 export default function RequestInspectionScreen({ navigation }: RequestInspectionScreenProps) {
+  const [loading, setLoading] = useState(false);
+  const [loadingProperties, setLoadingProperties] = useState(true);
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [selectedProperty, setSelectedProperty] = useState('');
   const [purposeOfInspection, setPurposeOfInspection] = useState('');
   const [hudPreNaphe, setHudPreNaphe] = useState('');
   const [managementCo, setManagementCo] = useState('');
@@ -24,10 +32,65 @@ export default function RequestInspectionScreen({ navigation }: RequestInspectio
   const [numberOfUnits, setNumberOfUnits] = useState('');
   const [state, setState] = useState('');
   const [zipPostal, setZipPostal] = useState('');
+  const [notes, setNotes] = useState('');
+  const [preferredDate, setPreferredDate] = useState('');
 
-  const handleSubmit = () => {
-    // Handle submission
-    console.log('Form submitted');
+  useEffect(() => {
+    loadProperties();
+  }, []);
+
+  const loadProperties = async () => {
+    try {
+      const response = await propertyService.getProperties();
+      setProperties(response.properties || response || []);
+    } catch (error) {
+      console.error('Error loading properties:', error);
+    } finally {
+      setLoadingProperties(false);
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!selectedProperty) {
+      Alert.alert('Error', 'Please select a property');
+      return;
+    }
+    
+    if (!purposeOfInspection.trim()) {
+      Alert.alert('Error', 'Please enter the purpose of inspection');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      const requestData = {
+        property: selectedProperty,
+        purpose: purposeOfInspection.trim(),
+        hudPreNaphe: hudPreNaphe.trim(),
+        managementCo: managementCo.trim(),
+        insuranceCo: insuranceCo.trim(),
+        bankerSale: bankerSale.trim(),
+        numberOfBuildings: parseInt(numberOfBuildings) || 0,
+        numberOfUnits: parseInt(numberOfUnits) || 0,
+        state: state.trim(),
+        zipCode: zipPostal.trim(),
+        notes: notes.trim(),
+        preferredDate: preferredDate || undefined,
+      };
+
+      await inspectionService.createInspectionRequest(requestData);
+      
+      Alert.alert(
+        'Success',
+        'Inspection request submitted successfully! A certified inspector will contact you soon.',
+        [{ text: 'OK', onPress: () => navigation.goBack() }]
+      );
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to submit inspection request');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -42,6 +105,24 @@ export default function RequestInspectionScreen({ navigation }: RequestInspectio
           <Text style={styles.title}>
             Request Inspection by a{'\n'}certified inspector.
           </Text>
+
+          {/* Select Property */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Select Property *</Text>
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={selectedProperty}
+                onValueChange={(itemValue: string) => setSelectedProperty(itemValue)}
+                style={styles.picker}
+                enabled={!loadingProperties}
+              >
+                <Picker.Item label={loadingProperties ? "Loading properties..." : "Select a property"} value="" />
+                {properties.map((property) => (
+                  <Picker.Item key={property._id} label={property.name} value={property._id} />
+                ))}
+              </Picker>
+            </View>
+          </View>
 
           {/* Purpose of Inspection */}
           <View style={styles.inputGroup}>
@@ -155,8 +236,16 @@ export default function RequestInspectionScreen({ navigation }: RequestInspectio
           </View>
 
           {/* Submit Button */}
-          <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
-            <Text style={styles.submitButtonText}>Submit</Text>
+          <TouchableOpacity 
+            style={[styles.submitButton, loading && styles.buttonDisabled]} 
+            onPress={handleSubmit}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Text style={styles.submitButtonText}>Submit</Text>
+            )}
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -210,11 +299,24 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingVertical: 14,
     marginTop: 10,
+    alignItems: 'center',
   },
   submitButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
     textAlign: 'center',
+  },
+  buttonDisabled: {
+    opacity: 0.6,
+  },
+  pickerContainer: {
+    backgroundColor: '#D1F2EB',
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  picker: {
+    height: 50,
+    color: '#374151',
   },
 });

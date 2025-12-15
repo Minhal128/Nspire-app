@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -10,11 +10,17 @@ import {
   ScrollView,
   Modal,
   Pressable,
+  Alert,
+  ActivityIndicator,
+  RefreshControl,
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Picker } from "@react-native-picker/picker";
 import { DashboardScreenNavigationProp } from "../types/navigation";
 import Sidebar from "../components/Sidebar";
+import { propertyService, authService } from "../services";
+import { Property as ApiProperty, User } from "../services/api";
+import { US_STATES } from "../constants/usStates";
 
 interface DashboardScreenProps {
   navigation: DashboardScreenNavigationProp;
@@ -23,6 +29,7 @@ interface DashboardScreenProps {
 
 interface Property {
   id: string;
+  _id?: string;
   name: string;
   propertyId: string;
   buildings: number;
@@ -36,11 +43,96 @@ export default function DashboardScreen({
 }: DashboardScreenProps) {
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [actionModalVisible, setActionModalVisible] = useState(false);
-  const [selectedProperty, setSelectedProperty] = useState<Property | null>(
-    null,
-  );
+  const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const [inspectionStep, setInspectionStep] = useState(0);
   const [selectedUnitOption, setSelectedUnitOption] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [user, setUser] = useState<User | null>(null);
+  
+  const [propertyName, setPropertyName] = useState("");
+  const [state, setState] = useState("");
+  const [city, setCity] = useState("");
+  const [showSearch, setShowSearch] = useState(true);
+
+  // Load user and properties on mount
+  useEffect(() => {
+    loadInitialData();
+  }, []);
+
+  const loadInitialData = async () => {
+    try {
+      setLoading(true);
+      const userData = await authService.getStoredUser();
+      
+      // Role-based access control
+      const allowedRoles = ['inspector', 'property-manager', 'admin'];
+      if (!userData || !allowedRoles.includes(userData.role)) {
+        Alert.alert(
+          'Access Denied',
+          'You do not have permission to access the Inspector portal.',
+          [{ text: 'OK', onPress: () => {
+            authService.logout();
+            navigation.reset({ index: 0, routes: [{ name: 'Boarding' as never }] });
+          }}]
+        );
+        return;
+      }
+      
+      setUser(userData);
+      await fetchProperties();
+    } catch (error) {
+      console.error('Failed to load initial data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchProperties = async (filters?: { search?: string; state?: string; city?: string }) => {
+    try {
+      const response = await propertyService.getProperties({
+        search: filters?.search,
+        state: filters?.state,
+        city: filters?.city,
+        limit: 50,
+      });
+      
+      if (response.success && response.properties) {
+        const mappedProperties: Property[] = response.properties.map((p: ApiProperty) => ({
+          id: p._id,
+          _id: p._id,
+          name: p.name,
+          propertyId: p.propertyId,
+          buildings: p.buildings || 0,
+          units: p.units || 0,
+          address: `${p.address}, ${p.city}, ${p.state}, ${p.zipCode}`,
+        }));
+        setProperties(mappedProperties);
+        return mappedProperties;
+      }
+      return [];
+    } catch (error: any) {
+      console.error('Failed to fetch properties:', error);
+      return [];
+    }
+  };
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchProperties();
+    setRefreshing(false);
+  }, []);
+
+  const handleSearch = async () => {
+    setLoading(true);
+    await fetchProperties({
+      search: propertyName,
+      state: state,
+      city: city,
+    });
+    setLoading(false);
+  };
 
   const handleMenuPress = () => {
     setSidebarVisible(true);
@@ -61,9 +153,17 @@ export default function DashboardScreen({
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     setSidebarVisible(false);
-    navigation.navigate("Boarding");
+    try {
+      await authService.logout();
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Boarding' as any }],
+      });
+    } catch (error) {
+      navigation.navigate("Boarding");
+    }
   };
 
   const handleEditPress = (property: Property) => {
@@ -76,8 +176,17 @@ export default function DashboardScreen({
     navigation.navigate("EditProperty", { property: selectedProperty });
   };
 
-  const handleReadyForInspection = () => {
-    setInspectionStep(1);
+  const handleReadyForInspection = async () => {
+    if (selectedProperty?._id) {
+      try {
+        await propertyService.setReadyForInspection(selectedProperty._id);
+        setInspectionStep(1);
+      } catch (error: any) {
+        Alert.alert('Error', error.message || 'Failed to set property ready');
+      }
+    } else {
+      setInspectionStep(1);
+    }
   };
 
   const handleStartInspection = () => {
@@ -100,34 +209,36 @@ export default function DashboardScreen({
     setSelectedUnitOption("");
   };
 
-  const handleRemoveProperty = () => {
-    setActionModalVisible(false);
-    console.log("Remove property:", selectedProperty);
+  const handleRemoveProperty = async () => {
+    if (!selectedProperty?._id) {
+      setActionModalVisible(false);
+      return;
+    }
+    
+    Alert.alert(
+      'Remove Property',
+      `Are you sure you want to remove "${selectedProperty.name}"?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const response = await propertyService.deleteProperty(selectedProperty._id!);
+              if (response.success) {
+                Alert.alert('Success', 'Property removed successfully');
+                await fetchProperties();
+              }
+            } catch (error: any) {
+              Alert.alert('Error', error.message || 'Failed to remove property');
+            }
+            setActionModalVisible(false);
+          },
+        },
+      ]
+    );
   };
-
-  const [propertyName, setPropertyName] = useState("");
-  const [state, setState] = useState("");
-  const [city, setCity] = useState("");
-  const [showSearch, setShowSearch] = useState(true);
-
-  const properties: Property[] = [
-    {
-      id: "1",
-      name: "STEPHEN'S PARK APARTMENTS",
-      propertyId: "R00000017",
-      buildings: 12,
-      units: 160,
-      address: "Lane , Anchorage, Alaska, 99508",
-    },
-    {
-      id: "2",
-      name: "Demure St-Hilaire",
-      propertyId: "R00000017",
-      buildings: 12,
-      units: 160,
-      address: "Lane , Anchorage, Alaska, 99508",
-    },
-  ];
 
   const clearPropertyName = () => {
     setPropertyName("");
@@ -301,6 +412,14 @@ export default function DashboardScreen({
         <ScrollView
           style={styles.scrollView}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={['#0E7490']}
+              tintColor="#0E7490"
+            />
+          }
         >
           {/* User Greeting */}
           <View style={styles.greetingContainer}>
@@ -308,7 +427,7 @@ export default function DashboardScreen({
               <View style={styles.avatarContainer}>
                 <Ionicons name="person" size={32} color="#FFFFFF" />
               </View>
-              <Text style={styles.greetingText}>Hi, Emma</Text>
+              <Text style={styles.greetingText}>Hi, {user?.fullName?.split(' ')[0] || 'User'}</Text>
             </View>
           </View>
 
@@ -358,13 +477,14 @@ export default function DashboardScreen({
                   style={styles.picker}
                 >
                   <Picker.Item label="Select State" value="" color="#1F2937" />
-                  <Picker.Item label="Alaska" value="alaska" color="#1F2937" />
-                  <Picker.Item
-                    label="California"
-                    value="california"
-                    color="#1F2937"
-                  />
-                  <Picker.Item label="Texas" value="texas" color="#1F2937" />
+                  {US_STATES.map((stateItem) => (
+                    <Picker.Item 
+                      key={stateItem.value} 
+                      label={stateItem.label} 
+                      value={stateItem.value} 
+                      color="#1F2937" 
+                    />
+                  ))}
                 </Picker>
                 <Ionicons
                   name="chevron-down"
@@ -375,81 +495,82 @@ export default function DashboardScreen({
               </View>
             </View>
 
-            {/* City Picker */}
+            {/* City Input */}
             <View style={styles.inputContainer}>
               <Text style={styles.label}>City</Text>
-              <View style={styles.pickerContainer}>
-                <Picker
-                  selectedValue={city}
-                  onValueChange={(itemValue: string) => setCity(itemValue)}
-                  style={styles.picker}
-                >
-                  <Picker.Item label="Select City" value="" color="#1F2937" />
-                  <Picker.Item
-                    label="Anchorage"
-                    value="anchorage"
-                    color="#1F2937"
-                  />
-                  <Picker.Item
-                    label="Fairbanks"
-                    value="fairbanks"
-                    color="#1F2937"
-                  />
-                  <Picker.Item label="Juneau" value="juneau" color="#1F2937" />
-                </Picker>
-                <Ionicons
-                  name="chevron-down"
-                  size={20}
-                  color="#6B7280"
-                  style={styles.pickerIcon}
+              <View style={styles.inputWithClear}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter City"
+                  placeholderTextColor="#9CA3AF"
+                  value={city}
+                  onChangeText={setCity}
                 />
+                {city !== "" && (
+                  <TouchableOpacity
+                    onPress={() => setCity("")}
+                    style={styles.clearButton}
+                  >
+                    <Ionicons name="close" size={20} color="#6B7280" />
+                  </TouchableOpacity>
+                )}
               </View>
             </View>
 
             {/* Search Button */}
             <TouchableOpacity
               style={styles.searchButton}
-              onPress={() => {
-                console.log("Searching properties:", {
-                  propertyName,
-                  state,
-                  city,
-                });
-                // Filter logic would go here
-              }}
+              onPress={handleSearch}
             >
               <Text style={styles.searchButtonText}>Search</Text>
             </TouchableOpacity>
           </View>
 
+          {/* Loading Indicator */}
+          {loading && (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#0E7490" />
+            </View>
+          )}
+
           {/* Property List */}
-          <View style={styles.propertyList}>
-            {properties.map((property) => (
-              <View key={property.id} style={styles.propertyCard}>
-                <Text style={styles.propertyName}>{property.name}</Text>
-                <Text style={styles.propertyDetail}>
-                  Property ID:{" "}
-                  <Text style={styles.propertyId}>{property.propertyId}</Text>
-                </Text>
-                <Text style={styles.propertyDetail}>
-                  No. of Buildings: {property.buildings}
-                </Text>
-                <Text style={styles.propertyDetail}>
-                  Units: {property.units}
-                </Text>
-                <Text style={styles.propertyDetail}>
-                  Address:{" "}
-                  <Text style={styles.addressLink}>{property.address}</Text>
-                </Text>
-                <TouchableOpacity
-                  style={styles.editButton}
-                  onPress={() => handleEditPress(property)}
-                >
-                  <Text style={styles.editButtonText}>Edit/Update</Text>
-                </TouchableOpacity>
-              </View>
-            ))}
-          </View>
+          {!loading && (
+            <View style={styles.propertyList}>
+              {properties.length === 0 ? (
+                <View style={styles.emptyContainer}>
+                  <Ionicons name="home-outline" size={64} color="#9CA3AF" />
+                  <Text style={styles.emptyText}>No properties found</Text>
+                  <Text style={styles.emptySubtext}>Add a property to get started</Text>
+                </View>
+              ) : (
+                properties.map((property) => (
+                  <View key={property.id} style={styles.propertyCard}>
+                    <Text style={styles.propertyName}>{property.name}</Text>
+                    <Text style={styles.propertyDetail}>
+                      Property ID:{" "}
+                      <Text style={styles.propertyId}>{property.propertyId}</Text>
+                    </Text>
+                    <Text style={styles.propertyDetail}>
+                      No. of Buildings: {property.buildings}
+                    </Text>
+                    <Text style={styles.propertyDetail}>
+                      Units: {property.units}
+                    </Text>
+                    <Text style={styles.propertyDetail}>
+                      Address:{" "}
+                      <Text style={styles.addressLink}>{property.address}</Text>
+                    </Text>
+                    <TouchableOpacity
+                      style={styles.editButton}
+                      onPress={() => handleEditPress(property)}
+                    >
+                      <Text style={styles.editButtonText}>Edit/Update</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))
+              )}
+            </View>
+          )}
 
           {/* Bottom Spacing */}
           <View style={{ height: 40 }} />
@@ -779,5 +900,28 @@ const styles = StyleSheet.create({
     backgroundColor: "#6B7280",
     borderColor: "#6B7280",
     borderWidth: 0,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 60,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 60,
+  },
+  emptyText: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#6B7280",
+    marginBottom: 8,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: "#9CA3AF",
+    textAlign: "center",
   },
 });

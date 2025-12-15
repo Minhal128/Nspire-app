@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   SafeAreaView,
   ScrollView,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -29,13 +30,11 @@ export default function ReportDetailScreen({ navigation, route }: ReportDetailSc
   };
 
   const handleShare = () => {
-    // Implement share functionality
-    console.log('Share report');
+    Alert.alert('Share Report', 'Report sharing will be available in a future update.');
   };
 
   const handleDownload = () => {
-    // Implement download functionality
-    console.log('Download report');
+    Alert.alert('Download Report', 'PDF download will be available in a future update.');
   };
 
   return (

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,11 +8,16 @@ import {
   TouchableOpacity,
   SafeAreaView,
   ScrollView,
-  Modal
+  Modal,
+  RefreshControl,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import Sidebar from '../components/Sidebar';
+import { inspectionService, propertyService, authService } from '../services';
+import { Inspection, Property } from '../services/api';
 
 interface ReportsScreenProps {
   navigation: any;
@@ -22,10 +27,12 @@ interface ReportsScreenProps {
 interface Report {
   id: string;
   property: string;
+  propertyId: string;
   unit: string;
   inspector: string;
   date: string;
   complianceScore: 'Compliant' | 'Non-Compliant';
+  rawData: Inspection;
 }
 
 export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreenProps) {
@@ -34,15 +41,71 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
   const [propertyName, setPropertyName] = useState('');
   const [dateRange, setDateRange] = useState('');
   const [status, setStatus] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [reports, setReports] = useState<Report[]>([]);
+  const [properties, setProperties] = useState<Property[]>([]);
+  
+  const loadData = useCallback(async () => {
+    try {
+      const [inspectionsData, propertiesData] = await Promise.all([
+        inspectionService.getInspections({ status: 'completed' }),
+        propertyService.getProperties(),
+      ]);
+
+      // Map inspections to report format
+      const mappedReports: Report[] = (inspectionsData.inspections || inspectionsData || []).map((inspection: Inspection) => {
+        const property = (propertiesData.properties || propertiesData || []).find(
+          (p: Property) => p._id === inspection.property || p._id === (inspection as any).propertyId
+        );
+        
+        return {
+          id: inspection._id,
+          property: property?.name || 'Unknown Property',
+          propertyId: inspection.property || (inspection as any).propertyId,
+          unit: (inspection as any).unit || 'N/A',
+          inspector: (inspection as any).inspector?.fullName || (inspection as any).inspectorName || 'Unknown',
+          date: new Date(inspection.scheduledDate || (inspection as any).completedDate).toLocaleDateString('en-US', { 
+            month: 'short', 
+            day: 'numeric' 
+          }),
+          complianceScore: (inspection as any).complianceStatus === 'compliant' || 
+                          (inspection as any).score >= 70 ? 'Compliant' : 'Non-Compliant',
+          rawData: inspection,
+        };
+      });
+
+      setReports(mappedReports);
+      setProperties(propertiesData.properties || propertiesData || []);
+    } catch (error) {
+      console.error('Error loading reports:', error);
+      Alert.alert('Error', 'Failed to load reports');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    loadData();
+  }, [loadData]);
   
   const handleMenuPress = () => {
     setSidebarVisible(true);
   };
   
-  const handleSidebarNavigate = (screen: string) => {
+  const handleSidebarNavigate = async (screen: string) => {
     setSidebarVisible(false);
     if (screen === 'Dashboard') {
-      navigation.navigate('Dashboard' as never);
+      // Navigate to correct dashboard based on user role
+      const userRole = user?.role || 'inspector';
+      const dashboardRoute = authService.getDashboardRoute(userRole);
+      navigation.navigate(dashboardRoute as never);
     } else if (screen === 'MyInspections') {
       navigation.navigate('MyInspections' as never);
     } else if (screen === 'Reports') {
@@ -54,29 +117,47 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
     }
   };
   
-  const handleLogout = () => {
-    setSidebarVisible(false);
-    navigation.navigate('Boarding' as never);
+  const handleLogout = async () => {
+    try {
+      await authService.logout();
+      setSidebarVisible(false);
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Boarding' as never }],
+      });
+    } catch (error) {
+      console.error('Error logging out:', error);
+    }
   };
 
-  const reports: Report[] = [
-    {
-      id: '1',
-      property: 'Sunset Apartments',
-      unit: 'Unit 101',
-      inspector: 'John Doe',
-      date: 'Oct 5',
-      complianceScore: 'Compliant'
-    },
-    {
-      id: '2',
-      property: 'River Heights',
-      unit: 'Unit 5A',
-      inspector: 'Jane Doe',
-      date: 'Oct 3',
-      complianceScore: 'Non-Compliant'
-    }
-  ];
+  // Filter reports based on search and filters
+  const filteredReports = reports.filter(report => {
+    const matchesSearch = !searchText || 
+      report.property.toLowerCase().includes(searchText.toLowerCase()) ||
+      report.unit.toLowerCase().includes(searchText.toLowerCase()) ||
+      report.inspector.toLowerCase().includes(searchText.toLowerCase());
+    
+    const matchesProperty = !propertyName || report.propertyId === propertyName;
+    
+    const matchesStatus = !status || 
+      (status === 'compliant' && report.complianceScore === 'Compliant') ||
+      (status === 'non-compliant' && report.complianceScore === 'Non-Compliant');
+    
+    // Date range filtering could be added here
+    
+    return matchesSearch && matchesProperty && matchesStatus;
+  });
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#0E7490" />
+          <Text style={styles.loadingText}>Loading reports...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <>
@@ -120,7 +201,13 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
         </View>
       </View>
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.scrollView} 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#0E7490']} />
+        }
+      >
         {/* Title Section */}
         <View style={styles.titleSection}>
           <Text style={styles.title}>Inspection Reports</Text>
@@ -151,8 +238,9 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
                 style={styles.picker}
               >
                 <Picker.Item label="Property Name" value="" />
-                <Picker.Item label="Sunset Apartments" value="sunset" />
-                <Picker.Item label="River Heights" value="river" />
+                {properties.map((property) => (
+                  <Picker.Item key={property._id} label={property.name} value={property._id} />
+                ))}
               </Picker>
               <Ionicons 
                 name="chevron-down" 
@@ -209,7 +297,13 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
 
         {/* Reports List */}
         <View style={styles.reportsList}>
-          {reports.map((report) => (
+          {filteredReports.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Ionicons name="document-text-outline" size={48} color="#9CA3AF" />
+              <Text style={styles.emptyText}>No reports found</Text>
+            </View>
+          ) : (
+            filteredReports.map((report) => (
             <View key={report.id} style={styles.reportCard}>
               <View style={styles.reportRow}>
                 <Text style={styles.reportLabel}>Property</Text>
@@ -256,7 +350,8 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
                 </TouchableOpacity>
               </View>
             </View>
-          ))}
+          ))
+          )}
         </View>
 
         <View style={{ height: 40 }} />
@@ -435,5 +530,25 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 4,
     elevation: 5,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#6B7280',
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+  },
+  emptyText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#6B7280',
   },
 });

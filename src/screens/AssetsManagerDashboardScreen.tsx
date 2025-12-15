@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,10 +10,15 @@ import {
   ScrollView,
   Modal,
   FlatList,
+  RefreshControl,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Sidebar from '../components/Sidebar';
+import { authService, assetService } from '../services';
+import { Asset as AssetType, User } from '../services/api';
 
 interface AssetsManagerDashboardScreenProps {
   navigation: NativeStackNavigationProp<any, any>;
@@ -25,22 +30,166 @@ interface StatCard {
   icon: string;
 }
 
-interface Asset {
-  id: string;
-  name: string;
-  assetId: string;
-  category: string;
-  status: 'active' | 'maintenance' | 'inactive';
-  value: string;
-  location: string;
-  lastUpdated: string;
-}
-
 export default function AssetsManagerDashboardScreen({
   navigation,
 }: AssetsManagerDashboardScreenProps) {
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [assets, setAssets] = useState<AssetType[]>([]);
+  const [stats, setStats] = useState({
+    totalAssets: 0,
+    activeAssets: 0,
+    underMaintenance: 0,
+    totalValue: 0
+  });
+  
+  // Add New Asset Modal State
+  const [addAssetModalVisible, setAddAssetModalVisible] = useState(false);
+  const [savingAsset, setSavingAsset] = useState(false);
+  const [newAsset, setNewAsset] = useState({
+    name: '',
+    category: 'Equipment',
+    description: '',
+    location: '',
+    value: '',
+    serialNumber: '',
+    manufacturer: '',
+    model: '',
+    status: 'active',
+    condition: 'good',
+  });
+
+  const assetCategories = [
+    'Equipment',
+    'IT',
+    'Furniture',
+    'Infrastructure',
+    'Security',
+    'Vehicles',
+    'Other'
+  ];
+
+  const assetStatuses = [
+    { value: 'active', label: 'Active' },
+    { value: 'maintenance', label: 'Under Maintenance' },
+    { value: 'inactive', label: 'Inactive' },
+    { value: 'retired', label: 'Retired' },
+  ];
+
+  const assetConditions = [
+    { value: 'excellent', label: 'Excellent' },
+    { value: 'good', label: 'Good' },
+    { value: 'fair', label: 'Fair' },
+    { value: 'poor', label: 'Poor' },
+  ];
+
+  const loadInitialData = useCallback(async () => {
+    try {
+      const storedUser = await authService.getStoredUser();
+      
+      // Role-based access control
+      const allowedRoles = ['asset-manager', 'admin'];
+      if (!storedUser || !allowedRoles.includes(storedUser.role)) {
+        Alert.alert(
+          'Access Denied',
+          'You do not have permission to access the Asset Manager portal.',
+          [{ text: 'OK', onPress: () => {
+            authService.logout();
+            navigation.reset({ index: 0, routes: [{ name: 'Boarding' as never }] });
+          }}]
+        );
+        return;
+      }
+      
+      setUser(storedUser);
+      await fetchData();
+    } catch (error) {
+      console.error('Error loading initial data:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [navigation]);
+
+  const fetchData = async () => {
+    try {
+      // Fetch assets
+      const assetsResponse = await assetService.getAssets();
+      if (assetsResponse.success && assetsResponse.assets) {
+        const assetData = assetsResponse.assets || [];
+        setAssets(assetData);
+        
+        // Calculate stats
+        const active = assetData.filter((a: AssetType) => a.status === 'active' || a.status === 'operational').length;
+        const maintenance = assetData.filter((a: AssetType) => a.status === 'maintenance' || a.status === 'under-maintenance').length;
+        const totalValue = assetData.reduce((sum: number, a: AssetType) => sum + (a.value || a.purchasePrice || 0), 0);
+        
+        setStats({
+          totalAssets: assetData.length,
+          activeAssets: active,
+          underMaintenance: maintenance,
+          totalValue
+        });
+      }
+
+      // Also try to get stats from API if available
+      try {
+        const statsResponse = await assetService.getAssetStats();
+        if (statsResponse.success && statsResponse.data) {
+          setStats(prev => ({
+            ...prev,
+            ...statsResponse.data
+          }));
+        }
+      } catch (e) {
+        // Stats endpoint might not exist, use calculated stats
+      }
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      Alert.alert('Error', 'Failed to load assets. Please try again.');
+    }
+  };
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchData();
+    setRefreshing(false);
+  }, []);
+
+  const handleSearch = useCallback(async () => {
+    if (!searchQuery.trim()) {
+      await fetchData();
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const response = await assetService.getAssets({ search: searchQuery });
+      if (response.success && response.assets) {
+        setAssets(response.assets || []);
+      }
+    } catch (error) {
+      console.error('Search error:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [searchQuery]);
+
+  useEffect(() => {
+    loadInitialData();
+  }, [loadInitialData]);
+
+  useEffect(() => {
+    const delaySearch = setTimeout(() => {
+      if (searchQuery) {
+        handleSearch();
+      }
+    }, 500);
+
+    return () => clearTimeout(delaySearch);
+  }, [searchQuery, handleSearch]);
 
   const handleMenuPress = () => {
     setSidebarVisible(true);
@@ -53,114 +202,48 @@ export default function AssetsManagerDashboardScreen({
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     setSidebarVisible(false);
-    navigation.navigate('Boarding' as never);
+    await authService.logout();
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'Boarding' as never }],
+    });
+  };
+
+  const formatCurrency = (value: number) => {
+    if (value >= 1000000) {
+      return `$${(value / 1000000).toFixed(1)}M`;
+    } else if (value >= 1000) {
+      return `$${(value / 1000).toFixed(1)}K`;
+    }
+    return `$${value.toLocaleString()}`;
   };
 
   const statCards: StatCard[] = [
-    { label: 'Total Assets', value: '342', icon: 'cube-outline' },
-    { label: 'Active Assets', value: '298', icon: 'checkmark-circle-outline' },
-    { label: 'Under Maintenance', value: '24', icon: 'wrench-outline' },
-    { label: 'Total Value', value: '$2.5M', icon: 'cash-outline' },
+    { label: 'Total Assets', value: stats.totalAssets.toString(), icon: 'cube-outline' },
+    { label: 'Active Assets', value: stats.activeAssets.toString(), icon: 'checkmark-circle-outline' },
+    { label: 'Under Maintenance', value: stats.underMaintenance.toString(), icon: 'wrench-outline' },
+    { label: 'Total Value', value: formatCurrency(stats.totalValue), icon: 'cash-outline' },
   ];
 
-  const mockAssets: Asset[] = [
-    {
-      id: '1',
-      name: 'Server Rack A1',
-      assetId: 'AST-001001',
-      category: 'IT Equipment',
-      status: 'active',
-      value: '$15,000',
-      location: 'Data Center - Room 101',
-      lastUpdated: '2024-11-24',
-    },
-    {
-      id: '2',
-      name: 'HVAC Unit - Floor 3',
-      assetId: 'AST-002001',
-      category: 'Facilities',
-      status: 'maintenance',
-      value: '$8,500',
-      location: 'Building B - Floor 3',
-      lastUpdated: '2024-11-23',
-    },
-    {
-      id: '3',
-      name: 'Office Desk Set',
-      assetId: 'AST-003001',
-      category: 'Furniture',
-      status: 'active',
-      value: '$2,200',
-      location: 'Office - Wing A',
-      lastUpdated: '2024-11-24',
-    },
-    {
-      id: '4',
-      name: 'Backup Generator',
-      assetId: 'AST-004001',
-      category: 'Power Systems',
-      status: 'active',
-      value: '$45,000',
-      location: 'Basement - Generator Room',
-      lastUpdated: '2024-11-22',
-    },
-    {
-      id: '5',
-      name: 'Network Switch - Core',
-      assetId: 'AST-005001',
-      category: 'IT Equipment',
-      status: 'maintenance',
-      value: '$12,000',
-      location: 'Data Center - Room 102',
-      lastUpdated: '2024-11-21',
-    },
-    {
-      id: '6',
-      name: 'Security Camera System',
-      assetId: 'AST-006001',
-      category: 'Security',
-      status: 'active',
-      value: '$18,500',
-      location: 'Building Perimeter',
-      lastUpdated: '2024-11-24',
-    },
-    {
-      id: '7',
-      name: 'Conference Room Projector',
-      assetId: 'AST-007001',
-      category: 'AV Equipment',
-      status: 'inactive',
-      value: '$3,500',
-      location: 'Conference Room - 5th Floor',
-      lastUpdated: '2024-11-20',
-    },
-    {
-      id: '8',
-      name: 'Elevator System',
-      assetId: 'AST-008001',
-      category: 'Facilities',
-      status: 'active',
-      value: '$120,000',
-      location: 'Main Building',
-      lastUpdated: '2024-11-24',
-    },
-  ];
-
-  const filteredAssets = mockAssets.filter(
+  // Filter assets based on search query
+  const filteredAssets = assets.filter(
     (asset) =>
-      asset.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      asset.assetId.toLowerCase().includes(searchQuery.toLowerCase())
+      asset.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      asset._id?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active':
+      case 'operational':
         return '#84CC16';
       case 'maintenance':
+      case 'under-maintenance':
         return '#FF9800';
       case 'inactive':
+      case 'retired':
         return '#9CA3AF';
       default:
         return '#6B7280';
@@ -168,39 +251,166 @@ export default function AssetsManagerDashboardScreen({
   };
 
   const getCategoryColor = (category: string) => {
-    switch (category) {
-      case 'IT Equipment':
-        return '#2196F3';
-      case 'Facilities':
-        return '#FF9800';
-      case 'Furniture':
-        return '#9C27B0';
-      case 'Power Systems':
-        return '#F44336';
-      case 'Security':
-        return '#4CAF50';
-      case 'AV Equipment':
-        return '#00BCD4';
-      default:
-        return '#6B7280';
+    const lowerCategory = category?.toLowerCase() || '';
+    if (lowerCategory.includes('it') || lowerCategory.includes('equipment')) return '#2196F3';
+    if (lowerCategory.includes('facilit')) return '#FF9800';
+    if (lowerCategory.includes('furniture')) return '#9C27B0';
+    if (lowerCategory.includes('power')) return '#F44336';
+    if (lowerCategory.includes('security')) return '#4CAF50';
+    if (lowerCategory.includes('av') || lowerCategory.includes('audio')) return '#00BCD4';
+    return '#6B7280';
+  };
+
+  const formatDate = (dateString: string) => {
+    if (!dateString) return '';
+    return new Date(dateString).toLocaleDateString();
+  };
+
+  const handleAddAsset = () => {
+    setNewAsset({
+      name: '',
+      category: 'Equipment',
+      description: '',
+      location: '',
+      value: '',
+      serialNumber: '',
+      manufacturer: '',
+      model: '',
+      status: 'active',
+      condition: 'good',
+    });
+    setAddAssetModalVisible(true);
+  };
+
+  const handleSaveAsset = async () => {
+    // Validation
+    if (!newAsset.name.trim()) {
+      Alert.alert('Error', 'Please enter asset name');
+      return;
+    }
+    if (!newAsset.location.trim()) {
+      Alert.alert('Error', 'Please enter asset location');
+      return;
+    }
+
+    setSavingAsset(true);
+    try {
+      // Generate a unique assetId
+      const timestamp = Date.now().toString(36).toUpperCase();
+      const random = Math.random().toString(36).substring(2, 6).toUpperCase();
+      const assetId = `AST-${timestamp}-${random}`;
+
+      const assetData = {
+        assetId,
+        name: newAsset.name.trim(),
+        category: newAsset.category,
+        description: newAsset.description.trim(),
+        location: {
+          building: newAsset.location.trim(),
+          area: newAsset.location.trim(),
+        },
+        value: newAsset.value ? parseFloat(newAsset.value) : 0,
+        serialNumber: newAsset.serialNumber.trim() || undefined,
+        manufacturer: newAsset.manufacturer.trim() || undefined,
+        model: newAsset.model.trim() || undefined,
+        status: newAsset.status,
+        condition: newAsset.condition,
+      };
+
+      const response = await assetService.createAsset(assetData);
+      
+      if (response.success) {
+        Alert.alert('Success', 'Asset created successfully!');
+        setAddAssetModalVisible(false);
+        await fetchData(); // Refresh the list
+      } else {
+        Alert.alert('Error', response.message || 'Failed to create asset');
+      }
+    } catch (error: any) {
+      console.error('Error creating asset:', error);
+      Alert.alert('Error', error.message || 'Failed to create asset');
+    } finally {
+      setSavingAsset(false);
     }
   };
 
-  const renderAssetCard = ({ item }: { item: Asset }) => (
+  const handleGenerateReport = async () => {
+    Alert.alert(
+      'Generate Report',
+      'Select report type:',
+      [
+        {
+          text: 'Asset Summary',
+          onPress: () => generateAssetReport('summary'),
+        },
+        {
+          text: 'Maintenance Report',
+          onPress: () => generateAssetReport('maintenance'),
+        },
+        {
+          text: 'Value Report',
+          onPress: () => generateAssetReport('value'),
+        },
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+      ]
+    );
+  };
+
+  const generateAssetReport = async (reportType: string) => {
+    try {
+      const reportData = {
+        type: reportType,
+        generatedAt: new Date().toISOString(),
+        totalAssets: stats.totalAssets,
+        activeAssets: stats.activeAssets,
+        underMaintenance: stats.underMaintenance,
+        totalValue: stats.totalValue,
+        assets: assets.map(a => ({
+          name: a.name,
+          category: a.category,
+          status: a.status,
+          value: a.value || a.purchasePrice || 0,
+          location: a.location,
+        })),
+      };
+
+      // For now, show a summary alert
+      let reportMessage = '';
+      if (reportType === 'summary') {
+        reportMessage = `Asset Summary Report\n\nTotal Assets: ${stats.totalAssets}\nActive: ${stats.activeAssets}\nUnder Maintenance: ${stats.underMaintenance}\nTotal Value: ${formatCurrency(stats.totalValue)}`;
+      } else if (reportType === 'maintenance') {
+        const maintenanceAssets = assets.filter(a => a.status === 'maintenance' || a.status === 'under-maintenance');
+        reportMessage = `Maintenance Report\n\nAssets Under Maintenance: ${maintenanceAssets.length}\n\n${maintenanceAssets.map(a => `• ${a.name} - ${a.location}`).join('\n') || 'No assets under maintenance'}`;
+      } else if (reportType === 'value') {
+        const sortedByValue = [...assets].sort((a, b) => (b.value || b.purchasePrice || 0) - (a.value || a.purchasePrice || 0)).slice(0, 5);
+        reportMessage = `Value Report\n\nTotal Value: ${formatCurrency(stats.totalValue)}\n\nTop 5 Assets by Value:\n${sortedByValue.map(a => `• ${a.name}: ${formatCurrency(a.value || a.purchasePrice || 0)}`).join('\n') || 'No assets'}`;
+      }
+
+      Alert.alert('Report Generated', reportMessage);
+    } catch (error) {
+      console.error('Error generating report:', error);
+      Alert.alert('Error', 'Failed to generate report');
+    }
+  };
+
+  const renderAssetCard = ({ item }: { item: AssetType }) => (
     <View style={styles.assetCard}>
       <View style={styles.assetHeader}>
         <View>
           <Text style={styles.assetName}>{item.name}</Text>
-          <Text style={styles.assetId}>{item.assetId}</Text>
+          <Text style={styles.assetId}>AST-{item._id?.slice(-6).toUpperCase()}</Text>
         </View>
         <View
           style={[
             styles.statusBadge,
-            { backgroundColor: getStatusColor(item.status) },
+            { backgroundColor: getStatusColor(item.status || 'active') },
           ]}
         >
           <Text style={styles.statusText}>
-            {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
+            {(item.status || 'active').charAt(0).toUpperCase() + (item.status || 'active').slice(1)}
           </Text>
         </View>
       </View>
@@ -210,20 +420,24 @@ export default function AssetsManagerDashboardScreen({
           <View
             style={[
               styles.categoryBadge,
-              { backgroundColor: getCategoryColor(item.category) },
+              { backgroundColor: getCategoryColor(item.category || 'Other') },
             ]}
           >
-            <Text style={styles.categoryText}>{item.category}</Text>
+            <Text style={styles.categoryText}>{item.category || 'Other'}</Text>
           </View>
-          <Text style={styles.assetValue}>{item.value}</Text>
+          <Text style={styles.assetValue}>${(item.value || item.purchasePrice || 0).toLocaleString()}</Text>
         </View>
 
         <View style={styles.locationRow}>
           <Ionicons name="location-outline" size={14} color="#6B7280" />
-          <Text style={styles.locationText}>{item.location}</Text>
+          <Text style={styles.locationText}>
+            {typeof item.location === 'object' 
+              ? (item.location?.building || item.location?.area || 'No location specified')
+              : (item.location || 'No location specified')}
+          </Text>
         </View>
 
-        <Text style={styles.lastUpdated}>Updated: {item.lastUpdated}</Text>
+        <Text style={styles.lastUpdated}>Updated: {formatDate(item.updatedAt || item.createdAt || '')}</Text>
       </View>
     </View>
   );
@@ -254,6 +468,195 @@ export default function AssetsManagerDashboardScreen({
         </View>
       </Modal>
 
+      {/* Add Asset Modal */}
+      <Modal
+        visible={addAssetModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setAddAssetModalVisible(false)}
+      >
+        <View style={styles.addAssetModalOverlay}>
+          <View style={styles.addAssetModalContent}>
+            <View style={styles.addAssetModalHeader}>
+              <Text style={styles.addAssetModalTitle}>Add New Asset</Text>
+              <TouchableOpacity onPress={() => setAddAssetModalVisible(false)}>
+                <Ionicons name="close" size={24} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.addAssetForm} showsVerticalScrollIndicator={false}>
+              {/* Asset Name */}
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>Asset Name *</Text>
+                <TextInput
+                  style={styles.formInput}
+                  placeholder="Enter asset name"
+                  placeholderTextColor="#9CA3AF"
+                  value={newAsset.name}
+                  onChangeText={(text) => setNewAsset({ ...newAsset, name: text })}
+                />
+              </View>
+
+              {/* Category */}
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>Category *</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
+                  {assetCategories.map((cat) => (
+                    <TouchableOpacity
+                      key={cat}
+                      style={[
+                        styles.categoryOption,
+                        newAsset.category === cat && styles.categoryOptionSelected
+                      ]}
+                      onPress={() => setNewAsset({ ...newAsset, category: cat })}
+                    >
+                      <Text style={[
+                        styles.categoryOptionText,
+                        newAsset.category === cat && styles.categoryOptionTextSelected
+                      ]}>{cat}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+
+              {/* Location */}
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>Location *</Text>
+                <TextInput
+                  style={styles.formInput}
+                  placeholder="Enter asset location"
+                  placeholderTextColor="#9CA3AF"
+                  value={newAsset.location}
+                  onChangeText={(text) => setNewAsset({ ...newAsset, location: text })}
+                />
+              </View>
+
+              {/* Value */}
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>Value ($)</Text>
+                <TextInput
+                  style={styles.formInput}
+                  placeholder="Enter asset value"
+                  placeholderTextColor="#9CA3AF"
+                  keyboardType="numeric"
+                  value={newAsset.value}
+                  onChangeText={(text) => setNewAsset({ ...newAsset, value: text })}
+                />
+              </View>
+
+              {/* Serial Number */}
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>Serial Number</Text>
+                <TextInput
+                  style={styles.formInput}
+                  placeholder="Enter serial number"
+                  placeholderTextColor="#9CA3AF"
+                  value={newAsset.serialNumber}
+                  onChangeText={(text) => setNewAsset({ ...newAsset, serialNumber: text })}
+                />
+              </View>
+
+              {/* Manufacturer & Model */}
+              <View style={styles.formRow}>
+                <View style={[styles.formGroup, { flex: 1, marginRight: 8 }]}>
+                  <Text style={styles.formLabel}>Manufacturer</Text>
+                  <TextInput
+                    style={styles.formInput}
+                    placeholder="Manufacturer"
+                    placeholderTextColor="#9CA3AF"
+                    value={newAsset.manufacturer}
+                    onChangeText={(text) => setNewAsset({ ...newAsset, manufacturer: text })}
+                  />
+                </View>
+                <View style={[styles.formGroup, { flex: 1, marginLeft: 8 }]}>
+                  <Text style={styles.formLabel}>Model</Text>
+                  <TextInput
+                    style={styles.formInput}
+                    placeholder="Model"
+                    placeholderTextColor="#9CA3AF"
+                    value={newAsset.model}
+                    onChangeText={(text) => setNewAsset({ ...newAsset, model: text })}
+                  />
+                </View>
+              </View>
+
+              {/* Status */}
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>Status</Text>
+                <View style={styles.statusOptions}>
+                  {assetStatuses.map((status) => (
+                    <TouchableOpacity
+                      key={status.value}
+                      style={[
+                        styles.statusOption,
+                        newAsset.status === status.value && styles.statusOptionSelected
+                      ]}
+                      onPress={() => setNewAsset({ ...newAsset, status: status.value })}
+                    >
+                      <Text style={[
+                        styles.statusOptionText,
+                        newAsset.status === status.value && styles.statusOptionTextSelected
+                      ]}>{status.label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Condition */}
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>Condition</Text>
+                <View style={styles.statusOptions}>
+                  {assetConditions.map((cond) => (
+                    <TouchableOpacity
+                      key={cond.value}
+                      style={[
+                        styles.statusOption,
+                        newAsset.condition === cond.value && styles.statusOptionSelected
+                      ]}
+                      onPress={() => setNewAsset({ ...newAsset, condition: cond.value })}
+                    >
+                      <Text style={[
+                        styles.statusOptionText,
+                        newAsset.condition === cond.value && styles.statusOptionTextSelected
+                      ]}>{cond.label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Description */}
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>Description</Text>
+                <TextInput
+                  style={[styles.formInput, styles.formTextArea]}
+                  placeholder="Enter asset description"
+                  placeholderTextColor="#9CA3AF"
+                  multiline
+                  numberOfLines={3}
+                  value={newAsset.description}
+                  onChangeText={(text) => setNewAsset({ ...newAsset, description: text })}
+                />
+              </View>
+
+              {/* Save Button */}
+              <TouchableOpacity
+                style={[styles.saveAssetButton, savingAsset && styles.saveAssetButtonDisabled]}
+                onPress={handleSaveAsset}
+                disabled={savingAsset}
+              >
+                {savingAsset ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.saveAssetButtonText}>Save Asset</Text>
+                )}
+              </TouchableOpacity>
+
+              <View style={{ height: 30 }} />
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
       <SafeAreaView style={styles.container}>
         {/* Header */}
         <View style={styles.headerContainer}>
@@ -275,65 +678,84 @@ export default function AssetsManagerDashboardScreen({
           </View>
         </View>
 
-        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        <ScrollView 
+          style={styles.scrollView} 
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={['#0E7490']}
+              tintColor="#0E7490"
+            />
+          }
+        >
           {/* Title Section */}
           <View style={styles.titleSection}>
             <Text style={styles.mainTitle}>Asset Manager Dashboard</Text>
-            <Text style={styles.subtitle}>Monitor and manage your assets</Text>
+            <Text style={styles.subtitle}>Hi, {user?.fullName?.split(' ')[0] || 'User'}! Monitor and manage your assets</Text>
           </View>
 
-          {/* Stats Cards */}
-          <View style={styles.statsContainer}>
-            {statCards.map((card, index) => (
-              <View key={index} style={styles.statCard}>
-                <Text style={styles.statLabel}>{card.label}</Text>
-                <Text style={styles.statValue}>{card.value}</Text>
-              </View>
-            ))}
-          </View>
-
-          {/* Action Buttons */}
-          <View style={styles.actionButtonsContainer}>
-            <TouchableOpacity style={styles.createButton}>
-              <Text style={styles.createButtonText}>Add New Asset</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.exportButton}>
-              <Text style={styles.exportButtonText}>Generate Report</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Search Section */}
-          <View style={styles.searchSection}>
-            <Text style={styles.searchTitle}>Search Assets</Text>
-            <View style={styles.searchInputContainer}>
-              <Ionicons name="search" size={20} color="#9CA3AF" style={styles.searchIcon} />
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Search by asset name or ID"
-                placeholderTextColor="#9CA3AF"
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-              />
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#0E7490" />
             </View>
-          </View>
-
-          {/* Assets List */}
-          <View style={styles.assetsListContainer}>
-            <Text style={styles.assetsTitle}>All Assets ({filteredAssets.length})</Text>
-            {filteredAssets.length > 0 ? (
-              <FlatList
-                data={filteredAssets}
-                renderItem={renderAssetCard}
-                keyExtractor={(item) => item.id}
-                scrollEnabled={false}
-              />
-            ) : (
-              <View style={styles.emptyState}>
-                <Ionicons name="cube-outline" size={48} color="#D1D5DB" />
-                <Text style={styles.emptyStateText}>No assets found</Text>
+          ) : (
+            <>
+              {/* Stats Cards */}
+              <View style={styles.statsContainer}>
+                {statCards.map((card, index) => (
+                  <View key={index} style={styles.statCard}>
+                    <Text style={styles.statLabel}>{card.label}</Text>
+                    <Text style={styles.statValue}>{card.value}</Text>
+                  </View>
+                ))}
               </View>
-            )}
-          </View>
+
+              {/* Action Buttons */}
+              <View style={styles.actionButtonsContainer}>
+                <TouchableOpacity style={styles.createButton} onPress={handleAddAsset}>
+                  <Text style={styles.createButtonText}>Add New Asset</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.exportButton} onPress={handleGenerateReport}>
+                  <Text style={styles.exportButtonText}>Generate Report</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Search Section */}
+              <View style={styles.searchSection}>
+                <Text style={styles.searchTitle}>Search Assets</Text>
+                <View style={styles.searchInputContainer}>
+                  <Ionicons name="search" size={20} color="#9CA3AF" style={styles.searchIcon} />
+                  <TextInput
+                    style={styles.searchInput}
+                    placeholder="Search by asset name or ID"
+                    placeholderTextColor="#9CA3AF"
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                  />
+                </View>
+              </View>
+
+              {/* Assets List */}
+              <View style={styles.assetsListContainer}>
+                <Text style={styles.assetsTitle}>All Assets ({filteredAssets.length})</Text>
+                {filteredAssets.length > 0 ? (
+                  <FlatList
+                    data={filteredAssets}
+                    renderItem={renderAssetCard}
+                    keyExtractor={(item) => item._id || Math.random().toString()}
+                    scrollEnabled={false}
+                  />
+                ) : (
+                  <View style={styles.emptyState}>
+                    <Ionicons name="cube-outline" size={48} color="#D1D5DB" />
+                    <Text style={styles.emptyStateText}>No assets found</Text>
+                  </View>
+                )}
+              </View>
+            </>
+          )}
 
           {/* Bottom Spacing */}
           <View style={{ height: 40 }} />
@@ -600,5 +1022,124 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 4,
     elevation: 5,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  // Add Asset Modal Styles
+  addAssetModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  addAssetModalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '90%',
+    paddingBottom: 20,
+  },
+  addAssetModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  addAssetModalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  addAssetForm: {
+    padding: 20,
+  },
+  formGroup: {
+    marginBottom: 16,
+  },
+  formRow: {
+    flexDirection: 'row',
+  },
+  formLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  formInput: {
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 14,
+    color: '#1F2937',
+  },
+  formTextArea: {
+    height: 80,
+    textAlignVertical: 'top',
+  },
+  categoryScroll: {
+    flexGrow: 0,
+  },
+  categoryOption: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    backgroundColor: '#F3F4F6',
+    marginRight: 10,
+  },
+  categoryOptionSelected: {
+    backgroundColor: '#0E7490',
+  },
+  categoryOptionText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#6B7280',
+  },
+  categoryOptionTextSelected: {
+    color: '#FFFFFF',
+  },
+  statusOptions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  statusOption: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: '#F3F4F6',
+  },
+  statusOptionSelected: {
+    backgroundColor: '#0E7490',
+  },
+  statusOptionText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#6B7280',
+  },
+  statusOptionTextSelected: {
+    color: '#FFFFFF',
+  },
+  saveAssetButton: {
+    backgroundColor: '#0E7490',
+    borderRadius: 10,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  saveAssetButtonDisabled: {
+    opacity: 0.6,
+  },
+  saveAssetButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
   },
 });

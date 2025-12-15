@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,15 +7,29 @@ import {
   SafeAreaView,
   ScrollView,
   Image,
-  Modal
+  Modal,
+  RefreshControl,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import Sidebar from '../components/Sidebar';
+import { inspectionService, propertyService, authService } from '../services';
+import { Property, Inspection } from '../services/api';
 
 interface AnalyticsScreenProps {
   navigation: any;
   onMenuPress?: () => void;
+}
+
+interface AnalyticsData {
+  totalInspections: number;
+  compliantCount: number;
+  needsAttentionCount: number;
+  nonCompliantCount: number;
+  propertyPerformance: { name: string; score: number }[];
+  commonIssues: { name: string; percentage: number }[];
 }
 
 export default function AnalyticsScreen({ navigation, onMenuPress }: AnalyticsScreenProps) {
@@ -24,15 +38,104 @@ export default function AnalyticsScreen({ navigation, onMenuPress }: AnalyticsSc
   const [timePeriod, setTimePeriod] = useState('');
   const [successModalVisible, setSuccessModalVisible] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [analytics, setAnalytics] = useState<AnalyticsData>({
+    totalInspections: 0,
+    compliantCount: 0,
+    needsAttentionCount: 0,
+    nonCompliantCount: 0,
+    propertyPerformance: [],
+    commonIssues: [],
+  });
+
+  const loadData = useCallback(async () => {
+    try {
+      const [propertiesData, inspectionsData, statsData] = await Promise.all([
+        propertyService.getProperties(),
+        inspectionService.getInspections({ status: 'completed' }),
+        inspectionService.getInspectionStats().catch(() => null),
+      ]);
+
+      const propertiesList = propertiesData.properties || propertiesData || [];
+      const inspectionsList = inspectionsData.inspections || inspectionsData || [];
+      
+      setProperties(propertiesList);
+
+      // Calculate analytics from inspections
+      let compliant = 0;
+      let needsAttention = 0;
+      let nonCompliant = 0;
+      const propertyScores: { [key: string]: { total: number; count: number; name: string } } = {};
+
+      inspectionsList.forEach((inspection: any) => {
+        const score = inspection.score || 0;
+        const status = inspection.complianceStatus || (score >= 70 ? 'compliant' : score >= 50 ? 'needs-attention' : 'non-compliant');
+        
+        if (status === 'compliant' || score >= 70) compliant++;
+        else if (status === 'needs-attention' || score >= 50) needsAttention++;
+        else nonCompliant++;
+
+        // Track property performance
+        const propId = inspection.property || inspection.propertyId;
+        if (propId) {
+          const prop = propertiesList.find((p: Property) => p._id === propId);
+          if (!propertyScores[propId]) {
+            propertyScores[propId] = { total: 0, count: 0, name: prop?.name || 'Unknown' };
+          }
+          propertyScores[propId].total += score;
+          propertyScores[propId].count++;
+        }
+      });
+
+      const propertyPerformance = Object.values(propertyScores)
+        .map(p => ({ name: p.name, score: p.count > 0 ? Math.round(p.total / p.count) : 0 }))
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 5);
+
+      setAnalytics({
+        totalInspections: inspectionsList.length,
+        compliantCount: compliant,
+        needsAttentionCount: needsAttention,
+        nonCompliantCount: nonCompliant,
+        propertyPerformance,
+        commonIssues: statsData?.commonIssues || [
+          { name: 'Electrical', percentage: 65 },
+          { name: 'Plumbing', percentage: 85 },
+          { name: 'Fire Safety', percentage: 50 },
+          { name: 'Doors/Windows', percentage: 55 },
+        ],
+      });
+    } catch (error) {
+      console.error('Error loading analytics:', error);
+      Alert.alert('Error', 'Failed to load analytics data');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    loadData();
+  }, [loadData]);
 
   const handleMenuPress = () => {
     setSidebarVisible(true);
   };
 
-  const handleSidebarNavigate = (screen: string) => {
+  const handleSidebarNavigate = async (screen: string) => {
     setSidebarVisible(false);
     if (screen === 'Dashboard') {
-      navigation.navigate('Dashboard' as never);
+      // Navigate to correct dashboard based on user role
+      const userRole = user?.role || 'inspector';
+      const dashboardRoute = authService.getDashboardRoute(userRole);
+      navigation.navigate(dashboardRoute as never);
     } else if (screen === 'MyInspections') {
       navigation.navigate('MyInspections' as never);
     } else if (screen === 'Reports') {
@@ -44,10 +147,35 @@ export default function AnalyticsScreen({ navigation, onMenuPress }: AnalyticsSc
     }
   };
 
-  const handleLogout = () => {
-    setSidebarVisible(false);
-    navigation.navigate('Boarding' as never);
+  const handleLogout = async () => {
+    try {
+      await authService.logout();
+      setSidebarVisible(false);
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Boarding' as never }],
+      });
+    } catch (error) {
+      console.error('Error logging out:', error);
+    }
   };
+
+  // Calculate percentages for pie chart
+  const total = analytics.compliantCount + analytics.needsAttentionCount + analytics.nonCompliantCount;
+  const compliantPercent = total > 0 ? Math.round((analytics.compliantCount / total) * 100) : 0;
+  const needsAttentionPercent = total > 0 ? Math.round((analytics.needsAttentionCount / total) * 100) : 0;
+  const nonCompliantPercent = total > 0 ? Math.round((analytics.nonCompliantCount / total) * 100) : 0;
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#0E7490" />
+          <Text style={styles.loadingText}>Loading analytics...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <>
@@ -91,7 +219,13 @@ export default function AnalyticsScreen({ navigation, onMenuPress }: AnalyticsSc
           </View>
         </View>
 
-        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        <ScrollView 
+          style={styles.scrollView} 
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#0E7490']} />
+          }
+        >
           {/* Title Section */}
           <View style={styles.titleSection}>
             <Text style={styles.title}>Analytics & Insights</Text>
@@ -112,9 +246,10 @@ export default function AnalyticsScreen({ navigation, onMenuPress }: AnalyticsSc
                     onValueChange={(itemValue: string) => setProperty(itemValue)}
                     style={styles.picker}
                   >
-                    <Picker.Item label="Property" value="" />
-                    <Picker.Item label="Sunset Apartments" value="sunset" />
-                    <Picker.Item label="River Heights" value="river" />
+                    <Picker.Item label="All Properties" value="" />
+                    {properties.map((p) => (
+                      <Picker.Item key={p._id} label={p.name} value={p._id} />
+                    ))}
                   </Picker>
                   <Ionicons 
                     name="chevron-down" 
@@ -198,52 +333,40 @@ export default function AnalyticsScreen({ navigation, onMenuPress }: AnalyticsSc
           <View style={styles.performanceCard}>
             <Text style={styles.cardTitle}>Property Performance</Text>
             
-            <View style={styles.performanceItem}>
-              <Text style={styles.performanceLabel}>Sunset Apartments</Text>
-              <View style={styles.progressBarContainer}>
-                <View style={[styles.progressBar, styles.greenProgress, { width: '85%' }]} />
-              </View>
-            </View>
-
-            <View style={styles.performanceItem}>
-              <Text style={styles.performanceLabel}>River Heights</Text>
-              <View style={styles.progressBarContainer}>
-                <View style={[styles.progressBar, styles.redProgress, { width: '45%' }]} />
-              </View>
-            </View>
+            {analytics.propertyPerformance.length === 0 ? (
+              <Text style={styles.noDataText}>No property data available</Text>
+            ) : (
+              analytics.propertyPerformance.map((prop, index) => (
+                <View key={index} style={styles.performanceItem}>
+                  <Text style={styles.performanceLabel}>{prop.name}</Text>
+                  <View style={styles.progressBarContainer}>
+                    <View 
+                      style={[
+                        styles.progressBar, 
+                        prop.score >= 70 ? styles.greenProgress : prop.score >= 50 ? styles.yellowProgress : styles.redProgress, 
+                        { width: `${prop.score}%` }
+                      ]} 
+                    />
+                  </View>
+                  <Text style={styles.scoreText}>{prop.score}%</Text>
+                </View>
+              ))
+            )}
           </View>
 
           {/* Common Issues */}
           <View style={styles.issuesCard}>
             <Text style={styles.cardTitle}>Common Issues</Text>
             
-            <View style={styles.issueItem}>
-              <Text style={styles.issueLabel}>Electrical</Text>
-              <View style={styles.issueBarContainer}>
-                <View style={[styles.issueBar, { width: '65%' }]} />
+            {analytics.commonIssues.map((issue, index) => (
+              <View key={index} style={styles.issueItem}>
+                <Text style={styles.issueLabel}>{issue.name}</Text>
+                <View style={styles.issueBarContainer}>
+                  <View style={[styles.issueBar, { width: `${issue.percentage}%` }]} />
+                </View>
+                <Text style={styles.issuePercent}>{issue.percentage}%</Text>
               </View>
-            </View>
-
-            <View style={styles.issueItem}>
-              <Text style={styles.issueLabel}>Plumbing</Text>
-              <View style={styles.issueBarContainer}>
-                <View style={[styles.issueBar, { width: '85%' }]} />
-              </View>
-            </View>
-
-            <View style={styles.issueItem}>
-              <Text style={styles.issueLabel}>Fire Safety</Text>
-              <View style={styles.issueBarContainer}>
-                <View style={[styles.issueBar, { width: '50%' }]} />
-              </View>
-            </View>
-
-            <View style={styles.issueItem}>
-              <Text style={styles.issueLabel}>Doors/Windows</Text>
-              <View style={styles.issueBarContainer}>
-                <View style={[styles.issueBar, { width: '55%' }]} />
-              </View>
-            </View>
+            ))}
           </View>
 
           {/* Compliance Distribution */}
@@ -264,15 +387,15 @@ export default function AnalyticsScreen({ navigation, onMenuPress }: AnalyticsSc
             <View style={styles.legend}>
               <View style={styles.legendItem}>
                 <View style={[styles.legendDot, styles.greenDot]} />
-                <Text style={styles.legendText}>Compliant</Text>
+                <Text style={styles.legendText}>Compliant ({compliantPercent}%)</Text>
               </View>
               <View style={styles.legendItem}>
                 <View style={[styles.legendDot, styles.yellowDot]} />
-                <Text style={styles.legendText}>Needs Attention</Text>
+                <Text style={styles.legendText}>Needs Attention ({needsAttentionPercent}%)</Text>
               </View>
               <View style={styles.legendItem}>
                 <View style={[styles.legendDot, styles.redDot]} />
-                <Text style={styles.legendText}>Non-Compliant</Text>
+                <Text style={styles.legendText}>Non-Compliant ({nonCompliantPercent}%)</Text>
               </View>
             </View>
           </View>
@@ -336,6 +459,39 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#CEF8FF',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#6B7280',
+  },
+  noDataText: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+    paddingVertical: 20,
+  },
+  scoreText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginLeft: 8,
+    minWidth: 35,
+  },
+  issuePercent: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginLeft: 8,
+    minWidth: 35,
+  },
+  yellowProgress: {
+    backgroundColor: '#FBBF24',
   },
   headerContainer: {
     backgroundColor: '#0E7490',

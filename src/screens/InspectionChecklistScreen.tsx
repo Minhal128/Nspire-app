@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,10 +7,13 @@ import {
   TouchableOpacity,
   SafeAreaView,
   ScrollView,
-  Modal
+  Modal,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Sidebar from '../components/Sidebar';
+import { inspectionService, authService } from '../services';
 
 interface InspectionChecklistScreenProps {
   navigation: any;
@@ -25,16 +28,17 @@ interface Issue {
 
 export default function InspectionChecklistScreen({ navigation, route }: InspectionChecklistScreenProps) {
   const [sidebarVisible, setSidebarVisible] = useState(false);
-  const { property, unit } = route.params || {};
+  const [saving, setSaving] = useState(false);
+  const { property, unit, inspection } = route.params || {};
   
-  // Mock data
-  const complianceScore = 88;
-  const totalItems = 17;
-  const checkedItems = 15;
-  const issuesRequireFollowUp = 2;
-  const photosAdded = 5;
+  // State for inspection data
+  const [complianceScore, setComplianceScore] = useState(inspection?.score || 88);
+  const [totalItems, setTotalItems] = useState(inspection?.totalItems || 17);
+  const [checkedItems, setCheckedItems] = useState(inspection?.checkedItems || 15);
+  const [issuesRequireFollowUp, setIssuesRequireFollowUp] = useState(inspection?.issueCount || 2);
+  const [photosAdded, setPhotosAdded] = useState(inspection?.photosCount || 5);
   
-  const issues: Issue[] = [
+  const [issues, setIssues] = useState<Issue[]>(inspection?.issues || [
     {
       id: '1',
       title: 'Smoke Detector',
@@ -45,18 +49,24 @@ export default function InspectionChecklistScreen({ navigation, route }: Inspect
       title: 'Faucet Leak - Needs Attention',
       description: ''
     }
-  ];
+  ]);
   
-  const additionalNotes = "Overall condition is satisfactory. Minor maintenance is required.";
+  const [additionalNotes, setAdditionalNotes] = useState(
+    inspection?.notes || "Overall condition is satisfactory. Minor maintenance is required."
+  );
 
   const handleMenuPress = () => {
     setSidebarVisible(true);
   };
 
-  const handleSidebarNavigate = (screen: string) => {
+  const handleSidebarNavigate = async (screen: string) => {
     setSidebarVisible(false);
     if (screen === 'Dashboard') {
-      navigation.navigate('Dashboard' as never);
+      // Navigate to correct dashboard based on user role
+      const storedUser = await authService.getStoredUser();
+      const userRole = storedUser?.role || 'inspector';
+      const dashboardRoute = authService.getDashboardRoute(userRole);
+      navigation.navigate(dashboardRoute as never);
     } else if (screen === 'MyInspections') {
       navigation.navigate('MyInspections' as never);
     } else if (screen === 'Reports') {
@@ -68,21 +78,95 @@ export default function InspectionChecklistScreen({ navigation, route }: Inspect
     }
   };
 
-  const handleLogout = () => {
-    setSidebarVisible(false);
-    navigation.navigate('Boarding' as never);
+  const handleLogout = async () => {
+    try {
+      await authService.logout();
+      setSidebarVisible(false);
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Boarding' as never }],
+      });
+    } catch (error) {
+      console.error('Error logging out:', error);
+    }
   };
 
   const handleShareReport = () => {
-    console.log('Sharing report...');
+    Alert.alert('Share Report', 'Report sharing will be available in a future update.');
   };
 
-  const handleSaveDraft = () => {
-    console.log('Saving draft...');
+  const handleSaveDraft = async () => {
+    try {
+      setSaving(true);
+      
+      const inspectionData = {
+        property: property?._id,
+        unit: unit?.id,
+        status: 'in-progress',
+        score: complianceScore,
+        totalItems,
+        checkedItems,
+        issues: issues.map(issue => ({
+          title: issue.title,
+          description: issue.description,
+        })),
+        notes: additionalNotes,
+      };
+
+      if (inspection?._id) {
+        await inspectionService.updateInspection(inspection._id, inspectionData);
+      } else {
+        await inspectionService.createInspection(inspectionData);
+      }
+      
+      Alert.alert('Success', 'Draft saved successfully!');
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to save draft');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCompleteInspection = async () => {
+    try {
+      setSaving(true);
+      
+      const inspectionData = {
+        property: property?._id,
+        unit: unit?.id,
+        status: 'completed',
+        score: complianceScore,
+        totalItems,
+        checkedItems,
+        issues: issues.map(issue => ({
+          title: issue.title,
+          description: issue.description,
+        })),
+        notes: additionalNotes,
+        completedDate: new Date().toISOString(),
+      };
+
+      if (inspection?._id) {
+        await inspectionService.completeInspection(inspection._id, {
+          complianceScore: complianceScore,
+          notes: additionalNotes,
+        });
+      } else {
+        await inspectionService.createInspection(inspectionData);
+      }
+      
+      Alert.alert('Success', 'Inspection completed successfully!', [
+        { text: 'OK', onPress: () => navigation.goBack() }
+      ]);
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to complete inspection');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleExportPDF = () => {
-    console.log('Exporting PDF...');
+    Alert.alert('Export PDF', 'PDF export will be available in a future update.');
   };
 
   return (
@@ -217,21 +301,40 @@ export default function InspectionChecklistScreen({ navigation, route }: Inspect
               <TouchableOpacity 
                 style={styles.shareButton}
                 onPress={handleShareReport}
+                disabled={saving}
               >
                 <Text style={styles.shareButtonText}>Share Report</Text>
               </TouchableOpacity>
               
               <TouchableOpacity 
-                style={styles.saveDraftButton}
+                style={[styles.saveDraftButton, saving && styles.buttonDisabled]}
                 onPress={handleSaveDraft}
+                disabled={saving}
               >
-                <Text style={styles.saveDraftButtonText}>Save Draft</Text>
+                {saving ? (
+                  <ActivityIndicator size="small" color="#1F2937" />
+                ) : (
+                  <Text style={styles.saveDraftButtonText}>Save Draft</Text>
+                )}
               </TouchableOpacity>
             </View>
 
             <TouchableOpacity 
+              style={[styles.completeButton, saving && styles.buttonDisabled]}
+              onPress={handleCompleteInspection}
+              disabled={saving}
+            >
+              {saving ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Text style={styles.completeButtonText}>Complete Inspection</Text>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity 
               style={styles.exportButton}
               onPress={handleExportPDF}
+              disabled={saving}
             >
               <Text style={styles.exportButtonText}>Export PDF</Text>
             </TouchableOpacity>
@@ -504,6 +607,23 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
   },
+  completeButton: {
+    backgroundColor: '#10B981',
+    borderRadius: 25,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  completeButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
+  },
   exportButton: {
     backgroundColor: '#0E7490',
     borderRadius: 25,
@@ -519,6 +639,9 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '700',
+  },
+  buttonDisabled: {
+    opacity: 0.6,
   },
   modalOverlay: {
     flex: 1,

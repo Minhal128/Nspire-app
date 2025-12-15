@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,10 +7,14 @@ import {
   TouchableOpacity,
   SafeAreaView,
   ScrollView,
-  Modal
+  Modal,
+  RefreshControl,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Sidebar from '../components/Sidebar';
+import { propertyService, authService } from '../services';
 
 interface UnitInspectionScreenProps {
   navigation: any;
@@ -25,16 +29,74 @@ interface Unit {
 
 export default function UnitInspectionScreen({ navigation, route }: UnitInspectionScreenProps) {
   const [sidebarVisible, setSidebarVisible] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [units, setUnits] = useState<Unit[]>([]);
+  const [user, setUser] = useState<any>(null);
   const { property } = route.params || {};
+
+  const loadUnits = useCallback(async () => {
+    try {
+      // Load user data
+      const storedUser = await authService.getStoredUser();
+      setUser(storedUser);
+      if (property?._id) {
+        // Try to fetch property details with units from API
+        const propertyData = await propertyService.getProperty(property._id);
+        const propertyUnits = propertyData?.units || propertyData?.property?.units || [];
+        
+        const mappedUnits: Unit[] = propertyUnits.map((unit: any) => ({
+          id: unit._id || unit.id || unit.unitNumber,
+          name: unit.name || `Unit ${unit.unitNumber || unit.id}`,
+          status: unit.complianceStatus || unit.status || 'needs-attention',
+        }));
+        
+        setUnits(mappedUnits);
+      } else if (property?.units) {
+        // Use units from route params if available
+        setUnits(property.units);
+      } else {
+        // Default units if none available
+        setUnits([
+          { id: '101', name: 'Unit 101', status: 'needs-attention' },
+          { id: '102', name: 'Unit 102', status: 'completed' },
+          { id: '103', name: 'Unit 103', status: 'non-compliant' },
+        ]);
+      }
+    } catch (error) {
+      console.error('Error loading units:', error);
+      // Fallback to default units
+      setUnits([
+        { id: '101', name: 'Unit 101', status: 'needs-attention' },
+        { id: '102', name: 'Unit 102', status: 'completed' },
+        { id: '103', name: 'Unit 103', status: 'non-compliant' },
+      ]);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [property]);
+
+  useEffect(() => {
+    loadUnits();
+  }, [loadUnits]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    loadUnits();
+  }, [loadUnits]);
 
   const handleMenuPress = () => {
     setSidebarVisible(true);
   };
 
-  const handleSidebarNavigate = (screen: string) => {
+  const handleSidebarNavigate = async (screen: string) => {
     setSidebarVisible(false);
     if (screen === 'Dashboard') {
-      navigation.navigate('Dashboard' as never);
+      // Navigate to correct dashboard based on user role
+      const userRole = user?.role || 'inspector';
+      const dashboardRoute = authService.getDashboardRoute(userRole);
+      navigation.navigate(dashboardRoute as never);
     } else if (screen === 'MyInspections') {
       navigation.navigate('MyInspections' as never);
     } else if (screen === 'Reports') {
@@ -46,9 +108,17 @@ export default function UnitInspectionScreen({ navigation, route }: UnitInspecti
     }
   };
 
-  const handleLogout = () => {
-    setSidebarVisible(false);
-    navigation.navigate('Boarding' as never);
+  const handleLogout = async () => {
+    try {
+      await authService.logout();
+      setSidebarVisible(false);
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Boarding' as never }],
+      });
+    } catch (error) {
+      console.error('Error logging out:', error);
+    }
   };
 
   const handleStartInspection = (unit: Unit) => {
@@ -57,13 +127,6 @@ export default function UnitInspectionScreen({ navigation, route }: UnitInspecti
       unit: unit 
     } as never);
   };
-
-  // Sample units data
-  const units: Unit[] = [
-    { id: '101', name: 'Unit 101', status: 'needs-attention' },
-    { id: '102', name: 'Unit 102', status: 'completed' },
-    { id: '103', name: 'Unit 103', status: 'non-compliant' },
-  ];
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -90,6 +153,17 @@ export default function UnitInspectionScreen({ navigation, route }: UnitInspecti
         return '';
     }
   };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#0E7490" />
+          <Text style={styles.loadingText}>Loading units...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <>
@@ -133,7 +207,13 @@ export default function UnitInspectionScreen({ navigation, route }: UnitInspecti
           </View>
         </View>
 
-        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        <ScrollView 
+          style={styles.scrollView} 
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#0E7490']} />
+          }
+        >
           {/* Title */}
           <Text style={styles.title}>Select Unit For Inspection</Text>
 
@@ -185,6 +265,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#CEF8FF',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#6B7280',
   },
   headerContainer: {
     backgroundColor: '#CEF8FF',

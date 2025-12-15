@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,10 +10,15 @@ import {
   ScrollView,
   Modal,
   FlatList,
+  RefreshControl,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Sidebar from '../components/Sidebar';
+import { userService, authService } from '../services';
+import { User as ApiUser } from '../services/api';
 
 interface OthersScreenProps {
   navigation: NativeStackNavigationProp<any, any>;
@@ -32,6 +37,62 @@ interface User {
 export default function OthersScreen({ navigation }: OthersScreenProps) {
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [users, setUsers] = useState<User[]>([]);
+
+  const loadUsers = useCallback(async () => {
+    try {
+      const response = await userService.getOtherUsers();
+      const usersList = response.users || response || [];
+      
+      // Filter non-inspector users and map to expected format
+      const mappedUsers: User[] = usersList
+        .filter((u: ApiUser) => u.role !== 'inspector')
+        .map((u: ApiUser) => ({
+          id: u._id,
+          name: u.fullName || `${u.firstName || ''} ${u.lastName || ''}`.trim() || 'Unknown',
+          email: u.email,
+          userType: formatUserType(u.role),
+          joinDate: new Date(u.createdAt || Date.now()).toISOString().split('T')[0],
+          status: u.isActive !== false ? 'active' : 'inactive',
+        }));
+      
+      setUsers(mappedUsers);
+    } catch (error) {
+      console.error('Error loading users:', error);
+      Alert.alert('Error', 'Failed to load users');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  const formatUserType = (role: string) => {
+    switch (role) {
+      case 'management':
+        return 'Management';
+      case 'asset-manager':
+        return 'Assets Manager';
+      case 'property-manager':
+        return 'Property Manager';
+      case 'supervisor':
+        return 'Supervisor';
+      case 'admin':
+        return 'Admin';
+      default:
+        return 'Other';
+    }
+  };
+
+  useEffect(() => {
+    loadUsers();
+  }, [loadUsers]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    loadUsers();
+  }, [loadUsers]);
 
   const handleMenuPress = () => {
     setSidebarVisible(true);
@@ -48,80 +109,20 @@ export default function OthersScreen({ navigation }: OthersScreenProps) {
     }
   };
 
-  const handleLogout = () => {
-    setSidebarVisible(false);
-    navigation.navigate('Boarding' as never);
+  const handleLogout = async () => {
+    try {
+      await authService.logout();
+      setSidebarVisible(false);
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Boarding' as never }],
+      });
+    } catch (error) {
+      console.error('Error logging out:', error);
+    }
   };
 
-  // Mock data for non-inspector users
-  const nonInspectorUsers: User[] = [
-    {
-      id: '1',
-      name: 'John Smith',
-      email: 'john.smith@example.com',
-      userType: 'Management',
-      joinDate: '2024-11-24',
-      status: 'active',
-    },
-    {
-      id: '2',
-      name: 'Sarah Johnson',
-      email: 'sarah.johnson@example.com',
-      userType: 'Assets Manager',
-      joinDate: '2024-11-23',
-      status: 'active',
-    },
-    {
-      id: '3',
-      name: 'Michael Brown',
-      email: 'michael.brown@example.com',
-      userType: 'Management',
-      joinDate: '2024-11-22',
-      status: 'active',
-    },
-    {
-      id: '4',
-      name: 'Emma Davis',
-      email: 'emma.davis@example.com',
-      userType: 'Other',
-      joinDate: '2024-11-21',
-      status: 'inactive',
-    },
-    {
-      id: '5',
-      name: 'Robert Wilson',
-      email: 'robert.wilson@example.com',
-      userType: 'Assets Manager',
-      joinDate: '2024-11-20',
-      status: 'active',
-    },
-    {
-      id: '6',
-      name: 'Lisa Anderson',
-      email: 'lisa.anderson@example.com',
-      userType: 'Management',
-      joinDate: '2024-11-19',
-      status: 'active',
-    },
-    {
-      id: '7',
-      name: 'David Martinez',
-      email: 'david.martinez@example.com',
-      userType: 'Other',
-      joinDate: '2024-11-18',
-      status: 'active',
-    },
-    {
-      id: '8',
-      name: 'Jennifer Lee',
-      email: 'jennifer.lee@example.com',
-      userType: 'Assets Manager',
-      joinDate: '2024-11-17',
-      status: 'active',
-    },
-  ];
-
-  const filteredUsers = nonInspectorUsers.filter(
+  const filteredUsers = users.filter(
     (user) =>
       user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       user.email.toLowerCase().includes(searchQuery.toLowerCase())
@@ -230,33 +231,46 @@ export default function OthersScreen({ navigation }: OthersScreenProps) {
           </View>
         </View>
 
-        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-          {/* Title Section */}
-          <View style={styles.titleSection}>
-            <Text style={styles.mainTitle}>Other Users</Text>
-            <Text style={styles.subtitle}>Recent users who are not inspectors</Text>
-          </View>
-
-          {/* Search Section */}
-          <View style={styles.searchSection}>
-            <Text style={styles.searchTitle}>Search Users</Text>
-            <View style={styles.searchInputContainer}>
-              <Ionicons name="search" size={20} color="#9CA3AF" style={styles.searchIcon} />
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Search by name or email"
-                placeholderTextColor="#9CA3AF"
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-              />
+        <ScrollView 
+          style={styles.scrollView} 
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#0E7490']} />
+          }
+        >
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#0E7490" />
+              <Text style={styles.loadingText}>Loading users...</Text>
             </View>
-          </View>
+          ) : (
+            <>
+              {/* Title Section */}
+              <View style={styles.titleSection}>
+                <Text style={styles.mainTitle}>Other Users</Text>
+                <Text style={styles.subtitle}>Recent users who are not inspectors</Text>
+              </View>
 
-          {/* Users List */}
-          <View style={styles.usersListContainer}>
-            <Text style={styles.usersTitle}>
-              All Users ({filteredUsers.length})
-            </Text>
+              {/* Search Section */}
+              <View style={styles.searchSection}>
+                <Text style={styles.searchTitle}>Search Users</Text>
+                <View style={styles.searchInputContainer}>
+                  <Ionicons name="search" size={20} color="#9CA3AF" style={styles.searchIcon} />
+                  <TextInput
+                    style={styles.searchInput}
+                    placeholder="Search by name or email"
+                    placeholderTextColor="#9CA3AF"
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                  />
+                </View>
+              </View>
+
+              {/* Users List */}
+              <View style={styles.usersListContainer}>
+                <Text style={styles.usersTitle}>
+                  All Users ({filteredUsers.length})
+                </Text>
             {filteredUsers.length > 0 ? (
               <FlatList
                 data={filteredUsers}
@@ -275,6 +289,8 @@ export default function OthersScreen({ navigation }: OthersScreenProps) {
 
           {/* Bottom Spacing */}
           <View style={{ height: 40 }} />
+            </>
+          )}
         </ScrollView>
       </SafeAreaView>
     </>
@@ -285,6 +301,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#E8F4F8',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#6B7280',
   },
   headerContainer: {
     backgroundColor: '#0E7490',

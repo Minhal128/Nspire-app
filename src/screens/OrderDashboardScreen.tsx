@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,10 +9,15 @@ import {
   SafeAreaView,
   ScrollView,
   Modal,
+  RefreshControl,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Sidebar from '../components/Sidebar';
+import { authService, inspectionService } from '../services';
+import { Inspection, User } from '../services/api';
 
 interface OrderDashboardScreenProps {
   navigation: NativeStackNavigationProp<any, any>;
@@ -24,18 +29,130 @@ interface StatCard {
   icon: string;
 }
 
-interface Order {
-  id: string;
-  orderNumber: string;
-  customerName: string;
-  status: 'pending' | 'completed' | 'shipped';
-  amount: string;
-  date: string;
-}
-
 export default function OrderDashboardScreen({ navigation }: OrderDashboardScreenProps) {
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [inspections, setInspections] = useState<Inspection[]>([]);
+  const [stats, setStats] = useState({
+    totalInspections: 0,
+    scheduled: 0,
+    inProgress: 0,
+    completed: 0
+  });
+
+  const loadInitialData = useCallback(async () => {
+    try {
+      const storedUser = await authService.getStoredUser();
+      
+      // Role-based access control
+      const allowedRoles = ['other', 'order', 'admin'];
+      if (!storedUser || !allowedRoles.includes(storedUser.role)) {
+        Alert.alert(
+          'Access Denied',
+          'You do not have permission to access this portal.',
+          [{ text: 'OK', onPress: () => {
+            authService.logout();
+            navigation.reset({ index: 0, routes: [{ name: 'Boarding' as never }] });
+          }}]
+        );
+        return;
+      }
+      
+      setUser(storedUser);
+      await fetchData();
+    } catch (error) {
+      console.error('Error loading initial data:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [navigation]);
+
+  const fetchData = async () => {
+    try {
+      // Fetch inspections
+      const inspectionsResponse = await inspectionService.getInspections();
+      if (inspectionsResponse.success && inspectionsResponse.inspections) {
+        const inspectionData = inspectionsResponse.inspections || [];
+        setInspections(inspectionData);
+        
+        // Calculate stats
+        const scheduled = inspectionData.filter((i: Inspection) => i.status === 'scheduled').length;
+        const inProgress = inspectionData.filter((i: Inspection) => i.status === 'in-progress').length;
+        const completed = inspectionData.filter((i: Inspection) => i.status === 'completed').length;
+        
+        setStats({
+          totalInspections: inspectionData.length,
+          scheduled,
+          inProgress,
+          completed
+        });
+      }
+
+      // Also try to get stats from API if available
+      try {
+        const statsResponse = await inspectionService.getInspectionStats();
+        if (statsResponse.success && statsResponse.stats) {
+          setStats(prev => ({
+            ...prev,
+            ...statsResponse.stats
+          }));
+        }
+      } catch (e) {
+        // Stats endpoint might not exist, use calculated stats
+      }
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      // Don't show alert, just use empty data
+      setInspections([]);
+    }
+  };
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchData();
+    setRefreshing(false);
+  }, []);
+
+  const handleSearch = useCallback(async () => {
+    if (!searchQuery.trim()) {
+      await fetchData();
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const response = await inspectionService.getInspections();
+      if (response.success && response.inspections) {
+        // Filter locally by search query
+        const filtered = response.inspections.filter((i: Inspection) => 
+          i.inspectionId?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (typeof i.property === 'object' && i.property?.name?.toLowerCase().includes(searchQuery.toLowerCase()))
+        );
+        setInspections(filtered);
+      }
+    } catch (error) {
+      console.error('Search error:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [searchQuery]);
+
+  useEffect(() => {
+    loadInitialData();
+  }, [loadInitialData]);
+
+  useEffect(() => {
+    const delaySearch = setTimeout(() => {
+      if (searchQuery) {
+        handleSearch();
+      }
+    }, 500);
+
+    return () => clearTimeout(delaySearch);
+  }, [searchQuery, handleSearch]);
 
   const handleMenuPress = () => {
     setSidebarVisible(true);
@@ -54,131 +171,42 @@ export default function OrderDashboardScreen({ navigation }: OrderDashboardScree
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     setSidebarVisible(false);
-    navigation.navigate('Boarding' as never);
+    await authService.logout();
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'Boarding' as never }],
+    });
   };
 
   const statCards: StatCard[] = [
-    { label: 'Total Orders', value: '1,234', icon: 'package-multiple' },
-    { label: 'Pending Orders', value: '45', icon: 'clock-outline' },
-    { label: 'Completed Today', value: '23', icon: 'check-circle-outline' },
-    { label: 'Total Revenue', value: '$45,230', icon: 'currency-usd' },
-  ];
-
-  const mockOrders: Order[] = [
-    // Management User Orders
-    {
-      id: '1',
-      orderNumber: 'ORD-001234',
-      customerName: 'John Smith (Management)',
-      status: 'completed',
-      amount: '$1,250.00',
-      date: '2024-11-24',
-    },
-    {
-      id: '2',
-      orderNumber: 'ORD-001235',
-      customerName: 'Sarah Johnson (Management)',
-      status: 'pending',
-      amount: '$890.50',
-      date: '2024-11-24',
-    },
-    {
-      id: '3',
-      orderNumber: 'ORD-001236',
-      customerName: 'Michael Brown (Management)',
-      status: 'shipped',
-      amount: '$2,150.00',
-      date: '2024-11-23',
-    },
-    // Other User Orders
-    {
-      id: '4',
-      orderNumber: 'ORD-001237',
-      customerName: 'Emma Davis (Other)',
-      status: 'completed',
-      amount: '$675.25',
-      date: '2024-11-23',
-    },
-    {
-      id: '5',
-      orderNumber: 'ORD-001238',
-      customerName: 'Robert Wilson (Other)',
-      status: 'pending',
-      amount: '$1,425.00',
-      date: '2024-11-22',
-    },
-    {
-      id: '6',
-      orderNumber: 'ORD-001239',
-      customerName: 'Lisa Anderson (Other)',
-      status: 'shipped',
-      amount: '$950.75',
-      date: '2024-11-22',
-    },
-    // Assets Manager User Orders
-    {
-      id: '7',
-      orderNumber: 'ORD-001240',
-      customerName: 'David Martinez (Assets Manager)',
-      status: 'completed',
-      amount: '$3,200.00',
-      date: '2024-11-21',
-    },
-    {
-      id: '8',
-      orderNumber: 'ORD-001241',
-      customerName: 'Jennifer Lee (Assets Manager)',
-      status: 'pending',
-      amount: '$1,850.50',
-      date: '2024-11-21',
-    },
-    {
-      id: '9',
-      orderNumber: 'ORD-001242',
-      customerName: 'Christopher Taylor (Assets Manager)',
-      status: 'shipped',
-      amount: '$2,500.00',
-      date: '2024-11-20',
-    },
-    {
-      id: '10',
-      orderNumber: 'ORD-001243',
-      customerName: 'Amanda White (Other)',
-      status: 'completed',
-      amount: '$1,100.00',
-      date: '2024-11-20',
-    },
-    {
-      id: '11',
-      orderNumber: 'ORD-001244',
-      customerName: 'Kevin Harris (Management)',
-      status: 'pending',
-      amount: '$2,300.75',
-      date: '2024-11-19',
-    },
-    {
-      id: '12',
-      orderNumber: 'ORD-001245',
-      customerName: 'Rachel Green (Assets Manager)',
-      status: 'shipped',
-      amount: '$1,650.00',
-      date: '2024-11-19',
-    },
+    { label: 'Total Inspections', value: stats.totalInspections.toString(), icon: 'clipboard-check' },
+    { label: 'Scheduled', value: stats.scheduled.toString(), icon: 'clock-outline' },
+    { label: 'In Progress', value: stats.inProgress.toString(), icon: 'progress-clock' },
+    { label: 'Completed', value: stats.completed.toString(), icon: 'check-circle-outline' },
   ];
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'completed':
         return '#84CC16';
-      case 'pending':
+      case 'scheduled':
         return '#FF9800';
-      case 'shipped':
+      case 'in-progress':
         return '#0E7490';
+      case 'pending':
+        return '#6B7280';
+      case 'failed':
+        return '#EF4444';
       default:
         return '#6B7280';
     }
+  };
+
+  const formatDate = (dateString: string) => {
+    if (!dateString) return '';
+    return new Date(dateString).toLocaleDateString();
   };
 
   return (
@@ -228,76 +256,94 @@ export default function OrderDashboardScreen({ navigation }: OrderDashboardScree
           </View>
         </View>
 
-        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        <ScrollView 
+          style={styles.scrollView} 
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={['#0E7490']}
+              tintColor="#0E7490"
+            />
+          }
+        >
           {/* Title Section */}
           <View style={styles.titleSection}>
             <Text style={styles.mainTitle}>Other Dashboard</Text>
-            <Text style={styles.subtitle}>Manage and track your orders</Text>
+            <Text style={styles.subtitle}>Hi, {user?.fullName?.split(' ')[0] || 'User'}! View and track inspections</Text>
           </View>
 
-          {/* Stats Cards */}
-          <View style={styles.statsContainer}>
-            {statCards.map((card, index) => (
-              <View key={index} style={styles.statCard}>
-                <Text style={styles.statLabel}>{card.label}</Text>
-                <Text style={styles.statValue}>{card.value}</Text>
-              </View>
-            ))}
-          </View>
-
-          {/* Action Buttons */}
-          <View style={styles.actionButtonsContainer}>
-            <TouchableOpacity style={styles.createButton}>
-              <Text style={styles.createButtonText}>Create New Order</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.exportButton}>
-              <Text style={styles.exportButtonText}>Export Orders</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Search Section */}
-          <View style={styles.searchSection}>
-            <Text style={styles.searchTitle}>Search Orders</Text>
-            <View style={styles.searchInputContainer}>
-              <Ionicons name="search" size={20} color="#9CA3AF" style={styles.searchIcon} />
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Search by order ID or customer name"
-                placeholderTextColor="#9CA3AF"
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-              />
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#0E7490" />
             </View>
-          </View>
+          ) : (
+            <>
+              {/* Stats Cards */}
+              <View style={styles.statsContainer}>
+                {statCards.map((card, index) => (
+                  <View key={index} style={styles.statCard}>
+                    <Text style={styles.statLabel}>{card.label}</Text>
+                    <Text style={styles.statValue}>{card.value}</Text>
+                  </View>
+                ))}
+              </View>
 
-          {/* Orders List */}
-          <View style={styles.ordersListContainer}>
-            <Text style={styles.ordersTitle}>Recent Orders</Text>
-            {mockOrders.map((order) => (
-              <View key={order.id} style={styles.orderCard}>
-                <View style={styles.orderHeader}>
-                  <View>
-                    <Text style={styles.orderNumber}>{order.orderNumber}</Text>
-                    <Text style={styles.customerName}>{order.customerName}</Text>
-                  </View>
-                  <View
-                    style={[
-                      styles.statusBadge,
-                      { backgroundColor: getStatusColor(order.status) },
-                    ]}
-                  >
-                    <Text style={styles.statusText}>
-                      {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                    </Text>
-                  </View>
-                </View>
-                <View style={styles.orderFooter}>
-                  <Text style={styles.orderDate}>{order.date}</Text>
-                  <Text style={styles.orderAmount}>{order.amount}</Text>
+              {/* Search Section */}
+              <View style={styles.searchSection}>
+                <Text style={styles.searchTitle}>Search Inspections</Text>
+                <View style={styles.searchInputContainer}>
+                  <Ionicons name="search" size={20} color="#9CA3AF" style={styles.searchIcon} />
+                  <TextInput
+                    style={styles.searchInput}
+                    placeholder="Search by inspection ID or property name"
+                    placeholderTextColor="#9CA3AF"
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                  />
                 </View>
               </View>
-            ))}
-          </View>
+
+              {/* Inspections List */}
+              <View style={styles.ordersListContainer}>
+                <Text style={styles.ordersTitle}>Recent Inspections</Text>
+                {inspections.length === 0 ? (
+                  <View style={styles.emptyContainer}>
+                    <Text style={styles.emptyText}>No inspections found</Text>
+                    <Text style={styles.emptySubtext}>Inspections will appear here when scheduled</Text>
+                  </View>
+                ) : (
+                  inspections.map((inspection) => (
+                    <View key={inspection._id} style={styles.orderCard}>
+                      <View style={styles.orderHeader}>
+                        <View>
+                          <Text style={styles.orderNumber}>{inspection.inspectionId || `INS-${inspection._id?.slice(-6).toUpperCase()}`}</Text>
+                          <Text style={styles.customerName}>
+                            {typeof inspection.property === 'object' ? inspection.property?.name : 'Property'}
+                          </Text>
+                        </View>
+                        <View
+                          style={[
+                            styles.statusBadge,
+                            { backgroundColor: getStatusColor(inspection.status || 'pending') },
+                          ]}
+                        >
+                          <Text style={styles.statusText}>
+                            {(inspection.status || 'pending').charAt(0).toUpperCase() + (inspection.status || 'pending').slice(1)}
+                          </Text>
+                        </View>
+                      </View>
+                      <View style={styles.orderFooter}>
+                        <Text style={styles.orderDate}>{formatDate(inspection.scheduledDate || '')}</Text>
+                        <Text style={styles.orderAmount}>{inspection.inspectionType || 'Standard'}</Text>
+                      </View>
+                    </View>
+                  ))
+                )}
+              </View>
+            </>
+          )}
 
           {/* Bottom Spacing */}
           <View style={{ height: 40 }} />
@@ -385,37 +431,6 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: '700',
     color: '#1F2937',
-  },
-  actionButtonsContainer: {
-    paddingHorizontal: 20,
-    gap: 12,
-    marginBottom: 20,
-  },
-  createButton: {
-    backgroundColor: '#84CC16',
-    borderRadius: 8,
-    paddingVertical: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  createButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  exportButton: {
-    backgroundColor: '#FF4D67',
-    borderRadius: 8,
-    paddingVertical: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  exportButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-    textAlign: 'center',
   },
   searchSection: {
     paddingHorizontal: 20,
@@ -531,5 +546,27 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 4,
     elevation: 5,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  emptyContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  emptyText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#6B7280',
+    marginBottom: 4,
+  },
+  emptySubtext: {
+    fontSize: 13,
+    color: '#9CA3AF',
+    textAlign: 'center',
   },
 });
