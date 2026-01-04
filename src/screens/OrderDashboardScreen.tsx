@@ -371,12 +371,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingVertical: 16,
     marginTop: 15,
   },
   headerLogo: {
-    width: 180,
-    height: 50,
+    width: 240,
+    height: 65,
   },
   notificationBadge: {
     flexDirection: 'row',

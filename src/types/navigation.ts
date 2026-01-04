@@ -1,4 +1,4 @@
-import { StackNavigationProp } from '@react-navigation/stack';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 
 export type RootStackParamList = {
@@ -19,8 +19,8 @@ export type RootStackParamList = {
   OrderDashboard: undefined;
 };
 
-export type BoardingScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Boarding'>;
-export type SignInScreenNavigationProp = StackNavigationProp<RootStackParamList, 'SignIn'>;
+export type BoardingScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Boarding'>;
+export type SignInScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'SignIn'>;
 export type SignInScreenRouteProp = RouteProp<RootStackParamList, 'SignIn'>;
-export type SignUpScreenNavigationProp = StackNavigationProp<RootStackParamList, 'SignUp'>;
-export type DashboardScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Dashboard'>;
+export type SignUpScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'SignUp'>;
+export type DashboardScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Dashboard'>;

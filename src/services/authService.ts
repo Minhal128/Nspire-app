@@ -3,8 +3,8 @@
  * Handles user authentication, registration, and session management
  */
 
-import api, { AuthResponse, User } from './api';
-import { storeData, getData, removeData, StorageKeys } from '../utils/storage';
+import api, { AuthResponse, User } from "./api";
+import { storeData, getData, removeData, StorageKeys } from "../utils/storage";
 
 export interface LoginCredentials {
   email: string;
@@ -33,22 +33,22 @@ class AuthService {
    */
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
     try {
-      const response = await api.post<AuthResponse>('/auth/login', credentials);
-      
+      const response = await api.post<AuthResponse>("/auth/login", credentials);
+
       if (response.success && response.token) {
         // Store token and user data
         await storeData(StorageKeys.USER_TOKEN, response.token);
         await storeData(StorageKeys.USER_DATA, response.user);
         await storeData(StorageKeys.USER_TYPE, response.user.role);
-        
+
         if (credentials.rememberMe) {
           await storeData(StorageKeys.REMEMBER_ME, true);
         }
       }
-      
+
       return response;
     } catch (error: any) {
-      throw new Error(error.message || 'Login failed. Please try again.');
+      throw new Error(error.message || "Login failed. Please try again.");
     }
   }
 
@@ -57,18 +57,23 @@ class AuthService {
    */
   async signup(credentials: SignupCredentials): Promise<AuthResponse> {
     try {
-      const response = await api.post<AuthResponse>('/auth/signup', credentials);
-      
+      const response = await api.post<AuthResponse>(
+        "/auth/signup",
+        credentials,
+      );
+
       if (response.success && response.token) {
         // Store token and user data
         await storeData(StorageKeys.USER_TOKEN, response.token);
         await storeData(StorageKeys.USER_DATA, response.user);
         await storeData(StorageKeys.USER_TYPE, response.user.role);
       }
-      
+
       return response;
     } catch (error: any) {
-      throw new Error(error.message || 'Registration failed. Please try again.');
+      throw new Error(
+        error.message || "Registration failed. Please try again.",
+      );
     }
   }
 
@@ -78,10 +83,10 @@ class AuthService {
   async logout(): Promise<void> {
     try {
       // Call logout endpoint (optional - token-based auth doesn't require server-side logout)
-      await api.post('/auth/logout');
+      await api.post("/auth/logout");
     } catch (error) {
       // Ignore errors on logout
-      console.log('Logout API call failed:', error);
+      console.log("Logout API call failed:", error);
     } finally {
       // Clear local storage
       await removeData(StorageKeys.USER_TOKEN);
@@ -95,16 +100,18 @@ class AuthService {
    */
   async getCurrentUser(): Promise<User | null> {
     try {
-      const response = await api.get<{ success: boolean; user: User }>('/auth/me');
-      
+      const response = await api.get<{ success: boolean; user: User }>(
+        "/auth/me",
+      );
+
       if (response.success && response.user) {
         await storeData(StorageKeys.USER_DATA, response.user);
         return response.user;
       }
-      
+
       return null;
     } catch (error) {
-      console.log('Failed to get current user:', error);
+      console.log("Failed to get current user:", error);
       return null;
     }
   }
@@ -148,7 +155,9 @@ class AuthService {
    */
   async verifyToken(): Promise<boolean> {
     try {
-      const response = await api.post<{ success: boolean }>('/auth/verify-token');
+      const response = await api.post<{ success: boolean }>(
+        "/auth/verify-token",
+      );
       return response.success;
     } catch (error) {
       return false;
@@ -162,7 +171,7 @@ class AuthService {
     try {
       const token = await getData(StorageKeys.USER_TOKEN);
       const user = await getData(StorageKeys.USER_DATA);
-      
+
       if (!token) {
         return {
           isAuthenticated: false,
@@ -174,7 +183,7 @@ class AuthService {
 
       // Verify token is still valid
       const isValid = await this.verifyToken();
-      
+
       if (!isValid) {
         await this.logout();
         return {
@@ -206,18 +215,16 @@ class AuthService {
    */
   getDashboardRoute(role: string): string {
     switch (role) {
-      case 'management':
-      case 'supervisor':
-        return 'ManagementDashboard';
-      case 'asset-manager':
-        return 'AssetsManagerDashboard';
-      case 'other':
-      case 'order':
-        return 'OrderDashboard';
-      case 'inspector':
-      case 'property-manager':
+      case "management":
+      case "supervisor":
+        return "ManagementDashboard";
+      case "other":
+      case "order":
+        return "OrderDashboard";
+      case "inspector":
+      case "property-manager":
       default:
-        return 'Dashboard';
+        return "Dashboard";
     }
   }
 }

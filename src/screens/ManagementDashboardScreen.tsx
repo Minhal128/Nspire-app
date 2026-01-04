@@ -54,7 +54,7 @@ export default function ManagementDashboardScreen({ navigation }: ManagementDash
           'You do not have permission to access the Management portal.',
           [{ text: 'OK', onPress: () => {
             authService.logout();
-            navigation.reset({ index: 0, routes: [{ name: 'Boarding' as never }] });
+            navigation.reset({ index: 0, routes: [{ name: 'Boarding' }] });
           }}]
         );
         return;
@@ -84,9 +84,9 @@ export default function ManagementDashboardScreen({ navigation }: ManagementDash
         setInspections(inspectionData);
         
         // Calculate compliance stats
-        const compliant = inspectionData.filter((i: Inspection) => i.status === 'completed' || i.overallScore >= 80).length;
-        const needsAttention = inspectionData.filter((i: Inspection) => i.status === 'in-progress' || (i.overallScore >= 50 && i.overallScore < 80)).length;
-        const nonCompliant = inspectionData.filter((i: Inspection) => i.overallScore < 50).length;
+        const compliant = inspectionData.filter((i: Inspection) => i.status === 'completed' || (i.complianceScore && i.complianceScore >= 80)).length;
+        const needsAttention = inspectionData.filter((i: Inspection) => i.status === 'in-progress' || (i.complianceScore && i.complianceScore >= 50 && i.complianceScore < 80)).length;
+        const nonCompliant = inspectionData.filter((i: Inspection) => i.complianceScore && i.complianceScore < 50).length;
         const total = inspectionData.length || 1;
         
         setComplianceStats({
@@ -122,13 +122,13 @@ export default function ManagementDashboardScreen({ navigation }: ManagementDash
       // Already on Management Dashboard, stay here
       return;
     } else if (screen === 'MyInspections') {
-      navigation.navigate('MyInspections' as never);
+      navigation.navigate('MyInspections');
     } else if (screen === 'Reports') {
-      navigation.navigate('Reports' as never);
+      navigation.navigate('Reports');
     } else if (screen === 'Analytics') {
-      navigation.navigate('Analytics' as never);
+      navigation.navigate('Analytics');
     } else if (screen === 'Settings') {
-      navigation.navigate('Settings' as never);
+      navigation.navigate('Settings');
     }
   };
   
@@ -137,7 +137,7 @@ export default function ManagementDashboardScreen({ navigation }: ManagementDash
     await authService.logout();
     navigation.reset({
       index: 0,
-      routes: [{ name: 'Boarding' as never }],
+      routes: [{ name: 'Boarding' }],
     });
   };
 
@@ -403,7 +403,7 @@ export default function ManagementDashboardScreen({ navigation }: ManagementDash
                   </View>
                   <TouchableOpacity 
                     style={styles.addPropertyButton}
-                    onPress={() => navigation.navigate('AddProperty' as never)}
+                    onPress={() => navigation.navigate('AddProperty')}
                   >
                     <Text style={styles.addPropertyText}>Add Property</Text>
                   </TouchableOpacity>
@@ -419,7 +419,7 @@ export default function ManagementDashboardScreen({ navigation }: ManagementDash
                     <View key={property._id} style={styles.propertyCard}>
                       <Text style={styles.propertyName}>{property.name}</Text>
                       <Text style={styles.propertyLocation}>{property.city}, {property.state}</Text>
-                      <Text style={styles.propertyUnits}>{property.unitCount || 0} Units</Text>
+                      <Text style={styles.propertyUnits}>{property.units || 0} Units</Text>
                       
                       <View style={styles.propertyActions}>
                         <TouchableOpacity 
@@ -440,7 +440,7 @@ export default function ManagementDashboardScreen({ navigation }: ManagementDash
                 )}
 
                 <TouchableOpacity
-                  onPress={() => navigation.navigate('MyInspections' as never)}
+                  onPress={() => navigation.navigate('MyInspections')}
                 >
                   <Text style={styles.viewAllLink}>View All Properties</Text>
                 </TouchableOpacity>
@@ -467,7 +467,7 @@ export default function ManagementDashboardScreen({ navigation }: ManagementDash
                   inspections.slice(0, 2).map((inspection) => (
                     <View key={inspection._id} style={styles.inspectionCard}>
                       <Text style={styles.inspectionProperty}>
-                        {typeof inspection.property === 'object' ? inspection.property.name : 'Property'} / {typeof inspection.unit === 'object' ? `Unit ${inspection.unit.unitNumber}` : 'Unit'}
+                        {typeof inspection.property === 'object' ? inspection.property.name : 'Property'} / {typeof inspection.unit === 'object' && inspection.unit ? `Unit ${(inspection.unit as any).unitNumber || (inspection.unit as any).name || 'Unknown'}` : 'Unit'}
                       </Text>
                       <View style={styles.compliantBadge}>
                         <Ionicons 
@@ -487,7 +487,7 @@ export default function ManagementDashboardScreen({ navigation }: ManagementDash
                 )}
 
                 <TouchableOpacity
-                  onPress={() => navigation.navigate('MyInspections' as never)}
+                  onPress={() => navigation.navigate('MyInspections')}
                 >
                   <Text style={styles.viewAllLink}>View All Inspections</Text>
                 </TouchableOpacity>
@@ -550,7 +550,7 @@ export default function ManagementDashboardScreen({ navigation }: ManagementDash
                   </View>
                 </View>
 
-                <TouchableOpacity onPress={() => navigation.navigate('Reports' as never)}>
+                <TouchableOpacity onPress={() => navigation.navigate('Reports')}>
                   <Text style={styles.viewAllLink}>View Full Report</Text>
                 </TouchableOpacity>
               </View>
@@ -582,12 +582,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingVertical: 16,
     marginTop: 15,
   },
   headerLogo: {
-    width: 180,
-    height: 50,
+    width: 240,
+    height: 65,
   },
   scrollView: {
     flex: 1,

@@ -1,9 +1,21 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, Image, TextInput, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { SignInScreenNavigationProp, SignInScreenRouteProp } from '../types/navigation';
-import { Colors, Spacing, BorderRadius, FontSizes } from '../constants';
-import authService from '../services/authService';
+import React, { useState } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Image,
+  TextInput,
+  TouchableOpacity,
+  Alert,
+  ActivityIndicator,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import {
+  SignInScreenNavigationProp,
+  SignInScreenRouteProp,
+} from "../types/navigation";
+import { Colors, Spacing, BorderRadius, FontSizes } from "../constants";
+import authService from "../services/authService";
 
 interface SignInScreenProps {
   navigation: SignInScreenNavigationProp;
@@ -11,8 +23,8 @@ interface SignInScreenProps {
 }
 
 export default function SignInScreen({ navigation, route }: SignInScreenProps) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
@@ -22,11 +34,11 @@ export default function SignInScreen({ navigation, route }: SignInScreenProps) {
   const handleLogin = async () => {
     // Validate inputs
     if (!email.trim()) {
-      Alert.alert('Error', 'Please enter your email');
+      Alert.alert("Error", "Please enter your email");
       return;
     }
     if (!password.trim()) {
-      Alert.alert('Error', 'Please enter your password');
+      Alert.alert("Error", "Please enter your password");
       return;
     }
 
@@ -34,13 +46,11 @@ export default function SignInScreen({ navigation, route }: SignInScreenProps) {
 
     try {
       // Map userType to role for API
-      let role = 'inspector';
-      if (userType === 'Management') {
-        role = 'management';
-      } else if (userType === 'AssetsManager') {
-        role = 'asset-manager';
-      } else if (userType === 'Other') {
-        role = 'other';
+      let role = "inspector";
+      if (userType === "Management") {
+        role = "management";
+      } else if (userType === "Other") {
+        role = "other";
       }
 
       const response = await authService.login({
@@ -54,27 +64,30 @@ export default function SignInScreen({ navigation, route }: SignInScreenProps) {
         // Verify user role matches the portal they're trying to access
         const userRole = response.user.role;
         const allowedRolesMap: { [key: string]: string[] } = {
-          'Inspector': ['inspector', 'property-manager'],
-          'Management': ['management', 'supervisor', 'admin'],
-          'AssetsManager': ['asset-manager', 'admin'],
-          'Other': ['other', 'order', 'admin'],
+          Inspector: ["inspector", "property-manager"],
+          Management: ["management", "supervisor", "admin"],
+          Other: ["other", "order", "admin"],
         };
 
-        const allowedRoles = allowedRolesMap[userType || 'Inspector'] || ['inspector'];
-        
+        const allowedRoles = allowedRolesMap[userType || "Inspector"] || [
+          "inspector",
+        ];
+
         if (!allowedRoles.includes(userRole)) {
           // Logout and show error
           await authService.logout();
           Alert.alert(
-            'Access Denied',
-            `Your account role (${userRole}) does not have permission to access the ${userType} portal. Please select the correct portal for your account.`
+            "Access Denied",
+            `Your account role (${userRole}) does not have permission to access the ${userType} portal. Please select the correct portal for your account.`,
           );
           return;
         }
 
         // Navigate based on user's actual role from backend
-        const dashboardRoute = authService.getDashboardRoute(response.user.role);
-        
+        const dashboardRoute = authService.getDashboardRoute(
+          response.user.role,
+        );
+
         setTimeout(() => {
           navigation.reset({
             index: 0,
@@ -82,10 +95,13 @@ export default function SignInScreen({ navigation, route }: SignInScreenProps) {
           });
         }, 100);
       } else {
-        Alert.alert('Login Failed', response.message || 'Invalid credentials');
+        Alert.alert("Login Failed", response.message || "Invalid credentials");
       }
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to login. Please try again.');
+      Alert.alert(
+        "Error",
+        error.message || "Failed to login. Please try again.",
+      );
     } finally {
       setLoading(false);
     }
@@ -95,8 +111,8 @@ export default function SignInScreen({ navigation, route }: SignInScreenProps) {
     <View style={styles.container}>
       <View style={styles.content}>
         {/* Logo */}
-        <Image 
-          source={require('../../logo.png')} 
+        <Image
+          source={require("../../logo.png")}
           style={styles.logo}
           resizeMode="contain"
         />
@@ -133,36 +149,36 @@ export default function SignInScreen({ navigation, route }: SignInScreenProps) {
                 secureTextEntry={!showPassword}
                 editable={!loading}
               />
-              <TouchableOpacity 
+              <TouchableOpacity
                 onPress={() => setShowPassword(!showPassword)}
                 style={styles.eyeIcon}
                 disabled={loading}
               >
-                <Ionicons 
-                  name={showPassword ? "eye-outline" : "eye-off-outline"} 
-                  size={24} 
-                  color="#6B7280" 
+                <Ionicons
+                  name={showPassword ? "eye-outline" : "eye-off-outline"}
+                  size={24}
+                  color="#6B7280"
                 />
               </TouchableOpacity>
             </View>
           </View>
 
           {/* Remember Me */}
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.rememberMeContainer}
             onPress={() => setRememberMe(!rememberMe)}
             disabled={loading}
           >
-            <Ionicons 
-              name={rememberMe ? "checkbox" : "square-outline"} 
-              size={24} 
-              color="#0E7490" 
+            <Ionicons
+              name={rememberMe ? "checkbox" : "square-outline"}
+              size={24}
+              color="#0E7490"
             />
             <Text style={styles.rememberMeText}>Remember me</Text>
           </TouchableOpacity>
 
           {/* Log In Button */}
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.loginButton, loading && styles.loginButtonDisabled]}
             onPress={handleLogin}
             disabled={loading}
@@ -180,9 +196,9 @@ export default function SignInScreen({ navigation, route }: SignInScreenProps) {
           </TouchableOpacity>
 
           {/* Sign Up Button */}
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.signUpButton}
-            onPress={() => navigation.navigate('SignUp')}
+            onPress={() => navigation.navigate("SignUp")}
           >
             <Text style={styles.signUpButtonText}>Sign Up</Text>
           </TouchableOpacity>
@@ -206,11 +222,11 @@ export default function SignInScreen({ navigation, route }: SignInScreenProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#7DD3FC',
+    backgroundColor: "#7DD3FC",
   },
   content: {
     flex: 1,
-    alignItems: 'center',
+    alignItems: "center",
     paddingTop: 20,
   },
   logo: {
@@ -219,18 +235,18 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   welcomeCard: {
-    backgroundColor: '#F0F9E8',
+    backgroundColor: "#F0F9E8",
     borderRadius: 30,
     padding: 30,
-    width: '100%',
+    width: "100%",
     maxWidth: 400,
     flex: 1,
   },
   welcomeTitle: {
     fontSize: 32,
-    fontWeight: '700',
-    color: '#0E7490',
-    textAlign: 'center',
+    fontWeight: "700",
+    color: "#0E7490",
+    textAlign: "center",
     marginBottom: 30,
   },
   inputContainer: {
@@ -238,23 +254,23 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#1F2937',
+    fontWeight: "600",
+    color: "#1F2937",
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#D1F2EB',
+    backgroundColor: "#D1F2EB",
     borderRadius: 12,
     paddingVertical: 14,
     paddingHorizontal: 16,
     fontSize: 16,
-    color: '#374151',
+    color: "#374151",
   },
   passwordContainer: {
-    backgroundColor: '#D1F2EB',
+    backgroundColor: "#D1F2EB",
     borderRadius: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingRight: 12,
   },
   passwordInput: {
@@ -262,77 +278,77 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 16,
     fontSize: 16,
-    color: '#374151',
+    color: "#374151",
   },
   eyeIcon: {
     padding: 4,
   },
   loginButton: {
-    backgroundColor: '#0E7490',
+    backgroundColor: "#0E7490",
     borderRadius: 12,
     paddingVertical: 16,
     marginTop: 10,
     marginBottom: 15,
   },
   loginButtonDisabled: {
-    backgroundColor: '#9CA3AF',
+    backgroundColor: "#9CA3AF",
   },
   loginButtonText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 18,
-    fontWeight: '600',
-    textAlign: 'center',
+    fontWeight: "600",
+    textAlign: "center",
   },
   forgotPassword: {
-    alignSelf: 'center',
+    alignSelf: "center",
     marginBottom: 15,
   },
   forgotPasswordText: {
-    color: '#0E7490',
+    color: "#0E7490",
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   signUpButton: {
-    backgroundColor: '#FF4D67',
+    backgroundColor: "#FF4D67",
     borderRadius: 12,
     paddingVertical: 16,
     marginBottom: 20,
   },
   signUpButtonText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 18,
-    fontWeight: '600',
-    textAlign: 'center',
+    fontWeight: "600",
+    textAlign: "center",
   },
   orText: {
     fontSize: 14,
-    color: '#6B7280',
-    textAlign: 'center',
+    color: "#6B7280",
+    textAlign: "center",
     marginBottom: 15,
   },
   socialContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
     gap: 20,
   },
   socialButton: {
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#FFFFFF',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#FFFFFF",
+    justifyContent: "center",
+    alignItems: "center",
     borderWidth: 2,
-    borderColor: '#374151',
+    borderColor: "#374151",
   },
   rememberMeContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 15,
   },
   rememberMeText: {
     marginLeft: 8,
     fontSize: 14,
-    color: '#374151',
+    color: "#374151",
   },
 });

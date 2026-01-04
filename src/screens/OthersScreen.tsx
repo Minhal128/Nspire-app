@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -13,12 +13,12 @@ import {
   RefreshControl,
   ActivityIndicator,
   Alert,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import Sidebar from '../components/Sidebar';
-import { userService, authService } from '../services';
-import { User as ApiUser } from '../services/api';
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import Sidebar from "../components/Sidebar";
+import { userService, authService } from "../services";
+import { User as ApiUser } from "../services/api";
 
 interface OthersScreenProps {
   navigation: NativeStackNavigationProp<any, any>;
@@ -30,13 +30,13 @@ interface User {
   email: string;
   userType: string;
   joinDate: string;
-  status: 'active' | 'inactive';
+  status: "active" | "inactive";
   avatar?: string;
 }
 
 export default function OthersScreen({ navigation }: OthersScreenProps) {
   const [sidebarVisible, setSidebarVisible] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
@@ -45,23 +45,23 @@ export default function OthersScreen({ navigation }: OthersScreenProps) {
     try {
       const response = await userService.getOtherUsers();
       const usersList = response.users || response || [];
-      
+
       // Filter non-inspector users and map to expected format
       const mappedUsers: User[] = usersList
-        .filter((u: ApiUser) => u.role !== 'inspector')
-        .map((u: ApiUser) => ({
-          id: u._id,
-          name: u.fullName || `${u.firstName || ''} ${u.lastName || ''}`.trim() || 'Unknown',
-          email: u.email,
+        .filter((u: any) => u.role !== "inspector")
+        .map((u: any) => ({
+          id: u.id || u._id || 'unknown',
+          name: u.fullName || u.name || 'Unknown',
+          email: u.email || 'unknown@email.com',
           userType: formatUserType(u.role),
-          joinDate: new Date(u.createdAt || Date.now()).toISOString().split('T')[0],
-          status: u.isActive !== false ? 'active' : 'inactive',
+          joinDate: u.lastLogin ? new Date(u.lastLogin).toISOString().split("T")[0] : new Date().toISOString().split("T")[0],
+          status: "active" as const,
         }));
-      
+
       setUsers(mappedUsers);
     } catch (error) {
-      console.error('Error loading users:', error);
-      Alert.alert('Error', 'Failed to load users');
+      console.error("Error loading users:", error);
+      Alert.alert("Error", "Failed to load users");
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -70,18 +70,16 @@ export default function OthersScreen({ navigation }: OthersScreenProps) {
 
   const formatUserType = (role: string) => {
     switch (role) {
-      case 'management':
-        return 'Management';
-      case 'asset-manager':
-        return 'Assets Manager';
-      case 'property-manager':
-        return 'Property Manager';
-      case 'supervisor':
-        return 'Supervisor';
-      case 'admin':
-        return 'Admin';
+      case "management":
+        return "Management";
+      case "property-manager":
+        return "Property Manager";
+      case "supervisor":
+        return "Supervisor";
+      case "admin":
+        return "Admin";
       default:
-        return 'Other';
+        return "Other";
     }
   };
 
@@ -100,11 +98,11 @@ export default function OthersScreen({ navigation }: OthersScreenProps) {
 
   const handleSidebarNavigate = (screen: string) => {
     setSidebarVisible(false);
-    if (screen === 'Dashboard') {
-      navigation.navigate('OrderDashboard' as never);
-    } else if (screen === 'OrderDashboard') {
-      navigation.navigate('OrderDashboard' as never);
-    } else if (screen === 'Others') {
+    if (screen === "Dashboard") {
+      navigation.navigate("OrderDashboard" as never);
+    } else if (screen === "OrderDashboard") {
+      navigation.navigate("OrderDashboard" as never);
+    } else if (screen === "Others") {
       // Already on Others screen
     }
   };
@@ -115,34 +113,32 @@ export default function OthersScreen({ navigation }: OthersScreenProps) {
       setSidebarVisible(false);
       navigation.reset({
         index: 0,
-        routes: [{ name: 'Boarding' as never }],
+        routes: [{ name: "Boarding" as never }],
       });
     } catch (error) {
-      console.error('Error logging out:', error);
+      console.error("Error logging out:", error);
     }
   };
 
   const filteredUsers = users.filter(
     (user) =>
       user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchQuery.toLowerCase())
+      user.email.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   const getUserTypeColor = (userType: string) => {
     switch (userType) {
-      case 'Management':
-        return '#FF9800';
-      case 'Assets Manager':
-        return '#2196F3';
-      case 'Other':
-        return '#9C27B0';
+      case "Management":
+        return "#FF9800";
+      case "Other":
+        return "#9C27B0";
       default:
-        return '#6B7280';
+        return "#6B7280";
     }
   };
 
   const getStatusColor = (status: string) => {
-    return status === 'active' ? '#84CC16' : '#9CA3AF';
+    return status === "active" ? "#84CC16" : "#9CA3AF";
   };
 
   const renderUserCard = ({ item }: { item: User }) => (
@@ -218,24 +214,32 @@ export default function OthersScreen({ navigation }: OthersScreenProps) {
               <Ionicons name="menu" size={28} color="#1F2937" />
             </TouchableOpacity>
             <Image
-              source={require('../../logo.png')}
+              source={require("../../logo.png")}
               style={styles.headerLogo}
               resizeMode="contain"
             />
             <View style={styles.notificationBadge}>
               <TouchableOpacity>
-                <Ionicons name="notifications-outline" size={28} color="#1F2937" />
+                <Ionicons
+                  name="notifications-outline"
+                  size={28}
+                  color="#1F2937"
+                />
               </TouchableOpacity>
               <Text style={styles.orText}>OR</Text>
             </View>
           </View>
         </View>
 
-        <ScrollView 
-          style={styles.scrollView} 
+        <ScrollView
+          style={styles.scrollView}
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#0E7490']} />
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={["#0E7490"]}
+            />
           }
         >
           {loading ? (
@@ -248,14 +252,21 @@ export default function OthersScreen({ navigation }: OthersScreenProps) {
               {/* Title Section */}
               <View style={styles.titleSection}>
                 <Text style={styles.mainTitle}>Other Users</Text>
-                <Text style={styles.subtitle}>Recent users who are not inspectors</Text>
+                <Text style={styles.subtitle}>
+                  Recent users who are not inspectors
+                </Text>
               </View>
 
               {/* Search Section */}
               <View style={styles.searchSection}>
                 <Text style={styles.searchTitle}>Search Users</Text>
                 <View style={styles.searchInputContainer}>
-                  <Ionicons name="search" size={20} color="#9CA3AF" style={styles.searchIcon} />
+                  <Ionicons
+                    name="search"
+                    size={20}
+                    color="#9CA3AF"
+                    style={styles.searchIcon}
+                  />
                   <TextInput
                     style={styles.searchInput}
                     placeholder="Search by name or email"
@@ -271,24 +282,26 @@ export default function OthersScreen({ navigation }: OthersScreenProps) {
                 <Text style={styles.usersTitle}>
                   All Users ({filteredUsers.length})
                 </Text>
-            {filteredUsers.length > 0 ? (
-              <FlatList
-                data={filteredUsers}
-                renderItem={renderUserCard}
-                keyExtractor={(item) => item.id}
-                scrollEnabled={false}
-                ItemSeparatorComponent={() => <View style={styles.separator} />}
-              />
-            ) : (
-              <View style={styles.emptyState}>
-                <Ionicons name="people-outline" size={48} color="#D1D5DB" />
-                <Text style={styles.emptyStateText}>No users found</Text>
+                {filteredUsers.length > 0 ? (
+                  <FlatList
+                    data={filteredUsers}
+                    renderItem={renderUserCard}
+                    keyExtractor={(item) => item.id}
+                    scrollEnabled={false}
+                    ItemSeparatorComponent={() => (
+                      <View style={styles.separator} />
+                    )}
+                  />
+                ) : (
+                  <View style={styles.emptyState}>
+                    <Ionicons name="people-outline" size={48} color="#D1D5DB" />
+                    <Text style={styles.emptyStateText}>No users found</Text>
+                  </View>
+                )}
               </View>
-            )}
-          </View>
 
-          {/* Bottom Spacing */}
-          <View style={{ height: 40 }} />
+              {/* Bottom Spacing */}
+              <View style={{ height: 40 }} />
             </>
           )}
         </ScrollView>
@@ -300,48 +313,48 @@ export default function OthersScreen({ navigation }: OthersScreenProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#E8F4F8',
+    backgroundColor: "#E8F4F8",
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     paddingVertical: 60,
   },
   loadingText: {
     marginTop: 12,
     fontSize: 16,
-    color: '#6B7280',
+    color: "#6B7280",
   },
   headerContainer: {
-    backgroundColor: '#0E7490',
+    backgroundColor: "#0E7490",
     paddingHorizontal: 20,
     paddingTop: 20,
     paddingBottom: 20,
   },
   headerBar: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderRadius: 15,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingVertical: 16,
     marginTop: 15,
   },
   headerLogo: {
-    width: 180,
-    height: 50,
+    width: 240,
+    height: 65,
   },
   notificationBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
   },
   orText: {
     fontSize: 14,
-    fontWeight: '700',
-    color: '#1F2937',
+    fontWeight: "700",
+    color: "#1F2937",
   },
   scrollView: {
     flex: 1,
@@ -353,13 +366,13 @@ const styles = StyleSheet.create({
   },
   mainTitle: {
     fontSize: 28,
-    fontWeight: '700',
-    color: '#1F2937',
+    fontWeight: "700",
+    color: "#1F2937",
     marginBottom: 5,
   },
   subtitle: {
     fontSize: 14,
-    color: '#6B7280',
+    color: "#6B7280",
   },
   searchSection: {
     paddingHorizontal: 20,
@@ -367,17 +380,17 @@ const styles = StyleSheet.create({
   },
   searchTitle: {
     fontSize: 16,
-    fontWeight: '700',
-    color: '#1F2937',
+    fontWeight: "700",
+    color: "#1F2937",
     marginBottom: 10,
   },
   searchInputContainer: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderRadius: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 12,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 4,
@@ -390,7 +403,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 12,
     fontSize: 14,
-    color: '#374151',
+    color: "#374151",
   },
   usersListContainer: {
     paddingHorizontal: 20,
@@ -398,24 +411,24 @@ const styles = StyleSheet.create({
   },
   usersTitle: {
     fontSize: 16,
-    fontWeight: '700',
-    color: '#1F2937',
+    fontWeight: "700",
+    color: "#1F2937",
     marginBottom: 12,
   },
   userCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderRadius: 12,
     padding: 14,
     marginBottom: 10,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 4,
     elevation: 2,
   },
   userCardContent: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    alignItems: "flex-start",
   },
   avatarContainer: {
     marginRight: 12,
@@ -424,28 +437,28 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: '#0E7490',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#0E7490",
+    justifyContent: "center",
+    alignItems: "center",
   },
   avatarText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 20,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   userInfo: {
     flex: 1,
   },
   userNameRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 4,
   },
   userName: {
     fontSize: 15,
-    fontWeight: '700',
-    color: '#1F2937',
+    fontWeight: "700",
+    color: "#1F2937",
   },
   statusBadge: {
     paddingVertical: 4,
@@ -453,18 +466,18 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   statusText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 10,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   userEmail: {
     fontSize: 12,
-    color: '#6B7280',
+    color: "#6B7280",
     marginBottom: 8,
   },
   userMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
   },
   userTypeBadge: {
@@ -473,42 +486,42 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   userTypeText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   joinDate: {
     fontSize: 11,
-    color: '#9CA3AF',
+    color: "#9CA3AF",
   },
   separator: {
     height: 0,
   },
   emptyState: {
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     paddingVertical: 40,
   },
   emptyStateText: {
     fontSize: 16,
-    color: '#9CA3AF',
+    color: "#9CA3AF",
     marginTop: 12,
   },
   modalOverlay: {
     flex: 1,
-    flexDirection: 'row',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    flexDirection: "row",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
   modalBackdrop: {
     flex: 1,
   },
   sidebarContainer: {
     width: 280,
-    height: '100%',
-    backgroundColor: '#FFFFFF',
+    height: "100%",
+    backgroundColor: "#FFFFFF",
     borderRadius: 20,
-    overflow: 'hidden',
-    shadowColor: '#000',
+    overflow: "hidden",
+    shadowColor: "#000",
     shadowOffset: { width: 2, height: 0 },
     shadowOpacity: 0.25,
     shadowRadius: 4,

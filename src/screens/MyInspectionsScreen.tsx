@@ -196,7 +196,7 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
                 setProperties(prev => prev.filter(p => p._id !== selectedProperty._id));
                 Alert.alert('Success', 'Property removed successfully');
               } else {
-                Alert.alert('Error', response.error || 'Failed to remove property');
+                Alert.alert('Error', response.message || 'Failed to remove property');
               }
             } catch (error) {
               Alert.alert('Error', 'Failed to remove property');
@@ -407,10 +407,10 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
                   Property ID: <Text style={styles.propertyId}>{property._id?.slice(-8)?.toUpperCase() || 'N/A'}</Text>
                 </Text>
                 <Text style={styles.propertyDetail}>
-                  No. of Buildings: <Text style={styles.propertyValue}>{property.buildingCount || 0}</Text>
+                  No. of Buildings: <Text style={styles.propertyValue}>{property.buildings || 0}</Text>
                 </Text>
                 <Text style={styles.propertyDetail}>
-                  Units: <Text style={styles.propertyValue}>{property.unitCount || 0}</Text>
+                  Units: <Text style={styles.propertyValue}>{property.units || 0}</Text>
                 </Text>
                 <Text style={styles.propertyDetail}>
                   Address: <Text style={styles.addressLink}>{[property.address, property.city, property.state, property.zipCode].filter(Boolean).join(', ') || 'No address'}</Text>
@@ -456,12 +456,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingVertical: 16,
     marginTop: 15,
   },
   headerLogo: {
-    width: 180,
-    height: 50,
+    width: 240,
+    height: 65,
   },
   scrollView: {
     flex: 1,

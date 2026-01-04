@@ -43,18 +43,24 @@ export default function UnitInspectionScreen({ navigation, route }: UnitInspecti
       if (property?._id) {
         // Try to fetch property details with units from API
         const propertyData = await propertyService.getProperty(property._id);
-        const propertyUnits = propertyData?.units || propertyData?.property?.units || [];
+        const unitCount = propertyData?.property?.units || 0;
         
-        const mappedUnits: Unit[] = propertyUnits.map((unit: any) => ({
-          id: unit._id || unit.id || unit.unitNumber,
-          name: unit.name || `Unit ${unit.unitNumber || unit.id}`,
-          status: unit.complianceStatus || unit.status || 'needs-attention',
+        // Generate units based on unit count
+        const generatedUnits: Unit[] = Array.from({ length: unitCount }, (_, i) => ({
+          id: `${i + 1}`.padStart(3, '0'),
+          name: `Unit ${(i + 1).toString().padStart(3, '0')}`,
+          status: 'needs-attention' as const,
         }));
         
-        setUnits(mappedUnits);
-      } else if (property?.units) {
-        // Use units from route params if available
-        setUnits(property.units);
+        setUnits(generatedUnits);
+      } else if (property?.units && typeof property.units === 'number') {
+        // Generate units from route params unit count
+        const generatedUnits: Unit[] = Array.from({ length: property.units }, (_, i) => ({
+          id: `${i + 1}`.padStart(3, '0'),
+          name: `Unit ${(i + 1).toString().padStart(3, '0')}`,
+          status: 'needs-attention' as const,
+        }));
+        setUnits(generatedUnits);
       } else {
         // Default units if none available
         setUnits([
@@ -289,12 +295,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingVertical: 16,
     marginTop: 15,
   },
   headerLogo: {
-    width: 180,
-    height: 50,
+    width: 240,
+    height: 65,
   },
   scrollView: {
     flex: 1,

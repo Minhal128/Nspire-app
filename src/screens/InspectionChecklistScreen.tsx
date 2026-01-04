@@ -102,6 +102,7 @@ export default function InspectionChecklistScreen({ navigation, route }: Inspect
       const inspectionData = {
         property: property?._id,
         unit: unit?.id,
+        scheduledDate: new Date().toISOString(),
         status: 'in-progress',
         score: complianceScore,
         totalItems,
@@ -134,6 +135,7 @@ export default function InspectionChecklistScreen({ navigation, route }: Inspect
       const inspectionData = {
         property: property?._id,
         unit: unit?.id,
+        scheduledDate: new Date().toISOString(),
         status: 'completed',
         score: complianceScore,
         totalItems,
@@ -365,12 +367,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingVertical: 16,
     marginTop: 15,
   },
   headerLogo: {
-    width: 180,
-    height: 50,
+    width: 240,
+    height: 65,
   },
   scrollView: {
     flex: 1,

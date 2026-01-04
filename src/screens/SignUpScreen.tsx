@@ -1,52 +1,65 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, Image, TextInput, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
-import { SignUpScreenNavigationProp } from '../types/navigation';
-import authService from '../services/authService';
+import React, { useState } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Image,
+  TextInput,
+  TouchableOpacity,
+  ScrollView,
+  Alert,
+  ActivityIndicator,
+} from "react-native";
+import { Picker } from "@react-native-picker/picker";
+import { SignUpScreenNavigationProp } from "../types/navigation";
+import authService from "../services/authService";
 
 interface SignUpScreenProps {
   navigation: SignUpScreenNavigationProp;
 }
 
 export default function SignUpScreen({ navigation }: SignUpScreenProps) {
-  const [email, setEmail] = useState('');
-  const [name, setName] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [loginType, setLoginType] = useState('');
+  const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [loginType, setLoginType] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleCreateAccount = async () => {
     // Validate inputs
     if (!email.trim()) {
-      Alert.alert('Error', 'Please enter your email');
+      Alert.alert("Error", "Please enter your email");
       return;
     }
     if (!name.trim()) {
-      Alert.alert('Error', 'Please enter your full name');
+      Alert.alert("Error", "Please enter your full name");
       return;
     }
     if (!password) {
-      Alert.alert('Error', 'Please enter a password');
+      Alert.alert("Error", "Please enter a password");
       return;
     }
     if (password.length < 8) {
-      Alert.alert('Error', 'Password must be at least 8 characters');
+      Alert.alert("Error", "Password must be at least 8 characters");
       return;
     }
     if (password !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
+      Alert.alert("Error", "Passwords do not match");
       return;
     }
     if (!loginType) {
-      Alert.alert('Error', 'Please select a login type');
+      Alert.alert("Error", "Please select a login type");
       return;
     }
 
     // Check password requirements
     const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/;
     if (!passwordRegex.test(password)) {
-      Alert.alert('Error', 'Password must contain uppercase, lowercase, and number');
+      Alert.alert(
+        "Error",
+        "Password must contain uppercase, lowercase, and number",
+      );
       return;
     }
 
@@ -61,11 +74,13 @@ export default function SignUpScreen({ navigation }: SignUpScreenProps) {
       });
 
       if (response.success) {
-        Alert.alert('Success', 'Account created successfully!', [
+        Alert.alert("Success", "Account created successfully!", [
           {
-            text: 'OK',
+            text: "OK",
             onPress: () => {
-              const dashboardRoute = authService.getDashboardRoute(response.user.role);
+              const dashboardRoute = authService.getDashboardRoute(
+                response.user.role,
+              );
               navigation.reset({
                 index: 0,
                 routes: [{ name: dashboardRoute as any }],
@@ -74,10 +89,16 @@ export default function SignUpScreen({ navigation }: SignUpScreenProps) {
           },
         ]);
       } else {
-        Alert.alert('Registration Failed', response.message || 'Failed to create account');
+        Alert.alert(
+          "Registration Failed",
+          response.message || "Failed to create account",
+        );
       }
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to create account. Please try again.');
+      Alert.alert(
+        "Error",
+        error.message || "Failed to create account. Please try again.",
+      );
     } finally {
       setLoading(false);
     }
@@ -85,14 +106,14 @@ export default function SignUpScreen({ navigation }: SignUpScreenProps) {
 
   return (
     <View style={styles.container}>
-      <ScrollView 
+      <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.content}>
           {/* Logo */}
-          <Image 
-            source={require('../../logo.png')} 
+          <Image
+            source={require("../../logo.png")}
             style={styles.logo}
             resizeMode="contain"
           />
@@ -101,7 +122,7 @@ export default function SignUpScreen({ navigation }: SignUpScreenProps) {
           <View style={styles.registrationCard}>
             <Text style={styles.title}>Registration</Text>
             <Text style={styles.subtitle}>
-              Enter your Email ID and{'\n'}Password to register
+              Enter your Email ID and{"\n"}Password to register
             </Text>
 
             {/* Email Input */}
@@ -168,18 +189,24 @@ export default function SignUpScreen({ navigation }: SignUpScreenProps) {
                 >
                   <Picker.Item label="Select..." value="" />
                   <Picker.Item label="Inspector" value="inspector" />
-                  <Picker.Item label="Property Manager" value="property-manager" />
+                  <Picker.Item
+                    label="Property Manager"
+                    value="property-manager"
+                  />
                   <Picker.Item label="Management" value="management" />
                   <Picker.Item label="Supervisor" value="supervisor" />
-                  <Picker.Item label="Asset Manager" value="asset-manager" />
+
                   <Picker.Item label="Other" value="other" />
                 </Picker>
               </View>
             </View>
 
             {/* Create Account Button */}
-            <TouchableOpacity 
-              style={[styles.createButton, loading && styles.createButtonDisabled]}
+            <TouchableOpacity
+              style={[
+                styles.createButton,
+                loading && styles.createButtonDisabled,
+              ]}
               onPress={handleCreateAccount}
               disabled={loading}
             >
@@ -192,10 +219,12 @@ export default function SignUpScreen({ navigation }: SignUpScreenProps) {
 
             {/* Sign In Link */}
             <View style={styles.signInContainer}>
-              <TouchableOpacity onPress={() => navigation.navigate('SignIn', {})}>
+              <TouchableOpacity
+                onPress={() => navigation.navigate("SignIn", {})}
+              >
                 <Text style={styles.signInText}>
-                  <Text style={styles.signInLink}>Sign In?</Text>
-                  {' '}if already registered
+                  <Text style={styles.signInLink}>Sign In?</Text> if already
+                  registered
                 </Text>
               </TouchableOpacity>
             </View>
@@ -209,14 +238,14 @@ export default function SignUpScreen({ navigation }: SignUpScreenProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#7DD3FC',
+    backgroundColor: "#7DD3FC",
   },
   scrollContent: {
     flexGrow: 1,
   },
   content: {
     flex: 1,
-    alignItems: 'center',
+    alignItems: "center",
     paddingTop: 20,
   },
   logo: {
@@ -225,23 +254,23 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   registrationCard: {
-    backgroundColor: '#F0F9E8',
+    backgroundColor: "#F0F9E8",
     borderRadius: 30,
     padding: 30,
-    width: '100%',
+    width: "100%",
     maxWidth: 400,
   },
   title: {
     fontSize: 32,
-    fontWeight: '700',
-    color: '#0E7490',
-    textAlign: 'center',
+    fontWeight: "700",
+    color: "#0E7490",
+    textAlign: "center",
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 14,
-    color: '#6B7280',
-    textAlign: 'center',
+    color: "#6B7280",
+    textAlign: "center",
     marginBottom: 25,
     lineHeight: 20,
   },
@@ -250,54 +279,54 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#1F2937',
+    fontWeight: "600",
+    color: "#1F2937",
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#D1F2EB',
+    backgroundColor: "#D1F2EB",
     borderRadius: 12,
     paddingVertical: 14,
     paddingHorizontal: 16,
     fontSize: 16,
-    color: '#374151',
+    color: "#374151",
   },
   pickerContainer: {
-    backgroundColor: '#D1F2EB',
+    backgroundColor: "#D1F2EB",
     borderRadius: 12,
     minHeight: 55,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   picker: {
     height: 55,
-    color: '#374151',
+    color: "#374151",
     paddingVertical: 8,
   },
   createButton: {
-    backgroundColor: '#0E7490',
+    backgroundColor: "#0E7490",
     borderRadius: 12,
     paddingVertical: 16,
     marginTop: 10,
     marginBottom: 15,
   },
   createButtonDisabled: {
-    backgroundColor: '#9CA3AF',
+    backgroundColor: "#9CA3AF",
   },
   createButtonText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 18,
-    fontWeight: '600',
-    textAlign: 'center',
+    fontWeight: "600",
+    textAlign: "center",
   },
   signInContainer: {
-    alignItems: 'center',
+    alignItems: "center",
   },
   signInText: {
     fontSize: 14,
-    color: '#374151',
+    color: "#374151",
   },
   signInLink: {
-    color: '#0E7490',
-    fontWeight: '600',
+    color: "#0E7490",
+    fontWeight: "600",
   },
 });

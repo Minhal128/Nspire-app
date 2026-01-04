@@ -36,6 +36,12 @@
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE",
         "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.INTERNET",
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.ACCESS_COARSE_LOCATION"
       ],
       "gradleProperties": {
@@ -62,8 +68,12 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "09cadeaf-d356-4a0a-b962-83166e56327a"
+        "projectId": "c2342250-892c-462f-a3ab-a26dbafdff3c"
       }
+    },
+    "owner": "minhal128",
+    "updates": {
+      "url": "https://u.expo.dev/c2342250-892c-462f-a3ab-a26dbafdff3c"
     }
   }
 }

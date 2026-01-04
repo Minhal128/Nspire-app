@@ -60,3 +60,11 @@ export type {
   ChangePasswordData, 
   NotificationSettings 
 } from './userService';
+
+export { default as locationService } from './locationService';
+export type { 
+  CountryOption, 
+  StateOption, 
+  CityOption, 
+  LocationStats 
+} from './locationService';

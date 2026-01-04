@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -14,8 +14,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
-import { propertyService } from '../services';
-import { US_STATES } from '../constants/usStates';
+import { propertyService, locationService, CountryOption, StateOption, CityOption } from '../services';
 
 interface AddPropertyScreenProps {
   navigation: any;
@@ -26,27 +25,76 @@ export default function AddPropertyScreen({ navigation }: AddPropertyScreenProps
   const [propertyName, setPropertyName] = useState('');
   const [numberOfBuildings, setNumberOfBuildings] = useState('');
   const [numberOfUnits, setNumberOfUnits] = useState('');
-  const [state, setState] = useState('');
+  const [selectedCountry, setSelectedCountry] = useState('');
+  const [selectedState, setSelectedState] = useState('');
+  const [selectedCity, setSelectedCity] = useState('');
   const [address, setAddress] = useState('');
-  const [city, setCity] = useState('');
   const [postalCode, setPostalCode] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Location data
+  const [countries, setCountries] = useState<CountryOption[]>([]);
+  const [states, setStates] = useState<StateOption[]>([]);
+  const [cities, setCities] = useState<CityOption[]>([]);
+  const [loadingStates, setLoadingStates] = useState(false);
+  const [loadingCities, setLoadingCities] = useState(false);
+
+  // Initialize countries on component mount
+  useEffect(() => {
+    const allCountries = locationService.getAllCountries();
+    setCountries(allCountries);
+  }, []);
+
+  // Load states when country changes
+  useEffect(() => {
+    if (selectedCountry) {
+      setLoadingStates(true);
+      setSelectedState('');
+      setSelectedCity('');
+      setCities([]);
+      
+      const countryStates = locationService.getStatesByCountry(selectedCountry);
+      setStates(countryStates);
+      setLoadingStates(false);
+    } else {
+      setStates([]);
+      setCities([]);
+    }
+  }, [selectedCountry]);
+
+  // Load cities when state changes
+  useEffect(() => {
+    if (selectedCountry && selectedState) {
+      setLoadingCities(true);
+      setSelectedCity('');
+      
+      const stateCities = locationService.getCitiesByState(selectedCountry, selectedState);
+      setCities(stateCities);
+      setLoadingCities(false);
+    } else {
+      setCities([]);
+    }
+  }, [selectedCountry, selectedState]);
 
   const validateForm = () => {
     if (!propertyName.trim()) {
       Alert.alert('Validation Error', 'Property name is required');
       return false;
     }
-    if (!state) {
-      Alert.alert('Validation Error', 'State is required');
+    if (!selectedCountry) {
+      Alert.alert('Validation Error', 'Country is required');
+      return false;
+    }
+    if (!selectedState) {
+      Alert.alert('Validation Error', 'State/Province is required');
+      return false;
+    }
+    if (!selectedCity) {
+      Alert.alert('Validation Error', 'City is required');
       return false;
     }
     if (!address.trim()) {
       Alert.alert('Validation Error', 'Address is required');
-      return false;
-    }
-    if (!city.trim()) {
-      Alert.alert('Validation Error', 'City is required');
       return false;
     }
     if (!postalCode.trim()) {
@@ -64,12 +112,19 @@ export default function AddPropertyScreen({ navigation }: AddPropertyScreenProps
       // Generate property ID if not provided
       const generatedPropertyId = propertyId.trim() || `PROP-${Date.now()}`;
       
+      // Get full location names for storage
+      const countryData = locationService.getCountryByCode(selectedCountry);
+      const stateData = locationService.getStateByCode(selectedCountry, selectedState);
+      
       const propertyData = {
         propertyId: generatedPropertyId,
         name: propertyName.trim(),
         address: address.trim(),
-        city: city.trim(),
-        state: state,
+        city: selectedCity,
+        state: selectedState,
+        country: selectedCountry,
+        countryName: countryData?.name || selectedCountry,
+        stateName: stateData?.name || selectedState,
         zipCode: postalCode.trim(),
         buildings: parseInt(numberOfBuildings) || 1,
         units: parseInt(numberOfUnits) || 1,
@@ -105,7 +160,12 @@ export default function AddPropertyScreen({ navigation }: AddPropertyScreenProps
           <Ionicons name="arrow-back" size={24} color="#1F2937" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Add Property</Text>
-        <View style={styles.placeholder} />
+        <TouchableOpacity
+          onPress={() => navigation.navigate('LocationStats')}
+          style={styles.statsButton}
+        >
+          <Ionicons name="stats-chart" size={20} color="#0E7490" />
+        </TouchableOpacity>
       </View>
 
       <KeyboardAvoidingView 
@@ -119,6 +179,14 @@ export default function AddPropertyScreen({ navigation }: AddPropertyScreenProps
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.formContainer}>
+            
+            {/* Info Banner */}
+            <View style={styles.infoBanner}>
+              <Ionicons name="information-circle" size={20} color="#0E7490" />
+              <Text style={styles.infoBannerText}>
+                Inspector Portal supports: US, Canada, UK & Australia
+              </Text>
+            </View>
 
             {/* Property ID (Optional) */}
             <View style={styles.inputGroup}>
@@ -170,21 +238,53 @@ export default function AddPropertyScreen({ navigation }: AddPropertyScreenProps
               />
             </View>
 
-            {/* State */}
+            {/* Country */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>State</Text>
+              <Text style={styles.label}>Country</Text>
               <View style={styles.pickerContainer}>
                 <Picker
-                  selectedValue={state}
-                  onValueChange={(itemValue: string) => setState(itemValue)}
+                  selectedValue={selectedCountry}
+                  onValueChange={(itemValue: string) => setSelectedCountry(itemValue)}
                   style={styles.picker}
                 >
-                  <Picker.Item label="Select State" value="" color="#6B7280" />
-                  {US_STATES.map((stateItem) => (
+                  <Picker.Item label="Select Country" value="" color="#6B7280" />
+                  {countries.map((country) => (
                     <Picker.Item 
-                      key={stateItem.value} 
-                      label={stateItem.label} 
-                      value={stateItem.value} 
+                      key={country.isoCode} 
+                      label={country.label} 
+                      value={country.isoCode} 
+                    />
+                  ))}
+                </Picker>
+                <Ionicons 
+                  name="chevron-down" 
+                  size={18} 
+                  color="#6B7280" 
+                  style={styles.pickerIcon}
+                />
+              </View>
+            </View>
+
+            {/* State/Province */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>State/Province</Text>
+              <View style={styles.pickerContainer}>
+                <Picker
+                  selectedValue={selectedState}
+                  onValueChange={(itemValue: string) => setSelectedState(itemValue)}
+                  style={styles.picker}
+                  enabled={states.length > 0 && !loadingStates}
+                >
+                  <Picker.Item 
+                    label={loadingStates ? "Loading states..." : states.length === 0 ? "Select country first" : "Select State/Province"} 
+                    value="" 
+                    color="#6B7280" 
+                  />
+                  {states.map((state) => (
+                    <Picker.Item 
+                      key={state.isoCode} 
+                      label={state.label} 
+                      value={state.isoCode} 
                     />
                   ))}
                 </Picker>
@@ -212,14 +312,34 @@ export default function AddPropertyScreen({ navigation }: AddPropertyScreenProps
             {/* City (Area) */}
             <View style={styles.inputGroup}>
               <Text style={styles.label}>City (Area)</Text>
-              <TextInput
-              style={styles.input}
-              placeholder="Enter your City"
-              placeholderTextColor="#6B7280"
-              value={city}
-              onChangeText={setCity}
-            />
-          </View>
+              <View style={styles.pickerContainer}>
+                <Picker
+                  selectedValue={selectedCity}
+                  onValueChange={(itemValue: string) => setSelectedCity(itemValue)}
+                  style={styles.picker}
+                  enabled={cities.length > 0 && !loadingCities}
+                >
+                  <Picker.Item 
+                    label={loadingCities ? "Loading cities..." : cities.length === 0 ? "Select state first" : "Select City"} 
+                    value="" 
+                    color="#6B7280" 
+                  />
+                  {cities.map((city, index) => (
+                    <Picker.Item 
+                      key={`${city.value}-${index}`} 
+                      label={city.label} 
+                      value={city.value} 
+                    />
+                  ))}
+                </Picker>
+                <Ionicons 
+                  name="chevron-down" 
+                  size={18} 
+                  color="#6B7280" 
+                  style={styles.pickerIcon}
+                />
+              </View>
+            </View>
 
           {/* Postal Code */}
           <View style={styles.inputGroup}>
@@ -285,6 +405,14 @@ const styles = StyleSheet.create({
   placeholder: {
     width: 40,
   },
+  statsButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F0F9FF',
+    borderRadius: 8,
+  },
   scrollView: {
     flex: 1,
   },
@@ -298,6 +426,22 @@ const styles = StyleSheet.create({
     padding: 24,
     width: '100%',
     maxWidth: 500,
+  },
+  infoBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0F9FF',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 20,
+    borderLeftWidth: 4,
+    borderLeftColor: '#0E7490',
+  },
+  infoBannerText: {
+    fontSize: 13,
+    color: '#0E7490',
+    marginLeft: 8,
+    fontWeight: '500',
   },
   inputGroup: {
     marginBottom: 18,
