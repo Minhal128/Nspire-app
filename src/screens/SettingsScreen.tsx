@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
   Platform,
   ActionSheetIOS,
+  Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
@@ -335,60 +336,6 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
             />
           </View>
         </TouchableOpacity>
-      </Modal>
-
-      {/* iOS Picker Modal */}
-      <Modal
-        visible={pickerModalVisible}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setPickerModalVisible(false)}
-      >
-        <View style={styles.pickerModalOverlay}>
-          <Pressable
-            style={StyleSheet.absoluteFill}
-            onPress={() => setPickerModalVisible(false)}
-          />
-          <View style={styles.pickerModalContent}>
-            <View style={styles.pickerHeader}>
-              <TouchableOpacity
-                onPress={() => setPickerModalVisible(false)}
-                style={styles.doneButton}
-              >
-                <Text style={styles.doneButtonText}>Done</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={styles.pickerWrapper}>
-              <Picker
-                selectedValue={
-                  pickerType === 'language' ? language :
-                    timezone
-                }
-                onValueChange={(itemValue) => {
-                  if (pickerType === 'language') setLanguage(itemValue);
-                  else if (pickerType === 'timezone') setTimezone(itemValue);
-                }}
-                style={styles.iosPicker}
-                itemStyle={{ fontSize: 18, height: 50, color: 'black' }}
-              >
-                {pickerType === 'language' && (
-                  <>
-                    <Picker.Item label="English US" value="English US" color="black" />
-                    <Picker.Item label="Spanish" value="Spanish" color="black" />
-                    <Picker.Item label="French" value="French" color="black" />
-                  </>
-                )}
-                {pickerType === 'timezone' && (
-                  <>
-                    <Picker.Item label="GMT +05:00" value="GMT +05:00" color="black" />
-                    <Picker.Item label="GMT +00:00" value="GMT +00:00" color="black" />
-                    <Picker.Item label="GMT -05:00" value="GMT -05:00" color="black" />
-                  </>
-                )}
-              </Picker>
-            </View>
-          </View>
-        </View>
       </Modal>
 
       <SafeAreaView style={styles.container}>
@@ -1283,32 +1230,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  pickerModalOverlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  pickerModalContent: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingBottom: 20,
-  },
-  pickerHeader: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
-  doneButton: {
-    padding: 4,
-  },
-  doneButtonText: {
-    fontSize: 16,
-    color: '#0E7490',
-    fontWeight: '600',
-  },
   iosPickerButton: {
     height: 55,
     justifyContent: 'center',
@@ -1317,15 +1238,5 @@ const styles = StyleSheet.create({
   iosPickerText: {
     fontSize: 14,
     color: '#374151',
-  },
-  pickerWrapper: {
-    height: 250,
-    justifyContent: 'center',
-    paddingVertical: 10,
-  },
-  iosPicker: {
-    height: 250,
-    width: '100%',
-    backgroundColor: '#FFFFFF',
   },
 });

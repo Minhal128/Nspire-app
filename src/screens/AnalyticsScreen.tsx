@@ -7,18 +7,18 @@ import {
   SafeAreaView,
   ScrollView,
   Image,
-  Modal,
   RefreshControl,
   ActivityIndicator,
   Alert,
   Platform,
-  Pressable,
+  Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import Sidebar from '../components/Sidebar';
 import { inspectionService, propertyService, authService } from '../services';
 import { Property, Inspection } from '../services/api';
+import { showIOSActionSheet, DATE_RANGE_OPTIONS } from '../utils/iosPickerUtils';
 
 interface AnalyticsScreenProps {
   navigation: any;
@@ -53,9 +53,27 @@ export default function AnalyticsScreen({ navigation, onMenuPress }: AnalyticsSc
   });
   const [user, setUser] = useState<any>(null);
 
-  // iOS Picker State
-  const [pickerModalVisible, setPickerModalVisible] = useState(false);
-  const [pickerType, setPickerType] = useState<'property' | 'period' | null>(null);
+  // iOS Picker functions using ActionSheetIOS
+  const showPropertyPicker = () => {
+    const propertyOptions = [
+      { label: 'All Properties', value: 'all' },
+      ...properties.map(p => ({ label: p.name, value: p._id }))
+    ];
+    showIOSActionSheet('Select Property', propertyOptions, setSelectedProperty);
+  };
+
+  const showPeriodPicker = () => {
+    showIOSActionSheet('Select Time Period', DATE_RANGE_OPTIONS, setSelectedPeriod);
+  };
+
+  // Callback functions for ActionSheetIOS
+  const setSelectedProperty = (value: string) => {
+    setProperty(value === 'all' ? '' : value);
+  };
+
+  const setSelectedPeriod = (value: string) => {
+    setTimePeriod(value);
+  };
 
   const loadData = useCallback(async () => {
     try {
@@ -208,62 +226,6 @@ export default function AnalyticsScreen({ navigation, onMenuPress }: AnalyticsSc
         </TouchableOpacity>
       </Modal>
 
-      {/* iOS Picker Modal */}
-      <Modal
-        visible={pickerModalVisible}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setPickerModalVisible(false)}
-      >
-        <View style={styles.pickerModalOverlay}>
-          <Pressable
-            style={StyleSheet.absoluteFill}
-            onPress={() => setPickerModalVisible(false)}
-          />
-          <View style={styles.pickerModalContent}>
-            <View style={styles.pickerHeader}>
-              <TouchableOpacity
-                onPress={() => setPickerModalVisible(false)}
-                style={styles.doneButton}
-              >
-                <Text style={styles.doneButtonText}>Done</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={styles.pickerWrapper}>
-              <Picker
-                selectedValue={
-                  pickerType === 'property' ? property :
-                    timePeriod
-                }
-                onValueChange={(itemValue) => {
-                  if (pickerType === 'property') setProperty(itemValue);
-                  else if (pickerType === 'period') setTimePeriod(itemValue);
-                }}
-                style={styles.iosPicker}
-                itemStyle={{ fontSize: 18, height: 50, color: 'black' }}
-              >
-                {pickerType === 'property' && (
-                  <>
-                    <Picker.Item label="All Properties" value="" color="black" />
-                    {properties.map((p) => (
-                      <Picker.Item key={p._id} label={p.name} value={p._id} color="black" />
-                    ))}
-                  </>
-                )}
-                {pickerType === 'period' && (
-                  <>
-                    <Picker.Item label="Time Period" value="" color="black" />
-                    <Picker.Item label="Last 30 Days" value="30days" color="black" />
-                    <Picker.Item label="Last 90 Days" value="90days" color="black" />
-                    <Picker.Item label="Last Year" value="year" color="black" />
-                  </>
-                )}
-              </Picker>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
       <SafeAreaView style={styles.container}>
         {/* Header with White Bar */}
         <View style={styles.headerContainer}>
@@ -307,10 +269,7 @@ export default function AnalyticsScreen({ navigation, onMenuPress }: AnalyticsSc
                   {Platform.OS === 'ios' ? (
                     <TouchableOpacity
                       style={styles.iosPickerButton}
-                      onPress={() => {
-                        setPickerType('property');
-                        setPickerModalVisible(true);
-                      }}
+                      onPress={showPropertyPicker}
                     >
                       <Text style={[styles.iosPickerText, !property && { color: '#9CA3AF' }]}>
                         {property ? properties.find(p => p._id === property)?.name || property : "All Properties"}
@@ -342,10 +301,7 @@ export default function AnalyticsScreen({ navigation, onMenuPress }: AnalyticsSc
                   {Platform.OS === 'ios' ? (
                     <TouchableOpacity
                       style={styles.iosPickerButton}
-                      onPress={() => {
-                        setPickerType('period');
-                        setPickerModalVisible(true);
-                      }}
+                      onPress={showPeriodPicker}
                     >
                       <Text style={[styles.iosPickerText, !timePeriod && { color: '#9CA3AF' }]}>
                         {timePeriod === '30days' ? 'Last 30 Days' : timePeriod === '90days' ? 'Last 90 Days' : timePeriod === 'year' ? 'Last Year' : "Time Period"}
@@ -992,32 +948,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  pickerModalOverlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  pickerModalContent: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingBottom: 20,
-  },
-  pickerHeader: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
-  doneButton: {
-    padding: 4,
-  },
-  doneButtonText: {
-    fontSize: 16,
-    color: '#0E7490',
-    fontWeight: '600',
-  },
   iosPickerButton: {
     height: 55,
     justifyContent: 'center',
@@ -1026,15 +956,5 @@ const styles = StyleSheet.create({
   iosPickerText: {
     fontSize: 14,
     color: '#374151',
-  },
-  pickerWrapper: {
-    height: 250,
-    justifyContent: 'center',
-    paddingVertical: 10,
-  },
-  iosPicker: {
-    height: 250,
-    width: '100%',
-    backgroundColor: '#FFFFFF',
   },
 });

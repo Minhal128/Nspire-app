@@ -181,6 +181,12 @@ export const PROPERTY_TYPE_OPTIONS: PickerOption[] = [
   { label: 'Office', value: 'office' },
 ];
 
+export const UNIT_SELECTION_OPTIONS: PickerOption[] = [
+  { label: 'Random Select Unit (Max 32 units)', value: 'random_32' },
+  { label: 'Select unit 50%', value: 'select_50' },
+  { label: 'Select unit 100%', value: 'select_100' },
+];
+
 // Helper function to get state options by country
 export const getStateOptionsByCountry = (countryCode: string): PickerOption[] => {
   switch (countryCode) {

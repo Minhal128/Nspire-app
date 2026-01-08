@@ -21,7 +21,7 @@ import Sidebar from "../components/Sidebar";
 import { propertyService, authService, locationService, CityOption } from "../services";
 import { Property as ApiProperty, User } from "../services/api";
 import { US_STATES } from "../constants/usStates";
-import { showIOSActionSheet, US_STATE_OPTIONS } from '../utils/iosPickerUtils';
+import { showIOSActionSheet, US_STATE_OPTIONS, UNIT_SELECTION_OPTIONS } from '../utils/iosPickerUtils';
 
 interface DashboardScreenProps {
   navigation: DashboardScreenNavigationProp;
@@ -68,6 +68,10 @@ export default function DashboardScreen({
     if (loadingCities || cities.length === 0) return;
     const cityOptions = cities.map(c => ({ label: c.label, value: c.value }));
     showIOSActionSheet('Select City', cityOptions, setCity);
+  };
+
+  const showUnitPicker = () => {
+    showIOSActionSheet('Select Unit Option', UNIT_SELECTION_OPTIONS, setSelectedUnitOption);
   };
 
   // Load user and properties on mount
@@ -365,34 +369,51 @@ export default function DashboardScreen({
                 </Text>
 
                 <View style={styles.unitPickerContainer}>
-                  <Picker
-                    selectedValue={selectedUnitOption}
-                    onValueChange={(itemValue: string) =>
-                      setSelectedUnitOption(itemValue)
-                    }
-                    style={styles.unitPicker}
-                  >
-                    <Picker.Item
-                      label="Select an option"
-                      value=""
-                      color="#9CA3AF"
-                    />
-                    <Picker.Item
-                      label="Random Select Unit (Max 32 units)"
-                      value="random_32"
-                      color="#1F2937"
-                    />
-                    <Picker.Item
-                      label="Select unit 50%"
-                      value="select_50"
-                      color="#1F2937"
-                    />
-                    <Picker.Item
-                      label="Select unit 100%"
-                      value="select_100"
-                      color="#1F2937"
-                    />
-                  </Picker>
+                  {Platform.OS === 'ios' ? (
+                    <TouchableOpacity
+                      style={styles.iosPickerButton}
+                      onPress={showUnitPicker}
+                    >
+                      <Text style={[styles.iosPickerText, !selectedUnitOption && { color: '#9CA3AF' }]}>
+                        {selectedUnitOption ? UNIT_SELECTION_OPTIONS.find(opt => opt.value === selectedUnitOption)?.label || selectedUnitOption : "Select an option"}
+                      </Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <Picker
+                      selectedValue={selectedUnitOption}
+                      onValueChange={(itemValue: string) =>
+                        setSelectedUnitOption(itemValue)
+                      }
+                      style={styles.unitPicker}
+                    >
+                      <Picker.Item
+                        label="Select an option"
+                        value=""
+                        color="#9CA3AF"
+                      />
+                      <Picker.Item
+                        label="Random Select Unit (Max 32 units)"
+                        value="random_32"
+                        color="#1F2937"
+                      />
+                      <Picker.Item
+                        label="Select unit 50%"
+                        value="select_50"
+                        color="#1F2937"
+                      />
+                      <Picker.Item
+                        label="Select unit 100%"
+                        value="select_100"
+                        color="#1F2937"
+                      />
+                    </Picker>
+                  )}
+                  <Ionicons
+                    name="chevron-down"
+                    size={18}
+                    color="#6B7280"
+                    style={styles.pickerIcon}
+                  />
                 </View>
 
                 {selectedUnitOption !== "" && (
