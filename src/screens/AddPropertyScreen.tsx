@@ -161,74 +161,75 @@ export default function AddPropertyScreen({ navigation }: AddPropertyScreenProps
       <Modal
         visible={pickerModalVisible}
         animationType="slide"
-        transparent={true}
+        transparent={false}
         onRequestClose={() => setPickerModalVisible(false)}
       >
-        <View style={styles.pickerModalOverlay}>
-          <Pressable
-            style={StyleSheet.absoluteFill}
-            onPress={() => setPickerModalVisible(false)}
-          />
-          <View style={styles.pickerModalContent}>
-            <View style={styles.pickerHeader}>
-              <TouchableOpacity
-                onPress={() => setPickerModalVisible(false)}
-                style={styles.doneButton}
-              >
-                <Text style={styles.doneButtonText}>Done</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={styles.pickerWrapper}>
-              <Picker
-                selectedValue={
-                  pickerType === 'country' ? selectedCountry :
-                    pickerType === 'state' ? selectedState :
-                      selectedCity
-                }
-                onValueChange={(itemValue) => {
-                  if (pickerType === 'country') setSelectedCountry(itemValue);
-                  else if (pickerType === 'state') setSelectedState(itemValue);
-                  else if (pickerType === 'city') setSelectedCity(itemValue);
-                }}
-                style={{ height: 200 }}
-                itemStyle={{ fontSize: 20, height: 120, color: '#000000' }}
-              >
-                {pickerType === 'country' && (
-                  <>
-                    <Picker.Item label="Select Country" value="" color="#6B7280" />
-                    {countries.map((country) => (
-                      <Picker.Item key={country.isoCode} label={country.label} value={country.isoCode} />
-                    ))}
-                  </>
-                )}
-                {pickerType === 'state' && (
-                  <>
-                    <Picker.Item
-                      label={loadingStates ? "Loading states..." : states.length === 0 ? "Select country first" : "Select State/Province"}
-                      value=""
-                      color="#6B7280"
-                    />
-                    {states.map((state) => (
-                      <Picker.Item key={state.isoCode} label={state.label} value={state.isoCode} />
-                    ))}
-                  </>
-                )}
-                {pickerType === 'city' && (
-                  <>
-                    <Picker.Item
-                      label={loadingCities ? "Loading cities..." : cities.length === 0 ? "Select state first" : "Select City"}
-                      value=""
-                      color="#6B7280"
-                    />
-                    {cities.map((city, index) => (
-                      <Picker.Item key={`${city.value}-${index}`} label={city.label} value={city.value} />
-                    ))}
-                  </>
-                )}
-              </Picker>
-            </View>
+        <SafeAreaView style={styles.pickerModalContainer}>
+          <View style={styles.pickerModalHeader}>
+            <TouchableOpacity
+              onPress={() => setPickerModalVisible(false)}
+              style={styles.pickerCancelButton}
+            >
+              <Text style={styles.pickerCancelText}>Cancel</Text>
+            </TouchableOpacity>
+            <Text style={styles.pickerModalTitle}>
+              {pickerType === 'country' ? 'Select Country' : 
+               pickerType === 'state' ? 'Select State/Province' : 'Select City'}
+            </Text>
+            <TouchableOpacity
+              onPress={() => setPickerModalVisible(false)}
+              style={styles.pickerDoneButton}
+            >
+              <Text style={styles.pickerDoneText}>Done</Text>
+            </TouchableOpacity>
           </View>
-        </View>
+          <View style={styles.pickerContainer}>
+            <Picker
+              selectedValue={
+                pickerType === 'country' ? selectedCountry :
+                  pickerType === 'state' ? selectedState :
+                    selectedCity
+              }
+              onValueChange={(itemValue) => {
+                if (pickerType === 'country') setSelectedCountry(itemValue);
+                else if (pickerType === 'state') setSelectedState(itemValue);
+                else if (pickerType === 'city') setSelectedCity(itemValue);
+              }}
+              style={styles.iosPickerFull}
+            >
+              {pickerType === 'country' && (
+                <>
+                  <Picker.Item label="Select Country" value="" />
+                  {countries.map((country) => (
+                    <Picker.Item key={country.isoCode} label={country.label} value={country.isoCode} />
+                  ))}
+                </>
+              )}
+              {pickerType === 'state' && (
+                <>
+                  <Picker.Item
+                    label={loadingStates ? "Loading states..." : states.length === 0 ? "Select country first" : "Select State/Province"}
+                    value=""
+                  />
+                  {states.map((state) => (
+                    <Picker.Item key={state.isoCode} label={state.label} value={state.isoCode} />
+                  ))}
+                </>
+              )}
+              {pickerType === 'city' && (
+                <>
+                  <Picker.Item
+                    label={loadingCities ? "Loading cities..." : cities.length === 0 ? "Select state first" : "Select City"}
+                    value=""
+                  />
+                  {cities.map((city, index) => (
+                    <Picker.Item key={`${city.value}-${index}`} label={city.label} value={city.value} />
+                  ))}
+                </>
+              )}
+            </Picker>
+          </View>
+        </SafeAreaView>
       </Modal>
 
       <SafeAreaView style={styles.container}>
@@ -626,48 +627,53 @@ const styles = StyleSheet.create({
   submitButtonDisabled: {
     backgroundColor: '#9CA3AF',
   },
-  pickerModalOverlay: {
+  pickerModalContainer: {
     flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: '#F3F4F6',
   },
-  pickerModalContent: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingBottom: 20,
-  },
-  pickerHeader: {
+  pickerModalHeader: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
-    padding: 16,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
   },
-  doneButton: {
-    padding: 4,
+  pickerCancelButton: {
+    padding: 8,
   },
-  doneButtonText: {
+  pickerCancelText: {
+    fontSize: 16,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  pickerModalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1F2937',
+  },
+  pickerDoneButton: {
+    padding: 8,
+  },
+  pickerDoneText: {
     fontSize: 16,
     color: '#0E7490',
     fontWeight: '600',
   },
+  iosPickerFull: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
   iosPickerButton: {
     height: 55,
     justifyContent: 'center',
-    paddingHorizontal: 0,
+    paddingHorizontal: 14,
   },
   iosPickerText: {
     fontSize: 14,
     color: '#374151',
-  },
-  pickerWrapper: {
-    height: 250,
-    justifyContent: 'center',
-    paddingVertical: 10,
-  },
-  iosPicker: {
-    height: 250,
-    width: '100%',
+    paddingHorizontal: 14,
   },
 });

@@ -106,23 +106,30 @@ export default function EditPropertyScreen({ navigation, route }: EditPropertySc
       <Modal
         visible={pickerModalVisible}
         animationType="slide"
-        transparent={true}
+        transparent={false}
         onRequestClose={() => setPickerModalVisible(false)}
       >
-        <View style={styles.pickerModalOverlay}>
-          <View style={styles.pickerModalContent}>
-            <View style={styles.pickerHeader}>
-              <TouchableOpacity
-                onPress={() => setPickerModalVisible(false)}
-                style={styles.doneButton}
-              >
-                <Text style={styles.doneButtonText}>Done</Text>
-              </TouchableOpacity>
-            </View>
+        <SafeAreaView style={styles.pickerModalContainer}>
+          <View style={styles.pickerModalHeader}>
+            <TouchableOpacity
+              onPress={() => setPickerModalVisible(false)}
+              style={styles.pickerCancelButton}
+            >
+              <Text style={styles.pickerCancelText}>Cancel</Text>
+            </TouchableOpacity>
+            <Text style={styles.pickerModalTitle}>Select State</Text>
+            <TouchableOpacity
+              onPress={() => setPickerModalVisible(false)}
+              style={styles.pickerDoneButton}
+            >
+              <Text style={styles.pickerDoneText}>Done</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.pickerContainer}>
             <Picker
               selectedValue={state}
               onValueChange={(itemValue: string) => setState(itemValue)}
-              style={{ height: 200 }}
+              style={styles.iosPickerFull}
             >
               <Picker.Item label="Select State" value="" />
               <Picker.Item label="Alaska" value="alaska" />
@@ -130,7 +137,7 @@ export default function EditPropertyScreen({ navigation, route }: EditPropertySc
               <Picker.Item label="Texas" value="texas" />
             </Picker>
           </View>
-        </View>
+        </SafeAreaView>
       </Modal>
 
       <SafeAreaView style={styles.container}>
@@ -381,39 +388,53 @@ const styles = StyleSheet.create({
   buttonDisabled: {
     opacity: 0.6,
   },
-  pickerModalOverlay: {
+  pickerModalContainer: {
     flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  pickerModalContent: {
     backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingBottom: 20,
   },
-  pickerHeader: {
+  pickerModalHeader: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
-    padding: 16,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
   },
-  doneButton: {
-    padding: 4,
+  pickerCancelButton: {
+    padding: 8,
   },
-  doneButtonText: {
+  pickerCancelText: {
+    fontSize: 16,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  pickerModalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1F2937',
+  },
+  pickerDoneButton: {
+    padding: 8,
+  },
+  pickerDoneText: {
     fontSize: 16,
     color: '#0E7490',
     fontWeight: '600',
   },
+  iosPickerFull: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
   iosPickerButton: {
     height: 55,
     justifyContent: 'center',
-    paddingHorizontal: 0,
+    paddingHorizontal: 16,
   },
   iosPickerText: {
     fontSize: 14,
     color: '#374151',
+    paddingHorizontal: 16,
   },
 });

@@ -12,6 +12,7 @@ import {
   Alert,
   ActivityIndicator,
   Platform,
+  Pressable,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
@@ -41,7 +42,11 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
   const [editValue, setEditValue] = useState('');
   const [successModalVisible, setSuccessModalVisible] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
-  
+
+  // iOS Picker State
+  const [pickerModalVisible, setPickerModalVisible] = useState(false);
+  const [pickerType, setPickerType] = useState<'language' | 'timezone' | null>(null);
+
   // Notification preferences
   const [inspectionReminderEmail, setInspectionReminderEmail] = useState(true);
   const [inspectionReminderInApp, setInspectionReminderInApp] = useState(false);
@@ -51,7 +56,7 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
   const [followUpInApp, setFollowUpInApp] = useState(true);
   const [systemUpdatesEmail, setSystemUpdatesEmail] = useState(true);
   const [systemUpdatesInApp, setSystemUpdatesInApp] = useState(false);
-  
+
   // Security
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -185,8 +190,8 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
     try {
       setSaving(true);
       let updateData: any = {};
-      
-      switch(editField) {
+
+      switch (editField) {
         case 'name':
           updateData.fullName = editValue;
           setName(editValue);
@@ -200,7 +205,7 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
           setPhone(editValue);
           break;
       }
-      
+
       await userService.updateProfile(updateData);
       setEditModalVisible(false);
       setSuccessMessage(`${editField.charAt(0).toUpperCase() + editField.slice(1)} updated successfully!`);
@@ -215,7 +220,7 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
   const handleSaveChanges = async () => {
     try {
       setSaving(true);
-      
+
       // Update notification settings
       await userService.updateNotificationSettings({
         inspectionReminder: { email: inspectionReminderEmail, inApp: inspectionReminderInApp },
@@ -223,7 +228,7 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
         followUp: { email: followUpEmail, inApp: followUpInApp },
         systemUpdates: { email: systemUpdatesEmail, inApp: systemUpdatesInApp },
       });
-      
+
       setSuccessMessage('Settings saved successfully!');
       setSuccessModalVisible(true);
     } catch (error: any) {
@@ -238,17 +243,17 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
       Alert.alert('Error', 'Please fill in all password fields');
       return;
     }
-    
+
     if (newPassword !== confirmPassword) {
       Alert.alert('Error', 'New passwords do not match');
       return;
     }
-    
+
     if (newPassword.length < 6) {
       Alert.alert('Error', 'Password must be at least 6 characters');
       return;
     }
-    
+
     try {
       setSaving(true);
       await userService.changePassword({
@@ -273,8 +278,8 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
       'Are you sure you want to logout from this session?',
       [
         { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Logout', 
+        {
+          text: 'Logout',
           style: 'destructive',
           onPress: async () => {
             try {
@@ -312,7 +317,7 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
         transparent={true}
         onRequestClose={() => setSidebarVisible(false)}
       >
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.modalOverlay}
           activeOpacity={1}
           onPress={() => setSidebarVisible(false)}
@@ -327,6 +332,60 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
         </TouchableOpacity>
       </Modal>
 
+      {/* iOS Picker Modal */}
+      <Modal
+        visible={pickerModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setPickerModalVisible(false)}
+      >
+        <View style={styles.pickerModalOverlay}>
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => setPickerModalVisible(false)}
+          />
+          <View style={styles.pickerModalContent}>
+            <View style={styles.pickerHeader}>
+              <TouchableOpacity
+                onPress={() => setPickerModalVisible(false)}
+                style={styles.doneButton}
+              >
+                <Text style={styles.doneButtonText}>Done</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.pickerWrapper}>
+              <Picker
+                selectedValue={
+                  pickerType === 'language' ? language :
+                    timezone
+                }
+                onValueChange={(itemValue) => {
+                  if (pickerType === 'language') setLanguage(itemValue);
+                  else if (pickerType === 'timezone') setTimezone(itemValue);
+                }}
+                style={styles.iosPicker}
+                itemStyle={{ fontSize: 18, height: 50, color: 'black' }}
+              >
+                {pickerType === 'language' && (
+                  <>
+                    <Picker.Item label="English US" value="English US" color="black" />
+                    <Picker.Item label="Spanish" value="Spanish" color="black" />
+                    <Picker.Item label="French" value="French" color="black" />
+                  </>
+                )}
+                {pickerType === 'timezone' && (
+                  <>
+                    <Picker.Item label="GMT +05:00" value="GMT +05:00" color="black" />
+                    <Picker.Item label="GMT +00:00" value="GMT +00:00" color="black" />
+                    <Picker.Item label="GMT -05:00" value="GMT -05:00" color="black" />
+                  </>
+                )}
+              </Picker>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       <SafeAreaView style={styles.container}>
         {/* Header */}
         <View style={styles.headerContainer}>
@@ -334,8 +393,8 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
             <TouchableOpacity onPress={handleMenuPress}>
               <Ionicons name="menu" size={28} color="#1F2937" />
             </TouchableOpacity>
-            <Image 
-              source={require('../../logo.png')} 
+            <Image
+              source={require('../../logo.png')}
               style={styles.headerLogo}
               resizeMode="contain"
             />
@@ -356,11 +415,11 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Profile Settings</Text>
             <Text style={styles.cardDescription}>Manage personal details of the logged-in user.</Text>
-            
+
             {/* Profile Photo */}
             <View style={styles.photoContainer}>
               {profileImage ? (
-                <Image 
+                <Image
                   source={{ uri: profileImage }}
                   style={styles.profilePhoto}
                 />
@@ -430,19 +489,31 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
             <View style={styles.fieldContainer}>
               <Text style={styles.fieldLabel}>Language</Text>
               <View style={styles.pickerContainer}>
-                <Picker
-                  selectedValue={language}
-                  onValueChange={(itemValue) => setLanguage(itemValue)}
-                  style={styles.picker}
-                >
-                  <Picker.Item label="English US" value="English US" />
-                  <Picker.Item label="Spanish" value="Spanish" />
-                  <Picker.Item label="French" value="French" />
-                </Picker>
-                <Ionicons 
-                  name="chevron-down" 
-                  size={18} 
-                  color="#6B7280" 
+                {Platform.OS === 'ios' ? (
+                  <TouchableOpacity
+                    style={styles.iosPickerButton}
+                    onPress={() => {
+                      setPickerType('language');
+                      setPickerModalVisible(true);
+                    }}
+                  >
+                    <Text style={styles.iosPickerText}>{language}</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <Picker
+                    selectedValue={language}
+                    onValueChange={(itemValue) => setLanguage(itemValue)}
+                    style={styles.picker}
+                  >
+                    <Picker.Item label="English US" value="English US" />
+                    <Picker.Item label="Spanish" value="Spanish" />
+                    <Picker.Item label="French" value="French" />
+                  </Picker>
+                )}
+                <Ionicons
+                  name="chevron-down"
+                  size={18}
+                  color="#6B7280"
                   style={styles.pickerIcon}
                 />
               </View>
@@ -452,26 +523,38 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
             <View style={styles.fieldContainer}>
               <Text style={styles.fieldLabel}>Timezone</Text>
               <View style={styles.pickerContainer}>
-                <Picker
-                  selectedValue={timezone}
-                  onValueChange={(itemValue) => setTimezone(itemValue)}
-                  style={styles.picker}
-                >
-                  <Picker.Item label="GMT +05:00" value="GMT +05:00" />
-                  <Picker.Item label="GMT +00:00" value="GMT +00:00" />
-                  <Picker.Item label="GMT -05:00" value="GMT -05:00" />
-                </Picker>
-                <Ionicons 
-                  name="chevron-down" 
-                  size={18} 
-                  color="#6B7280" 
+                {Platform.OS === 'ios' ? (
+                  <TouchableOpacity
+                    style={styles.iosPickerButton}
+                    onPress={() => {
+                      setPickerType('timezone');
+                      setPickerModalVisible(true);
+                    }}
+                  >
+                    <Text style={styles.iosPickerText}>{timezone}</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <Picker
+                    selectedValue={timezone}
+                    onValueChange={(itemValue) => setTimezone(itemValue)}
+                    style={styles.picker}
+                  >
+                    <Picker.Item label="GMT +05:00" value="GMT +05:00" />
+                    <Picker.Item label="GMT +00:00" value="GMT +00:00" />
+                    <Picker.Item label="GMT -05:00" value="GMT -05:00" />
+                  </Picker>
+                )}
+                <Ionicons
+                  name="chevron-down"
+                  size={18}
+                  color="#6B7280"
                   style={styles.pickerIcon}
                 />
               </View>
             </View>
 
-            <TouchableOpacity 
-              style={[styles.saveButton, saving && styles.buttonDisabled]} 
+            <TouchableOpacity
+              style={[styles.saveButton, saving && styles.buttonDisabled]}
               onPress={handleSaveChanges}
               disabled={saving}
             >
@@ -492,7 +575,7 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
             <View style={styles.notificationSection}>
               <Text style={styles.notificationTitle}>Inspection Reminders</Text>
               <View style={styles.checkboxRow}>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.checkboxContainer}
                   onPress={() => setInspectionReminderEmail(!inspectionReminderEmail)}
                 >
@@ -501,8 +584,8 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
                   </View>
                   <Text style={styles.checkboxLabel}>Email</Text>
                 </TouchableOpacity>
-                
-                <TouchableOpacity 
+
+                <TouchableOpacity
                   style={styles.checkboxContainer}
                   onPress={() => setInspectionReminderInApp(!inspectionReminderInApp)}
                 >
@@ -518,7 +601,7 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
             <View style={styles.notificationSection}>
               <Text style={styles.notificationTitle}>Report Completion Alerts</Text>
               <View style={styles.checkboxRow}>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.checkboxContainer}
                   onPress={() => setReportAlertsEmail(!reportAlertsEmail)}
                 >
@@ -527,8 +610,8 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
                   </View>
                   <Text style={styles.checkboxLabel}>Email</Text>
                 </TouchableOpacity>
-                
-                <TouchableOpacity 
+
+                <TouchableOpacity
                   style={styles.checkboxContainer}
                   onPress={() => setReportAlertsInApp(!reportAlertsInApp)}
                 >
@@ -544,7 +627,7 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
             <View style={styles.notificationSection}>
               <Text style={styles.notificationTitle}>Follow-Up Tasks</Text>
               <View style={styles.checkboxRow}>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.checkboxContainer}
                   onPress={() => setFollowUpEmail(!followUpEmail)}
                 >
@@ -553,8 +636,8 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
                   </View>
                   <Text style={styles.checkboxLabel}>Email</Text>
                 </TouchableOpacity>
-                
-                <TouchableOpacity 
+
+                <TouchableOpacity
                   style={styles.checkboxContainer}
                   onPress={() => setFollowUpInApp(!followUpInApp)}
                 >
@@ -570,7 +653,7 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
             <View style={styles.notificationSection}>
               <Text style={styles.notificationTitle}>System Updates</Text>
               <View style={styles.checkboxRow}>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.checkboxContainer}
                   onPress={() => setSystemUpdatesEmail(!systemUpdatesEmail)}
                 >
@@ -579,8 +662,8 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
                   </View>
                   <Text style={styles.checkboxLabel}>Email</Text>
                 </TouchableOpacity>
-                
-                <TouchableOpacity 
+
+                <TouchableOpacity
                   style={styles.checkboxContainer}
                   onPress={() => setSystemUpdatesInApp(!systemUpdatesInApp)}
                 >
@@ -592,8 +675,8 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
               </View>
             </View>
 
-            <TouchableOpacity 
-              style={[styles.saveButton, saving && styles.buttonDisabled]} 
+            <TouchableOpacity
+              style={[styles.saveButton, saving && styles.buttonDisabled]}
               onPress={handleSaveChanges}
               disabled={saving}
             >
@@ -615,7 +698,7 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
 
             {/* Change Password Section */}
             <Text style={styles.sectionTitle}>Change Password</Text>
-            
+
             <View style={styles.passwordFieldContainer}>
               <Text style={styles.passwordLabel}>Old Password</Text>
               <TextInput
@@ -652,8 +735,8 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
               />
             </View>
 
-            <TouchableOpacity 
-              style={[styles.changePasswordButton, saving && styles.buttonDisabled]} 
+            <TouchableOpacity
+              style={[styles.changePasswordButton, saving && styles.buttonDisabled]}
               onPress={handleChangePassword}
               disabled={saving}
             >
@@ -716,13 +799,13 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
               placeholderTextColor="#9CA3AF"
             />
             <View style={styles.editModalButtons}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.editModalCancelButton}
                 onPress={() => setEditModalVisible(false)}
               >
                 <Text style={styles.editModalCancelText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.editModalSaveButton}
                 onPress={handleSaveEdit}
               >
@@ -745,7 +828,7 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
             <Ionicons name="checkmark-circle" size={64} color="#10B981" />
             <Text style={styles.successModalTitle}>Success!</Text>
             <Text style={styles.successModalMessage}>{successMessage}</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.successModalButton}
               onPress={() => setSuccessModalVisible(false)}
             >
@@ -1200,5 +1283,50 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+  },
+  pickerModalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  pickerModalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 20,
+  },
+  pickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  doneButton: {
+    padding: 4,
+  },
+  doneButtonText: {
+    fontSize: 16,
+    color: '#0E7490',
+    fontWeight: '600',
+  },
+  iosPickerButton: {
+    height: 55,
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+  },
+  iosPickerText: {
+    fontSize: 14,
+    color: '#374151',
+  },
+  pickerWrapper: {
+    height: 250,
+    justifyContent: 'center',
+    paddingVertical: 10,
+  },
+  iosPicker: {
+    height: 250,
+    width: '100%',
+    backgroundColor: '#FFFFFF',
   },
 });

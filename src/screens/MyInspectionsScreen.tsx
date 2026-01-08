@@ -11,7 +11,9 @@ import {
   Modal,
   RefreshControl,
   ActivityIndicator,
-  Alert
+  Alert,
+  Platform,
+  Pressable,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
@@ -37,6 +39,10 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
   const [user, setUser] = useState<User | null>(null);
   const [properties, setProperties] = useState<PropertyType[]>([]);
   const [inspections, setInspections] = useState<Inspection[]>([]);
+
+  // iOS Picker State
+  const [pickerModalVisible, setPickerModalVisible] = useState(false);
+  const [pickerType, setPickerType] = useState<'location' | 'compliance' | null>(null);
 
   const loadInitialData = useCallback(async () => {
     try {
@@ -97,14 +103,14 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
   // Filter properties based on search and filters with null safety
   const filteredProperties = (properties || []).filter((property) => {
     if (!property) return false;
-    
-    const matchesSearch = !searchText || 
+
+    const matchesSearch = !searchText ||
       property.name?.toLowerCase()?.includes(searchText.toLowerCase()) ||
       property._id?.toLowerCase()?.includes(searchText.toLowerCase());
-    
-    const matchesLocation = !location || 
+
+    const matchesLocation = !location ||
       property.state?.toLowerCase() === location.toLowerCase();
-    
+
     // Find inspection status for this property with null safety
     const propertyInspections = (inspections || []).filter(i => {
       if (!i || !property?._id) return false;
@@ -112,17 +118,17 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
       return inspectionPropertyId === property._id;
     });
     const isCompliant = propertyInspections.some(i => i?.status === 'completed');
-    const matchesCompliance = !compliance || 
+    const matchesCompliance = !compliance ||
       (compliance === 'compliant' && isCompliant) ||
       (compliance === 'non-compliant' && !isCompliant);
-    
+
     return matchesSearch && matchesLocation && matchesCompliance;
   });
-  
+
   const handleMenuPress = () => {
     setSidebarVisible(true);
   };
-  
+
   const handleSidebarNavigate = async (screen: string) => {
     setSidebarVisible(false);
     if (screen === 'Dashboard') {
@@ -140,7 +146,7 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
       navigation.navigate('Settings' as never);
     }
   };
-  
+
   const handleLogout = async () => {
     setSidebarVisible(false);
     await authService.logout();
@@ -149,17 +155,17 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
       routes: [{ name: 'Boarding' as never }],
     });
   };
-  
+
   const handleEditPress = (property: PropertyType) => {
     setSelectedProperty(property);
     setActionModalVisible(true);
   };
-  
+
   const handleEditProperty = () => {
     setActionModalVisible(false);
     navigation.navigate('EditProperty' as never, { property: selectedProperty } as never);
   };
-  
+
   const handleReadyForInspection = async () => {
     setActionModalVisible(false);
     if (selectedProperty) {
@@ -176,10 +182,10 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
   const handlePropertyCardPress = (property: PropertyType) => {
     navigation.navigate('UnitInspection' as never, { property: property } as never);
   };
-  
+
   const handleRemoveProperty = async () => {
     if (!selectedProperty?._id) return;
-    
+
     Alert.alert(
       'Remove Property',
       `Are you sure you want to remove "${selectedProperty.name}"?`,
@@ -216,7 +222,7 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
         transparent={true}
         onRequestClose={() => setSidebarVisible(false)}
       >
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.modalOverlay}
           activeOpacity={1}
           onPress={() => setSidebarVisible(false)}
@@ -238,29 +244,29 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
         transparent={true}
         onRequestClose={() => setActionModalVisible(false)}
       >
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.actionModalOverlay}
           activeOpacity={1}
           onPress={() => setActionModalVisible(false)}
         >
           <View style={styles.actionModalContent}>
             <Text style={styles.actionModalTitle}>Action</Text>
-            
-            <TouchableOpacity 
+
+            <TouchableOpacity
               style={styles.actionButton}
               onPress={handleEditProperty}
             >
               <Text style={styles.actionButtonText}>Edit Property</Text>
             </TouchableOpacity>
-            
-            <TouchableOpacity 
+
+            <TouchableOpacity
               style={[styles.actionButton, styles.inspectionButton]}
               onPress={handleReadyForInspection}
             >
               <Text style={[styles.actionButtonText, styles.inspectionButtonText]}>Ready For Inspection</Text>
             </TouchableOpacity>
-            
-            <TouchableOpacity 
+
+            <TouchableOpacity
               style={[styles.actionButton, styles.removeButton]}
               onPress={handleRemoveProperty}
             >
@@ -270,170 +276,258 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
         </TouchableOpacity>
       </Modal>
 
+      {/* iOS Picker Modal */}
+      <Modal
+        visible={pickerModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setPickerModalVisible(false)}
+      >
+        <View style={styles.pickerModalOverlay}>
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => setPickerModalVisible(false)}
+          />
+          <View style={styles.pickerModalContent}>
+            <View style={styles.pickerHeader}>
+              <TouchableOpacity
+                onPress={() => setPickerModalVisible(false)}
+                style={styles.doneButton}
+              >
+                <Text style={styles.doneButtonText}>Done</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.pickerWrapper}>
+              <Picker
+                selectedValue={
+                  pickerType === 'location' ? location :
+                    compliance
+                }
+                onValueChange={(itemValue) => {
+                  if (pickerType === 'location') setLocation(itemValue);
+                  else if (pickerType === 'compliance') setCompliance(itemValue);
+                }}
+                style={styles.iosPicker}
+                itemStyle={{ fontSize: 18, height: 50, color: 'black' }}
+              >
+                {pickerType === 'location' && (
+                  <>
+                    <Picker.Item label="All States" value="" color="black" />
+                    {US_STATES.map((stateItem) => (
+                      <Picker.Item
+                        key={stateItem.value}
+                        label={stateItem.label}
+                        value={stateItem.value}
+                        color="black"
+                      />
+                    ))}
+                  </>
+                )}
+                {pickerType === 'compliance' && (
+                  <>
+                    <Picker.Item label="Compliance" value="" color="black" />
+                    <Picker.Item label="Compliant" value="compliant" color="black" />
+                    <Picker.Item label="Non-Compliant" value="non-compliant" color="black" />
+                  </>
+                )}
+              </Picker>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       <SafeAreaView style={styles.container}>
         {/* Header with White Bar */}
         <View style={styles.headerContainer}>
-        <View style={styles.headerBar}>
-          <TouchableOpacity onPress={onMenuPress || handleMenuPress}>
-            <Ionicons name="menu" size={28} color="#1F2937" />
-          </TouchableOpacity>
-          <Image 
-            source={require('../../logo.png')} 
-            style={styles.headerLogo}
-            resizeMode="contain"
-          />
-          <TouchableOpacity>
-            <Ionicons name="notifications-outline" size={28} color="#1F2937" />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      <ScrollView 
-        style={styles.scrollView} 
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={['#0E7490']}
-            tintColor="#0E7490"
-          />
-        }
-      >
-        {/* Title Section */}
-        <View style={styles.titleSection}>
-          <Text style={styles.title}>My Inspection</Text>
-          <TouchableOpacity 
-            style={styles.addButton}
-            onPress={() => navigation.navigate('AddProperty')}
-          >
-            <Text style={styles.addButtonText}>Add Property</Text>
-          </TouchableOpacity>
+          <View style={styles.headerBar}>
+            <TouchableOpacity onPress={onMenuPress || handleMenuPress}>
+              <Ionicons name="menu" size={28} color="#1F2937" />
+            </TouchableOpacity>
+            <Image
+              source={require('../../logo.png')}
+              style={styles.headerLogo}
+              resizeMode="contain"
+            />
+            <TouchableOpacity>
+              <Ionicons name="notifications-outline" size={28} color="#1F2937" />
+            </TouchableOpacity>
+          </View>
         </View>
 
-        {/* Search Bar */}
-        <View style={styles.searchContainer}>
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search property Here......"
-            placeholderTextColor="#9CA3AF"
-            value={searchText}
-            onChangeText={setSearchText}
-          />
-        </View>
+        <ScrollView
+          style={styles.scrollView}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={['#0E7490']}
+              tintColor="#0E7490"
+            />
+          }
+        >
+          {/* Title Section */}
+          <View style={styles.titleSection}>
+            <Text style={styles.title}>My Inspection</Text>
+            <TouchableOpacity
+              style={styles.addButton}
+              onPress={() => navigation.navigate('AddProperty')}
+            >
+              <Text style={styles.addButtonText}>Add Property</Text>
+            </TouchableOpacity>
+          </View>
 
-        {/* Filters */}
-        <Text style={styles.filtersLabel}>Filters</Text>
-        <View style={styles.filtersContainer}>
-          <View style={styles.filterItem}>
-            <View style={styles.pickerContainer}>
-              <Picker
-                selectedValue={location}
-                onValueChange={(itemValue: string) => setLocation(itemValue)}
-                style={styles.picker}
-              >
-                <Picker.Item label="All States" value="" />
-                {US_STATES.map((stateItem) => (
-                  <Picker.Item 
-                    key={stateItem.value} 
-                    label={stateItem.label} 
-                    value={stateItem.value} 
-                  />
-                ))}
-              </Picker>
-              <Ionicons 
-                name="chevron-down" 
-                size={18} 
-                color="#6B7280" 
-                style={styles.pickerIcon}
-              />
+          {/* Search Bar */}
+          <View style={styles.searchContainer}>
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search property Here......"
+              placeholderTextColor="#9CA3AF"
+              value={searchText}
+              onChangeText={setSearchText}
+            />
+          </View>
+
+          {/* Filters */}
+          <Text style={styles.filtersLabel}>Filters</Text>
+          <View style={styles.filtersContainer}>
+            <View style={styles.filterItem}>
+              <View style={styles.pickerContainer}>
+                {Platform.OS === 'ios' ? (
+                  <TouchableOpacity
+                    style={styles.iosPickerButton}
+                    onPress={() => {
+                      setPickerType('location');
+                      setPickerModalVisible(true);
+                    }}
+                  >
+                    <Text style={[styles.iosPickerText, !location && { color: '#9CA3AF' }]}>
+                      {location ? US_STATES.find(s => s.value === location)?.label || location : "All States"}
+                    </Text>
+                  </TouchableOpacity>
+                ) : (
+                  <Picker
+                    selectedValue={location}
+                    onValueChange={(itemValue: string) => setLocation(itemValue)}
+                    style={styles.picker}
+                  >
+                    <Picker.Item label="All States" value="" />
+                    {US_STATES.map((stateItem) => (
+                      <Picker.Item
+                        key={stateItem.value}
+                        label={stateItem.label}
+                        value={stateItem.value}
+                      />
+                    ))}
+                  </Picker>
+                )}
+                <Ionicons
+                  name="chevron-down"
+                  size={18}
+                  color="#6B7280"
+                  style={styles.pickerIcon}
+                />
+              </View>
+            </View>
+
+            <View style={styles.filterItem}>
+              <View style={styles.pickerContainer}>
+                {Platform.OS === 'ios' ? (
+                  <TouchableOpacity
+                    style={styles.iosPickerButton}
+                    onPress={() => {
+                      setPickerType('compliance');
+                      setPickerModalVisible(true);
+                    }}
+                  >
+                    <Text style={[styles.iosPickerText, !compliance && { color: '#9CA3AF' }]}>
+                      {compliance === 'compliant' ? 'Compliant' : compliance === 'non-compliant' ? 'Non-Compliant' : "Compliance"}
+                    </Text>
+                  </TouchableOpacity>
+                ) : (
+                  <Picker
+                    selectedValue={compliance}
+                    onValueChange={(itemValue: string) => setCompliance(itemValue)}
+                    style={styles.picker}
+                  >
+                    <Picker.Item label="Compliance" value="" />
+                    <Picker.Item label="Compliant" value="compliant" />
+                    <Picker.Item label="Non-Compliant" value="non-compliant" />
+                  </Picker>
+                )}
+                <Ionicons
+                  name="chevron-down"
+                  size={18}
+                  color="#6B7280"
+                  style={styles.pickerIcon}
+                />
+              </View>
             </View>
           </View>
 
-          <View style={styles.filterItem}>
-            <View style={styles.pickerContainer}>
-              <Picker
-                selectedValue={compliance}
-                onValueChange={(itemValue: string) => setCompliance(itemValue)}
-                style={styles.picker}
-              >
-                <Picker.Item label="Compliance" value="" />
-                <Picker.Item label="Compliant" value="compliant" />
-                <Picker.Item label="Non-Compliant" value="non-compliant" />
-              </Picker>
-              <Ionicons 
-                name="chevron-down" 
-                size={18} 
-                color="#6B7280" 
-                style={styles.pickerIcon}
-              />
+          {/* Property List */}
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#0E7490" />
             </View>
-          </View>
-        </View>
+          ) : filteredProperties.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Ionicons name="home-outline" size={48} color="#D1D5DB" />
+              <Text style={styles.emptyText}>No properties found</Text>
+              <Text style={styles.emptySubtext}>Add a property to get started</Text>
+            </View>
+          ) : (
+            <View style={styles.propertyList}>
+              {filteredProperties.map((property) => property && (
+                <TouchableOpacity
+                  key={property._id || Math.random().toString()}
+                  style={styles.propertyCard}
+                  activeOpacity={0.7}
+                  onPress={() => handlePropertyCardPress(property)}
+                >
+                  <View style={styles.propertyHeader}>
+                    <Text style={styles.propertyName}>{property.name || 'Unnamed Property'}</Text>
+                    <TouchableOpacity
+                      style={styles.moreButton}
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        handleEditPress(property);
+                      }}
+                    >
+                      <Ionicons name="ellipsis-vertical" size={20} color="#1F2937" />
+                    </TouchableOpacity>
+                  </View>
+                  <Text style={styles.propertyDetail}>
+                    Property ID: <Text style={styles.propertyId}>{property._id?.slice(-8)?.toUpperCase() || 'N/A'}</Text>
+                  </Text>
+                  <Text style={styles.propertyDetail}>
+                    No. of Buildings: <Text style={styles.propertyValue}>{property.buildings || 0}</Text>
+                  </Text>
+                  <Text style={styles.propertyDetail}>
+                    Units: <Text style={styles.propertyValue}>{property.units || 0}</Text>
+                  </Text>
+                  <Text style={styles.propertyDetail}>
+                    Address: <Text style={styles.addressLink}>{[property.address, property.city, property.state, property.zipCode].filter(Boolean).join(', ') || 'No address'}</Text>
+                  </Text>
 
-        {/* Property List */}
-        {loading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#0E7490" />
-          </View>
-        ) : filteredProperties.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Ionicons name="home-outline" size={48} color="#D1D5DB" />
-            <Text style={styles.emptyText}>No properties found</Text>
-            <Text style={styles.emptySubtext}>Add a property to get started</Text>
-          </View>
-        ) : (
-          <View style={styles.propertyList}>
-            {filteredProperties.map((property) => property && (
-              <TouchableOpacity 
-                key={property._id || Math.random().toString()} 
-                style={styles.propertyCard}
-                activeOpacity={0.7}
-                onPress={() => handlePropertyCardPress(property)}
-              >
-                <View style={styles.propertyHeader}>
-                  <Text style={styles.propertyName}>{property.name || 'Unnamed Property'}</Text>
-                  <TouchableOpacity 
-                    style={styles.moreButton}
+                  {/* Edit/Update Button */}
+                  <TouchableOpacity
+                    style={styles.editButton}
                     onPress={(e) => {
                       e.stopPropagation();
                       handleEditPress(property);
                     }}
                   >
-                    <Ionicons name="ellipsis-vertical" size={20} color="#1F2937" />
+                    <Text style={styles.editButtonText}>Edit/Update</Text>
                   </TouchableOpacity>
-                </View>
-                <Text style={styles.propertyDetail}>
-                  Property ID: <Text style={styles.propertyId}>{property._id?.slice(-8)?.toUpperCase() || 'N/A'}</Text>
-                </Text>
-                <Text style={styles.propertyDetail}>
-                  No. of Buildings: <Text style={styles.propertyValue}>{property.buildings || 0}</Text>
-                </Text>
-                <Text style={styles.propertyDetail}>
-                  Units: <Text style={styles.propertyValue}>{property.units || 0}</Text>
-                </Text>
-                <Text style={styles.propertyDetail}>
-                  Address: <Text style={styles.addressLink}>{[property.address, property.city, property.state, property.zipCode].filter(Boolean).join(', ') || 'No address'}</Text>
-                </Text>
-                
-                {/* Edit/Update Button */}
-                <TouchableOpacity 
-                  style={styles.editButton}
-                  onPress={(e) => {
-                    e.stopPropagation();
-                    handleEditPress(property);
-                  }}
-                >
-                  <Text style={styles.editButtonText}>Edit/Update</Text>
                 </TouchableOpacity>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
+              ))}
+            </View>
+          )}
 
-        <View style={{ height: 40 }} />
-      </ScrollView>
-    </SafeAreaView>
+          <View style={{ height: 40 }} />
+        </ScrollView>
+      </SafeAreaView>
     </>
   );
 }
@@ -686,5 +780,50 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#9CA3AF',
     textAlign: 'center',
+  },
+  pickerModalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  pickerModalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 20,
+  },
+  pickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  doneButton: {
+    padding: 4,
+  },
+  doneButtonText: {
+    fontSize: 16,
+    color: '#0E7490',
+    fontWeight: '600',
+  },
+  iosPickerButton: {
+    height: 55,
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+  },
+  iosPickerText: {
+    fontSize: 14,
+    color: '#374151',
+  },
+  pickerWrapper: {
+    height: 250,
+    justifyContent: 'center',
+    paddingVertical: 10,
+  },
+  iosPicker: {
+    height: 250,
+    width: '100%',
+    backgroundColor: '#FFFFFF',
   },
 });

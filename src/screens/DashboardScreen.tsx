@@ -446,16 +446,17 @@ export default function DashboardScreen({
                   setCity(itemValue);
                 }
               }}
-              style={{ height: 200 }}
+              style={styles.iosPicker}
+              itemStyle={{ fontSize: 18, height: 50, color: 'black' }}
             >
-              <Picker.Item label={pickerType === 'state' ? "Select State" : "Select City"} value="" color="#9CA3AF" />
+              <Picker.Item label={pickerType === 'state' ? "Select State" : "Select City"} value="" color="black" />
               {pickerType === 'state'
                 ? US_STATES.map((stateItem) => (
                   <Picker.Item
                     key={stateItem.value}
                     label={stateItem.label}
                     value={stateItem.value}
-                    color="#1F2937"
+                    color="black"
                   />
                 ))
                 : cities.map((cityItem) => (
@@ -463,7 +464,7 @@ export default function DashboardScreen({
                     key={cityItem.value}
                     label={cityItem.label}
                     value={cityItem.value}
-                    color="#1F2937"
+                    color="black"
                   />
                 ))
               }
@@ -929,6 +930,11 @@ const styles = StyleSheet.create({
   iosPickerText: {
     fontSize: 16,
     color: '#1F2937',
+  },
+  iosPicker: {
+    height: 250,
+    width: '100%',
+    backgroundColor: '#FFFFFF',
   },
 
   propertyId: {

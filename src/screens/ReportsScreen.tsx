@@ -12,6 +12,8 @@ import {
   RefreshControl,
   ActivityIndicator,
   Alert,
+  Platform,
+  Pressable,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
@@ -46,7 +48,11 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
   const [reports, setReports] = useState<Report[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [user, setUser] = useState<any>(null);
-  
+
+  // iOS Picker State
+  const [pickerModalVisible, setPickerModalVisible] = useState(false);
+  const [pickerType, setPickerType] = useState<'property' | 'range' | 'status' | null>(null);
+
   const loadData = useCallback(async () => {
     try {
       const [inspectionsData, propertiesData] = await Promise.all([
@@ -59,19 +65,19 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
         const property = (propertiesData.properties || propertiesData || []).find(
           (p: Property) => p._id === inspection.property || p._id === (inspection as any).propertyId
         );
-        
+
         return {
           id: inspection._id,
           property: property?.name || 'Unknown Property',
           propertyId: inspection.property || (inspection as any).propertyId,
           unit: (inspection as any).unit || 'N/A',
           inspector: (inspection as any).inspector?.fullName || (inspection as any).inspectorName || 'Unknown',
-          date: new Date(inspection.scheduledDate || (inspection as any).completedDate).toLocaleDateString('en-US', { 
-            month: 'short', 
-            day: 'numeric' 
+          date: new Date(inspection.scheduledDate || (inspection as any).completedDate).toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric'
           }),
-          complianceScore: (inspection as any).complianceStatus === 'compliant' || 
-                          (inspection as any).score >= 70 ? 'Compliant' : 'Non-Compliant',
+          complianceScore: (inspection as any).complianceStatus === 'compliant' ||
+            (inspection as any).score >= 70 ? 'Compliant' : 'Non-Compliant',
           rawData: inspection,
         };
       });
@@ -95,11 +101,11 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
     setRefreshing(true);
     loadData();
   }, [loadData]);
-  
+
   const handleMenuPress = () => {
     setSidebarVisible(true);
   };
-  
+
   const handleSidebarNavigate = async (screen: string) => {
     setSidebarVisible(false);
     if (screen === 'Dashboard') {
@@ -117,7 +123,7 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
       navigation.navigate('Settings' as never);
     }
   };
-  
+
   const handleLogout = async () => {
     try {
       await authService.logout();
@@ -133,19 +139,19 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
 
   // Filter reports based on search and filters
   const filteredReports = reports.filter(report => {
-    const matchesSearch = !searchText || 
+    const matchesSearch = !searchText ||
       report.property.toLowerCase().includes(searchText.toLowerCase()) ||
       report.unit.toLowerCase().includes(searchText.toLowerCase()) ||
       report.inspector.toLowerCase().includes(searchText.toLowerCase());
-    
+
     const matchesProperty = !propertyName || report.propertyId === propertyName;
-    
-    const matchesStatus = !status || 
+
+    const matchesStatus = !status ||
       (status === 'compliant' && report.complianceScore === 'Compliant') ||
       (status === 'non-compliant' && report.complianceScore === 'Non-Compliant');
-    
+
     // Date range filtering could be added here
-    
+
     return matchesSearch && matchesProperty && matchesStatus;
   });
 
@@ -169,7 +175,7 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
         transparent={true}
         onRequestClose={() => setSidebarVisible(false)}
       >
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.modalOverlay}
           activeOpacity={1}
           onPress={() => setSidebarVisible(false)}
@@ -184,180 +190,287 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
         </TouchableOpacity>
       </Modal>
 
+      {/* iOS Picker Modal */}
+      <Modal
+        visible={pickerModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setPickerModalVisible(false)}
+      >
+        <View style={styles.pickerModalOverlay}>
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => setPickerModalVisible(false)}
+          />
+          <View style={styles.pickerModalContent}>
+            <View style={styles.pickerHeader}>
+              <TouchableOpacity
+                onPress={() => setPickerModalVisible(false)}
+                style={styles.doneButton}
+              >
+                <Text style={styles.doneButtonText}>Done</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.pickerWrapper}>
+              <Picker
+                selectedValue={
+                  pickerType === 'property' ? propertyName :
+                    pickerType === 'range' ? dateRange :
+                      status
+                }
+                onValueChange={(itemValue) => {
+                  if (pickerType === 'property') setPropertyName(itemValue);
+                  else if (pickerType === 'range') setDateRange(itemValue);
+                  else if (pickerType === 'status') setStatus(itemValue);
+                }}
+                style={styles.iosPicker}
+                itemStyle={{ fontSize: 18, height: 50, color: 'black' }}
+              >
+                {pickerType === 'property' && (
+                  <>
+                    <Picker.Item label="Property Name" value="" color="black" />
+                    <Picker.Item label="All Properties" value="" color="black" />
+                    {properties.map((p) => (
+                      <Picker.Item key={p._id} label={p.name} value={p._id} color="black" />
+                    ))}
+                  </>
+                )}
+                {pickerType === 'range' && (
+                  <>
+                    <Picker.Item label="Data Range" value="" color="black" />
+                    <Picker.Item label="Last 7 days" value="7days" color="black" />
+                    <Picker.Item label="Last 30 days" value="30days" color="black" />
+                  </>
+                )}
+                {pickerType === 'status' && (
+                  <>
+                    <Picker.Item label="Status" value="" color="black" />
+                    <Picker.Item label="Compliant" value="compliant" color="black" />
+                    <Picker.Item label="Non-Compliant" value="non-compliant" color="black" />
+                  </>
+                )}
+              </Picker>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       <SafeAreaView style={styles.container}>
         {/* Header with White Bar */}
         <View style={styles.headerContainer}>
-        <View style={styles.headerBar}>
-          <TouchableOpacity onPress={onMenuPress || handleMenuPress}>
-            <Ionicons name="menu" size={28} color="#1F2937" />
-          </TouchableOpacity>
-          <Image 
-            source={require('../../logo.png')} 
-            style={styles.headerLogo}
-            resizeMode="contain"
-          />
-          <TouchableOpacity>
-            <Ionicons name="notifications-outline" size={28} color="#1F2937" />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      <ScrollView 
-        style={styles.scrollView} 
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#0E7490']} />
-        }
-      >
-        {/* Title Section */}
-        <View style={styles.titleSection}>
-          <Text style={styles.title}>Inspection Reports</Text>
-          <Text style={styles.subtitle}>View export and share your inspection reports.</Text>
-        </View>
-
-        {/* Search Bar */}
-        <View style={styles.searchContainer}>
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search for property, unit or inspector name"
-            placeholderTextColor="#9CA3AF"
-            value={searchText}
-            onChangeText={setSearchText}
-          />
-        </View>
-
-        {/* Filters */}
-        <Text style={styles.filtersLabel}>Filters</Text>
-        
-        {/* Property Name Filter */}
-        <View style={styles.filterRow}>
-          <View style={styles.filterItemFull}>
-            <View style={styles.pickerContainer}>
-              <Picker
-                selectedValue={propertyName}
-                onValueChange={(itemValue: string) => setPropertyName(itemValue)}
-                style={styles.picker}
-              >
-                <Picker.Item label="Property Name" value="" />
-                {properties.map((property) => (
-                  <Picker.Item key={property._id} label={property.name} value={property._id} />
-                ))}
-              </Picker>
-              <Ionicons 
-                name="chevron-down" 
-                size={18} 
-                color="#6B7280" 
-                style={styles.pickerIcon}
-              />
-            </View>
-          </View>
-
-          <View style={styles.filterItemFull}>
-            <View style={styles.pickerContainer}>
-              <Picker
-                selectedValue={dateRange}
-                onValueChange={(itemValue: string) => setDateRange(itemValue)}
-                style={styles.picker}
-              >
-                <Picker.Item label="Data Range" value="" />
-                <Picker.Item label="Last 7 days" value="7days" />
-                <Picker.Item label="Last 30 days" value="30days" />
-              </Picker>
-              <Ionicons 
-                name="chevron-down" 
-                size={18} 
-                color="#6B7280" 
-                style={styles.pickerIcon}
-              />
-            </View>
+          <View style={styles.headerBar}>
+            <TouchableOpacity onPress={onMenuPress || handleMenuPress}>
+              <Ionicons name="menu" size={28} color="#1F2937" />
+            </TouchableOpacity>
+            <Image
+              source={require('../../logo.png')}
+              style={styles.headerLogo}
+              resizeMode="contain"
+            />
+            <TouchableOpacity>
+              <Ionicons name="notifications-outline" size={28} color="#1F2937" />
+            </TouchableOpacity>
           </View>
         </View>
 
-        {/* Status Filter */}
-        <View style={styles.filterRow}>
-          <View style={styles.filterItemFull}>
-            <View style={styles.pickerContainer}>
-              <Picker
-                selectedValue={status}
-                onValueChange={(itemValue: string) => setStatus(itemValue)}
-                style={styles.picker}
-              >
-                <Picker.Item label="Status" value="" />
-                <Picker.Item label="Compliant" value="compliant" />
-                <Picker.Item label="Non-Compliant" value="non-compliant" />
-              </Picker>
-              <Ionicons 
-                name="chevron-down" 
-                size={18} 
-                color="#6B7280" 
-                style={styles.pickerIcon}
-              />
+        <ScrollView
+          style={styles.scrollView}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#0E7490']} />
+          }
+        >
+          {/* Title Section */}
+          <View style={styles.titleSection}>
+            <Text style={styles.title}>Inspection Reports</Text>
+            <Text style={styles.subtitle}>View export and share your inspection reports.</Text>
+          </View>
+
+          {/* Search Bar */}
+          <View style={styles.searchContainer}>
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search for property, unit or inspector name"
+              placeholderTextColor="#9CA3AF"
+              value={searchText}
+              onChangeText={setSearchText}
+            />
+          </View>
+
+          {/* Filters */}
+          <Text style={styles.filtersLabel}>Filters</Text>
+
+          {/* Property Name Filter */}
+          <View style={styles.filterRow}>
+            <View style={styles.filterItemFull}>
+              <View style={styles.pickerContainer}>
+                {Platform.OS === 'ios' ? (
+                  <TouchableOpacity
+                    style={styles.iosPickerButton}
+                    onPress={() => {
+                      setPickerType('property');
+                      setPickerModalVisible(true);
+                    }}
+                  >
+                    <Text style={[styles.iosPickerText, !propertyName && { color: '#9CA3AF' }]}>
+                      {propertyName ? properties.find(p => p._id === propertyName)?.name || propertyName : "Property Name"}
+                    </Text>
+                  </TouchableOpacity>
+                ) : (
+                  <Picker
+                    selectedValue={propertyName}
+                    onValueChange={(itemValue: string) => setPropertyName(itemValue)}
+                    style={styles.picker}
+                  >
+                    <Picker.Item label="Property Name" value="" />
+                    {properties.map((property) => (
+                      <Picker.Item key={property._id} label={property.name} value={property._id} />
+                    ))}
+                  </Picker>
+                )}
+                <Ionicons
+                  name="chevron-down"
+                  size={18}
+                  color="#6B7280"
+                  style={styles.pickerIcon}
+                />
+              </View>
+            </View>
+
+            <View style={styles.filterItemFull}>
+              <View style={styles.pickerContainer}>
+                {Platform.OS === 'ios' ? (
+                  <TouchableOpacity
+                    style={styles.iosPickerButton}
+                    onPress={() => {
+                      setPickerType('range');
+                      setPickerModalVisible(true);
+                    }}
+                  >
+                    <Text style={[styles.iosPickerText, !dateRange && { color: '#9CA3AF' }]}>
+                      {dateRange === '7days' ? 'Last 7 days' : dateRange === '30days' ? 'Last 30 days' : "Data Range"}
+                    </Text>
+                  </TouchableOpacity>
+                ) : (
+                  <Picker
+                    selectedValue={dateRange}
+                    onValueChange={(itemValue: string) => setDateRange(itemValue)}
+                    style={styles.picker}
+                  >
+                    <Picker.Item label="Data Range" value="" />
+                    <Picker.Item label="Last 7 days" value="7days" />
+                    <Picker.Item label="Last 30 days" value="30days" />
+                  </Picker>
+                )}
+                <Ionicons
+                  name="chevron-down"
+                  size={18}
+                  color="#6B7280"
+                  style={styles.pickerIcon}
+                />
+              </View>
             </View>
           </View>
-        </View>
 
-        {/* Reports List */}
-        <View style={styles.reportsList}>
-          {filteredReports.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <Ionicons name="document-text-outline" size={48} color="#9CA3AF" />
-              <Text style={styles.emptyText}>No reports found</Text>
+          {/* Status Filter */}
+          <View style={styles.filterRow}>
+            <View style={styles.filterItemFull}>
+              <View style={styles.pickerContainer}>
+                {Platform.OS === 'ios' ? (
+                  <TouchableOpacity
+                    style={styles.iosPickerButton}
+                    onPress={() => {
+                      setPickerType('status');
+                      setPickerModalVisible(true);
+                    }}
+                  >
+                    <Text style={[styles.iosPickerText, !status && { color: '#9CA3AF' }]}>
+                      {status === 'compliant' ? 'Compliant' : status === 'non-compliant' ? 'Non-Compliant' : "Status"}
+                    </Text>
+                  </TouchableOpacity>
+                ) : (
+                  <Picker
+                    selectedValue={status}
+                    onValueChange={(itemValue: string) => setStatus(itemValue)}
+                    style={styles.picker}
+                  >
+                    <Picker.Item label="Status" value="" />
+                    <Picker.Item label="Compliant" value="compliant" />
+                    <Picker.Item label="Non-Compliant" value="non-compliant" />
+                  </Picker>
+                )}
+                <Ionicons
+                  name="chevron-down"
+                  size={18}
+                  color="#6B7280"
+                  style={styles.pickerIcon}
+                />
+              </View>
             </View>
-          ) : (
-            filteredReports.map((report) => (
-            <View key={report.id} style={styles.reportCard}>
-              <View style={styles.reportRow}>
-                <Text style={styles.reportLabel}>Property</Text>
-                <Text style={styles.reportValue}>{report.property}</Text>
+          </View>
+
+          {/* Reports List */}
+          <View style={styles.reportsList}>
+            {filteredReports.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Ionicons name="document-text-outline" size={48} color="#9CA3AF" />
+                <Text style={styles.emptyText}>No reports found</Text>
               </View>
-              <View style={styles.reportRow}>
-                <Text style={styles.reportLabel}>Unit</Text>
-                <Text style={styles.reportValue}>{report.unit}</Text>
-              </View>
-              <View style={styles.reportRow}>
-                <Text style={styles.reportLabel}>Inspector</Text>
-                <Text style={styles.reportValue}>{report.inspector}</Text>
-              </View>
-              <View style={styles.reportRow}>
-                <Text style={styles.reportLabel}>Date</Text>
-                <Text style={styles.reportValue}>{report.date}</Text>
-              </View>
-              <View style={styles.reportRow}>
-                <Text style={styles.reportLabel}>Compliance{'\n'}Score</Text>
-                <View style={styles.complianceContainer}>
-                  <View style={[
-                    styles.complianceDot,
-                    report.complianceScore === 'Compliant' ? styles.compliantDot : styles.nonCompliantDot
-                  ]} />
-                  <Text style={styles.complianceText}>{report.complianceScore}</Text>
+            ) : (
+              filteredReports.map((report) => (
+                <View key={report.id} style={styles.reportCard}>
+                  <View style={styles.reportRow}>
+                    <Text style={styles.reportLabel}>Property</Text>
+                    <Text style={styles.reportValue}>{report.property}</Text>
+                  </View>
+                  <View style={styles.reportRow}>
+                    <Text style={styles.reportLabel}>Unit</Text>
+                    <Text style={styles.reportValue}>{report.unit}</Text>
+                  </View>
+                  <View style={styles.reportRow}>
+                    <Text style={styles.reportLabel}>Inspector</Text>
+                    <Text style={styles.reportValue}>{report.inspector}</Text>
+                  </View>
+                  <View style={styles.reportRow}>
+                    <Text style={styles.reportLabel}>Date</Text>
+                    <Text style={styles.reportValue}>{report.date}</Text>
+                  </View>
+                  <View style={styles.reportRow}>
+                    <Text style={styles.reportLabel}>Compliance{'\n'}Score</Text>
+                    <View style={styles.complianceContainer}>
+                      <View style={[
+                        styles.complianceDot,
+                        report.complianceScore === 'Compliant' ? styles.compliantDot : styles.nonCompliantDot
+                      ]} />
+                      <Text style={styles.complianceText}>{report.complianceScore}</Text>
+                    </View>
+                  </View>
+
+                  {/* Action Buttons */}
+                  <View style={styles.actionButtons}>
+                    <TouchableOpacity
+                      style={styles.iconButton}
+                      onPress={() => navigation.navigate('ReportDetail' as never, { report } as never)}
+                    >
+                      <Ionicons name="document-text-outline" size={24} color="#0E7490" />
+                      <Text style={styles.iconButtonLabel}>View Report</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.iconButton}
+                      onPress={() => console.log('Share report:', report.property)}
+                    >
+                      <Ionicons name="share-social-outline" size={24} color="#0E7490" />
+                      <Text style={styles.iconButtonLabel}>Share</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
-              </View>
-              
-              {/* Action Buttons */}
-              <View style={styles.actionButtons}>
-                <TouchableOpacity 
-                  style={styles.iconButton}
-                  onPress={() => navigation.navigate('ReportDetail' as never, { report } as never)}
-                >
-                  <Ionicons name="document-text-outline" size={24} color="#0E7490" />
-                  <Text style={styles.iconButtonLabel}>View Report</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={styles.iconButton}
-                  onPress={() => console.log('Share report:', report.property)}
-                >
-                  <Ionicons name="share-social-outline" size={24} color="#0E7490" />
-                  <Text style={styles.iconButtonLabel}>Share</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          ))
-          )}
-        </View>
+              ))
+            )}
+          </View>
 
-        <View style={{ height: 40 }} />
-      </ScrollView>
-    </SafeAreaView>
+          <View style={{ height: 40 }} />
+        </ScrollView>
+      </SafeAreaView>
     </>
   );
 }
@@ -551,5 +664,50 @@ const styles = StyleSheet.create({
     marginTop: 12,
     fontSize: 16,
     color: '#6B7280',
+  },
+  pickerModalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  pickerModalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 20,
+  },
+  pickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  doneButton: {
+    padding: 4,
+  },
+  doneButtonText: {
+    fontSize: 16,
+    color: '#0E7490',
+    fontWeight: '600',
+  },
+  iosPickerButton: {
+    height: 55,
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+  },
+  iosPickerText: {
+    fontSize: 14,
+    color: '#374151',
+  },
+  pickerWrapper: {
+    height: 250,
+    justifyContent: 'center',
+    paddingVertical: 10,
+  },
+  iosPicker: {
+    height: 250,
+    width: '100%',
+    backgroundColor: '#FFFFFF',
   },
 });

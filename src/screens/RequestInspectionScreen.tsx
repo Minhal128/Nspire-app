@@ -7,8 +7,11 @@ import {
   TouchableOpacity,
   SafeAreaView,
   ScrollView,
+  Modal,
   Alert,
   ActivityIndicator,
+  Platform,
+  Pressable,
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { inspectionService, propertyService } from '../services';
@@ -23,6 +26,9 @@ export default function RequestInspectionScreen({ navigation }: RequestInspectio
   const [loadingProperties, setLoadingProperties] = useState(true);
   const [properties, setProperties] = useState<Property[]>([]);
   const [selectedProperty, setSelectedProperty] = useState('');
+
+  // iOS Picker State
+  const [pickerModalVisible, setPickerModalVisible] = useState(false);
   const [purposeOfInspection, setPurposeOfInspection] = useState('');
   const [hudPreNaphe, setHudPreNaphe] = useState('');
   const [managementCo, setManagementCo] = useState('');
@@ -55,7 +61,7 @@ export default function RequestInspectionScreen({ navigation }: RequestInspectio
       Alert.alert('Error', 'Please select a property');
       return;
     }
-    
+
     if (!purposeOfInspection.trim()) {
       Alert.alert('Error', 'Please enter the purpose of inspection');
       return;
@@ -63,7 +69,7 @@ export default function RequestInspectionScreen({ navigation }: RequestInspectio
 
     try {
       setLoading(true);
-      
+
       const requestData = {
         property: selectedProperty,
         purpose: purposeOfInspection.trim(),
@@ -80,7 +86,7 @@ export default function RequestInspectionScreen({ navigation }: RequestInspectio
       };
 
       await inspectionService.createInspectionRequest(requestData);
-      
+
       Alert.alert(
         'Success',
         'Inspection request submitted successfully! A certified inspector will contact you soon.',
@@ -94,162 +100,214 @@ export default function RequestInspectionScreen({ navigation }: RequestInspectio
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView 
-        style={styles.scrollView}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+    <>
+      {/* iOS Picker Modal */}
+      <Modal
+        visible={pickerModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setPickerModalVisible(false)}
       >
-        <View style={styles.formContainer}>
-          {/* Title */}
-          <Text style={styles.title}>
-            Request Inspection by a{'\n'}certified inspector.
-          </Text>
-
-          {/* Select Property */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Select Property *</Text>
-            <View style={styles.pickerContainer}>
+        <View style={styles.pickerModalOverlay}>
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => setPickerModalVisible(false)}
+          />
+          <View style={styles.pickerModalContent}>
+            <View style={styles.pickerHeader}>
+              <TouchableOpacity
+                onPress={() => setPickerModalVisible(false)}
+                style={styles.doneButton}
+              >
+                <Text style={styles.doneButtonText}>Done</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.pickerWrapper}>
               <Picker
                 selectedValue={selectedProperty}
                 onValueChange={(itemValue: string) => setSelectedProperty(itemValue)}
-                style={styles.picker}
-                enabled={!loadingProperties}
+                style={styles.iosPicker}
+                itemStyle={{ fontSize: 18, height: 50, color: 'black' }}
               >
-                <Picker.Item label={loadingProperties ? "Loading properties..." : "Select a property"} value="" />
+                <Picker.Item label="Select a property" value="" color="black" />
                 {properties.map((property) => (
-                  <Picker.Item key={property._id} label={property.name} value={property._id} />
+                  <Picker.Item key={property._id} label={property.name} value={property._id} color="black" />
                 ))}
               </Picker>
             </View>
           </View>
-
-          {/* Purpose of Inspection */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Purpose of Inspection</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter purpose of Inspection"
-              placeholderTextColor="#6B7280"
-              value={purposeOfInspection}
-              onChangeText={setPurposeOfInspection}
-            />
-          </View>
-
-          {/* HUD Pre-Naphe Inspection */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>HUD Pre-Naphe Inspection</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Select space"
-              placeholderTextColor="#6B7280"
-              value={hudPreNaphe}
-              onChangeText={setHudPreNaphe}
-            />
-          </View>
-
-          {/* Management Co/Assessment */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Management Co/Assessment</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter management company or assessment"
-              placeholderTextColor="#6B7280"
-              value={managementCo}
-              onChangeText={setManagementCo}
-            />
-          </View>
-
-          {/* Insurance Co / Risk Management */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Insurance Co / Risk Management</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Insurance company"
-              placeholderTextColor="#6B7280"
-              value={insuranceCo}
-              onChangeText={setInsuranceCo}
-            />
-          </View>
-
-          {/* Banker / Sale */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Banker / Sale</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Banker or sale contact"
-              placeholderTextColor="#6B7280"
-              value={bankerSale}
-              onChangeText={setBankerSale}
-            />
-          </View>
-
-          {/* Number of buildings */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Number of buildings</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="e.g., 5"
-              placeholderTextColor="#6B7280"
-              value={numberOfBuildings}
-              onChangeText={setNumberOfBuildings}
-              keyboardType="number-pad"
-            />
-          </View>
-
-          {/* Number of units */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Number of units</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="e.g., 10"
-              placeholderTextColor="#6B7280"
-              value={numberOfUnits}
-              onChangeText={setNumberOfUnits}
-              keyboardType="number-pad"
-            />
-          </View>
-
-          {/* State / City */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>State / City</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Please select City"
-              placeholderTextColor="#6B7280"
-              value={state}
-              onChangeText={setState}
-            />
-          </View>
-
-          {/* Zip / Postal Code */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Zip / Postal Code</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Zip / Postal code"
-              placeholderTextColor="#6B7280"
-              value={zipPostal}
-              onChangeText={setZipPostal}
-              keyboardType="number-pad"
-            />
-          </View>
-
-          {/* Submit Button */}
-          <TouchableOpacity 
-            style={[styles.submitButton, loading && styles.buttonDisabled]} 
-            onPress={handleSubmit}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Text style={styles.submitButtonText}>Submit</Text>
-            )}
-          </TouchableOpacity>
         </View>
-      </ScrollView>
-    </SafeAreaView>
+      </Modal>
+      <SafeAreaView style={styles.container}>
+        <ScrollView
+          style={styles.scrollView}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+        >
+          <View style={styles.formContainer}>
+            {/* Title */}
+            <Text style={styles.title}>
+              Request Inspection by a{'\n'}certified inspector.
+            </Text>
+
+            {/* Select Property */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Select Property *</Text>
+              <View style={styles.pickerContainer}>
+                {Platform.OS === 'ios' ? (
+                  <TouchableOpacity
+                    style={styles.iosPickerButton}
+                    onPress={() => setPickerModalVisible(true)}
+                    disabled={loadingProperties}
+                  >
+                    <Text style={[styles.iosPickerText, !selectedProperty && { color: '#6B7280' }]}>
+                      {selectedProperty ? properties.find(p => p._id === selectedProperty)?.name || selectedProperty : (loadingProperties ? "Loading properties..." : "Select a property")}
+                    </Text>
+                  </TouchableOpacity>
+                ) : (
+                  <Picker
+                    selectedValue={selectedProperty}
+                    onValueChange={(itemValue: string) => setSelectedProperty(itemValue)}
+                    style={styles.picker}
+                    enabled={!loadingProperties}
+                    itemStyle={{ fontSize: 20, height: 120, color: 'black' }}
+                  >
+                    <Picker.Item label={loadingProperties ? "Loading properties..." : "Select a property"} value="" color="black" />
+                    {properties.map((property) => (
+                      <Picker.Item key={property._id} label={property.name} value={property._id} color="black" />
+                    ))}
+                  </Picker>
+                )}
+              </View>
+            </View>
+
+            {/* Purpose of Inspection */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Purpose of Inspection</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter purpose of Inspection"
+                placeholderTextColor="#6B7280"
+                value={purposeOfInspection}
+                onChangeText={setPurposeOfInspection}
+              />
+            </View>
+
+            {/* HUD Pre-Naphe Inspection */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>HUD Pre-Naphe Inspection</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Select space"
+                placeholderTextColor="#6B7280"
+                value={hudPreNaphe}
+                onChangeText={setHudPreNaphe}
+              />
+            </View>
+
+            {/* Management Co/Assessment */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Management Co/Assessment</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter management company or assessment"
+                placeholderTextColor="#6B7280"
+                value={managementCo}
+                onChangeText={setManagementCo}
+              />
+            </View>
+
+            {/* Insurance Co / Risk Management */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Insurance Co / Risk Management</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Insurance company"
+                placeholderTextColor="#6B7280"
+                value={insuranceCo}
+                onChangeText={setInsuranceCo}
+              />
+            </View>
+
+            {/* Banker / Sale */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Banker / Sale</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Banker or sale contact"
+                placeholderTextColor="#6B7280"
+                value={bankerSale}
+                onChangeText={setBankerSale}
+              />
+            </View>
+
+            {/* Number of buildings */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Number of buildings</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="e.g., 5"
+                placeholderTextColor="#6B7280"
+                value={numberOfBuildings}
+                onChangeText={setNumberOfBuildings}
+                keyboardType="number-pad"
+              />
+            </View>
+
+            {/* Number of units */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Number of units</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="e.g., 10"
+                placeholderTextColor="#6B7280"
+                value={numberOfUnits}
+                onChangeText={setNumberOfUnits}
+                keyboardType="number-pad"
+              />
+            </View>
+
+            {/* State / City */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>State / City</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Please select City"
+                placeholderTextColor="#6B7280"
+                value={state}
+                onChangeText={setState}
+              />
+            </View>
+
+            {/* Zip / Postal Code */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Zip / Postal Code</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Zip / Postal code"
+                placeholderTextColor="#6B7280"
+                value={zipPostal}
+                onChangeText={setZipPostal}
+                keyboardType="number-pad"
+              />
+            </View>
+
+            {/* Submit Button */}
+            <TouchableOpacity
+              style={[styles.submitButton, loading && styles.buttonDisabled]}
+              onPress={handleSubmit}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={styles.submitButtonText}>Submit</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    </>
   );
 }
 
@@ -314,9 +372,57 @@ const styles = StyleSheet.create({
     backgroundColor: '#D1F2EB',
     borderRadius: 8,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   picker: {
-    height: 50,
+    height: 55,
+    width: '100%',
     color: '#374151',
+  },
+  iosPickerButton: {
+    height: 55,
+    justifyContent: 'center',
+    paddingHorizontal: 14,
+  },
+  iosPickerText: {
+    fontSize: 14,
+    color: '#374151',
+  },
+  pickerModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  pickerModalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 20,
+  },
+  pickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  doneButton: {
+    padding: 4,
+  },
+  doneButtonText: {
+    fontSize: 16,
+    color: '#0E7490',
+    fontWeight: '600',
+  },
+  pickerWrapper: {
+    height: 250,
+    justifyContent: 'center',
+    paddingVertical: 10,
+  },
+  iosPicker: {
+    height: 250,
+    width: '100%',
+    backgroundColor: '#FFFFFF',
   },
 });

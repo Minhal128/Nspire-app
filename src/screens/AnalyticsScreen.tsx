@@ -11,6 +11,8 @@ import {
   RefreshControl,
   ActivityIndicator,
   Alert,
+  Platform,
+  Pressable,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
@@ -51,6 +53,10 @@ export default function AnalyticsScreen({ navigation, onMenuPress }: AnalyticsSc
   });
   const [user, setUser] = useState<any>(null);
 
+  // iOS Picker State
+  const [pickerModalVisible, setPickerModalVisible] = useState(false);
+  const [pickerType, setPickerType] = useState<'property' | 'period' | null>(null);
+
   const loadData = useCallback(async () => {
     try {
       const [propertiesData, inspectionsData, statsData] = await Promise.all([
@@ -61,7 +67,7 @@ export default function AnalyticsScreen({ navigation, onMenuPress }: AnalyticsSc
 
       const propertiesList = propertiesData.properties || propertiesData || [];
       const inspectionsList = inspectionsData.inspections || inspectionsData || [];
-      
+
       setProperties(propertiesList);
 
       // Calculate analytics from inspections
@@ -73,7 +79,7 @@ export default function AnalyticsScreen({ navigation, onMenuPress }: AnalyticsSc
       inspectionsList.forEach((inspection: any) => {
         const score = inspection.score || 0;
         const status = inspection.complianceStatus || (score >= 70 ? 'compliant' : score >= 50 ? 'needs-attention' : 'non-compliant');
-        
+
         if (status === 'compliant' || score >= 70) compliant++;
         else if (status === 'needs-attention' || score >= 50) needsAttention++;
         else nonCompliant++;
@@ -187,7 +193,7 @@ export default function AnalyticsScreen({ navigation, onMenuPress }: AnalyticsSc
         transparent={true}
         onRequestClose={() => setSidebarVisible(false)}
       >
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.modalOverlay}
           activeOpacity={1}
           onPress={() => setSidebarVisible(false)}
@@ -202,6 +208,62 @@ export default function AnalyticsScreen({ navigation, onMenuPress }: AnalyticsSc
         </TouchableOpacity>
       </Modal>
 
+      {/* iOS Picker Modal */}
+      <Modal
+        visible={pickerModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setPickerModalVisible(false)}
+      >
+        <View style={styles.pickerModalOverlay}>
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => setPickerModalVisible(false)}
+          />
+          <View style={styles.pickerModalContent}>
+            <View style={styles.pickerHeader}>
+              <TouchableOpacity
+                onPress={() => setPickerModalVisible(false)}
+                style={styles.doneButton}
+              >
+                <Text style={styles.doneButtonText}>Done</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.pickerWrapper}>
+              <Picker
+                selectedValue={
+                  pickerType === 'property' ? property :
+                    timePeriod
+                }
+                onValueChange={(itemValue) => {
+                  if (pickerType === 'property') setProperty(itemValue);
+                  else if (pickerType === 'period') setTimePeriod(itemValue);
+                }}
+                style={styles.iosPicker}
+                itemStyle={{ fontSize: 18, height: 50, color: 'black' }}
+              >
+                {pickerType === 'property' && (
+                  <>
+                    <Picker.Item label="All Properties" value="" color="black" />
+                    {properties.map((p) => (
+                      <Picker.Item key={p._id} label={p.name} value={p._id} color="black" />
+                    ))}
+                  </>
+                )}
+                {pickerType === 'period' && (
+                  <>
+                    <Picker.Item label="Time Period" value="" color="black" />
+                    <Picker.Item label="Last 30 Days" value="30days" color="black" />
+                    <Picker.Item label="Last 90 Days" value="90days" color="black" />
+                    <Picker.Item label="Last Year" value="year" color="black" />
+                  </>
+                )}
+              </Picker>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       <SafeAreaView style={styles.container}>
         {/* Header with White Bar */}
         <View style={styles.headerContainer}>
@@ -209,8 +271,8 @@ export default function AnalyticsScreen({ navigation, onMenuPress }: AnalyticsSc
             <TouchableOpacity onPress={onMenuPress || handleMenuPress}>
               <Ionicons name="menu" size={28} color="#1F2937" />
             </TouchableOpacity>
-            <Image 
-              source={require('../../logo.png')} 
+            <Image
+              source={require('../../logo.png')}
               style={styles.headerLogo}
               resizeMode="contain"
             />
@@ -220,8 +282,8 @@ export default function AnalyticsScreen({ navigation, onMenuPress }: AnalyticsSc
           </View>
         </View>
 
-        <ScrollView 
-          style={styles.scrollView} 
+        <ScrollView
+          style={styles.scrollView}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#0E7490']} />
@@ -238,24 +300,38 @@ export default function AnalyticsScreen({ navigation, onMenuPress }: AnalyticsSc
           {/* Filters Section */}
           <View style={styles.filtersSection}>
             <Text style={styles.filtersTitle}>Filters</Text>
-            
+
             <View style={styles.filtersRow}>
               <View style={styles.filterItem}>
                 <View style={styles.pickerContainer}>
-                  <Picker
-                    selectedValue={property}
-                    onValueChange={(itemValue: string) => setProperty(itemValue)}
-                    style={styles.picker}
-                  >
-                    <Picker.Item label="All Properties" value="" />
-                    {properties.map((p) => (
-                      <Picker.Item key={p._id} label={p.name} value={p._id} />
-                    ))}
-                  </Picker>
-                  <Ionicons 
-                    name="chevron-down" 
-                    size={18} 
-                    color="#6B7280" 
+                  {Platform.OS === 'ios' ? (
+                    <TouchableOpacity
+                      style={styles.iosPickerButton}
+                      onPress={() => {
+                        setPickerType('property');
+                        setPickerModalVisible(true);
+                      }}
+                    >
+                      <Text style={[styles.iosPickerText, !property && { color: '#9CA3AF' }]}>
+                        {property ? properties.find(p => p._id === property)?.name || property : "All Properties"}
+                      </Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <Picker
+                      selectedValue={property}
+                      onValueChange={(itemValue: string) => setProperty(itemValue)}
+                      style={styles.picker}
+                    >
+                      <Picker.Item label="All Properties" value="" />
+                      {properties.map((p) => (
+                        <Picker.Item key={p._id} label={p.name} value={p._id} />
+                      ))}
+                    </Picker>
+                  )}
+                  <Ionicons
+                    name="chevron-down"
+                    size={18}
+                    color="#6B7280"
                     style={styles.pickerIcon}
                   />
                 </View>
@@ -263,27 +339,41 @@ export default function AnalyticsScreen({ navigation, onMenuPress }: AnalyticsSc
 
               <View style={styles.filterItem}>
                 <View style={styles.pickerContainer}>
-                  <Picker
-                    selectedValue={timePeriod}
-                    onValueChange={(itemValue: string) => setTimePeriod(itemValue)}
-                    style={styles.picker}
-                  >
-                    <Picker.Item label="Time Period" value="" />
-                    <Picker.Item label="Last 30 Days" value="30days" />
-                    <Picker.Item label="Last 90 Days" value="90days" />
-                    <Picker.Item label="Last Year" value="year" />
-                  </Picker>
-                  <Ionicons 
-                    name="chevron-down" 
-                    size={18} 
-                    color="#6B7280" 
+                  {Platform.OS === 'ios' ? (
+                    <TouchableOpacity
+                      style={styles.iosPickerButton}
+                      onPress={() => {
+                        setPickerType('period');
+                        setPickerModalVisible(true);
+                      }}
+                    >
+                      <Text style={[styles.iosPickerText, !timePeriod && { color: '#9CA3AF' }]}>
+                        {timePeriod === '30days' ? 'Last 30 Days' : timePeriod === '90days' ? 'Last 90 Days' : timePeriod === 'year' ? 'Last Year' : "Time Period"}
+                      </Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <Picker
+                      selectedValue={timePeriod}
+                      onValueChange={(itemValue: string) => setTimePeriod(itemValue)}
+                      style={styles.picker}
+                    >
+                      <Picker.Item label="Time Period" value="" />
+                      <Picker.Item label="Last 30 Days" value="30days" />
+                      <Picker.Item label="Last 90 Days" value="90days" />
+                      <Picker.Item label="Last Year" value="year" />
+                    </Picker>
+                  )}
+                  <Ionicons
+                    name="chevron-down"
+                    size={18}
+                    color="#6B7280"
                     style={styles.pickerIcon}
                   />
                 </View>
               </View>
             </View>
 
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.applyButton}
               onPress={() => {
                 console.log('Applying filters:', { property, timePeriod });
@@ -313,7 +403,7 @@ export default function AnalyticsScreen({ navigation, onMenuPress }: AnalyticsSc
                   <View style={styles.gridLine} />
                   <View style={styles.gridLine} />
                   <View style={styles.gridLine} />
-                  
+
                   {/* Simulated line chart curves */}
                   <View style={styles.lineChartContainer}>
                     <View style={styles.greenLineTop} />
@@ -333,7 +423,7 @@ export default function AnalyticsScreen({ navigation, onMenuPress }: AnalyticsSc
           {/* Property Performance */}
           <View style={styles.performanceCard}>
             <Text style={styles.cardTitle}>Property Performance</Text>
-            
+
             {analytics.propertyPerformance.length === 0 ? (
               <Text style={styles.noDataText}>No property data available</Text>
             ) : (
@@ -341,12 +431,12 @@ export default function AnalyticsScreen({ navigation, onMenuPress }: AnalyticsSc
                 <View key={index} style={styles.performanceItem}>
                   <Text style={styles.performanceLabel}>{prop.name}</Text>
                   <View style={styles.progressBarContainer}>
-                    <View 
+                    <View
                       style={[
-                        styles.progressBar, 
-                        prop.score >= 70 ? styles.greenProgress : prop.score >= 50 ? styles.yellowProgress : styles.redProgress, 
+                        styles.progressBar,
+                        prop.score >= 70 ? styles.greenProgress : prop.score >= 50 ? styles.yellowProgress : styles.redProgress,
                         { width: `${prop.score}%` }
-                      ]} 
+                      ]}
                     />
                   </View>
                   <Text style={styles.scoreText}>{prop.score}%</Text>
@@ -358,7 +448,7 @@ export default function AnalyticsScreen({ navigation, onMenuPress }: AnalyticsSc
           {/* Common Issues */}
           <View style={styles.issuesCard}>
             <Text style={styles.cardTitle}>Common Issues</Text>
-            
+
             {analytics.commonIssues.map((issue, index) => (
               <View key={index} style={styles.issueItem}>
                 <Text style={styles.issueLabel}>{issue.name}</Text>
@@ -373,7 +463,7 @@ export default function AnalyticsScreen({ navigation, onMenuPress }: AnalyticsSc
           {/* Compliance Distribution */}
           <View style={styles.distributionCard}>
             <Text style={styles.cardTitle}>Compliance Distribution</Text>
-            
+
             <View style={styles.pieChartContainer}>
               {/* Pie chart with colored sections */}
               <View style={styles.pieChart}>
@@ -403,7 +493,7 @@ export default function AnalyticsScreen({ navigation, onMenuPress }: AnalyticsSc
 
           {/* Action Buttons */}
           <View style={styles.actionButtonsContainer}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.exportButton}
               onPress={() => {
                 console.log('Exporting analytics data');
@@ -414,7 +504,7 @@ export default function AnalyticsScreen({ navigation, onMenuPress }: AnalyticsSc
               <Ionicons name="download-outline" size={18} color="#FFFFFF" />
               <Text style={styles.exportButtonText}>Export Analytics</Text>
             </TouchableOpacity>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.shareButton}
               onPress={() => {
                 console.log('Sharing dashboard');
@@ -443,7 +533,7 @@ export default function AnalyticsScreen({ navigation, onMenuPress }: AnalyticsSc
             <Ionicons name="checkmark-circle" size={64} color="#10B981" />
             <Text style={styles.successModalTitle}>Success!</Text>
             <Text style={styles.successModalMessage}>{successMessage}</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.successModalButton}
               onPress={() => setSuccessModalVisible(false)}
             >
@@ -901,5 +991,50 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+  },
+  pickerModalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  pickerModalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 20,
+  },
+  pickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  doneButton: {
+    padding: 4,
+  },
+  doneButtonText: {
+    fontSize: 16,
+    color: '#0E7490',
+    fontWeight: '600',
+  },
+  iosPickerButton: {
+    height: 55,
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+  },
+  iosPickerText: {
+    fontSize: 14,
+    color: '#374151',
+  },
+  pickerWrapper: {
+    height: 250,
+    justifyContent: 'center',
+    paddingVertical: 10,
+  },
+  iosPicker: {
+    height: 250,
+    width: '100%',
+    backgroundColor: '#FFFFFF',
   },
 });
