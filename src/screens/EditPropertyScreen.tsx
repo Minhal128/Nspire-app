@@ -9,6 +9,8 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
+  Platform,
+  Modal,
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,7 +23,7 @@ interface EditPropertyScreenProps {
 
 export default function EditPropertyScreen({ navigation, route }: EditPropertyScreenProps) {
   const { property } = route.params || {};
-  
+
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [propertyId, setPropertyId] = useState(property?._id || property?.propertyId || '');
@@ -33,12 +35,16 @@ export default function EditPropertyScreen({ navigation, route }: EditPropertySc
   const [numberOfUnits, setNumberOfUnits] = useState(property?.units?.toString() || property?.totalUnits?.toString() || '');
   const [zipCode, setZipCode] = useState(property?.zipCode || '');
 
+  // iOS Picker State
+  const [pickerModalVisible, setPickerModalVisible] = useState(false);
+  const [pickerType, setPickerType] = useState<'state' | null>(null);
+
   const handleUpdate = async () => {
     if (!propertyName.trim()) {
       Alert.alert('Error', 'Property name is required');
       return;
     }
-    
+
     if (!address.trim()) {
       Alert.alert('Error', 'Address is required');
       return;
@@ -46,7 +52,7 @@ export default function EditPropertyScreen({ navigation, route }: EditPropertySc
 
     try {
       setLoading(true);
-      
+
       const updateData = {
         name: propertyName.trim(),
         address: address.trim(),
@@ -74,8 +80,8 @@ export default function EditPropertyScreen({ navigation, route }: EditPropertySc
       'Are you sure you want to delete this property? This action cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Delete', 
+        {
+          text: 'Delete',
           style: 'destructive',
           onPress: async () => {
             try {
@@ -96,150 +102,196 @@ export default function EditPropertyScreen({ navigation, route }: EditPropertySc
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        <View style={styles.formContainer}>
-          {/* Title */}
-          <Text style={styles.title}>Edit Or Delete{'\n'}Property</Text>
-
-          {/* Property ID */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Property ID</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Property ID"
-              placeholderTextColor="#6B7280"
-              value={propertyId}
-              onChangeText={setPropertyId}
-            />
-          </View>
-
-          {/* Property Name */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Property Name</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your Property Name"
-              placeholderTextColor="#6B7280"
-              value={propertyName}
-              onChangeText={setPropertyName}
-            />
-          </View>
-
-          {/* Address */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Address</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your Address"
-              placeholderTextColor="#6B7280"
-              value={address}
-              onChangeText={setAddress}
-            />
-          </View>
-
-          {/* State */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>State</Text>
-            <View style={styles.pickerContainer}>
-              <Picker
-                selectedValue={state}
-                onValueChange={(itemValue: string) => setState(itemValue)}
-                style={styles.picker}
+    <>
+      <Modal
+        visible={pickerModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setPickerModalVisible(false)}
+      >
+        <View style={styles.pickerModalOverlay}>
+          <View style={styles.pickerModalContent}>
+            <View style={styles.pickerHeader}>
+              <TouchableOpacity
+                onPress={() => setPickerModalVisible(false)}
+                style={styles.doneButton}
               >
-                <Picker.Item label="Select State" value="" />
-                <Picker.Item label="Alaska" value="alaska" />
-                <Picker.Item label="California" value="california" />
-                <Picker.Item label="Texas" value="texas" />
-              </Picker>
-              <Ionicons 
-                name="chevron-down" 
-                size={20} 
-                color="#6B7280" 
-                style={styles.pickerIcon}
+                <Text style={styles.doneButtonText}>Done</Text>
+              </TouchableOpacity>
+            </View>
+            <Picker
+              selectedValue={state}
+              onValueChange={(itemValue: string) => setState(itemValue)}
+              style={{ height: 200 }}
+            >
+              <Picker.Item label="Select State" value="" />
+              <Picker.Item label="Alaska" value="alaska" />
+              <Picker.Item label="California" value="california" />
+              <Picker.Item label="Texas" value="texas" />
+            </Picker>
+          </View>
+        </View>
+      </Modal>
+
+      <SafeAreaView style={styles.container}>
+        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+          <View style={styles.formContainer}>
+            {/* Title */}
+            <Text style={styles.title}>Edit Or Delete{'\n'}Property</Text>
+
+            {/* Property ID */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Property ID</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Property ID"
+                placeholderTextColor="#6B7280"
+                value={propertyId}
+                onChangeText={setPropertyId}
               />
             </View>
+
+            {/* Property Name */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Property Name</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter your Property Name"
+                placeholderTextColor="#6B7280"
+                value={propertyName}
+                onChangeText={setPropertyName}
+              />
+            </View>
+
+            {/* Address */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Address</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter your Address"
+                placeholderTextColor="#6B7280"
+                value={address}
+                onChangeText={setAddress}
+              />
+            </View>
+
+            {/* State */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>State</Text>
+              <View style={styles.pickerContainer}>
+                {Platform.OS === 'ios' ? (
+                  <TouchableOpacity
+                    style={styles.iosPickerButton}
+                    onPress={() => {
+                      setPickerType('state');
+                      setPickerModalVisible(true);
+                    }}
+                  >
+                    <Text style={[styles.iosPickerText, !state && { color: '#6B7280' }]}>
+                      {state ? (state.charAt(0).toUpperCase() + state.slice(1)) : "Select State"}
+                    </Text>
+                  </TouchableOpacity>
+                ) : (
+                  <Picker
+                    selectedValue={state}
+                    onValueChange={(itemValue: string) => setState(itemValue)}
+                    style={styles.picker}
+                  >
+                    <Picker.Item label="Select State" value="" />
+                    <Picker.Item label="Alaska" value="alaska" />
+                    <Picker.Item label="California" value="california" />
+                    <Picker.Item label="Texas" value="texas" />
+                  </Picker>
+                )}
+                <Ionicons
+                  name="chevron-down"
+                  size={20}
+                  color="#6B7280"
+                  style={styles.pickerIcon}
+                />
+              </View>
+            </View>
+
+            {/* Number Of Building */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Number Of Building</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Number of Buildings"
+                placeholderTextColor="#6B7280"
+                value={numberOfBuildings}
+                onChangeText={setNumberOfBuildings}
+                keyboardType="number-pad"
+              />
+            </View>
+
+            {/* City */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>City</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter Owner's Name"
+                placeholderTextColor="#6B7280"
+                value={city}
+                onChangeText={setCity}
+              />
+            </View>
+
+            {/* Number Of Unit */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Number Of Unit</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter Owner's Name"
+                placeholderTextColor="#6B7280"
+                value={numberOfUnits}
+                onChangeText={setNumberOfUnits}
+                keyboardType="number-pad"
+              />
+            </View>
+
+            {/* Zip Code */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Zip Code</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter Owner's Name"
+                placeholderTextColor="#6B7280"
+                value={zipCode}
+                onChangeText={setZipCode}
+                keyboardType="number-pad"
+              />
+            </View>
+
+            {/* Update Button */}
+            <TouchableOpacity
+              style={[styles.updateButton, loading && styles.buttonDisabled]}
+              onPress={handleUpdate}
+              disabled={loading || deleting}
+            >
+              {loading ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={styles.updateButtonText}>Update</Text>
+              )}
+            </TouchableOpacity>
+
+            {/* Delete Button */}
+            <TouchableOpacity
+              style={[styles.deleteButton, deleting && styles.buttonDisabled]}
+              onPress={handleDelete}
+              disabled={loading || deleting}
+            >
+              {deleting ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={styles.deleteButtonText}>Delete</Text>
+              )}
+            </TouchableOpacity>
           </View>
-
-          {/* Number Of Building */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Number Of Building</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Number of Buildings"
-              placeholderTextColor="#6B7280"
-              value={numberOfBuildings}
-              onChangeText={setNumberOfBuildings}
-              keyboardType="number-pad"
-            />
-          </View>
-
-          {/* City */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>City</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter Owner's Name"
-              placeholderTextColor="#6B7280"
-              value={city}
-              onChangeText={setCity}
-            />
-          </View>
-
-          {/* Number Of Unit */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Number Of Unit</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter Owner's Name"
-              placeholderTextColor="#6B7280"
-              value={numberOfUnits}
-              onChangeText={setNumberOfUnits}
-              keyboardType="number-pad"
-            />
-          </View>
-
-          {/* Zip Code */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Zip Code</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter Owner's Name"
-              placeholderTextColor="#6B7280"
-              value={zipCode}
-              onChangeText={setZipCode}
-              keyboardType="number-pad"
-            />
-          </View>
-
-          {/* Update Button */}
-          <TouchableOpacity 
-            style={[styles.updateButton, loading && styles.buttonDisabled]} 
-            onPress={handleUpdate}
-            disabled={loading || deleting}
-          >
-            {loading ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Text style={styles.updateButtonText}>Update</Text>
-            )}
-          </TouchableOpacity>
-
-          {/* Delete Button */}
-          <TouchableOpacity 
-            style={[styles.deleteButton, deleting && styles.buttonDisabled]} 
-            onPress={handleDelete}
-            disabled={loading || deleting}
-          >
-            {deleting ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Text style={styles.deleteButtonText}>Delete</Text>
-            )}
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+        </ScrollView>
+      </SafeAreaView>
+    </>
   );
 }
 
@@ -328,5 +380,40 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     opacity: 0.6,
+  },
+  pickerModalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  pickerModalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 20,
+  },
+  pickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  doneButton: {
+    padding: 4,
+  },
+  doneButtonText: {
+    fontSize: 16,
+    color: '#0E7490',
+    fontWeight: '600',
+  },
+  iosPickerButton: {
+    height: 55,
+    justifyContent: 'center',
+    paddingHorizontal: 0,
+  },
+  iosPickerText: {
+    fontSize: 14,
+    color: '#374151',
   },
 });

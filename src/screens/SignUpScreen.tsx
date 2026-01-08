@@ -9,6 +9,8 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
+  Modal,
+  Platform,
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import { SignUpScreenNavigationProp } from "../types/navigation";
@@ -25,6 +27,9 @@ export default function SignUpScreen({ navigation }: SignUpScreenProps) {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loginType, setLoginType] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // iOS Picker State
+  const [pickerModalVisible, setPickerModalVisible] = useState(false);
 
   const handleCreateAccount = async () => {
     // Validate inputs
@@ -105,133 +110,177 @@ export default function SignUpScreen({ navigation }: SignUpScreenProps) {
   };
 
   return (
-    <View style={styles.container}>
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.content}>
-          {/* Logo */}
-          <Image
-            source={require("../../logo.png")}
-            style={styles.logo}
-            resizeMode="contain"
-          />
+    <>
+      <View style={styles.container}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.content}>
+            {/* Logo */}
+            <Image
+              source={require("../../logo.png")}
+              style={styles.logo}
+              resizeMode="contain"
+            />
 
-          {/* Registration Card */}
-          <View style={styles.registrationCard}>
-            <Text style={styles.title}>Registration</Text>
-            <Text style={styles.subtitle}>
-              Enter your Email ID and{"\n"}Password to register
-            </Text>
+            {/* Registration Card */}
+            <View style={styles.registrationCard}>
+              <Text style={styles.title}>Registration</Text>
+              <Text style={styles.subtitle}>
+                Enter your Email ID and{"\n"}Password to register
+              </Text>
 
-            {/* Email Input */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Email</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter your email ID"
-                placeholderTextColor="#9CA3AF"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
-            </View>
+              {/* Email Input */}
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Email</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter your email ID"
+                  placeholderTextColor="#9CA3AF"
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+              </View>
 
-            {/* Name Input */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Name</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter your Full Name"
-                placeholderTextColor="#9CA3AF"
-                value={name}
-                onChangeText={setName}
-              />
-            </View>
+              {/* Name Input */}
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Name</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter your Full Name"
+                  placeholderTextColor="#9CA3AF"
+                  value={name}
+                  onChangeText={setName}
+                />
+              </View>
 
-            {/* Password Input */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Password</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Create your Password"
-                placeholderTextColor="#9CA3AF"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-              />
-            </View>
+              {/* Password Input */}
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Password</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Create your Password"
+                  placeholderTextColor="#9CA3AF"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry
+                />
+              </View>
 
-            {/* Confirm Password Input */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Confirm Password</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Confirm your Password"
-                placeholderTextColor="#9CA3AF"
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                secureTextEntry
-              />
-            </View>
+              {/* Confirm Password Input */}
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Confirm Password</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Confirm your Password"
+                  placeholderTextColor="#9CA3AF"
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  secureTextEntry
+                />
+              </View>
 
-            {/* Login Type Picker */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Select Login Type</Text>
-              <View style={styles.pickerContainer}>
-                <Picker
-                  selectedValue={loginType}
-                  onValueChange={(itemValue: string) => setLoginType(itemValue)}
-                  style={styles.picker}
-                  enabled={!loading}
+              {/* Login Type Picker */}
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Select Login Type</Text>
+                <View style={styles.pickerContainer}>
+                  {Platform.OS === 'ios' ? (
+                    <TouchableOpacity
+                      style={styles.iosPickerButton}
+                      onPress={() => setPickerModalVisible(true)}
+                    >
+                      <Text style={[styles.iosPickerText, !loginType && { color: '#9CA3AF' }]}>
+                        {loginType ? loginType.charAt(0).toUpperCase() + loginType.slice(1).replace('-', ' ') : "Select..."}
+                      </Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <Picker
+                      selectedValue={loginType}
+                      onValueChange={(itemValue: string) => setLoginType(itemValue)}
+                      style={styles.picker}
+                      enabled={!loading}
+                    >
+                      <Picker.Item label="Select..." value="" />
+                      <Picker.Item label="Inspector" value="inspector" />
+                      <Picker.Item
+                        label="Property Manager"
+                        value="property-manager"
+                      />
+                      <Picker.Item label="Management" value="management" />
+                      <Picker.Item label="Supervisor" value="supervisor" />
+                      <Picker.Item label="Other" value="other" />
+                    </Picker>
+                  )}
+                </View>
+              </View>
+
+              {/* Create Account Button */}
+              <TouchableOpacity
+                style={[
+                  styles.createButton,
+                  loading && styles.createButtonDisabled,
+                ]}
+                onPress={handleCreateAccount}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.createButtonText}>Create Account</Text>
+                )}
+              </TouchableOpacity>
+
+              {/* Sign In Link */}
+              <View style={styles.signInContainer}>
+                <TouchableOpacity
+                  onPress={() => navigation.navigate("SignIn", {})}
                 >
-                  <Picker.Item label="Select..." value="" />
-                  <Picker.Item label="Inspector" value="inspector" />
-                  <Picker.Item
-                    label="Property Manager"
-                    value="property-manager"
-                  />
-                  <Picker.Item label="Management" value="management" />
-                  <Picker.Item label="Supervisor" value="supervisor" />
-
-                  <Picker.Item label="Other" value="other" />
-                </Picker>
+                  <Text style={styles.signInText}>
+                    <Text style={styles.signInLink}>Sign In?</Text> if already
+                    registered
+                  </Text>
+                </TouchableOpacity>
               </View>
             </View>
-
-            {/* Create Account Button */}
-            <TouchableOpacity
-              style={[
-                styles.createButton,
-                loading && styles.createButtonDisabled,
-              ]}
-              onPress={handleCreateAccount}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <Text style={styles.createButtonText}>Create Account</Text>
-              )}
-            </TouchableOpacity>
-
-            {/* Sign In Link */}
-            <View style={styles.signInContainer}>
+          </View>
+        </ScrollView>
+      </View>
+      {/* iOS Picker Modal */}
+      <Modal
+        visible={pickerModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setPickerModalVisible(false)}
+      >
+        <View style={styles.pickerModalOverlay}>
+          <View style={styles.pickerModalContent}>
+            <View style={styles.pickerHeader}>
               <TouchableOpacity
-                onPress={() => navigation.navigate("SignIn", {})}
+                onPress={() => setPickerModalVisible(false)}
+                style={styles.doneButton}
               >
-                <Text style={styles.signInText}>
-                  <Text style={styles.signInLink}>Sign In?</Text> if already
-                  registered
-                </Text>
+                <Text style={styles.doneButtonText}>Done</Text>
               </TouchableOpacity>
             </View>
+            <Picker
+              selectedValue={loginType}
+              onValueChange={(itemValue: string) => setLoginType(itemValue)}
+              style={{ height: 200 }}
+            >
+              <Picker.Item label="Select..." value="" />
+              <Picker.Item label="Inspector" value="inspector" />
+              <Picker.Item label="Property Manager" value="property-manager" />
+              <Picker.Item label="Management" value="management" />
+              <Picker.Item label="Supervisor" value="supervisor" />
+              <Picker.Item label="Other" value="other" />
+            </Picker>
           </View>
         </View>
-      </ScrollView>
-    </View>
+      </Modal>
+    </>
   );
 }
 
@@ -239,6 +288,41 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#7DD3FC",
+  },
+  pickerModalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  pickerModalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 20,
+  },
+  pickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  doneButton: {
+    padding: 4,
+  },
+  doneButtonText: {
+    fontSize: 16,
+    color: '#0E7490',
+    fontWeight: '600',
+  },
+  iosPickerButton: {
+    height: 55,
+    justifyContent: 'center',
+    paddingHorizontal: 0,
+  },
+  iosPickerText: {
+    fontSize: 16,
+    color: '#374151',
   },
   scrollContent: {
     flexGrow: 1,

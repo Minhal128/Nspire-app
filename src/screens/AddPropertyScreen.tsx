@@ -11,6 +11,8 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Modal,
+  Pressable,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
@@ -39,6 +41,10 @@ export default function AddPropertyScreen({ navigation }: AddPropertyScreenProps
   const [loadingStates, setLoadingStates] = useState(false);
   const [loadingCities, setLoadingCities] = useState(false);
 
+  // iOS Picker State
+  const [pickerModalVisible, setPickerModalVisible] = useState(false);
+  const [pickerType, setPickerType] = useState<'country' | 'state' | 'city' | null>(null);
+
   // Initialize countries on component mount
   useEffect(() => {
     const allCountries = locationService.getAllCountries();
@@ -52,7 +58,7 @@ export default function AddPropertyScreen({ navigation }: AddPropertyScreenProps
       setSelectedState('');
       setSelectedCity('');
       setCities([]);
-      
+
       const countryStates = locationService.getStatesByCountry(selectedCountry);
       setStates(countryStates);
       setLoadingStates(false);
@@ -67,7 +73,7 @@ export default function AddPropertyScreen({ navigation }: AddPropertyScreenProps
     if (selectedCountry && selectedState) {
       setLoadingCities(true);
       setSelectedCity('');
-      
+
       const stateCities = locationService.getCitiesByState(selectedCountry, selectedState);
       setCities(stateCities);
       setLoadingCities(false);
@@ -111,11 +117,11 @@ export default function AddPropertyScreen({ navigation }: AddPropertyScreenProps
     try {
       // Generate property ID if not provided
       const generatedPropertyId = propertyId.trim() || `PROP-${Date.now()}`;
-      
+
       // Get full location names for storage
       const countryData = locationService.getCountryByCode(selectedCountry);
       const stateData = locationService.getStateByCode(selectedCountry, selectedState);
-      
+
       const propertyData = {
         propertyId: generatedPropertyId,
         name: propertyName.trim(),
@@ -131,7 +137,7 @@ export default function AddPropertyScreen({ navigation }: AddPropertyScreenProps
       };
 
       const response = await propertyService.createProperty(propertyData);
-      
+
       if (response.success) {
         Alert.alert(
           'Success',
@@ -150,229 +156,355 @@ export default function AddPropertyScreen({ navigation }: AddPropertyScreenProps
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={24} color="#1F2937" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Add Property</Text>
-        <TouchableOpacity
-          onPress={() => navigation.navigate('LocationStats')}
-          style={styles.statsButton}
-        >
-          <Ionicons name="stats-chart" size={20} color="#0E7490" />
-        </TouchableOpacity>
-      </View>
-
-      <KeyboardAvoidingView 
-        style={{ flex: 1 }} 
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    <>
+      {/* iOS Picker Modal */}
+      <Modal
+        visible={pickerModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setPickerModalVisible(false)}
       >
-        <ScrollView 
-          style={styles.scrollView}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-        >
-          <View style={styles.formContainer}>
-            
-            {/* Info Banner */}
-            <View style={styles.infoBanner}>
-              <Ionicons name="information-circle" size={20} color="#0E7490" />
-              <Text style={styles.infoBannerText}>
-                Inspector Portal supports: US, Canada, UK & Australia
-              </Text>
+        <View style={styles.pickerModalOverlay}>
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => setPickerModalVisible(false)}
+          />
+          <View style={styles.pickerModalContent}>
+            <View style={styles.pickerHeader}>
+              <TouchableOpacity
+                onPress={() => setPickerModalVisible(false)}
+                style={styles.doneButton}
+              >
+                <Text style={styles.doneButtonText}>Done</Text>
+              </TouchableOpacity>
             </View>
-
-            {/* Property ID (Optional) */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Property ID (Optional)</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Property ID (auto-generated if empty)"
-                placeholderTextColor="#6B7280"
-                value={propertyId}
-                onChangeText={setPropertyId}
-              />
-            </View>
-
-            {/* Property Name */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Property Name</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter your Property Name"
-                placeholderTextColor="#6B7280"
-                value={propertyName}
-                onChangeText={setPropertyName}
-              />
-            </View>
-
-            {/* Number Of Building */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Number Of Building</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Number of Buildings"
-                placeholderTextColor="#6B7280"
-                value={numberOfBuildings}
-                onChangeText={setNumberOfBuildings}
-                keyboardType="number-pad"
-              />
-            </View>
-
-            {/* Number Of Unit */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Number Of Unit</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Number of Units"
-                placeholderTextColor="#6B7280"
-                value={numberOfUnits}
-                onChangeText={setNumberOfUnits}
-                keyboardType="number-pad"
-              />
-            </View>
-
-            {/* Country */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Country</Text>
-              <View style={styles.pickerContainer}>
-                <Picker
-                  selectedValue={selectedCountry}
-                  onValueChange={(itemValue: string) => setSelectedCountry(itemValue)}
-                  style={styles.picker}
-                >
-                  <Picker.Item label="Select Country" value="" color="#6B7280" />
-                  {countries.map((country) => (
-                    <Picker.Item 
-                      key={country.isoCode} 
-                      label={country.label} 
-                      value={country.isoCode} 
+            <View style={styles.pickerWrapper}>
+              <Picker
+                selectedValue={
+                  pickerType === 'country' ? selectedCountry :
+                    pickerType === 'state' ? selectedState :
+                      selectedCity
+                }
+                onValueChange={(itemValue) => {
+                  if (pickerType === 'country') setSelectedCountry(itemValue);
+                  else if (pickerType === 'state') setSelectedState(itemValue);
+                  else if (pickerType === 'city') setSelectedCity(itemValue);
+                }}
+                style={{ height: 200 }}
+                itemStyle={{ fontSize: 20, height: 120, color: '#000000' }}
+              >
+                {pickerType === 'country' && (
+                  <>
+                    <Picker.Item label="Select Country" value="" color="#6B7280" />
+                    {countries.map((country) => (
+                      <Picker.Item key={country.isoCode} label={country.label} value={country.isoCode} />
+                    ))}
+                  </>
+                )}
+                {pickerType === 'state' && (
+                  <>
+                    <Picker.Item
+                      label={loadingStates ? "Loading states..." : states.length === 0 ? "Select country first" : "Select State/Province"}
+                      value=""
+                      color="#6B7280"
                     />
-                  ))}
-                </Picker>
-                <Ionicons 
-                  name="chevron-down" 
-                  size={18} 
-                  color="#6B7280" 
-                  style={styles.pickerIcon}
-                />
-              </View>
-            </View>
-
-            {/* State/Province */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>State/Province</Text>
-              <View style={styles.pickerContainer}>
-                <Picker
-                  selectedValue={selectedState}
-                  onValueChange={(itemValue: string) => setSelectedState(itemValue)}
-                  style={styles.picker}
-                  enabled={states.length > 0 && !loadingStates}
-                >
-                  <Picker.Item 
-                    label={loadingStates ? "Loading states..." : states.length === 0 ? "Select country first" : "Select State/Province"} 
-                    value="" 
-                    color="#6B7280" 
-                  />
-                  {states.map((state) => (
-                    <Picker.Item 
-                      key={state.isoCode} 
-                      label={state.label} 
-                      value={state.isoCode} 
+                    {states.map((state) => (
+                      <Picker.Item key={state.isoCode} label={state.label} value={state.isoCode} />
+                    ))}
+                  </>
+                )}
+                {pickerType === 'city' && (
+                  <>
+                    <Picker.Item
+                      label={loadingCities ? "Loading cities..." : cities.length === 0 ? "Select state first" : "Select City"}
+                      value=""
+                      color="#6B7280"
                     />
-                  ))}
-                </Picker>
-                <Ionicons 
-                  name="chevron-down" 
-                  size={18} 
-                  color="#6B7280" 
-                  style={styles.pickerIcon}
-                />
-              </View>
+                    {cities.map((city, index) => (
+                      <Picker.Item key={`${city.value}-${index}`} label={city.label} value={city.value} />
+                    ))}
+                  </>
+                )}
+              </Picker>
             </View>
-
-            {/* Address */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Address</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter your address"
-                placeholderTextColor="#6B7280"
-                value={address}
-                onChangeText={setAddress}
-              />
-            </View>
-
-            {/* City (Area) */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>City (Area)</Text>
-              <View style={styles.pickerContainer}>
-                <Picker
-                  selectedValue={selectedCity}
-                  onValueChange={(itemValue: string) => setSelectedCity(itemValue)}
-                  style={styles.picker}
-                  enabled={cities.length > 0 && !loadingCities}
-                >
-                  <Picker.Item 
-                    label={loadingCities ? "Loading cities..." : cities.length === 0 ? "Select state first" : "Select City"} 
-                    value="" 
-                    color="#6B7280" 
-                  />
-                  {cities.map((city, index) => (
-                    <Picker.Item 
-                      key={`${city.value}-${index}`} 
-                      label={city.label} 
-                      value={city.value} 
-                    />
-                  ))}
-                </Picker>
-                <Ionicons 
-                  name="chevron-down" 
-                  size={18} 
-                  color="#6B7280" 
-                  style={styles.pickerIcon}
-                />
-              </View>
-            </View>
-
-          {/* Postal Code */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Postal Code</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your Postal Code"
-              placeholderTextColor="#6B7280"
-              value={postalCode}
-              onChangeText={setPostalCode}
-              keyboardType="number-pad"
-            />
           </View>
-
-          {/* Submit Button */}
-          <TouchableOpacity 
-            style={[styles.submitButton, loading && styles.submitButtonDisabled]}
-            onPress={handleSubmit}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <Text style={styles.submitButtonText}>Add Property</Text>
-            )}
-          </TouchableOpacity>
-          
-          {/* Bottom spacing for keyboard */}
-          <View style={{ height: 50 }} />
         </View>
-      </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+      </Modal>
+
+      <SafeAreaView style={styles.container}>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="arrow-back" size={24} color="#1F2937" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Add Property</Text>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('LocationStats')}
+            style={styles.statsButton}
+          >
+            <Ionicons name="stats-chart" size={20} color="#0E7490" />
+          </TouchableOpacity>
+        </View>
+
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <ScrollView
+            style={styles.scrollView}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View style={styles.formContainer}>
+
+              {/* Info Banner */}
+              <View style={styles.infoBanner}>
+                <Ionicons name="information-circle" size={20} color="#0E7490" />
+                <Text style={styles.infoBannerText}>
+                  Inspector Portal supports: US, Canada, UK & Australia
+                </Text>
+              </View>
+
+              {/* Property ID (Optional) */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Property ID (Optional)</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Property ID (auto-generated if empty)"
+                  placeholderTextColor="#6B7280"
+                  value={propertyId}
+                  onChangeText={setPropertyId}
+                />
+              </View>
+
+              {/* Property Name */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Property Name</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter your Property Name"
+                  placeholderTextColor="#6B7280"
+                  value={propertyName}
+                  onChangeText={setPropertyName}
+                />
+              </View>
+
+              {/* Number Of Building */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Number Of Building</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Number of Buildings"
+                  placeholderTextColor="#6B7280"
+                  value={numberOfBuildings}
+                  onChangeText={setNumberOfBuildings}
+                  keyboardType="number-pad"
+                />
+              </View>
+
+              {/* Number Of Unit */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Number Of Unit</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Number of Units"
+                  placeholderTextColor="#6B7280"
+                  value={numberOfUnits}
+                  onChangeText={setNumberOfUnits}
+                  keyboardType="number-pad"
+                />
+              </View>
+
+              {/* Country */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Country</Text>
+                <View style={styles.pickerContainer}>
+                  {Platform.OS === 'ios' ? (
+                    <TouchableOpacity
+                      style={styles.iosPickerButton}
+                      onPress={() => {
+                        setPickerType('country');
+                        setPickerModalVisible(true);
+                      }}
+                    >
+                      <Text style={[styles.iosPickerText, !selectedCountry && { color: '#6B7280' }]}>
+                        {selectedCountry ? countries.find(c => c.isoCode === selectedCountry)?.label || selectedCountry : "Select Country"}
+                      </Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <Picker
+                      selectedValue={selectedCountry}
+                      onValueChange={(itemValue: string) => setSelectedCountry(itemValue)}
+                      style={styles.picker}
+                    >
+                      <Picker.Item label="Select Country" value="" color="#6B7280" />
+                      {countries.map((country) => (
+                        <Picker.Item
+                          key={country.isoCode}
+                          label={country.label}
+                          value={country.isoCode}
+                        />
+                      ))}
+                    </Picker>
+                  )}
+                  <Ionicons
+                    name="chevron-down"
+                    size={18}
+                    color="#6B7280"
+                    style={styles.pickerIcon}
+                  />
+                </View>
+              </View>
+
+              {/* State/Province */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>State/Province</Text>
+                <View style={styles.pickerContainer}>
+                  {Platform.OS === 'ios' ? (
+                    <TouchableOpacity
+                      style={styles.iosPickerButton}
+                      onPress={() => {
+                        if (!selectedCountry) {
+                          Alert.alert('Notice', 'Please select a country first');
+                          return;
+                        }
+                        setPickerType('state');
+                        setPickerModalVisible(true);
+                      }}
+                    >
+                      <Text style={[styles.iosPickerText, !selectedState && { color: '#6B7280' }]}>
+                        {selectedState ? states.find(s => s.isoCode === selectedState)?.label || selectedState : "Select State/Province"}
+                      </Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <Picker
+                      selectedValue={selectedState}
+                      onValueChange={(itemValue: string) => setSelectedState(itemValue)}
+                      style={styles.picker}
+                      enabled={states.length > 0 && !loadingStates}
+                    >
+                      <Picker.Item
+                        label={loadingStates ? "Loading states..." : states.length === 0 ? "Select country first" : "Select State/Province"}
+                        value=""
+                        color="#6B7280"
+                      />
+                      {states.map((state) => (
+                        <Picker.Item
+                          key={state.isoCode}
+                          label={state.label}
+                          value={state.isoCode}
+                        />
+                      ))}
+                    </Picker>
+                  )}
+                  <Ionicons
+                    name="chevron-down"
+                    size={18}
+                    color="#6B7280"
+                    style={styles.pickerIcon}
+                  />
+                </View>
+              </View>
+
+              {/* Address */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Address</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter your address"
+                  placeholderTextColor="#6B7280"
+                  value={address}
+                  onChangeText={setAddress}
+                />
+              </View>
+
+              {/* City (Area) */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>City (Area)</Text>
+                <View style={styles.pickerContainer}>
+                  {Platform.OS === 'ios' ? (
+                    <TouchableOpacity
+                      style={styles.iosPickerButton}
+                      onPress={() => {
+                        if (!selectedState) {
+                          Alert.alert('Notice', 'Please select a state first');
+                          return;
+                        }
+                        setPickerType('city');
+                        setPickerModalVisible(true);
+                      }}
+                    >
+                      <Text style={[styles.iosPickerText, !selectedCity && { color: '#6B7280' }]}>
+                        {selectedCity ? cities.find(c => c.value === selectedCity)?.label || selectedCity : "Select City"}
+                      </Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <Picker
+                      selectedValue={selectedCity}
+                      onValueChange={(itemValue: string) => setSelectedCity(itemValue)}
+                      style={styles.picker}
+                      enabled={cities.length > 0 && !loadingCities}
+                    >
+                      <Picker.Item
+                        label={loadingCities ? "Loading cities..." : cities.length === 0 ? "Select state first" : "Select City"}
+                        value=""
+                        color="#6B7280"
+                      />
+                      {cities.map((city, index) => (
+                        <Picker.Item
+                          key={`${city.value}-${index}`}
+                          label={city.label}
+                          value={city.value}
+                        />
+                      ))}
+                    </Picker>
+                  )}
+                  <Ionicons
+                    name="chevron-down"
+                    size={18}
+                    color="#6B7280"
+                    style={styles.pickerIcon}
+                  />
+                </View>
+              </View>
+
+              {/* Postal Code */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Postal Code</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter your Postal Code"
+                  placeholderTextColor="#6B7280"
+                  value={postalCode}
+                  onChangeText={setPostalCode}
+                  keyboardType="number-pad"
+                />
+              </View>
+
+              {/* Submit Button */}
+              <TouchableOpacity
+                style={[styles.submitButton, loading && styles.submitButtonDisabled]}
+                onPress={handleSubmit}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.submitButtonText}>Add Property</Text>
+                )}
+              </TouchableOpacity>
+
+              {/* Bottom spacing for keyboard */}
+              <View style={{ height: 50 }} />
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </>
   );
 }
 
@@ -493,5 +625,49 @@ const styles = StyleSheet.create({
   },
   submitButtonDisabled: {
     backgroundColor: '#9CA3AF',
+  },
+  pickerModalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  pickerModalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 20,
+  },
+  pickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  doneButton: {
+    padding: 4,
+  },
+  doneButtonText: {
+    fontSize: 16,
+    color: '#0E7490',
+    fontWeight: '600',
+  },
+  iosPickerButton: {
+    height: 55,
+    justifyContent: 'center',
+    paddingHorizontal: 0,
+  },
+  iosPickerText: {
+    fontSize: 14,
+    color: '#374151',
+  },
+  pickerWrapper: {
+    height: 250,
+    justifyContent: 'center',
+    paddingVertical: 10,
+  },
+  iosPicker: {
+    height: 250,
+    width: '100%',
   },
 });

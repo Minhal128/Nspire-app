@@ -184,21 +184,21 @@ export const api = {
     apiRequest<T>(endpoint, {
       ...options,
       method: 'POST',
-      body: body ? JSON.stringify(body) : undefined,
+      body: body ? JSON.stringify(body) : null,
     }),
     
   put: <T = any>(endpoint: string, body?: any, options?: RequestInit) =>
     apiRequest<T>(endpoint, {
       ...options,
       method: 'PUT',
-      body: body ? JSON.stringify(body) : undefined,
+      body: body ? JSON.stringify(body) : null,
     }),
     
   patch: <T = any>(endpoint: string, body?: any, options?: RequestInit) =>
     apiRequest<T>(endpoint, {
       ...options,
       method: 'PATCH',
-      body: body ? JSON.stringify(body) : undefined,
+      body: body ? JSON.stringify(body) : null,
     }),
     
   delete: <T = any>(endpoint: string, options?: RequestInit) =>
