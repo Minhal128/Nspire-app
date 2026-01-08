@@ -22,9 +22,23 @@ interface ManagementDashboardScreenProps {
 }
 
 export default function ManagementDashboardScreen({ navigation }: ManagementDashboardScreenProps) {
+  console.log('ManagementDashboardScreen: Component mounted');
+  
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Add maximum loading timeout to prevent infinite loading
+  useEffect(() => {
+    const maxLoadingTimeout = setTimeout(() => {
+      if (loading) {
+        console.warn('Loading timeout reached, forcing loading to false');
+        setLoading(false);
+      }
+    }, 15000); // 15 second timeout
+
+    return () => clearTimeout(maxLoadingTimeout);
+  }, [loading]);
   const [user, setUser] = useState<User | null>(null);
   const [properties, setProperties] = useState<Property[]>([]);
   const [inspections, setInspections] = useState<Inspection[]>([]);
@@ -44,26 +58,48 @@ export default function ManagementDashboardScreen({ navigation }: ManagementDash
 
   const loadInitialData = useCallback(async () => {
     try {
-      const storedUser = await authService.getStoredUser();
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Request timeout')), 10000)
+      );
       
-      // Role-based access control
-      const allowedRoles = ['management', 'supervisor', 'admin'];
-      if (!storedUser || !allowedRoles.includes(storedUser.role)) {
-        Alert.alert(
-          'Access Denied',
-          'You do not have permission to access the Management portal.',
-          [{ text: 'OK', onPress: () => {
-            authService.logout();
-            navigation.reset({ index: 0, routes: [{ name: 'Boarding' }] });
-          }}]
-        );
-        return;
-      }
-      
-      setUser(storedUser);
-      await fetchData();
+      const dataPromise = (async () => {
+        const storedUser = await authService.getStoredUser();
+        
+        // Role-based access control
+        const allowedRoles = ['management', 'supervisor', 'admin'];
+        if (!storedUser || !allowedRoles.includes(storedUser.role)) {
+          Alert.alert(
+            'Access Denied',
+            'You do not have permission to access the Management portal.',
+            [{ text: 'OK', onPress: () => {
+              authService.logout();
+              navigation.reset({ index: 0, routes: [{ name: 'Boarding' }] });
+            }}]
+          );
+          return;
+        }
+        
+        setUser(storedUser);
+        await fetchData();
+      })();
+
+      await Promise.race([dataPromise, timeoutPromise]);
     } catch (error) {
       console.error('Error loading initial data:', error);
+      // If there's an error, still show the UI but with empty data
+      setProperties([]);
+      setInspections([]);
+      
+      // Show an alert to inform the user about the issue
+      Alert.alert(
+        'Connection Issue',
+        'Unable to load data. Please check your internet connection and try again.',
+        [
+          { text: 'Retry', onPress: () => loadInitialData() },
+          { text: 'Continue Offline', style: 'cancel' }
+        ]
+      );
     } finally {
       setLoading(false);
     }

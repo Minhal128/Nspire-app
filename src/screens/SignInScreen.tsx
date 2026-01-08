@@ -88,11 +88,22 @@ export default function SignInScreen({ navigation, route }: SignInScreenProps) {
           response.user.role,
         );
 
+        console.log('Navigating to dashboard:', dashboardRoute, 'for role:', response.user.role);
+
         setTimeout(() => {
-          navigation.reset({
-            index: 0,
-            routes: [{ name: dashboardRoute as any }],
-          });
+          try {
+            navigation.reset({
+              index: 0,
+              routes: [{ name: dashboardRoute as any }],
+            });
+          } catch (navError) {
+            console.error('Navigation error:', navError);
+            Alert.alert(
+              'Navigation Error',
+              'Failed to navigate to dashboard. Please try logging in again.',
+              [{ text: 'OK', onPress: () => navigation.navigate('Boarding') }]
+            );
+          }
         }, 100);
       } else {
         Alert.alert("Login Failed", response.message || "Invalid credentials");

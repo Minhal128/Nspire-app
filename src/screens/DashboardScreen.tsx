@@ -42,6 +42,8 @@ export default function DashboardScreen({
   navigation,
   onMenuPress,
 }: DashboardScreenProps) {
+  console.log('DashboardScreen: Component mounted');
+  
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [actionModalVisible, setActionModalVisible] = useState(false);
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
@@ -49,6 +51,18 @@ export default function DashboardScreen({
   const [selectedUnitOption, setSelectedUnitOption] = useState("");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Add maximum loading timeout to prevent infinite loading
+  useEffect(() => {
+    const maxLoadingTimeout = setTimeout(() => {
+      if (loading) {
+        console.warn('Loading timeout reached, forcing loading to false');
+        setLoading(false);
+      }
+    }, 15000); // 15 second timeout
+
+    return () => clearTimeout(maxLoadingTimeout);
+  }, [loading]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [user, setUser] = useState<User | null>(null);
 
@@ -104,28 +118,50 @@ export default function DashboardScreen({
   const loadInitialData = async () => {
     try {
       setLoading(true);
-      const userData = await authService.getStoredUser();
+      
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Request timeout')), 10000)
+      );
+      
+      const dataPromise = (async () => {
+        const userData = await authService.getStoredUser();
 
-      // Role-based access control
-      const allowedRoles = ['inspector', 'property-manager', 'admin'];
-      if (!userData || !allowedRoles.includes(userData.role)) {
-        Alert.alert(
-          'Access Denied',
-          'You do not have permission to access the Inspector portal.',
-          [{
-            text: 'OK', onPress: () => {
-              authService.logout();
-              navigation.reset({ index: 0, routes: [{ name: 'Boarding' as never }] });
-            }
-          }]
-        );
-        return;
-      }
+        // Role-based access control
+        const allowedRoles = ['inspector', 'property-manager', 'admin'];
+        if (!userData || !allowedRoles.includes(userData.role)) {
+          Alert.alert(
+            'Access Denied',
+            'You do not have permission to access the Inspector portal.',
+            [{
+              text: 'OK', onPress: () => {
+                authService.logout();
+                navigation.reset({ index: 0, routes: [{ name: 'Boarding' as never }] });
+              }
+            }]
+          );
+          return;
+        }
 
-      setUser(userData);
-      await fetchProperties();
+        setUser(userData);
+        await fetchProperties();
+      })();
+
+      await Promise.race([dataPromise, timeoutPromise]);
     } catch (error) {
       console.error('Failed to load initial data:', error);
+      // If there's an error, still show the UI but with empty data
+      setProperties([]);
+      
+      // Show an alert to inform the user about the issue
+      Alert.alert(
+        'Connection Issue',
+        'Unable to load data. Please check your internet connection and try again.',
+        [
+          { text: 'Retry', onPress: () => loadInitialData() },
+          { text: 'Continue Offline', style: 'cancel' }
+        ]
+      );
     } finally {
       setLoading(false);
     }

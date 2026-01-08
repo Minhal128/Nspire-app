@@ -30,10 +30,24 @@ interface StatCard {
 }
 
 export default function OrderDashboardScreen({ navigation }: OrderDashboardScreenProps) {
+  console.log('OrderDashboardScreen: Component mounted');
+  
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Add maximum loading timeout to prevent infinite loading
+  useEffect(() => {
+    const maxLoadingTimeout = setTimeout(() => {
+      if (loading) {
+        console.warn('Loading timeout reached, forcing loading to false');
+        setLoading(false);
+      }
+    }, 15000); // 15 second timeout
+
+    return () => clearTimeout(maxLoadingTimeout);
+  }, [loading]);
   const [user, setUser] = useState<User | null>(null);
   const [inspections, setInspections] = useState<Inspection[]>([]);
   const [stats, setStats] = useState({
@@ -45,26 +59,47 @@ export default function OrderDashboardScreen({ navigation }: OrderDashboardScree
 
   const loadInitialData = useCallback(async () => {
     try {
-      const storedUser = await authService.getStoredUser();
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Request timeout')), 10000)
+      );
       
-      // Role-based access control
-      const allowedRoles = ['other', 'order', 'admin'];
-      if (!storedUser || !allowedRoles.includes(storedUser.role)) {
-        Alert.alert(
-          'Access Denied',
-          'You do not have permission to access this portal.',
-          [{ text: 'OK', onPress: () => {
-            authService.logout();
-            navigation.reset({ index: 0, routes: [{ name: 'Boarding' as never }] });
-          }}]
-        );
-        return;
-      }
-      
-      setUser(storedUser);
-      await fetchData();
+      const dataPromise = (async () => {
+        const storedUser = await authService.getStoredUser();
+        
+        // Role-based access control
+        const allowedRoles = ['other', 'order', 'admin'];
+        if (!storedUser || !allowedRoles.includes(storedUser.role)) {
+          Alert.alert(
+            'Access Denied',
+            'You do not have permission to access this portal.',
+            [{ text: 'OK', onPress: () => {
+              authService.logout();
+              navigation.reset({ index: 0, routes: [{ name: 'Boarding' as never }] });
+            }}]
+          );
+          return;
+        }
+        
+        setUser(storedUser);
+        await fetchData();
+      })();
+
+      await Promise.race([dataPromise, timeoutPromise]);
     } catch (error) {
       console.error('Error loading initial data:', error);
+      // If there's an error, still show the UI but with empty data
+      setInspections([]);
+      
+      // Show an alert to inform the user about the issue
+      Alert.alert(
+        'Connection Issue',
+        'Unable to load data. Please check your internet connection and try again.',
+        [
+          { text: 'Retry', onPress: () => loadInitialData() },
+          { text: 'Continue Offline', style: 'cancel' }
+        ]
+      );
     } finally {
       setLoading(false);
     }
