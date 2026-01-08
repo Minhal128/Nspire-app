@@ -8,12 +8,10 @@ import {
   TouchableOpacity,
   SafeAreaView,
   ScrollView,
-  Modal,
   RefreshControl,
   ActivityIndicator,
   Alert,
   Platform,
-  Pressable,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
@@ -21,6 +19,7 @@ import Sidebar from '../components/Sidebar';
 import { authService, inspectionService, propertyService } from '../services';
 import { Inspection, Property as PropertyType, User } from '../services/api';
 import { US_STATES } from '../constants/usStates';
+import { showIOSActionSheet, US_STATE_OPTIONS, INSPECTION_STATUS_OPTIONS } from '../utils/iosPickerUtils';
 
 interface MyInspectionsScreenProps {
   navigation: any;
@@ -40,9 +39,19 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
   const [properties, setProperties] = useState<PropertyType[]>([]);
   const [inspections, setInspections] = useState<Inspection[]>([]);
 
-  // iOS Picker State
-  const [pickerModalVisible, setPickerModalVisible] = useState(false);
-  const [pickerType, setPickerType] = useState<'location' | 'compliance' | null>(null);
+  // iOS Picker functions using ActionSheetIOS
+  const showLocationPicker = () => {
+    showIOSActionSheet('Select Location', US_STATE_OPTIONS, setLocation);
+  };
+
+  const showCompliancePicker = () => {
+    const complianceOptions = [
+      { label: 'All', value: 'all' },
+      { label: 'Compliant', value: 'compliant' },
+      { label: 'Non-Compliant', value: 'non-compliant' },
+    ];
+    showIOSActionSheet('Select Compliance Status', complianceOptions, setComplianceFilter);
+  };
 
   const loadInitialData = useCallback(async () => {
     try {
@@ -276,66 +285,6 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
         </TouchableOpacity>
       </Modal>
 
-      {/* iOS Picker Modal */}
-      <Modal
-        visible={pickerModalVisible}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setPickerModalVisible(false)}
-      >
-        <View style={styles.pickerModalOverlay}>
-          <Pressable
-            style={StyleSheet.absoluteFill}
-            onPress={() => setPickerModalVisible(false)}
-          />
-          <View style={styles.pickerModalContent}>
-            <View style={styles.pickerHeader}>
-              <TouchableOpacity
-                onPress={() => setPickerModalVisible(false)}
-                style={styles.doneButton}
-              >
-                <Text style={styles.doneButtonText}>Done</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={styles.pickerWrapper}>
-              <Picker
-                selectedValue={
-                  pickerType === 'location' ? location :
-                    compliance
-                }
-                onValueChange={(itemValue) => {
-                  if (pickerType === 'location') setLocation(itemValue);
-                  else if (pickerType === 'compliance') setCompliance(itemValue);
-                }}
-                style={styles.iosPicker}
-                itemStyle={{ fontSize: 18, height: 50, color: 'black' }}
-              >
-                {pickerType === 'location' && (
-                  <>
-                    <Picker.Item label="All States" value="" color="black" />
-                    {US_STATES.map((stateItem) => (
-                      <Picker.Item
-                        key={stateItem.value}
-                        label={stateItem.label}
-                        value={stateItem.value}
-                        color="black"
-                      />
-                    ))}
-                  </>
-                )}
-                {pickerType === 'compliance' && (
-                  <>
-                    <Picker.Item label="Compliance" value="" color="black" />
-                    <Picker.Item label="Compliant" value="compliant" color="black" />
-                    <Picker.Item label="Non-Compliant" value="non-compliant" color="black" />
-                  </>
-                )}
-              </Picker>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
       <SafeAreaView style={styles.container}>
         {/* Header with White Bar */}
         <View style={styles.headerContainer}>
@@ -396,10 +345,7 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
                 {Platform.OS === 'ios' ? (
                   <TouchableOpacity
                     style={styles.iosPickerButton}
-                    onPress={() => {
-                      setPickerType('location');
-                      setPickerModalVisible(true);
-                    }}
+                    onPress={showLocationPicker}
                   >
                     <Text style={[styles.iosPickerText, !location && { color: '#9CA3AF' }]}>
                       {location ? US_STATES.find(s => s.value === location)?.label || location : "All States"}
@@ -435,10 +381,7 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
                 {Platform.OS === 'ios' ? (
                   <TouchableOpacity
                     style={styles.iosPickerButton}
-                    onPress={() => {
-                      setPickerType('compliance');
-                      setPickerModalVisible(true);
-                    }}
+                    onPress={showCompliancePicker}
                   >
                     <Text style={[styles.iosPickerText, !compliance && { color: '#9CA3AF' }]}>
                       {compliance === 'compliant' ? 'Compliant' : compliance === 'non-compliant' ? 'Non-Compliant' : "Compliance"}

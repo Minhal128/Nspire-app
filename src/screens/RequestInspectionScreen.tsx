@@ -7,15 +7,14 @@ import {
   TouchableOpacity,
   SafeAreaView,
   ScrollView,
-  Modal,
   Alert,
   ActivityIndicator,
   Platform,
-  Pressable,
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { inspectionService, propertyService } from '../services';
 import { Property } from '../services/api';
+import { showIOSActionSheet } from '../utils/iosPickerUtils';
 
 interface RequestInspectionScreenProps {
   navigation: any;
@@ -27,8 +26,12 @@ export default function RequestInspectionScreen({ navigation }: RequestInspectio
   const [properties, setProperties] = useState<Property[]>([]);
   const [selectedProperty, setSelectedProperty] = useState('');
 
-  // iOS Picker State
-  const [pickerModalVisible, setPickerModalVisible] = useState(false);
+  // iOS Picker function using ActionSheetIOS
+  const showPropertyPicker = () => {
+    if (loadingProperties) return;
+    const propertyOptions = properties.map(p => ({ label: p.name, value: p._id }));
+    showIOSActionSheet('Select Property', propertyOptions, setSelectedProperty);
+  };
   const [purposeOfInspection, setPurposeOfInspection] = useState('');
   const [hudPreNaphe, setHudPreNaphe] = useState('');
   const [managementCo, setManagementCo] = useState('');
@@ -100,45 +103,7 @@ export default function RequestInspectionScreen({ navigation }: RequestInspectio
   };
 
   return (
-    <>
-      {/* iOS Picker Modal */}
-      <Modal
-        visible={pickerModalVisible}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setPickerModalVisible(false)}
-      >
-        <View style={styles.pickerModalOverlay}>
-          <Pressable
-            style={StyleSheet.absoluteFill}
-            onPress={() => setPickerModalVisible(false)}
-          />
-          <View style={styles.pickerModalContent}>
-            <View style={styles.pickerHeader}>
-              <TouchableOpacity
-                onPress={() => setPickerModalVisible(false)}
-                style={styles.doneButton}
-              >
-                <Text style={styles.doneButtonText}>Done</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={styles.pickerWrapper}>
-              <Picker
-                selectedValue={selectedProperty}
-                onValueChange={(itemValue: string) => setSelectedProperty(itemValue)}
-                style={styles.iosPicker}
-                itemStyle={{ fontSize: 18, height: 50, color: 'black' }}
-              >
-                <Picker.Item label="Select a property" value="" color="black" />
-                {properties.map((property) => (
-                  <Picker.Item key={property._id} label={property.name} value={property._id} color="black" />
-                ))}
-              </Picker>
-            </View>
-          </View>
-        </View>
-      </Modal>
-      <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container}>
         <ScrollView
           style={styles.scrollView}
           showsVerticalScrollIndicator={false}
@@ -157,7 +122,7 @@ export default function RequestInspectionScreen({ navigation }: RequestInspectio
                 {Platform.OS === 'ios' ? (
                   <TouchableOpacity
                     style={styles.iosPickerButton}
-                    onPress={() => setPickerModalVisible(true)}
+                    onPress={showPropertyPicker}
                     disabled={loadingProperties}
                   >
                     <Text style={[styles.iosPickerText, !selectedProperty && { color: '#6B7280' }]}>
@@ -307,7 +272,6 @@ export default function RequestInspectionScreen({ navigation }: RequestInspectio
           </View>
         </ScrollView>
       </SafeAreaView>
-    </>
   );
 }
 

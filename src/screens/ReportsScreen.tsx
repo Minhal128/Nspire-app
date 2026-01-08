@@ -8,18 +8,17 @@ import {
   TouchableOpacity,
   SafeAreaView,
   ScrollView,
-  Modal,
   RefreshControl,
   ActivityIndicator,
   Alert,
   Platform,
-  Pressable,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import Sidebar from '../components/Sidebar';
 import { inspectionService, propertyService, authService } from '../services';
 import { Inspection, Property } from '../services/api';
+import { showIOSActionSheet, INSPECTION_STATUS_OPTIONS, DATE_RANGE_OPTIONS } from '../utils/iosPickerUtils';
 
 interface ReportsScreenProps {
   navigation: any;
@@ -49,9 +48,19 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
   const [properties, setProperties] = useState<Property[]>([]);
   const [user, setUser] = useState<any>(null);
 
-  // iOS Picker State
-  const [pickerModalVisible, setPickerModalVisible] = useState(false);
-  const [pickerType, setPickerType] = useState<'property' | 'range' | 'status' | null>(null);
+  // iOS Picker functions using ActionSheetIOS
+  const showPropertyPicker = () => {
+    const propertyOptions = properties.map(p => ({ label: p.name, value: p._id }));
+    showIOSActionSheet('Select Property', propertyOptions, setSelectedProperty);
+  };
+
+  const showRangePicker = () => {
+    showIOSActionSheet('Select Date Range', DATE_RANGE_OPTIONS, setSelectedRange);
+  };
+
+  const showStatusPicker = () => {
+    showIOSActionSheet('Select Status', INSPECTION_STATUS_OPTIONS, setSelectedStatus);
+  };
 
   const loadData = useCallback(async () => {
     try {
@@ -190,71 +199,6 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
         </TouchableOpacity>
       </Modal>
 
-      {/* iOS Picker Modal */}
-      <Modal
-        visible={pickerModalVisible}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setPickerModalVisible(false)}
-      >
-        <View style={styles.pickerModalOverlay}>
-          <Pressable
-            style={StyleSheet.absoluteFill}
-            onPress={() => setPickerModalVisible(false)}
-          />
-          <View style={styles.pickerModalContent}>
-            <View style={styles.pickerHeader}>
-              <TouchableOpacity
-                onPress={() => setPickerModalVisible(false)}
-                style={styles.doneButton}
-              >
-                <Text style={styles.doneButtonText}>Done</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={styles.pickerWrapper}>
-              <Picker
-                selectedValue={
-                  pickerType === 'property' ? propertyName :
-                    pickerType === 'range' ? dateRange :
-                      status
-                }
-                onValueChange={(itemValue) => {
-                  if (pickerType === 'property') setPropertyName(itemValue);
-                  else if (pickerType === 'range') setDateRange(itemValue);
-                  else if (pickerType === 'status') setStatus(itemValue);
-                }}
-                style={styles.iosPicker}
-                itemStyle={{ fontSize: 18, height: 50, color: 'black' }}
-              >
-                {pickerType === 'property' && (
-                  <>
-                    <Picker.Item label="Property Name" value="" color="black" />
-                    <Picker.Item label="All Properties" value="" color="black" />
-                    {properties.map((p) => (
-                      <Picker.Item key={p._id} label={p.name} value={p._id} color="black" />
-                    ))}
-                  </>
-                )}
-                {pickerType === 'range' && (
-                  <>
-                    <Picker.Item label="Data Range" value="" color="black" />
-                    <Picker.Item label="Last 7 days" value="7days" color="black" />
-                    <Picker.Item label="Last 30 days" value="30days" color="black" />
-                  </>
-                )}
-                {pickerType === 'status' && (
-                  <>
-                    <Picker.Item label="Status" value="" color="black" />
-                    <Picker.Item label="Compliant" value="compliant" color="black" />
-                    <Picker.Item label="Non-Compliant" value="non-compliant" color="black" />
-                  </>
-                )}
-              </Picker>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
       <SafeAreaView style={styles.container}>
         {/* Header with White Bar */}
         <View style={styles.headerContainer}>
@@ -307,10 +251,7 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
                 {Platform.OS === 'ios' ? (
                   <TouchableOpacity
                     style={styles.iosPickerButton}
-                    onPress={() => {
-                      setPickerType('property');
-                      setPickerModalVisible(true);
-                    }}
+                    onPress={showPropertyPicker}
                   >
                     <Text style={[styles.iosPickerText, !propertyName && { color: '#9CA3AF' }]}>
                       {propertyName ? properties.find(p => p._id === propertyName)?.name || propertyName : "Property Name"}
@@ -342,10 +283,7 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
                 {Platform.OS === 'ios' ? (
                   <TouchableOpacity
                     style={styles.iosPickerButton}
-                    onPress={() => {
-                      setPickerType('range');
-                      setPickerModalVisible(true);
-                    }}
+                    onPress={showRangePicker}
                   >
                     <Text style={[styles.iosPickerText, !dateRange && { color: '#9CA3AF' }]}>
                       {dateRange === '7days' ? 'Last 7 days' : dateRange === '30days' ? 'Last 30 days' : "Data Range"}
@@ -379,10 +317,7 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
                 {Platform.OS === 'ios' ? (
                   <TouchableOpacity
                     style={styles.iosPickerButton}
-                    onPress={() => {
-                      setPickerType('status');
-                      setPickerModalVisible(true);
-                    }}
+                    onPress={showStatusPicker}
                   >
                     <Text style={[styles.iosPickerText, !status && { color: '#9CA3AF' }]}>
                       {status === 'compliant' ? 'Compliant' : status === 'non-compliant' ? 'Non-Compliant' : "Status"}

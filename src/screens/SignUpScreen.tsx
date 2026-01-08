@@ -9,8 +9,8 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
-  Modal,
   Platform,
+  ActionSheetIOS,
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import { SignUpScreenNavigationProp } from "../types/navigation";
@@ -28,8 +28,38 @@ export default function SignUpScreen({ navigation }: SignUpScreenProps) {
   const [loginType, setLoginType] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // iOS Picker State
-  const [pickerModalVisible, setPickerModalVisible] = useState(false);
+  // iOS Picker State - Use ActionSheetIOS instead
+  const showIOSLoginTypePicker = () => {
+    const options = [
+      'Cancel',
+      'Inspector',
+      'Property Manager',
+      'Management',
+      'Supervisor',
+      'Other'
+    ];
+    const values = [
+      '',
+      'inspector',
+      'property-manager',
+      'management',
+      'supervisor',
+      'other'
+    ];
+
+    ActionSheetIOS.showActionSheetWithOptions(
+      {
+        options,
+        cancelButtonIndex: 0,
+        title: 'Select Login Type',
+      },
+      (buttonIndex) => {
+        if (buttonIndex !== 0) { // Not cancel
+          setLoginType(values[buttonIndex]);
+        }
+      }
+    );
+  };
 
   const handleCreateAccount = async () => {
     // Validate inputs
@@ -110,8 +140,7 @@ export default function SignUpScreen({ navigation }: SignUpScreenProps) {
   };
 
   return (
-    <>
-      <View style={styles.container}>
+    <View style={styles.container}>
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
@@ -190,7 +219,7 @@ export default function SignUpScreen({ navigation }: SignUpScreenProps) {
                   {Platform.OS === 'ios' ? (
                     <TouchableOpacity
                       style={styles.iosPickerButton}
-                      onPress={() => setPickerModalVisible(true)}
+                      onPress={showIOSLoginTypePicker}
                     >
                       <Text style={[styles.iosPickerText, !loginType && { color: '#9CA3AF' }]}>
                         {loginType ? loginType.charAt(0).toUpperCase() + loginType.slice(1).replace('-', ' ') : "Select..."}
@@ -248,46 +277,6 @@ export default function SignUpScreen({ navigation }: SignUpScreenProps) {
           </View>
         </ScrollView>
       </View>
-      {/* iOS Picker Modal */}
-      <Modal
-        visible={pickerModalVisible}
-        animationType="slide"
-        transparent={false}
-        onRequestClose={() => setPickerModalVisible(false)}
-      >
-        <SafeAreaView style={styles.pickerModalContainer}>
-          <View style={styles.pickerModalHeader}>
-            <TouchableOpacity
-              onPress={() => setPickerModalVisible(false)}
-              style={styles.pickerCancelButton}
-            >
-              <Text style={styles.pickerCancelText}>Cancel</Text>
-            </TouchableOpacity>
-            <Text style={styles.pickerModalTitle}>Select Login Type</Text>
-            <TouchableOpacity
-              onPress={() => setPickerModalVisible(false)}
-              style={styles.pickerDoneButton}
-            >
-              <Text style={styles.pickerDoneText}>Done</Text>
-            </TouchableOpacity>
-          </View>
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={loginType}
-              onValueChange={(itemValue: string) => setLoginType(itemValue)}
-              style={styles.iosPickerFull}
-            >
-              <Picker.Item label="Select..." value="" />
-              <Picker.Item label="Inspector" value="inspector" />
-              <Picker.Item label="Property Manager" value="property-manager" />
-              <Picker.Item label="Management" value="management" />
-              <Picker.Item label="Supervisor" value="supervisor" />
-              <Picker.Item label="Other" value="other" />
-            </Picker>
-          </View>
-        </SafeAreaView>
-      </Modal>
-    </>
   );
 }
 
@@ -332,8 +321,14 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   iosPickerFull: {
-    flex: 1,
+    height: 216,
+    width: '100%',
     backgroundColor: '#FFFFFF',
+  },
+  iosPickerItemStyle: {
+    height: 44,
+    fontSize: 18,
+    color: '#000000',
   },
   iosPickerButton: {
     height: 55,
@@ -433,5 +428,15 @@ const styles = StyleSheet.create({
   signInLink: {
     color: "#0E7490",
     fontWeight: "600",
+  },
+  iosPickerButton: {
+    height: 55,
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+  },
+  iosPickerText: {
+    fontSize: 16,
+    color: '#374151',
+    paddingHorizontal: 16,
   },
 });

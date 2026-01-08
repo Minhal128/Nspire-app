@@ -9,8 +9,6 @@ import {
   TouchableOpacity,
   SafeAreaView,
   ScrollView,
-  Modal,
-  Pressable,
   Alert,
   ActivityIndicator,
   RefreshControl,
@@ -23,6 +21,7 @@ import Sidebar from "../components/Sidebar";
 import { propertyService, authService, locationService, CityOption } from "../services";
 import { Property as ApiProperty, User } from "../services/api";
 import { US_STATES } from "../constants/usStates";
+import { showIOSActionSheet, US_STATE_OPTIONS } from '../utils/iosPickerUtils';
 
 interface DashboardScreenProps {
   navigation: DashboardScreenNavigationProp;
@@ -60,9 +59,16 @@ export default function DashboardScreen({
   const [loadingCities, setLoadingCities] = useState(false);
   const [showSearch, setShowSearch] = useState(true);
 
-  // iOS Picker State
-  const [pickerModalVisible, setPickerModalVisible] = useState(false);
-  const [pickerType, setPickerType] = useState<'state' | 'city' | null>(null);
+  // iOS Picker functions using ActionSheetIOS
+  const showStatePicker = () => {
+    showIOSActionSheet('Select State', US_STATE_OPTIONS, setState);
+  };
+
+  const showCityPicker = () => {
+    if (loadingCities || cities.length === 0) return;
+    const cityOptions = cities.map(c => ({ label: c.label, value: c.value }));
+    showIOSActionSheet('Select City', cityOptions, setCity);
+  };
 
   // Load user and properties on mount
   useEffect(() => {
@@ -420,59 +426,6 @@ export default function DashboardScreen({
         </View>
       </Modal>
 
-      {/* iOS Picker Modal */}
-      <Modal
-        visible={pickerModalVisible}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setPickerModalVisible(false)}
-      >
-        <View style={styles.pickerModalOverlay}>
-          <View style={styles.pickerModalContent}>
-            <View style={styles.pickerHeader}>
-              <TouchableOpacity
-                onPress={() => setPickerModalVisible(false)}
-                style={styles.doneButton}
-              >
-                <Text style={styles.doneButtonText}>Done</Text>
-              </TouchableOpacity>
-            </View>
-            <Picker
-              selectedValue={pickerType === 'state' ? state : city}
-              onValueChange={(itemValue) => {
-                if (pickerType === 'state') {
-                  setState(itemValue);
-                } else {
-                  setCity(itemValue);
-                }
-              }}
-              style={styles.iosPicker}
-              itemStyle={{ fontSize: 18, height: 50, color: 'black' }}
-            >
-              <Picker.Item label={pickerType === 'state' ? "Select State" : "Select City"} value="" color="black" />
-              {pickerType === 'state'
-                ? US_STATES.map((stateItem) => (
-                  <Picker.Item
-                    key={stateItem.value}
-                    label={stateItem.label}
-                    value={stateItem.value}
-                    color="black"
-                  />
-                ))
-                : cities.map((cityItem) => (
-                  <Picker.Item
-                    key={cityItem.value}
-                    label={cityItem.label}
-                    value={cityItem.value}
-                    color="black"
-                  />
-                ))
-              }
-            </Picker>
-          </View>
-        </View>
-      </Modal >
-
       <SafeAreaView style={styles.container}>
         {/* Header with White Bar */}
         <View style={styles.headerContainer}>
@@ -560,10 +513,7 @@ export default function DashboardScreen({
                 {Platform.OS === 'ios' ? (
                   <TouchableOpacity
                     style={styles.iosPickerButton}
-                    onPress={() => {
-                      setPickerType('state');
-                      setPickerModalVisible(true);
-                    }}
+                    onPress={showStatePicker}
                   >
                     <Text style={[styles.iosPickerText, !state && { color: '#9CA3AF' }]}>
                       {state ? US_STATES.find(s => s.value === state)?.label || state : "Select State"}
@@ -603,12 +553,7 @@ export default function DashboardScreen({
                   <TouchableOpacity
                     style={styles.iosPickerButton}
                     onPress={() => {
-                      if (!state) {
-                        Alert.alert('Notice', 'Please select a state first');
-                        return;
-                      }
-                      setPickerType('city');
-                      setPickerModalVisible(true);
+                      showCityPicker();
                     }}
                   >
                     <Text style={[styles.iosPickerText, !city && { color: '#9CA3AF' }]}>

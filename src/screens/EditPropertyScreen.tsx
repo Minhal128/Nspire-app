@@ -10,7 +10,7 @@ import {
   Alert,
   ActivityIndicator,
   Platform,
-  Modal,
+  ActionSheetIOS,
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { Ionicons } from '@expo/vector-icons';
@@ -35,9 +35,24 @@ export default function EditPropertyScreen({ navigation, route }: EditPropertySc
   const [numberOfUnits, setNumberOfUnits] = useState(property?.units?.toString() || property?.totalUnits?.toString() || '');
   const [zipCode, setZipCode] = useState(property?.zipCode || '');
 
-  // iOS Picker State
-  const [pickerModalVisible, setPickerModalVisible] = useState(false);
-  const [pickerType, setPickerType] = useState<'state' | null>(null);
+  // iOS Picker State - Use ActionSheetIOS instead
+  const showIOSStatePicker = () => {
+    const stateOptions = ['Cancel', 'Alaska', 'California', 'Texas'];
+    const stateValues = ['', 'alaska', 'california', 'texas'];
+
+    ActionSheetIOS.showActionSheetWithOptions(
+      {
+        options: stateOptions,
+        cancelButtonIndex: 0,
+        title: 'Select State',
+      },
+      (buttonIndex) => {
+        if (buttonIndex !== 0) { // Not cancel
+          setState(stateValues[buttonIndex]);
+        }
+      }
+    );
+  };
 
   const handleUpdate = async () => {
     if (!propertyName.trim()) {
@@ -102,45 +117,7 @@ export default function EditPropertyScreen({ navigation, route }: EditPropertySc
   };
 
   return (
-    <>
-      <Modal
-        visible={pickerModalVisible}
-        animationType="slide"
-        transparent={false}
-        onRequestClose={() => setPickerModalVisible(false)}
-      >
-        <SafeAreaView style={styles.pickerModalContainer}>
-          <View style={styles.pickerModalHeader}>
-            <TouchableOpacity
-              onPress={() => setPickerModalVisible(false)}
-              style={styles.pickerCancelButton}
-            >
-              <Text style={styles.pickerCancelText}>Cancel</Text>
-            </TouchableOpacity>
-            <Text style={styles.pickerModalTitle}>Select State</Text>
-            <TouchableOpacity
-              onPress={() => setPickerModalVisible(false)}
-              style={styles.pickerDoneButton}
-            >
-              <Text style={styles.pickerDoneText}>Done</Text>
-            </TouchableOpacity>
-          </View>
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={state}
-              onValueChange={(itemValue: string) => setState(itemValue)}
-              style={styles.iosPickerFull}
-            >
-              <Picker.Item label="Select State" value="" />
-              <Picker.Item label="Alaska" value="alaska" />
-              <Picker.Item label="California" value="california" />
-              <Picker.Item label="Texas" value="texas" />
-            </Picker>
-          </View>
-        </SafeAreaView>
-      </Modal>
-
-      <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container}>
         <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
           <View style={styles.formContainer}>
             {/* Title */}
@@ -189,10 +166,7 @@ export default function EditPropertyScreen({ navigation, route }: EditPropertySc
                 {Platform.OS === 'ios' ? (
                   <TouchableOpacity
                     style={styles.iosPickerButton}
-                    onPress={() => {
-                      setPickerType('state');
-                      setPickerModalVisible(true);
-                    }}
+                    onPress={showIOSStatePicker}
                   >
                     <Text style={[styles.iosPickerText, !state && { color: '#6B7280' }]}>
                       {state ? (state.charAt(0).toUpperCase() + state.slice(1)) : "Select State"}
@@ -298,7 +272,6 @@ export default function EditPropertyScreen({ navigation, route }: EditPropertySc
           </View>
         </ScrollView>
       </SafeAreaView>
-    </>
   );
 }
 
@@ -387,45 +360,6 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     opacity: 0.6,
-  },
-  pickerModalContainer: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  pickerModalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
-  pickerCancelButton: {
-    padding: 8,
-  },
-  pickerCancelText: {
-    fontSize: 16,
-    color: '#6B7280',
-    fontWeight: '500',
-  },
-  pickerModalTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1F2937',
-  },
-  pickerDoneButton: {
-    padding: 8,
-  },
-  pickerDoneText: {
-    fontSize: 16,
-    color: '#0E7490',
-    fontWeight: '600',
-  },
-  iosPickerFull: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   iosPickerButton: {
     height: 55,

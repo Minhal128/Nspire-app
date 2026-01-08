@@ -11,8 +11,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  Modal,
-  Pressable,
+  ActionSheetIOS,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
@@ -41,9 +40,50 @@ export default function AddPropertyScreen({ navigation }: AddPropertyScreenProps
   const [loadingStates, setLoadingStates] = useState(false);
   const [loadingCities, setLoadingCities] = useState(false);
 
-  // iOS Picker State
-  const [pickerModalVisible, setPickerModalVisible] = useState(false);
-  const [pickerType, setPickerType] = useState<'country' | 'state' | 'city' | null>(null);
+  // iOS Picker State - Remove modal state, use ActionSheetIOS instead
+  const showIOSPicker = (type: 'country' | 'state' | 'city') => {
+    let options: string[] = [];
+    let values: string[] = [];
+    
+    if (type === 'country') {
+      options = ['Cancel', ...countries.map(c => c.label)];
+      values = ['', ...countries.map(c => c.isoCode)];
+    } else if (type === 'state') {
+      if (!selectedCountry) {
+        Alert.alert('Notice', 'Please select a country first');
+        return;
+      }
+      options = ['Cancel', ...states.map(s => s.label)];
+      values = ['', ...states.map(s => s.isoCode)];
+    } else if (type === 'city') {
+      if (!selectedState) {
+        Alert.alert('Notice', 'Please select a state first');
+        return;
+      }
+      options = ['Cancel', ...cities.map(c => c.label)];
+      values = ['', ...cities.map(c => c.value)];
+    }
+
+    ActionSheetIOS.showActionSheetWithOptions(
+      {
+        options,
+        cancelButtonIndex: 0,
+        title: `Select ${type === 'country' ? 'Country' : type === 'state' ? 'State/Province' : 'City'}`,
+      },
+      (buttonIndex) => {
+        if (buttonIndex !== 0) { // Not cancel
+          const selectedValue = values[buttonIndex];
+          if (type === 'country') {
+            setSelectedCountry(selectedValue);
+          } else if (type === 'state') {
+            setSelectedState(selectedValue);
+          } else if (type === 'city') {
+            setSelectedCity(selectedValue);
+          }
+        }
+      }
+    );
+  };
 
   // Initialize countries on component mount
   useEffect(() => {
@@ -156,83 +196,7 @@ export default function AddPropertyScreen({ navigation }: AddPropertyScreenProps
   };
 
   return (
-    <>
-      {/* iOS Picker Modal */}
-      <Modal
-        visible={pickerModalVisible}
-        animationType="slide"
-        transparent={false}
-        onRequestClose={() => setPickerModalVisible(false)}
-      >
-        <SafeAreaView style={styles.pickerModalContainer}>
-          <View style={styles.pickerModalHeader}>
-            <TouchableOpacity
-              onPress={() => setPickerModalVisible(false)}
-              style={styles.pickerCancelButton}
-            >
-              <Text style={styles.pickerCancelText}>Cancel</Text>
-            </TouchableOpacity>
-            <Text style={styles.pickerModalTitle}>
-              {pickerType === 'country' ? 'Select Country' : 
-               pickerType === 'state' ? 'Select State/Province' : 'Select City'}
-            </Text>
-            <TouchableOpacity
-              onPress={() => setPickerModalVisible(false)}
-              style={styles.pickerDoneButton}
-            >
-              <Text style={styles.pickerDoneText}>Done</Text>
-            </TouchableOpacity>
-          </View>
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={
-                pickerType === 'country' ? selectedCountry :
-                  pickerType === 'state' ? selectedState :
-                    selectedCity
-              }
-              onValueChange={(itemValue) => {
-                if (pickerType === 'country') setSelectedCountry(itemValue);
-                else if (pickerType === 'state') setSelectedState(itemValue);
-                else if (pickerType === 'city') setSelectedCity(itemValue);
-              }}
-              style={styles.iosPickerFull}
-            >
-              {pickerType === 'country' && (
-                <>
-                  <Picker.Item label="Select Country" value="" />
-                  {countries.map((country) => (
-                    <Picker.Item key={country.isoCode} label={country.label} value={country.isoCode} />
-                  ))}
-                </>
-              )}
-              {pickerType === 'state' && (
-                <>
-                  <Picker.Item
-                    label={loadingStates ? "Loading states..." : states.length === 0 ? "Select country first" : "Select State/Province"}
-                    value=""
-                  />
-                  {states.map((state) => (
-                    <Picker.Item key={state.isoCode} label={state.label} value={state.isoCode} />
-                  ))}
-                </>
-              )}
-              {pickerType === 'city' && (
-                <>
-                  <Picker.Item
-                    label={loadingCities ? "Loading cities..." : cities.length === 0 ? "Select state first" : "Select City"}
-                    value=""
-                  />
-                  {cities.map((city, index) => (
-                    <Picker.Item key={`${city.value}-${index}`} label={city.label} value={city.value} />
-                  ))}
-                </>
-              )}
-            </Picker>
-          </View>
-        </SafeAreaView>
-      </Modal>
-
-      <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity
@@ -327,10 +291,7 @@ export default function AddPropertyScreen({ navigation }: AddPropertyScreenProps
                   {Platform.OS === 'ios' ? (
                     <TouchableOpacity
                       style={styles.iosPickerButton}
-                      onPress={() => {
-                        setPickerType('country');
-                        setPickerModalVisible(true);
-                      }}
+                      onPress={() => showIOSPicker('country')}
                     >
                       <Text style={[styles.iosPickerText, !selectedCountry && { color: '#6B7280' }]}>
                         {selectedCountry ? countries.find(c => c.isoCode === selectedCountry)?.label || selectedCountry : "Select Country"}
@@ -368,14 +329,7 @@ export default function AddPropertyScreen({ navigation }: AddPropertyScreenProps
                   {Platform.OS === 'ios' ? (
                     <TouchableOpacity
                       style={styles.iosPickerButton}
-                      onPress={() => {
-                        if (!selectedCountry) {
-                          Alert.alert('Notice', 'Please select a country first');
-                          return;
-                        }
-                        setPickerType('state');
-                        setPickerModalVisible(true);
-                      }}
+                      onPress={() => showIOSPicker('state')}
                     >
                       <Text style={[styles.iosPickerText, !selectedState && { color: '#6B7280' }]}>
                         {selectedState ? states.find(s => s.isoCode === selectedState)?.label || selectedState : "Select State/Province"}
@@ -430,14 +384,7 @@ export default function AddPropertyScreen({ navigation }: AddPropertyScreenProps
                   {Platform.OS === 'ios' ? (
                     <TouchableOpacity
                       style={styles.iosPickerButton}
-                      onPress={() => {
-                        if (!selectedState) {
-                          Alert.alert('Notice', 'Please select a state first');
-                          return;
-                        }
-                        setPickerType('city');
-                        setPickerModalVisible(true);
-                      }}
+                      onPress={() => showIOSPicker('city')}
                     >
                       <Text style={[styles.iosPickerText, !selectedCity && { color: '#6B7280' }]}>
                         {selectedCity ? cities.find(c => c.value === selectedCity)?.label || selectedCity : "Select City"}
@@ -505,7 +452,6 @@ export default function AddPropertyScreen({ navigation }: AddPropertyScreenProps
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
-    </>
   );
 }
 
@@ -626,45 +572,6 @@ const styles = StyleSheet.create({
   },
   submitButtonDisabled: {
     backgroundColor: '#9CA3AF',
-  },
-  pickerModalContainer: {
-    flex: 1,
-    backgroundColor: '#F3F4F6',
-  },
-  pickerModalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
-  pickerCancelButton: {
-    padding: 8,
-  },
-  pickerCancelText: {
-    fontSize: 16,
-    color: '#6B7280',
-    fontWeight: '500',
-  },
-  pickerModalTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1F2937',
-  },
-  pickerDoneButton: {
-    padding: 8,
-  },
-  pickerDoneText: {
-    fontSize: 16,
-    color: '#0E7490',
-    fontWeight: '600',
-  },
-  iosPickerFull: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   iosPickerButton: {
     height: 55,

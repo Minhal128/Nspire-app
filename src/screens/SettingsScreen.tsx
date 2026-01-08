@@ -8,11 +8,10 @@ import {
   SafeAreaView,
   ScrollView,
   TextInput,
-  Modal,
   Alert,
   ActivityIndicator,
   Platform,
-  Pressable,
+  ActionSheetIOS,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
@@ -20,6 +19,7 @@ import * as ImagePicker from 'expo-image-picker';
 import Sidebar from '../components/Sidebar';
 import { authService, userService } from '../services';
 import { User } from '../services/api';
+import { showIOSActionSheet, LANGUAGE_OPTIONS, TIMEZONE_OPTIONS } from '../utils/iosPickerUtils';
 
 interface SettingsScreenProps {
   navigation: any;
@@ -43,9 +43,14 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
   const [successModalVisible, setSuccessModalVisible] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
 
-  // iOS Picker State
-  const [pickerModalVisible, setPickerModalVisible] = useState(false);
-  const [pickerType, setPickerType] = useState<'language' | 'timezone' | null>(null);
+  // iOS Picker State - Use ActionSheetIOS instead
+  const showIOSPicker = (type: 'language' | 'timezone') => {
+    if (type === 'language') {
+      showIOSActionSheet('Select Language', LANGUAGE_OPTIONS, setLanguage);
+    } else if (type === 'timezone') {
+      showIOSActionSheet('Select Timezone', TIMEZONE_OPTIONS, setTimezone);
+    }
+  };
 
   // Notification preferences
   const [inspectionReminderEmail, setInspectionReminderEmail] = useState(true);
@@ -492,10 +497,7 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
                 {Platform.OS === 'ios' ? (
                   <TouchableOpacity
                     style={styles.iosPickerButton}
-                    onPress={() => {
-                      setPickerType('language');
-                      setPickerModalVisible(true);
-                    }}
+                    onPress={() => showIOSPicker('language')}
                   >
                     <Text style={styles.iosPickerText}>{language}</Text>
                   </TouchableOpacity>
@@ -526,10 +528,7 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
                 {Platform.OS === 'ios' ? (
                   <TouchableOpacity
                     style={styles.iosPickerButton}
-                    onPress={() => {
-                      setPickerType('timezone');
-                      setPickerModalVisible(true);
-                    }}
+                    onPress={() => showIOSPicker('timezone')}
                   >
                     <Text style={styles.iosPickerText}>{timezone}</Text>
                   </TouchableOpacity>
