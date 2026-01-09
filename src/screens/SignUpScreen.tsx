@@ -10,11 +10,19 @@ import {
   Alert,
   ActivityIndicator,
   Platform,
-  ActionSheetIOS,
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import { SignUpScreenNavigationProp } from "../types/navigation";
 import authService from "../services/authService";
+import IOSPickerModal from "../components/IOSPickerModal";
+
+const LOGIN_TYPE_OPTIONS = [
+  { label: 'Inspector', value: 'inspector' },
+  { label: 'Property Manager', value: 'property-manager' },
+  { label: 'Management', value: 'management' },
+  { label: 'Supervisor', value: 'supervisor' },
+  { label: 'Other', value: 'other' },
+];
 
 interface SignUpScreenProps {
   navigation: SignUpScreenNavigationProp;
@@ -28,38 +36,8 @@ export default function SignUpScreen({ navigation }: SignUpScreenProps) {
   const [loginType, setLoginType] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // iOS Picker State - Use ActionSheetIOS instead
-  const showIOSLoginTypePicker = () => {
-    const options = [
-      'Cancel',
-      'Inspector',
-      'Property Manager',
-      'Management',
-      'Supervisor',
-      'Other'
-    ];
-    const values = [
-      '',
-      'inspector',
-      'property-manager',
-      'management',
-      'supervisor',
-      'other'
-    ];
-
-    ActionSheetIOS.showActionSheetWithOptions(
-      {
-        options,
-        cancelButtonIndex: 0,
-        title: 'Select Login Type',
-      },
-      (buttonIndex) => {
-        if (buttonIndex !== 0) { // Not cancel
-          setLoginType(values[buttonIndex]);
-        }
-      }
-    );
-  };
+  // iOS Picker Modal state
+  const [loginTypePickerVisible, setLoginTypePickerVisible] = useState(false);
 
   const handleCreateAccount = async () => {
     // Validate inputs
@@ -219,7 +197,7 @@ export default function SignUpScreen({ navigation }: SignUpScreenProps) {
                   {Platform.OS === 'ios' ? (
                     <TouchableOpacity
                       style={styles.iosPickerButton}
-                      onPress={showIOSLoginTypePicker}
+                      onPress={() => setLoginTypePickerVisible(true)}
                     >
                       <Text style={[styles.iosPickerText, !loginType && { color: '#9CA3AF' }]}>
                         {loginType ? loginType.charAt(0).toUpperCase() + loginType.slice(1).replace('-', ' ') : "Select..."}
@@ -276,6 +254,16 @@ export default function SignUpScreen({ navigation }: SignUpScreenProps) {
             </View>
           </View>
         </ScrollView>
+
+        {/* iOS Login Type Picker Modal */}
+        <IOSPickerModal
+          visible={loginTypePickerVisible}
+          title="Select Login Type"
+          options={LOGIN_TYPE_OPTIONS}
+          selectedValue={loginType}
+          onSelect={setLoginType}
+          onClose={() => setLoginTypePickerVisible(false)}
+        />
       </View>
   );
 }

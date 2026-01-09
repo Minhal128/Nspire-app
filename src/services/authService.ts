@@ -172,7 +172,7 @@ class AuthService {
       const token = await getData(StorageKeys.USER_TOKEN);
       const user = await getData(StorageKeys.USER_DATA);
 
-      if (!token) {
+      if (!token || !user) {
         return {
           isAuthenticated: false,
           user: null,
@@ -181,17 +181,25 @@ class AuthService {
         };
       }
 
-      // Verify token is still valid
-      const isValid = await this.verifyToken();
+      // Try to verify token, but don't block if offline
+      try {
+        const isValid = await Promise.race([
+          this.verifyToken(),
+          new Promise<boolean>((resolve) => setTimeout(() => resolve(true), 5000)) // 5s timeout, assume valid if offline
+        ]);
 
-      if (!isValid) {
-        await this.logout();
-        return {
-          isAuthenticated: false,
-          user: null,
-          token: null,
-          loading: false,
-        };
+        if (!isValid) {
+          await this.logout();
+          return {
+            isAuthenticated: false,
+            user: null,
+            token: null,
+            loading: false,
+          };
+        }
+      } catch (verifyError) {
+        // If verification fails (e.g., offline), still allow access with cached data
+        console.log("Token verification failed, using cached session:", verifyError);
       }
 
       return {
@@ -201,6 +209,7 @@ class AuthService {
         loading: false,
       };
     } catch (error) {
+      console.log("Session check error:", error);
       return {
         isAuthenticated: false,
         user: null,

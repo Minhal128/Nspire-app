@@ -13,15 +13,17 @@ import {
   ActivityIndicator,
   RefreshControl,
   Platform,
+  Modal,
+  Pressable,
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Picker } from "@react-native-picker/picker";
+import { City } from 'country-state-city';
 import { DashboardScreenNavigationProp } from "../types/navigation";
 import Sidebar from "../components/Sidebar";
-import { propertyService, authService, locationService, CityOption } from "../services";
+import { propertyService, authService } from "../services";
 import { Property as ApiProperty, User } from "../services/api";
 import { US_STATES } from "../constants/usStates";
-import { showIOSActionSheet, US_STATE_OPTIONS, UNIT_SELECTION_OPTIONS } from '../utils/iosPickerUtils';
 
 interface DashboardScreenProps {
   navigation: DashboardScreenNavigationProp;
@@ -52,6 +54,12 @@ export default function DashboardScreen({
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
+  // iOS picker modal states
+  const [statePickerVisible, setStatePickerVisible] = useState(false);
+  const [cityPickerVisible, setCityPickerVisible] = useState(false);
+  const [tempState, setTempState] = useState('');
+  const [tempCity, setTempCity] = useState('');
+
   // Add maximum loading timeout to prevent infinite loading
   useEffect(() => {
     const maxLoadingTimeout = setTimeout(() => {
@@ -69,24 +77,9 @@ export default function DashboardScreen({
   const [propertyName, setPropertyName] = useState("");
   const [state, setState] = useState("");
   const [city, setCity] = useState("");
-  const [cities, setCities] = useState<CityOption[]>([]);
+  const [cities, setCities] = useState<{label: string; value: string}[]>([]);
   const [loadingCities, setLoadingCities] = useState(false);
   const [showSearch, setShowSearch] = useState(true);
-
-  // iOS Picker functions using ActionSheetIOS
-  const showStatePicker = () => {
-    showIOSActionSheet('Select State', US_STATE_OPTIONS, setState);
-  };
-
-  const showCityPicker = () => {
-    if (loadingCities || cities.length === 0) return;
-    const cityOptions = cities.map(c => ({ label: c.label, value: c.value }));
-    showIOSActionSheet('Select City', cityOptions, setCity);
-  };
-
-  const showUnitPicker = () => {
-    showIOSActionSheet('Select Unit Option', UNIT_SELECTION_OPTIONS, setSelectedUnitOption);
-  };
 
   // Load user and properties on mount
   useEffect(() => {
@@ -100,9 +93,12 @@ export default function DashboardScreen({
       setCity(''); // Clear current city selection
 
       try {
-        // Convert US state code to country code (US) and get cities
-        const stateCities = locationService.getCitiesByState('US', state);
-        setCities(stateCities);
+        // Get cities directly from library
+        const stateCities = City.getCitiesOfState('US', state) || [];
+        const formattedCities = stateCities.map(c => ({ label: c.name, value: c.name }))
+          .sort((a, b) => a.label.localeCompare(b.label));
+        console.log('Dashboard cities loaded:', formattedCities.length);
+        setCities(formattedCities);
       } catch (error) {
         console.error('Error loading cities:', error);
         setCities([]);
@@ -408,7 +404,7 @@ export default function DashboardScreen({
                   {Platform.OS === 'ios' ? (
                     <TouchableOpacity
                       style={styles.iosPickerButton}
-                      onPress={showUnitPicker}
+                      onPress={() => setUnitPickerVisible(true)}
                     >
                       <Text style={[styles.iosPickerText, !selectedUnitOption && { color: '#9CA3AF' }]}>
                         {selectedUnitOption ? UNIT_SELECTION_OPTIONS.find(opt => opt.value === selectedUnitOption)?.label || selectedUnitOption : "Select an option"}
@@ -566,86 +562,56 @@ export default function DashboardScreen({
             {/* State Picker */}
             <View style={styles.inputContainer}>
               <Text style={styles.label}>State</Text>
-              <View style={styles.pickerContainer}>
-                {Platform.OS === 'ios' ? (
-                  <TouchableOpacity
-                    style={styles.iosPickerButton}
-                    onPress={showStatePicker}
-                  >
-                    <Text style={[styles.iosPickerText, !state && { color: '#9CA3AF' }]}>
-                      {state ? US_STATES.find(s => s.value === state)?.label || state : "Select State"}
-                    </Text>
-                  </TouchableOpacity>
-                ) : (
+              {Platform.OS === 'ios' ? (
+                <TouchableOpacity style={styles.iosPickerButton} onPress={() => { setTempState(state); setStatePickerVisible(true); }}>
+                  <Text style={[styles.iosPickerText, !state && styles.placeholderText]}>
+                    {state ? US_STATES.find(s => s.value === state)?.label || 'Select State' : 'Select State'}
+                  </Text>
+                  <Ionicons name="chevron-down" size={20} color="#6B7280" />
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.pickerContainer}>
                   <Picker
                     selectedValue={state}
                     onValueChange={(itemValue: string) => setState(itemValue)}
                     style={styles.picker}
+                    dropdownIconColor="#6B7280"
                   >
-                    <Picker.Item label="Select State" value="" color="#1F2937" />
+                    <Picker.Item label="Select State" value="" color="#6B7280" />
                     {US_STATES.map((stateItem) => (
-                      <Picker.Item
-                        key={stateItem.value}
-                        label={stateItem.label}
-                        value={stateItem.value}
-                        color="#1F2937"
-                      />
+                      <Picker.Item key={stateItem.value} label={stateItem.label} value={stateItem.value} color="#1F2937" />
                     ))}
                   </Picker>
-                )}
-                <Ionicons
-                  name="chevron-down"
-                  size={20}
-                  color="#6B7280"
-                  style={styles.pickerIcon}
-                />
-              </View>
+                </View>
+              )}
             </View>
 
-            {/* City Dropdown */}
+            {/* City Picker */}
             <View style={styles.inputContainer}>
               <Text style={styles.label}>City</Text>
-              <View style={styles.pickerContainer}>
-                {Platform.OS === 'ios' ? (
-                  <TouchableOpacity
-                    style={styles.iosPickerButton}
-                    onPress={() => {
-                      showCityPicker();
-                    }}
-                  >
-                    <Text style={[styles.iosPickerText, !city && { color: '#9CA3AF' }]}>
-                      {city ? cities.find(c => c.value === city)?.label || city : "Select City"}
-                    </Text>
-                  </TouchableOpacity>
-                ) : (
+              {Platform.OS === 'ios' ? (
+                <TouchableOpacity style={styles.iosPickerButton} onPress={() => { if (cities.length > 0) { setTempCity(city); setCityPickerVisible(true); } }}>
+                  <Text style={[styles.iosPickerText, !city && styles.placeholderText]}>
+                    {cities.length === 0 ? 'Select state first' : (city || 'Select City')}
+                  </Text>
+                  <Ionicons name="chevron-down" size={20} color="#6B7280" />
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.pickerContainer}>
                   <Picker
                     selectedValue={city}
                     onValueChange={(itemValue: string) => setCity(itemValue)}
                     style={styles.picker}
-                    enabled={cities.length > 0 && !loadingCities}
+                    dropdownIconColor="#6B7280"
+                    enabled={cities.length > 0}
                   >
-                    <Picker.Item
-                      label={loadingCities ? "Loading cities..." : cities.length === 0 ? "Select state first" : "Select City"}
-                      value=""
-                      color="#9CA3AF"
-                    />
-                    {cities.map((cityItem, index) => (
-                      <Picker.Item
-                        key={`${cityItem.value}-${index}`}
-                        label={cityItem.label}
-                        value={cityItem.value}
-                        color="#1F2937"
-                      />
+                    <Picker.Item label={cities.length === 0 ? "Select state first" : "Select City"} value="" color="#6B7280" />
+                    {cities.map((c, i) => (
+                      <Picker.Item key={`${c.value}-${i}`} label={c.label} value={c.value} color="#1F2937" />
                     ))}
                   </Picker>
-                )}
-                <Ionicons
-                  name="chevron-down"
-                  size={20}
-                  color="#6B7280"
-                  style={styles.pickerIcon}
-                />
-              </View>
+                </View>
+              )}
             </View>
 
             {/* Search Button */}
@@ -707,6 +673,56 @@ export default function DashboardScreen({
           <View style={{ height: 40 }} />
         </ScrollView>
       </SafeAreaView>
+
+      {/* iOS State Picker Modal */}
+      {Platform.OS === 'ios' && (
+        <Modal visible={statePickerVisible} transparent animationType="slide">
+          <View style={styles.iosModalOverlay}>
+            <View style={styles.iosModalContent}>
+              <View style={styles.iosModalHeader}>
+                <Text style={styles.iosModalTitle}>Select State</Text>
+                <TouchableOpacity onPress={() => { setState(tempState); setStatePickerVisible(false); }}>
+                  <Text style={styles.iosModalDone}>Done</Text>
+                </TouchableOpacity>
+              </View>
+              <Picker selectedValue={tempState} onValueChange={setTempState} style={styles.iosPickerWheel}>
+                <Picker.Item label="Select State" value="" color="#6B7280" />
+                {US_STATES.map((stateItem) => (
+                  <Picker.Item key={stateItem.value} label={stateItem.label} value={stateItem.value} color="#007AFF" />
+                ))}
+              </Picker>
+              <TouchableOpacity style={styles.iosCancelButton} onPress={() => setStatePickerVisible(false)}>
+                <Text style={styles.iosCancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+      )}
+
+      {/* iOS City Picker Modal */}
+      {Platform.OS === 'ios' && (
+        <Modal visible={cityPickerVisible} transparent animationType="slide">
+          <View style={styles.iosModalOverlay}>
+            <View style={styles.iosModalContent}>
+              <View style={styles.iosModalHeader}>
+                <Text style={styles.iosModalTitle}>Select City</Text>
+                <TouchableOpacity onPress={() => { setCity(tempCity); setCityPickerVisible(false); }}>
+                  <Text style={styles.iosModalDone}>Done</Text>
+                </TouchableOpacity>
+              </View>
+              <Picker selectedValue={tempCity} onValueChange={setTempCity} style={styles.iosPickerWheel}>
+                <Picker.Item label="Select City" value="" color="#6B7280" />
+                {cities.map((c, i) => (
+                  <Picker.Item key={`${c.value}-${i}`} label={c.label} value={c.value} color="#007AFF" />
+                ))}
+              </Picker>
+              <TouchableOpacity style={styles.iosCancelButton} onPress={() => setCityPickerVisible(false)}>
+                <Text style={styles.iosCancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+      )}
     </>
   );
 }
@@ -1095,5 +1111,67 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#9CA3AF",
     textAlign: "center",
+  },
+  // iOS Picker styles
+  iosPickerButton: {
+    backgroundColor: '#D1F2EB',
+    borderRadius: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  iosPickerText: {
+    fontSize: 14,
+    color: '#374151',
+  },
+  placeholderText: {
+    color: '#6B7280',
+  },
+  iosModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  iosModalContent: {
+    backgroundColor: '#2C2C2E',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 30,
+  },
+  iosModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#3A3A3C',
+  },
+  iosModalTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  iosModalDone: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#007AFF',
+  },
+  iosPickerWheel: {
+    backgroundColor: '#2C2C2E',
+  },
+  iosCancelButton: {
+    marginHorizontal: 16,
+    backgroundColor: '#3A3A3C',
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  iosCancelButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#007AFF',
   },
 });

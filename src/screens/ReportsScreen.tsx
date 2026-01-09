@@ -12,13 +12,29 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
+  Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import Sidebar from '../components/Sidebar';
+import IOSPickerModal from '../components/IOSPickerModal';
 import { inspectionService, propertyService, authService } from '../services';
 import { Inspection, Property } from '../services/api';
-import { showIOSActionSheet, INSPECTION_STATUS_OPTIONS, DATE_RANGE_OPTIONS } from '../utils/iosPickerUtils';
+
+// Status options for picker
+const STATUS_OPTIONS = [
+  { label: 'All Status', value: '' },
+  { label: 'Compliant', value: 'compliant' },
+  { label: 'Non-Compliant', value: 'non-compliant' },
+];
+
+// Date range options for picker
+const DATE_RANGE_OPTIONS = [
+  { label: 'All Time', value: '' },
+  { label: 'Last 7 days', value: '7days' },
+  { label: 'Last 30 days', value: '30days' },
+  { label: 'Last 90 days', value: '90days' },
+];
 
 interface ReportsScreenProps {
   navigation: any;
@@ -48,18 +64,18 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
   const [properties, setProperties] = useState<Property[]>([]);
   const [user, setUser] = useState<any>(null);
 
-  // iOS Picker functions using ActionSheetIOS
-  const showPropertyPicker = () => {
-    const propertyOptions = properties.map(p => ({ label: p.name, value: p._id }));
-    showIOSActionSheet('Select Property', propertyOptions, setSelectedProperty);
-  };
+  // iOS Picker Modal visibility states
+  const [propertyPickerVisible, setPropertyPickerVisible] = useState(false);
+  const [dateRangePickerVisible, setDateRangePickerVisible] = useState(false);
+  const [statusPickerVisible, setStatusPickerVisible] = useState(false);
 
-  const showRangePicker = () => {
-    showIOSActionSheet('Select Date Range', DATE_RANGE_OPTIONS, setSelectedRange);
-  };
-
-  const showStatusPicker = () => {
-    showIOSActionSheet('Select Status', INSPECTION_STATUS_OPTIONS, setSelectedStatus);
+  // Get property options for picker
+  const getPropertyOptions = () => {
+    const options = [{ label: 'All Properties', value: '' }];
+    properties.forEach(p => {
+      options.push({ label: p.name, value: p._id });
+    });
+    return options;
   };
 
   const loadData = useCallback(async () => {
@@ -251,7 +267,7 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
                 {Platform.OS === 'ios' ? (
                   <TouchableOpacity
                     style={styles.iosPickerButton}
-                    onPress={showPropertyPicker}
+                    onPress={() => setPropertyPickerVisible(true)}
                   >
                     <Text style={[styles.iosPickerText, !propertyName && { color: '#9CA3AF' }]}>
                       {propertyName ? properties.find(p => p._id === propertyName)?.name || propertyName : "Property Name"}
@@ -283,10 +299,10 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
                 {Platform.OS === 'ios' ? (
                   <TouchableOpacity
                     style={styles.iosPickerButton}
-                    onPress={showRangePicker}
+                    onPress={() => setDateRangePickerVisible(true)}
                   >
                     <Text style={[styles.iosPickerText, !dateRange && { color: '#9CA3AF' }]}>
-                      {dateRange === '7days' ? 'Last 7 days' : dateRange === '30days' ? 'Last 30 days' : "Data Range"}
+                      {dateRange === '7days' ? 'Last 7 days' : dateRange === '30days' ? 'Last 30 days' : dateRange === '90days' ? 'Last 90 days' : "Date Range"}
                     </Text>
                   </TouchableOpacity>
                 ) : (
@@ -295,9 +311,10 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
                     onValueChange={(itemValue: string) => setDateRange(itemValue)}
                     style={styles.picker}
                   >
-                    <Picker.Item label="Data Range" value="" />
+                    <Picker.Item label="Date Range" value="" />
                     <Picker.Item label="Last 7 days" value="7days" />
                     <Picker.Item label="Last 30 days" value="30days" />
+                    <Picker.Item label="Last 90 days" value="90days" />
                   </Picker>
                 )}
                 <Ionicons
@@ -317,7 +334,7 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
                 {Platform.OS === 'ios' ? (
                   <TouchableOpacity
                     style={styles.iosPickerButton}
-                    onPress={showStatusPicker}
+                    onPress={() => setStatusPickerVisible(true)}
                   >
                     <Text style={[styles.iosPickerText, !status && { color: '#9CA3AF' }]}>
                       {status === 'compliant' ? 'Compliant' : status === 'non-compliant' ? 'Non-Compliant' : "Status"}
@@ -406,6 +423,32 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
           <View style={{ height: 40 }} />
         </ScrollView>
       </SafeAreaView>
+
+      {/* iOS Picker Modals */}
+      <IOSPickerModal
+        visible={propertyPickerVisible}
+        title="Select Property"
+        options={getPropertyOptions()}
+        selectedValue={propertyName}
+        onSelect={setPropertyName}
+        onClose={() => setPropertyPickerVisible(false)}
+      />
+      <IOSPickerModal
+        visible={dateRangePickerVisible}
+        title="Select Date Range"
+        options={DATE_RANGE_OPTIONS}
+        selectedValue={dateRange}
+        onSelect={setDateRange}
+        onClose={() => setDateRangePickerVisible(false)}
+      />
+      <IOSPickerModal
+        visible={statusPickerVisible}
+        title="Select Status"
+        options={STATUS_OPTIONS}
+        selectedValue={status}
+        onSelect={setStatus}
+        onClose={() => setStatusPickerVisible(false)}
+      />
     </>
   );
 }

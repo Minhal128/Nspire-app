@@ -1,7 +1,9 @@
-import React from "react";
-import { NavigationContainer } from "@react-navigation/native";
+import React, { useState, useEffect, useCallback } from "react";
+import { NavigationContainer, LinkingOptions } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { StatusBar } from "expo-status-bar";
+import { View, ActivityIndicator, StyleSheet } from "react-native";
+import * as Linking from "expo-linking";
 
 // Import screens
 import BoardingScreen from "./src/screens/BoardingScreen";
@@ -22,6 +24,9 @@ import ReportDetailScreen from "./src/screens/ReportDetailScreen";
 import OrderDashboardScreen from "./src/screens/OrderDashboardScreen";
 import OthersScreen from "./src/screens/OthersScreen";
 import LocationStatsScreen from "./src/screens/LocationStatsScreen";
+
+// Import auth service
+import authService from "./src/services/authService";
 
 export type RootStackParamList = {
   Boarding: undefined;
@@ -46,13 +51,99 @@ export type RootStackParamList = {
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
+// Deep linking configuration
+const prefix = Linking.createURL("/");
+
+const linking: LinkingOptions<RootStackParamList> = {
+  prefixes: [prefix, "inspire://", "https://inspire.app", "https://*.inspire.app"],
+  config: {
+    screens: {
+      Boarding: "boarding",
+      SignIn: "signin",
+      SignUp: "signup",
+      Dashboard: "dashboard",
+      MyInspections: "inspections",
+      Reports: "reports",
+      Settings: "settings",
+      AddProperty: "add-property",
+      RequestInspection: "request-inspection",
+      EditProperty: "edit-property",
+      Analytics: "analytics",
+      UnitInspection: "unit-inspection",
+      InspectionChecklist: "checklist",
+      ManagementDashboard: "management",
+      ReportDetail: "report",
+      OrderDashboard: "orders",
+      Others: "others",
+      LocationStats: "location-stats",
+    },
+  },
+};
+
+// Loading screen component
+function LoadingScreen() {
+  return (
+    <View style={styles.loadingContainer}>
+      <ActivityIndicator size="large" color="#0E7490" />
+    </View>
+  );
+}
+
 export default function App() {
+  const [isReady, setIsReady] = useState(false);
+  const [initialRoute, setInitialRoute] = useState<keyof RootStackParamList>("Boarding");
+
+  // Check authentication state on app start
+  useEffect(() => {
+    const checkAuthState = async () => {
+      try {
+        const authState = await authService.checkSession();
+        
+        if (authState.isAuthenticated && authState.user) {
+          // User is logged in, determine the correct dashboard
+          const dashboardRoute = authService.getDashboardRoute(authState.user.role);
+          setInitialRoute(dashboardRoute as keyof RootStackParamList);
+        } else {
+          // User is not logged in, go to boarding
+          setInitialRoute("Boarding");
+        }
+      } catch (error) {
+        console.error("Error checking auth state:", error);
+        setInitialRoute("Boarding");
+      } finally {
+        setIsReady(true);
+      }
+    };
+
+    checkAuthState();
+  }, []);
+
+  // Handle deep links when app is already open
+  const onReady = useCallback(() => {
+    // App navigation container is ready
+    console.log("Navigation ready");
+  }, []);
+
+  // Show loading screen while checking auth
+  if (!isReady) {
+    return (
+      <>
+        <StatusBar style="dark" />
+        <LoadingScreen />
+      </>
+    );
+  }
+
   return (
     <>
       <StatusBar style="dark" />
-      <NavigationContainer>
+      <NavigationContainer 
+        linking={linking} 
+        fallback={<LoadingScreen />}
+        onReady={onReady}
+      >
         <Stack.Navigator
-          initialRouteName="Boarding"
+          initialRouteName={initialRoute}
           screenOptions={{
             headerShown: false,
             contentStyle: { backgroundColor: "#97F0FF" },
@@ -96,3 +187,12 @@ export default function App() {
     </>
   );
 }
+
+const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#97F0FF",
+  },
+});

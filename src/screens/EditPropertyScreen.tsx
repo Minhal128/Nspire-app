@@ -10,11 +10,18 @@ import {
   Alert,
   ActivityIndicator,
   Platform,
-  ActionSheetIOS,
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { Ionicons } from '@expo/vector-icons';
 import { propertyService } from '../services';
+import IOSPickerModal from '../components/IOSPickerModal';
+import { US_STATE_OPTIONS } from '../utils/iosPickerUtils';
+
+// State options with all US states
+const STATE_OPTIONS = [
+  { label: 'Select State', value: '' },
+  ...US_STATE_OPTIONS,
+];
 
 interface EditPropertyScreenProps {
   navigation: any;
@@ -35,24 +42,8 @@ export default function EditPropertyScreen({ navigation, route }: EditPropertySc
   const [numberOfUnits, setNumberOfUnits] = useState(property?.units?.toString() || property?.totalUnits?.toString() || '');
   const [zipCode, setZipCode] = useState(property?.zipCode || '');
 
-  // iOS Picker State - Use ActionSheetIOS instead
-  const showIOSStatePicker = () => {
-    const stateOptions = ['Cancel', 'Alaska', 'California', 'Texas'];
-    const stateValues = ['', 'alaska', 'california', 'texas'];
-
-    ActionSheetIOS.showActionSheetWithOptions(
-      {
-        options: stateOptions,
-        cancelButtonIndex: 0,
-        title: 'Select State',
-      },
-      (buttonIndex) => {
-        if (buttonIndex !== 0) { // Not cancel
-          setState(stateValues[buttonIndex]);
-        }
-      }
-    );
-  };
+  // iOS Picker Modal State
+  const [statePickerVisible, setStatePickerVisible] = useState(false);
 
   const handleUpdate = async () => {
     if (!propertyName.trim()) {
@@ -166,7 +157,7 @@ export default function EditPropertyScreen({ navigation, route }: EditPropertySc
                 {Platform.OS === 'ios' ? (
                   <TouchableOpacity
                     style={styles.iosPickerButton}
-                    onPress={showIOSStatePicker}
+                    onPress={() => setStatePickerVisible(true)}
                   >
                     <Text style={[styles.iosPickerText, !state && { color: '#6B7280' }]}>
                       {state ? (state.charAt(0).toUpperCase() + state.slice(1)) : "Select State"}
@@ -271,6 +262,16 @@ export default function EditPropertyScreen({ navigation, route }: EditPropertySc
             </TouchableOpacity>
           </View>
         </ScrollView>
+
+        {/* iOS State Picker Modal */}
+        <IOSPickerModal
+          visible={statePickerVisible}
+          title="Select State"
+          options={STATE_OPTIONS}
+          selectedValue={state}
+          onSelect={setState}
+          onClose={() => setStatePickerVisible(false)}
+        />
       </SafeAreaView>
   );
 }

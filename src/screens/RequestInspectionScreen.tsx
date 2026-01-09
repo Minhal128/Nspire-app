@@ -14,7 +14,7 @@ import {
 import { Picker } from '@react-native-picker/picker';
 import { inspectionService, propertyService } from '../services';
 import { Property } from '../services/api';
-import { showIOSActionSheet } from '../utils/iosPickerUtils';
+import IOSPickerModal from '../components/IOSPickerModal';
 
 interface RequestInspectionScreenProps {
   navigation: any;
@@ -26,11 +26,16 @@ export default function RequestInspectionScreen({ navigation }: RequestInspectio
   const [properties, setProperties] = useState<Property[]>([]);
   const [selectedProperty, setSelectedProperty] = useState('');
 
-  // iOS Picker function using ActionSheetIOS
-  const showPropertyPicker = () => {
-    if (loadingProperties) return;
-    const propertyOptions = properties.map(p => ({ label: p.name, value: p._id }));
-    showIOSActionSheet('Select Property', propertyOptions, setSelectedProperty);
+  // iOS Picker Modal visibility state
+  const [propertyPickerVisible, setPropertyPickerVisible] = useState(false);
+
+  // Get property options for picker
+  const getPropertyOptions = () => {
+    const options = [{ label: 'Select Property', value: '' }];
+    properties.forEach(p => {
+      options.push({ label: p.name, value: p._id });
+    });
+    return options;
   };
   const [purposeOfInspection, setPurposeOfInspection] = useState('');
   const [hudPreNaphe, setHudPreNaphe] = useState('');
@@ -103,6 +108,7 @@ export default function RequestInspectionScreen({ navigation }: RequestInspectio
   };
 
   return (
+    <>
     <SafeAreaView style={styles.container}>
         <ScrollView
           style={styles.scrollView}
@@ -122,7 +128,7 @@ export default function RequestInspectionScreen({ navigation }: RequestInspectio
                 {Platform.OS === 'ios' ? (
                   <TouchableOpacity
                     style={styles.iosPickerButton}
-                    onPress={showPropertyPicker}
+                    onPress={() => !loadingProperties && setPropertyPickerVisible(true)}
                     disabled={loadingProperties}
                   >
                     <Text style={[styles.iosPickerText, !selectedProperty && { color: '#6B7280' }]}>
@@ -272,6 +278,17 @@ export default function RequestInspectionScreen({ navigation }: RequestInspectio
           </View>
         </ScrollView>
       </SafeAreaView>
+
+      {/* iOS Picker Modal */}
+      <IOSPickerModal
+        visible={propertyPickerVisible}
+        title="Select Property"
+        options={getPropertyOptions()}
+        selectedValue={selectedProperty}
+        onSelect={setSelectedProperty}
+        onClose={() => setPropertyPickerVisible(false)}
+      />
+    </>
   );
 }
 

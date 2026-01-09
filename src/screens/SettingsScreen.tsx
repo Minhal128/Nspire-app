@@ -11,16 +11,32 @@ import {
   Alert,
   ActivityIndicator,
   Platform,
-  ActionSheetIOS,
   Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import * as ImagePicker from 'expo-image-picker';
 import Sidebar from '../components/Sidebar';
+import IOSPickerModal from '../components/IOSPickerModal';
 import { authService, userService } from '../services';
 import { User } from '../services/api';
-import { showIOSActionSheet, LANGUAGE_OPTIONS, TIMEZONE_OPTIONS } from '../utils/iosPickerUtils';
+
+// Language options
+const LANGUAGE_OPTIONS = [
+  { label: 'English US', value: 'English US' },
+  { label: 'Spanish', value: 'Spanish' },
+  { label: 'French', value: 'French' },
+  { label: 'German', value: 'German' },
+];
+
+// Timezone options
+const TIMEZONE_OPTIONS = [
+  { label: 'GMT +05:00', value: 'GMT +05:00' },
+  { label: 'GMT +00:00', value: 'GMT +00:00' },
+  { label: 'GMT -05:00', value: 'GMT -05:00' },
+  { label: 'GMT -08:00 (PST)', value: 'GMT -08:00 (PST)' },
+  { label: 'GMT +01:00 (CET)', value: 'GMT +01:00 (CET)' },
+];
 
 interface SettingsScreenProps {
   navigation: any;
@@ -44,14 +60,9 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
   const [successModalVisible, setSuccessModalVisible] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
 
-  // iOS Picker State - Use ActionSheetIOS instead
-  const showIOSPicker = (type: 'language' | 'timezone') => {
-    if (type === 'language') {
-      showIOSActionSheet('Select Language', LANGUAGE_OPTIONS, setLanguage);
-    } else if (type === 'timezone') {
-      showIOSActionSheet('Select Timezone', TIMEZONE_OPTIONS, setTimezone);
-    }
-  };
+  // iOS Picker Modal states
+  const [languagePickerVisible, setLanguagePickerVisible] = useState(false);
+  const [timezonePickerVisible, setTimezonePickerVisible] = useState(false);
 
   // Notification preferences
   const [inspectionReminderEmail, setInspectionReminderEmail] = useState(true);
@@ -444,7 +455,7 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
                 {Platform.OS === 'ios' ? (
                   <TouchableOpacity
                     style={styles.iosPickerButton}
-                    onPress={() => showIOSPicker('language')}
+                    onPress={() => setLanguagePickerVisible(true)}
                   >
                     <Text style={styles.iosPickerText}>{language}</Text>
                   </TouchableOpacity>
@@ -475,7 +486,7 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
                 {Platform.OS === 'ios' ? (
                   <TouchableOpacity
                     style={styles.iosPickerButton}
-                    onPress={() => showIOSPicker('timezone')}
+                    onPress={() => setTimezonePickerVisible(true)}
                   >
                     <Text style={styles.iosPickerText}>{timezone}</Text>
                   </TouchableOpacity>
@@ -783,6 +794,26 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
           </View>
         </View>
       </Modal>
+
+      {/* iOS Language Picker Modal */}
+      <IOSPickerModal
+        visible={languagePickerVisible}
+        title="Select Language"
+        options={LANGUAGE_OPTIONS}
+        selectedValue={language}
+        onSelect={setLanguage}
+        onClose={() => setLanguagePickerVisible(false)}
+      />
+
+      {/* iOS Timezone Picker Modal */}
+      <IOSPickerModal
+        visible={timezonePickerVisible}
+        title="Select Timezone"
+        options={TIMEZONE_OPTIONS}
+        selectedValue={timezone}
+        onSelect={setTimezone}
+        onClose={() => setTimezonePickerVisible(false)}
+      />
     </>
   );
 }

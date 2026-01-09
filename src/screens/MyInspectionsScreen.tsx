@@ -12,14 +12,28 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
+  Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import Sidebar from '../components/Sidebar';
+import IOSPickerModal from '../components/IOSPickerModal';
 import { authService, inspectionService, propertyService } from '../services';
 import { Inspection, Property as PropertyType, User } from '../services/api';
 import { US_STATES } from '../constants/usStates';
-import { showIOSActionSheet, US_STATE_OPTIONS, INSPECTION_STATUS_OPTIONS } from '../utils/iosPickerUtils';
+import { US_STATE_OPTIONS } from '../utils/iosPickerUtils';
+
+const COMPLIANCE_OPTIONS = [
+  { label: 'All', value: '' },
+  { label: 'Compliant', value: 'compliant' },
+  { label: 'Non-Compliant', value: 'non-compliant' },
+];
+
+// State options with "All States" as first option
+const STATE_OPTIONS = [
+  { label: 'All States', value: '' },
+  ...US_STATE_OPTIONS,
+];
 
 interface MyInspectionsScreenProps {
   navigation: any;
@@ -39,19 +53,9 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
   const [properties, setProperties] = useState<PropertyType[]>([]);
   const [inspections, setInspections] = useState<Inspection[]>([]);
 
-  // iOS Picker functions using ActionSheetIOS
-  const showLocationPicker = () => {
-    showIOSActionSheet('Select Location', US_STATE_OPTIONS, setLocation);
-  };
-
-  const showCompliancePicker = () => {
-    const complianceOptions = [
-      { label: 'All', value: 'all' },
-      { label: 'Compliant', value: 'compliant' },
-      { label: 'Non-Compliant', value: 'non-compliant' },
-    ];
-    showIOSActionSheet('Select Compliance Status', complianceOptions, setComplianceFilter);
-  };
+  // iOS Picker Modal states
+  const [locationPickerVisible, setLocationPickerVisible] = useState(false);
+  const [compliancePickerVisible, setCompliancePickerVisible] = useState(false);
 
   const loadInitialData = useCallback(async () => {
     try {
@@ -345,10 +349,10 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
                 {Platform.OS === 'ios' ? (
                   <TouchableOpacity
                     style={styles.iosPickerButton}
-                    onPress={showLocationPicker}
+                    onPress={() => setLocationPickerVisible(true)}
                   >
                     <Text style={[styles.iosPickerText, !location && { color: '#9CA3AF' }]}>
-                      {location ? US_STATES.find(s => s.value === location)?.label || location : "All States"}
+                      {location ? STATE_OPTIONS.find(s => s.value === location)?.label || location : "All States"}
                     </Text>
                   </TouchableOpacity>
                 ) : (
@@ -381,7 +385,7 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
                 {Platform.OS === 'ios' ? (
                   <TouchableOpacity
                     style={styles.iosPickerButton}
-                    onPress={showCompliancePicker}
+                    onPress={() => setCompliancePickerVisible(true)}
                   >
                     <Text style={[styles.iosPickerText, !compliance && { color: '#9CA3AF' }]}>
                       {compliance === 'compliant' ? 'Compliant' : compliance === 'non-compliant' ? 'Non-Compliant' : "Compliance"}
@@ -471,6 +475,24 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
           <View style={{ height: 40 }} />
         </ScrollView>
       </SafeAreaView>
+
+      {/* iOS Picker Modals */}
+      <IOSPickerModal
+        visible={locationPickerVisible}
+        title="Select State"
+        options={STATE_OPTIONS}
+        selectedValue={location}
+        onSelect={setLocation}
+        onClose={() => setLocationPickerVisible(false)}
+      />
+      <IOSPickerModal
+        visible={compliancePickerVisible}
+        title="Select Compliance Status"
+        options={COMPLIANCE_OPTIONS}
+        selectedValue={compliance}
+        onSelect={setCompliance}
+        onClose={() => setCompliancePickerVisible(false)}
+      />
     </>
   );
 }

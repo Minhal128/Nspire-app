@@ -28,78 +28,59 @@ export interface LocationStats {
   statesWithCities: { [key: string]: number };
 }
 
-// Supported countries with full state and city data
-const SUPPORTED_COUNTRIES = ['US', 'CA', 'GB', 'AU'];
+// Only these 4 countries: USA, UK, Canada, Australia
+const SUPPORTED_COUNTRIES = ['US', 'GB', 'CA', 'AU'];
 
 class LocationService {
-  private countries: CountryOption[] = [];
-  private states: StateOption[] = [];
-  private cities: CityOption[] = [];
   private initialized = false;
 
   constructor() {
-    this.initializeData();
+    this.initialize();
   }
 
-  private initializeData() {
+  private initialize() {
     if (this.initialized) return;
-
+    
     try {
-      // Get all countries
+      const countries = Country.getAllCountries().filter(c => SUPPORTED_COUNTRIES.includes(c.isoCode));
+      const states = State.getAllStates().filter(s => SUPPORTED_COUNTRIES.includes(s.countryCode));
+      const cities = City.getAllCities().filter(c => SUPPORTED_COUNTRIES.includes(c.countryCode));
+      
+      this.initialized = true;
+      console.log(`LocationService initialized with ${countries.length} countries, ${states.length} states, ${cities.length} cities`);
+    } catch (error) {
+      console.error('Error initializing LocationService:', error);
+      this.initialized = true;
+    }
+  }
+
+  // Get only USA, UK, Canada, Australia
+  getAllCountries(): CountryOption[] {
+    try {
       const allCountries = Country.getAllCountries();
-      this.countries = allCountries
+      return allCountries
         .filter(country => SUPPORTED_COUNTRIES.includes(country.isoCode))
         .map(country => ({
           label: country.name,
           value: country.isoCode,
           isoCode: country.isoCode,
-        }));
-
-      // Get all states for supported countries
-      const allStates = State.getAllStates();
-      this.states = allStates
-        .filter(state => SUPPORTED_COUNTRIES.includes(state.countryCode))
-        .map(state => ({
-          label: state.name,
-          value: state.isoCode,
-          isoCode: state.isoCode,
-          countryCode: state.countryCode,
-        }));
-
-      // Get all cities for supported countries
-      const allCities = City.getAllCities();
-      this.cities = allCities
-        .filter(city => SUPPORTED_COUNTRIES.includes(city.countryCode))
-        .map(city => ({
-          label: city.name,
-          value: city.name,
-          stateCode: city.stateCode || '',
-          countryCode: city.countryCode,
-        }));
-
-      this.initialized = true;
-      console.log(`LocationService initialized with ${this.countries.length} countries, ${this.states.length} states, ${this.cities.length} cities`);
+        }))
+        .sort((a, b) => a.label.localeCompare(b.label));
     } catch (error) {
-      console.error('Error initializing LocationService:', error);
-      this.initialized = true; // Prevent infinite retry
-    }
-  }
-
-  // Get all supported countries (USA, UK, Canada, Australia)
-  getAllCountries(): CountryOption[] {
-    return this.countries.sort((a, b) => a.label.localeCompare(b.label));
-  }
-
-  // Get all states/provinces for a specific country
-  getStatesByCountry(countryCode: string): StateOption[] {
-    if (!SUPPORTED_COUNTRIES.includes(countryCode)) {
-      console.warn(`Country ${countryCode} is not supported`);
+      console.error('Error getting countries:', error);
       return [];
     }
+  }
 
+  // Get all states/provinces for a country
+  getStatesByCountry(countryCode: string): StateOption[] {
+    if (!SUPPORTED_COUNTRIES.includes(countryCode)) {
+      return [];
+    }
+    
     try {
       const states = State.getStatesOfCountry(countryCode);
-      if (!states) return [];
+      if (!states || states.length === 0) return [];
       
       return states.map(state => ({
         label: state.name,
@@ -113,16 +94,15 @@ class LocationService {
     }
   }
 
-  // Get all cities for a specific country
+  // Get all cities for a country
   getCitiesByCountry(countryCode: string): CityOption[] {
     if (!SUPPORTED_COUNTRIES.includes(countryCode)) {
-      console.warn(`Country ${countryCode} is not supported`);
       return [];
     }
-
+    
     try {
       const cities = City.getCitiesOfCountry(countryCode);
-      if (!cities) return [];
+      if (!cities || cities.length === 0) return [];
       
       return cities.map(city => ({
         label: city.name,
@@ -136,23 +116,35 @@ class LocationService {
     }
   }
 
-  // Get all cities for a specific state
+  // Get cities for a state - with fallback to all country cities for UK
   getCitiesByState(countryCode: string, stateCode: string): CityOption[] {
     if (!SUPPORTED_COUNTRIES.includes(countryCode)) {
-      console.warn(`Country ${countryCode} is not supported`);
       return [];
     }
-
+    
     try {
-      const cities = City.getCitiesOfState(countryCode, stateCode);
-      if (!cities) return [];
+      // Try direct state lookup first
+      let cities = City.getCitiesOfState(countryCode, stateCode);
       
-      return cities.map(city => ({
-        label: city.name,
-        value: city.name,
-        stateCode: city.stateCode || '',
-        countryCode: city.countryCode,
-      })).sort((a, b) => a.label.localeCompare(b.label));
+      // If cities found, return them
+      if (cities && cities.length > 0) {
+        return cities.map(city => ({
+          label: city.name,
+          value: city.name,
+          stateCode: city.stateCode || '',
+          countryCode: city.countryCode,
+        })).sort((a, b) => a.label.localeCompare(b.label));
+      }
+      
+      // For UK (GB), state codes don't match city state codes
+      // UK cities use ENG, WLS, SCT, NIR but states are local authorities
+      // So we return all cities for the country
+      if (countryCode === 'GB') {
+        console.log(`UK state ${stateCode}: returning all UK cities`);
+        return this.getCitiesByCountry(countryCode);
+      }
+      
+      return [];
     } catch (error) {
       console.error(`Error getting cities for state ${stateCode} in country ${countryCode}:`, error);
       return [];
@@ -179,42 +171,30 @@ class LocationService {
     }
   }
 
-  // Get comprehensive location statistics
+  // Get location statistics
   getLocationStats(): LocationStats {
     const stats: LocationStats = {
-      totalCountries: this.countries.length,
-      totalStates: this.states.length,
-      totalCities: this.cities.length,
+      totalCountries: SUPPORTED_COUNTRIES.length,
+      totalStates: 0,
+      totalCities: 0,
       countriesWithStates: {},
       statesWithCities: {},
     };
 
-    // Count states per country
-    this.countries.forEach(country => {
-      const stateCount = this.getStatesByCountry(country.isoCode).length;
-      stats.countriesWithStates[country.label] = stateCount;
-    });
-
-    // Count cities per state (sample for performance)
-    const sampleStates = this.states.slice(0, 20); // Sample first 20 states
-    sampleStates.forEach(state => {
-      const cityCount = this.getCitiesByState(state.countryCode, state.isoCode).length;
-      const stateKey = `${state.label}, ${this.getCountryByCode(state.countryCode)?.name}`;
-      stats.statesWithCities[stateKey] = cityCount;
+    SUPPORTED_COUNTRIES.forEach(code => {
+      const stateCount = this.getStatesByCountry(code).length;
+      const country = this.getCountryByCode(code);
+      stats.countriesWithStates[country?.name || code] = stateCount;
+      stats.totalStates += stateCount;
     });
 
     return stats;
   }
 
-  // Get popular countries (all 4 supported countries)
-  getPopularCountries(): CountryOption[] {
-    return this.getAllCountries();
-  }
-
-  // Search countries by name (within supported countries)
+  // Search countries by name
   searchCountries(query: string): CountryOption[] {
     const lowerQuery = query.toLowerCase();
-    return this.countries.filter(country => 
+    return this.getAllCountries().filter(country => 
       country.label.toLowerCase().includes(lowerQuery)
     );
   }
@@ -228,23 +208,13 @@ class LocationService {
     );
   }
 
-  // Search cities by name within a state
+  // Search cities by name
   searchCities(countryCode: string, stateCode: string, query: string): CityOption[] {
     const lowerQuery = query.toLowerCase();
     const cities = this.getCitiesByState(countryCode, stateCode);
     return cities.filter(city =>
       city.label.toLowerCase().includes(lowerQuery)
     );
-  }
-
-  // Get supported countries list
-  getSupportedCountries(): string[] {
-    return [...SUPPORTED_COUNTRIES];
-  }
-
-  // Check if country is supported
-  isCountrySupported(countryCode: string): boolean {
-    return SUPPORTED_COUNTRIES.includes(countryCode);
   }
 }
 

@@ -16,9 +16,17 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import Sidebar from '../components/Sidebar';
+import IOSPickerModal from '../components/IOSPickerModal';
 import { inspectionService, propertyService, authService } from '../services';
 import { Property, Inspection } from '../services/api';
-import { showIOSActionSheet, DATE_RANGE_OPTIONS } from '../utils/iosPickerUtils';
+
+// Time period options with default
+const TIME_PERIOD_OPTIONS = [
+  { label: 'All Time', value: '' },
+  { label: 'Last 30 Days', value: '30days' },
+  { label: 'Last 90 Days', value: '90days' },
+  { label: 'Last Year', value: 'year' },
+];
 
 interface AnalyticsScreenProps {
   navigation: any;
@@ -53,27 +61,15 @@ export default function AnalyticsScreen({ navigation, onMenuPress }: AnalyticsSc
   });
   const [user, setUser] = useState<any>(null);
 
-  // iOS Picker functions using ActionSheetIOS
-  const showPropertyPicker = () => {
-    const propertyOptions = [
-      { label: 'All Properties', value: 'all' },
-      ...properties.map(p => ({ label: p.name, value: p._id }))
-    ];
-    showIOSActionSheet('Select Property', propertyOptions, setSelectedProperty);
-  };
+  // iOS Picker Modal states
+  const [propertyPickerVisible, setPropertyPickerVisible] = useState(false);
+  const [periodPickerVisible, setPeriodPickerVisible] = useState(false);
 
-  const showPeriodPicker = () => {
-    showIOSActionSheet('Select Time Period', DATE_RANGE_OPTIONS, setSelectedPeriod);
-  };
-
-  // Callback functions for ActionSheetIOS
-  const setSelectedProperty = (value: string) => {
-    setProperty(value === 'all' ? '' : value);
-  };
-
-  const setSelectedPeriod = (value: string) => {
-    setTimePeriod(value);
-  };
+  // Get property options for picker
+  const getPropertyOptions = () => [
+    { label: 'All Properties', value: '' },
+    ...properties.map(p => ({ label: p.name, value: p._id }))
+  ];
 
   const loadData = useCallback(async () => {
     try {
@@ -269,7 +265,7 @@ export default function AnalyticsScreen({ navigation, onMenuPress }: AnalyticsSc
                   {Platform.OS === 'ios' ? (
                     <TouchableOpacity
                       style={styles.iosPickerButton}
-                      onPress={showPropertyPicker}
+                      onPress={() => setPropertyPickerVisible(true)}
                     >
                       <Text style={[styles.iosPickerText, !property && { color: '#9CA3AF' }]}>
                         {property ? properties.find(p => p._id === property)?.name || property : "All Properties"}
@@ -301,7 +297,7 @@ export default function AnalyticsScreen({ navigation, onMenuPress }: AnalyticsSc
                   {Platform.OS === 'ios' ? (
                     <TouchableOpacity
                       style={styles.iosPickerButton}
-                      onPress={showPeriodPicker}
+                      onPress={() => setPeriodPickerVisible(true)}
                     >
                       <Text style={[styles.iosPickerText, !timePeriod && { color: '#9CA3AF' }]}>
                         {timePeriod === '30days' ? 'Last 30 Days' : timePeriod === '90days' ? 'Last 90 Days' : timePeriod === 'year' ? 'Last Year' : "Time Period"}
@@ -498,6 +494,26 @@ export default function AnalyticsScreen({ navigation, onMenuPress }: AnalyticsSc
           </View>
         </View>
       </Modal>
+
+      {/* iOS Property Picker Modal */}
+      <IOSPickerModal
+        visible={propertyPickerVisible}
+        title="Select Property"
+        options={getPropertyOptions()}
+        selectedValue={property}
+        onSelect={setProperty}
+        onClose={() => setPropertyPickerVisible(false)}
+      />
+
+      {/* iOS Period Picker Modal */}
+      <IOSPickerModal
+        visible={periodPickerVisible}
+        title="Select Time Period"
+        options={TIME_PERIOD_OPTIONS}
+        selectedValue={timePeriod}
+        onSelect={setTimePeriod}
+        onClose={() => setPeriodPickerVisible(false)}
+      />
     </>
   );
 }
