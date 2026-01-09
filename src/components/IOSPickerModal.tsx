@@ -1,14 +1,13 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   Modal,
   TouchableOpacity,
-  FlatList,
   StyleSheet,
-  SafeAreaView,
   Platform,
 } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
 
 export interface PickerOption {
   label: string;
@@ -32,62 +31,64 @@ export default function IOSPickerModal({
   onSelect,
   onClose,
 }: IOSPickerModalProps) {
-  // Works on both iOS and Android now
+  // Temporary value while picker is open
+  const [tempValue, setTempValue] = useState(selectedValue || '');
 
-  const handleSelect = (value: string) => {
-    onSelect(value);
+  // Reset temp value when modal opens
+  useEffect(() => {
+    if (visible) {
+      setTempValue(selectedValue || '');
+    }
+  }, [visible, selectedValue]);
+
+  const handleDone = () => {
+    onSelect(tempValue);
     onClose();
   };
 
-  const renderItem = ({ item }: { item: PickerOption }) => (
-    <TouchableOpacity
-      style={[
-        styles.optionItem,
-        selectedValue === item.value && styles.optionItemSelected,
-      ]}
-      onPress={() => handleSelect(item.value)}
-    >
-      <Text
-        style={[
-          styles.optionText,
-          selectedValue === item.value && styles.optionTextSelected,
-        ]}
-      >
-        {item.label}
-      </Text>
-    </TouchableOpacity>
-  );
+  const handleCancel = () => {
+    setTempValue(selectedValue || '');
+    onClose();
+  };
 
   return (
     <Modal
       visible={visible}
       animationType="slide"
       transparent={true}
-      onRequestClose={onClose}
+      onRequestClose={handleCancel}
     >
       <View style={styles.overlay}>
         <View style={styles.container}>
-          <SafeAreaView style={styles.safeArea}>
-            {/* Header */}
-            <View style={styles.header}>
-              <Text style={styles.title}>{title}</Text>
-            </View>
-
-            {/* Options List */}
-            <FlatList
-              data={options}
-              keyExtractor={(item, index) => `${item.value}-${index}`}
-              renderItem={renderItem}
-              style={styles.list}
-              showsVerticalScrollIndicator={true}
-              initialNumToRender={20}
-            />
-
-            {/* Cancel Button */}
-            <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
-              <Text style={styles.cancelText}>Cancel</Text>
+          {/* Header with title and Done button */}
+          <View style={styles.header}>
+            <Text style={styles.title}>{title}</Text>
+            <TouchableOpacity onPress={handleDone}>
+              <Text style={styles.doneText}>Done</Text>
             </TouchableOpacity>
-          </SafeAreaView>
+          </View>
+
+          {/* Native Picker */}
+          <Picker
+            selectedValue={tempValue}
+            onValueChange={(itemValue) => setTempValue(itemValue)}
+            style={styles.picker}
+            itemStyle={styles.pickerItem}
+          >
+            {options.map((option, index) => (
+              <Picker.Item
+                key={`${option.value}-${index}`}
+                label={option.label}
+                value={option.value}
+                color={Platform.OS === 'ios' ? '#007AFF' : '#1F2937'}
+              />
+            ))}
+          </Picker>
+
+          {/* Cancel Button */}
+          <TouchableOpacity style={styles.cancelButton} onPress={handleCancel}>
+            <Text style={styles.cancelText}>Cancel</Text>
+          </TouchableOpacity>
         </View>
       </View>
     </Modal>
@@ -102,55 +103,45 @@ const styles = StyleSheet.create({
   },
   container: {
     backgroundColor: '#2C2C2E',
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
-    maxHeight: '70%',
-  },
-  safeArea: {
-    flex: 1,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 30,
   },
   header: {
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#3C3C3E',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#3A3A3C',
   },
   title: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
-    color: '#8E8E93',
+    color: '#FFFFFF',
   },
-  list: {
-    maxHeight: 400,
-  },
-  optionItem: {
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#3C3C3E',
-  },
-  optionItemSelected: {
-    backgroundColor: '#3C3C3E',
-  },
-  optionText: {
-    fontSize: 20,
+  doneText: {
+    fontSize: 16,
+    fontWeight: '600',
     color: '#007AFF',
-    textAlign: 'center',
   },
-  optionTextSelected: {
-    fontWeight: '600',
+  picker: {
+    backgroundColor: '#2C2C2E',
+  },
+  pickerItem: {
+    color: '#007AFF',
+    fontSize: 20,
   },
   cancelButton: {
-    backgroundColor: '#2C2C2E',
-    paddingVertical: 16,
-    marginTop: 8,
-    marginHorizontal: 8,
-    marginBottom: 8,
+    marginHorizontal: 16,
+    backgroundColor: '#3A3A3C',
     borderRadius: 12,
+    paddingVertical: 14,
     alignItems: 'center',
   },
   cancelText: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: '600',
     color: '#007AFF',
   },
