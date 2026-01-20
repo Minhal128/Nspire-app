@@ -24,6 +24,9 @@ import ReportDetailScreen from "./src/screens/ReportDetailScreen";
 import OrderDashboardScreen from "./src/screens/OrderDashboardScreen";
 import OthersScreen from "./src/screens/OthersScreen";
 import LocationStatsScreen from "./src/screens/LocationStatsScreen";
+import AIInspectionScreen from "./src/screens/AIInspectionScreen";
+import InspectionReportScreen from "./src/screens/InspectionReportScreen";
+import NSPIREReportScreen from "./src/screens/NSPIREReportScreen";
 
 // Import auth service
 import authService from "./src/services/authService";
@@ -47,6 +50,9 @@ export type RootStackParamList = {
   OrderDashboard: undefined;
   Others: undefined;
   LocationStats: undefined;
+  AIInspection: { property: any };
+  InspectionReport: { property: any; session: any; findings: any[]; images: any[]; complianceScore: number; overallCondition: string };
+  NSPIREReport: { report?: any; inspectionData?: any; property?: any };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -76,6 +82,9 @@ const linking: LinkingOptions<RootStackParamList> = {
       OrderDashboard: "orders",
       Others: "others",
       LocationStats: "location-stats",
+      AIInspection: "ai-inspection",
+      InspectionReport: "inspection-report",
+      NSPIREReport: "nspire-report",
     },
   },
 };
@@ -182,6 +191,9 @@ export default function App() {
           />
           <Stack.Screen name="Others" component={OthersScreen} />
           <Stack.Screen name="LocationStats" component={LocationStatsScreen} />
+          <Stack.Screen name="AIInspection" component={AIInspectionScreen} />
+          <Stack.Screen name="InspectionReport" component={InspectionReportScreen} />
+          <Stack.Screen name="NSPIREReport" component={NSPIREReportScreen} />
         </Stack.Navigator>
       </NavigationContainer>
     </>

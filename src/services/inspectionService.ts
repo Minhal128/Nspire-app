@@ -101,10 +101,14 @@ class InspectionService {
       const queryString = params.toString();
       const endpoint = queryString ? `/inspections?${queryString}` : '/inspections';
       
+      console.log('Fetching inspections from endpoint:', endpoint);
       const response = await api.get<{ success: boolean; inspections: Inspection[]; pagination: any }>(endpoint);
+      console.log('Inspections response:', JSON.stringify(response).substring(0, 200));
       return response;
     } catch (error: any) {
-      throw new Error(error.message || 'Failed to fetch inspections');
+      console.error('Error in getInspections:', error.message);
+      // Return empty data on error (e.g., auth issues) instead of throwing
+      return { success: false, inspections: [], pagination: { page: 1, limit: 10, total: 0, pages: 0 } };
     }
   }
 
@@ -137,7 +141,16 @@ class InspectionService {
    */
   async completeInspection(id: string, data: { complianceScore: number; findings?: any[]; notes?: string }): Promise<{ success: boolean; message: string; inspection: Inspection }> {
     try {
-      const response = await api.patch<{ success: boolean; message: string; inspection: Inspection }>(`/inspections/${id}/complete`, data);
+      // Map to backend expected fields
+      const payload = {
+        score: data.complianceScore,
+        complianceScore: data.complianceScore,
+        deficiencies: data.findings,
+        findings: data.findings,
+        notes: data.notes,
+        result: data.complianceScore >= 70 ? 'compliant' : 'non-compliant',
+      };
+      const response = await api.patch<{ success: boolean; message: string; inspection: Inspection }>(`/inspections/${id}/complete`, payload);
       return response;
     } catch (error: any) {
       throw new Error(error.message || 'Failed to complete inspection');

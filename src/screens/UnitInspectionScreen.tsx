@@ -43,7 +43,7 @@ export default function UnitInspectionScreen({ navigation, route }: UnitInspecti
       if (property?._id) {
         // Try to fetch property details with units from API
         const propertyData = await propertyService.getProperty(property._id);
-        const unitCount = propertyData?.property?.units || 0;
+        const unitCount = propertyData?.property?.units || property?.units || 1;
         
         // Generate units based on unit count
         const generatedUnits: Unit[] = Array.from({ length: unitCount }, (_, i) => ({
@@ -62,21 +62,21 @@ export default function UnitInspectionScreen({ navigation, route }: UnitInspecti
         }));
         setUnits(generatedUnits);
       } else {
-        // Default units if none available
+        // Generate at least 1 unit if none specified
         setUnits([
-          { id: '101', name: 'Unit 101', status: 'needs-attention' },
-          { id: '102', name: 'Unit 102', status: 'completed' },
-          { id: '103', name: 'Unit 103', status: 'non-compliant' },
+          { id: '001', name: 'Unit 001', status: 'needs-attention' },
         ]);
       }
     } catch (error) {
       console.error('Error loading units:', error);
-      // Fallback to default units
-      setUnits([
-        { id: '101', name: 'Unit 101', status: 'needs-attention' },
-        { id: '102', name: 'Unit 102', status: 'completed' },
-        { id: '103', name: 'Unit 103', status: 'non-compliant' },
-      ]);
+      // Generate units based on property.units or default to 1
+      const unitCount = property?.units || 1;
+      const generatedUnits: Unit[] = Array.from({ length: unitCount }, (_, i) => ({
+        id: `${i + 1}`.padStart(3, '0'),
+        name: `Unit ${(i + 1).toString().padStart(3, '0')}`,
+        status: 'needs-attention' as const,
+      }));
+      setUnits(generatedUnits);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -128,9 +128,23 @@ export default function UnitInspectionScreen({ navigation, route }: UnitInspecti
   };
 
   const handleStartInspection = (unit: Unit) => {
-    navigation.navigate('InspectionChecklist' as never, { 
+    // Go directly to AI Inspection with the selected unit
+    navigation.navigate('AIInspection' as never, { 
       property: property,
-      unit: unit 
+      selectedUnits: [unit.name],
+      coverage: '100',
+      totalUnits: 1
+    } as never);
+  };
+
+  const handleStartAIInspection = () => {
+    // Start AI inspection for all units
+    const allUnitNames = units.map(u => u.name);
+    navigation.navigate('AIInspection' as never, { 
+      property: property,
+      selectedUnits: allUnitNames,
+      coverage: '100',
+      totalUnits: units.length
     } as never);
   };
 
@@ -229,6 +243,15 @@ export default function UnitInspectionScreen({ navigation, route }: UnitInspecti
               {property?.name || 'Sunset Apartments'}
             </Text>
             <Text style={styles.propertyAddress}>New York</Text>
+            
+            {/* AI Inspection Button */}
+            <TouchableOpacity 
+              style={styles.aiInspectionButton}
+              onPress={handleStartAIInspection}
+            >
+              <Ionicons name="sparkles" size={20} color="#FFFFFF" />
+              <Text style={styles.aiInspectionButtonText}>Start AI Inspection</Text>
+            </TouchableOpacity>
           </View>
 
           {/* Units List */}
@@ -334,6 +357,26 @@ const styles = StyleSheet.create({
   propertyAddress: {
     fontSize: 14,
     color: '#6B7280',
+  },
+  aiInspectionButton: {
+    flexDirection: 'row',
+    backgroundColor: '#0E7490',
+    borderRadius: 10,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 16,
+    gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  aiInspectionButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
   },
   unitsList: {
     paddingHorizontal: 20,

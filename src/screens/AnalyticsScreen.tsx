@@ -73,25 +73,73 @@ export default function AnalyticsScreen({ navigation, onMenuPress }: AnalyticsSc
 
   const loadData = useCallback(async () => {
     try {
-      const [propertiesData, inspectionsData, statsData] = await Promise.all([
-        propertyService.getProperties(),
-        inspectionService.getInspections({ status: 'completed' }),
-        inspectionService.getInspectionStats().catch(() => null),
-      ]);
+      // Load user data
+      const storedUser = await authService.getStoredUser();
+      setUser(storedUser);
+
+      let propertiesData: any = { properties: [] };
+      let inspectionsData: any = { inspections: [] };
+
+      // Try to load properties - handle errors gracefully
+      try {
+        propertiesData = await propertyService.getProperties();
+      } catch (propErr) {
+        console.log('Could not load properties:', propErr);
+      }
+
+      // Try to load inspections - handle errors gracefully
+      try {
+        inspectionsData = await inspectionService.getInspections({ status: 'completed' });
+      } catch (inspErr) {
+        console.log('Could not load inspections:', inspErr);
+      }
 
       const propertiesList = propertiesData.properties || propertiesData || [];
-      const inspectionsList = inspectionsData.inspections || inspectionsData || [];
+      let inspectionsList = inspectionsData.inspections || inspectionsData || [];
 
       setProperties(propertiesList);
+
+      // Filter by selected property if one is selected
+      if (property) {
+        inspectionsList = inspectionsList.filter((inspection: any) => {
+          const propId = typeof inspection.property === 'object' ? inspection.property?._id : inspection.property;
+          return propId === property;
+        });
+      }
+
+      // Filter by time period
+      if (timePeriod) {
+        const now = new Date();
+        let cutoffDate = new Date();
+        
+        switch (timePeriod) {
+          case '30days':
+            cutoffDate.setDate(now.getDate() - 30);
+            break;
+          case '90days':
+            cutoffDate.setDate(now.getDate() - 90);
+            break;
+          case 'year':
+            cutoffDate.setFullYear(now.getFullYear() - 1);
+            break;
+        }
+
+        inspectionsList = inspectionsList.filter((inspection: any) => {
+          const inspectionDate = new Date(inspection.completedDate || inspection.scheduledDate || inspection.createdAt);
+          return inspectionDate >= cutoffDate;
+        });
+      }
 
       // Calculate analytics from inspections
       let compliant = 0;
       let needsAttention = 0;
       let nonCompliant = 0;
       const propertyScores: { [key: string]: { total: number; count: number; name: string } } = {};
+      const issueCategories: { [key: string]: number } = {};
+      let totalFindings = 0;
 
       inspectionsList.forEach((inspection: any) => {
-        const score = inspection.score || 0;
+        const score = inspection.complianceScore || inspection.score || 0;
         const status = inspection.complianceStatus || (score >= 70 ? 'compliant' : score >= 50 ? 'needs-attention' : 'non-compliant');
 
         if (status === 'compliant' || score >= 70) compliant++;
@@ -99,7 +147,7 @@ export default function AnalyticsScreen({ navigation, onMenuPress }: AnalyticsSc
         else nonCompliant++;
 
         // Track property performance
-        const propId = inspection.property || inspection.propertyId;
+        const propId = typeof inspection.property === 'object' ? inspection.property?._id : (inspection.property || inspection.propertyId);
         if (propId) {
           const prop = propertiesList.find((p: Property) => p._id === propId);
           if (!propertyScores[propId]) {
@@ -108,6 +156,14 @@ export default function AnalyticsScreen({ navigation, onMenuPress }: AnalyticsSc
           propertyScores[propId].total += score;
           propertyScores[propId].count++;
         }
+
+        // Extract common issues from findings
+        const findings = inspection.findings || [];
+        findings.forEach((finding: any) => {
+          const category = finding.area || finding.category || finding.inspectionType || 'General';
+          issueCategories[category] = (issueCategories[category] || 0) + 1;
+          totalFindings++;
+        });
       });
 
       const propertyPerformance = Object.values(propertyScores)
@@ -115,31 +171,51 @@ export default function AnalyticsScreen({ navigation, onMenuPress }: AnalyticsSc
         .sort((a, b) => b.score - a.score)
         .slice(0, 5);
 
+      // Calculate common issues as percentages
+      const commonIssues = Object.entries(issueCategories)
+        .map(([name, count]) => ({
+          name,
+          percentage: totalFindings > 0 ? Math.round((count / totalFindings) * 100) : 0,
+        }))
+        .sort((a, b) => b.percentage - a.percentage)
+        .slice(0, 6);
+
+      // If no findings data, show default categories with 0%
+      const finalCommonIssues = commonIssues.length > 0 ? commonIssues : [
+        { name: 'Electrical', percentage: 0 },
+        { name: 'Plumbing', percentage: 0 },
+        { name: 'Fire Safety', percentage: 0 },
+        { name: 'HVAC', percentage: 0 },
+      ];
+
       setAnalytics({
         totalInspections: inspectionsList.length,
         compliantCount: compliant,
         needsAttentionCount: needsAttention,
         nonCompliantCount: nonCompliant,
         propertyPerformance,
-        commonIssues: [
-          { name: 'Electrical', percentage: 65 },
-          { name: 'Plumbing', percentage: 85 },
-          { name: 'Fire Safety', percentage: 50 },
-          { name: 'Doors/Windows', percentage: 55 },
-        ],
+        commonIssues: finalCommonIssues,
       });
     } catch (error) {
       console.error('Error loading analytics:', error);
-      Alert.alert('Error', 'Failed to load analytics data');
+      // Don't show alert, just log and keep default empty state
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [property, timePeriod]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Reload when filters change
+  useEffect(() => {
+    if (!loading) {
+      setLoading(true);
+      loadData();
+    }
+  }, [property, timePeriod]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);

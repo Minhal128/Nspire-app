@@ -49,6 +49,10 @@ interface Report {
   inspector: string;
   date: string;
   complianceScore: 'Compliant' | 'Non-Compliant';
+  inspectionType: string;
+  totalDeficiencies: number;
+  criticalDeficiencies: number;
+  notes: string;
   rawData: Inspection;
 }
 
@@ -80,38 +84,98 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
 
   const loadData = useCallback(async () => {
     try {
-      const [inspectionsData, propertiesData] = await Promise.all([
-        inspectionService.getInspections({ status: 'completed' }),
-        propertyService.getProperties(),
-      ]);
+      // Load user data
+      const storedUser = await authService.getStoredUser();
+      setUser(storedUser);
+
+      let inspectionsData: any = { inspections: [] };
+      let propertiesData: any = { properties: [] };
+
+      // Try to load inspections - handle errors gracefully
+      try {
+        inspectionsData = await inspectionService.getInspections({ status: 'completed' });
+      } catch (inspErr) {
+        console.log('Could not load inspections:', inspErr);
+        // Continue with empty inspections
+      }
+
+      // Try to load properties - handle errors gracefully
+      try {
+        propertiesData = await propertyService.getProperties();
+      } catch (propErr) {
+        console.log('Could not load properties:', propErr);
+        // Continue with empty properties
+      }
+
+      console.log('Reports - Loaded inspections:', (inspectionsData.inspections || []).length);
 
       // Map inspections to report format
       const mappedReports: Report[] = (inspectionsData.inspections || inspectionsData || []).map((inspection: Inspection) => {
+        // Debug log each inspection
+        console.log('Mapping inspection:', JSON.stringify({
+          id: inspection._id,
+          findings: (inspection as any).findings?.length || 0,
+          deficiencies: (inspection as any).deficiencies?.length || 0,
+          notes: (inspection as any).notes,
+          inspectionType: (inspection as any).inspectionType,
+        }));
+
+        // Handle property as either populated object or string ID
+        const propertyId = typeof inspection.property === 'object' 
+          ? (inspection.property as any)?._id 
+          : inspection.property;
+        
         const property = (propertiesData.properties || propertiesData || []).find(
-          (p: Property) => p._id === inspection.property || p._id === (inspection as any).propertyId
+          (p: Property) => p._id === propertyId
         );
+
+        // Get compliance score - check complianceScore field first
+        const score = (inspection as any).complianceScore || (inspection as any).score || 0;
+        const isCompliant = (inspection as any).result === 'compliant' || (inspection as any).complianceStatus === 'compliant' || score >= 70;
+
+        // Get findings/deficiencies data
+        const findings = (inspection as any).findings || (inspection as any).deficiencies || [];
+        const totalDeficiencies = findings.length;
+        const criticalDeficiencies = findings.filter((f: any) => 
+          f.severity === 'critical' || f.severity === 'life-threatening' || f.severity === 'severe'
+        ).length;
 
         return {
           id: inspection._id,
-          property: property?.name || 'Unknown Property',
-          propertyId: inspection.property || (inspection as any).propertyId,
-          unit: (inspection as any).unit || 'N/A',
-          inspector: (inspection as any).inspector?.fullName || (inspection as any).inspectorName || 'Unknown',
-          date: new Date(inspection.scheduledDate || (inspection as any).completedDate).toLocaleDateString('en-US', {
+          property: typeof inspection.property === 'object' 
+            ? (inspection.property as any)?.name 
+            : (property?.name || 'Unknown Property'),
+          propertyId: propertyId || '',
+          unit: (inspection as any).unit || 'All Units',
+          inspector: (inspection as any).inspector?.fullName || (inspection as any).inspectorName || storedUser?.fullName || 'Unknown',
+          date: new Date(inspection.completedDate || inspection.scheduledDate || (inspection as any).createdAt).toLocaleDateString('en-US', {
             month: 'short',
-            day: 'numeric'
+            day: 'numeric',
+            year: 'numeric'
           }),
-          complianceScore: (inspection as any).complianceStatus === 'compliant' ||
-            (inspection as any).score >= 70 ? 'Compliant' : 'Non-Compliant',
+          complianceScore: isCompliant ? 'Compliant' : 'Non-Compliant',
+          inspectionType: (inspection as any).inspectionType || 'INSPIRE Inspection',
+          totalDeficiencies,
+          criticalDeficiencies,
+          notes: (inspection as any).notes || 'No notes available.',
           rawData: inspection,
         };
+      });
+
+      // Sort by date (newest first)
+      mappedReports.sort((a, b) => {
+        const dateA = new Date(a.rawData.completedDate || a.rawData.scheduledDate || (a.rawData as any).createdAt);
+        const dateB = new Date(b.rawData.completedDate || b.rawData.scheduledDate || (b.rawData as any).createdAt);
+        return dateB.getTime() - dateA.getTime();
       });
 
       setReports(mappedReports);
       setProperties(propertiesData.properties || propertiesData || []);
     } catch (error) {
       console.error('Error loading reports:', error);
-      Alert.alert('Error', 'Failed to load reports');
+      // Don't show alert, just log and show empty state
+      setReports([]);
+      setProperties([]);
     } finally {
       setLoading(false);
       setRefreshing(false);

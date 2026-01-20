@@ -13,6 +13,7 @@ import {
   Alert,
   Platform,
   Modal,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
@@ -33,6 +34,13 @@ const COMPLIANCE_OPTIONS = [
 const STATE_OPTIONS = [
   { label: 'All States', value: '' },
   ...US_STATE_OPTIONS,
+];
+
+// Coverage options for inspection
+const COVERAGE_OPTIONS = [
+  { label: '100% - All Units', value: '100', description: 'Inspect every unit in the property' },
+  { label: '50% - Half Units', value: '50', description: 'Inspect half of all units (randomly selected)' },
+  { label: 'Random Sample', value: 'random', description: 'Automatically select a random sample based on HUD guidelines' },
 ];
 
 interface MyInspectionsScreenProps {
@@ -56,6 +64,24 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
   // iOS Picker Modal states
   const [locationPickerVisible, setLocationPickerVisible] = useState(false);
   const [compliancePickerVisible, setCompliancePickerVisible] = useState(false);
+
+  // Edit Property Modal state
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [editPropertyName, setEditPropertyName] = useState('');
+  const [editAddress, setEditAddress] = useState('');
+  const [editCity, setEditCity] = useState('');
+  const [editState, setEditState] = useState('');
+  const [editZipCode, setEditZipCode] = useState('');
+  const [editBuildings, setEditBuildings] = useState('');
+  const [editUnits, setEditUnits] = useState('');
+  const [editStatePickerVisible, setEditStatePickerVisible] = useState(false);
+  const [savingProperty, setSavingProperty] = useState(false);
+
+  // Ready for Inspection Modal state
+  const [inspectionModalVisible, setInspectionModalVisible] = useState(false);
+  const [selectedCoverage, setSelectedCoverage] = useState('100');
+  const [calculatedUnits, setCalculatedUnits] = useState(0);
+  const [selectedUnits, setSelectedUnits] = useState<string[]>([]);
 
   const loadInitialData = useCallback(async () => {
     try {
@@ -176,24 +202,151 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
 
   const handleEditProperty = () => {
     setActionModalVisible(false);
-    navigation.navigate('EditProperty' as never, { property: selectedProperty } as never);
+    if (selectedProperty) {
+      // Populate edit modal fields with current property data
+      setEditPropertyName(selectedProperty.name || '');
+      setEditAddress(selectedProperty.address || '');
+      setEditCity(selectedProperty.city || '');
+      setEditState(selectedProperty.state || '');
+      setEditZipCode(selectedProperty.zipCode || '');
+      setEditBuildings(String(selectedProperty.buildings || ''));
+      setEditUnits(String(selectedProperty.units || ''));
+      setEditModalVisible(true);
+    }
+  };
+
+  const handleSaveEditProperty = async () => {
+    if (!selectedProperty?._id) return;
+    
+    if (!editPropertyName.trim() || !editAddress.trim() || !editCity.trim() || !editState.trim()) {
+      Alert.alert('Error', 'Please fill in all required fields');
+      return;
+    }
+
+    setSavingProperty(true);
+    try {
+      const updatedData = {
+        name: editPropertyName.trim(),
+        address: editAddress.trim(),
+        city: editCity.trim(),
+        state: editState.trim(),
+        zipCode: editZipCode.trim(),
+        buildings: parseInt(editBuildings) || 1,
+        units: parseInt(editUnits) || 1,
+      };
+
+      const response = await propertyService.updateProperty(selectedProperty._id, updatedData);
+      if (response.success) {
+        // Update local state
+        setProperties(prev => prev.map(p => 
+          p._id === selectedProperty._id ? { ...p, ...updatedData } : p
+        ));
+        setEditModalVisible(false);
+        Alert.alert('Success', 'Property updated successfully');
+      } else {
+        Alert.alert('Error', response.message || 'Failed to update property');
+      }
+    } catch (error) {
+      console.error('Error updating property:', error);
+      Alert.alert('Error', 'Failed to update property');
+    } finally {
+      setSavingProperty(false);
+    }
   };
 
   const handleReadyForInspection = async () => {
     setActionModalVisible(false);
     if (selectedProperty) {
+      // Calculate units based on property data
+      const totalUnits = selectedProperty.units || 1;
+      setCalculatedUnits(totalUnits);
+      setSelectedCoverage('100');
+      calculateSelectedUnits('100', totalUnits, selectedProperty);
+      setInspectionModalVisible(true);
+    }
+  };
+
+  const calculateSelectedUnits = (coverage: string, totalUnits: number, property: PropertyType) => {
+    const unitList: string[] = [];
+    let unitsToInspect = 0;
+
+    // Calculate number of units to inspect based on coverage
+    if (coverage === '100') {
+      unitsToInspect = totalUnits;
+    } else if (coverage === '50') {
+      unitsToInspect = Math.ceil(totalUnits / 2);
+    } else if (coverage === 'random') {
+      // HUD guidelines: random sample is typically square root of total units, min 5
+      unitsToInspect = Math.max(5, Math.ceil(Math.sqrt(totalUnits)));
+      // Cap at total units
+      unitsToInspect = Math.min(unitsToInspect, totalUnits);
+    }
+
+    setCalculatedUnits(unitsToInspect);
+
+    // Generate unit names - use property's unit data if available, otherwise generate sequentially
+    const propertyUnits = property.unitList || [];
+    if (propertyUnits.length > 0) {
+      // Use actual unit names from property
+      if (coverage === '100') {
+        unitList.push(...propertyUnits.slice(0, unitsToInspect));
+      } else {
+        // Randomly select units
+        const shuffled = [...propertyUnits].sort(() => Math.random() - 0.5);
+        unitList.push(...shuffled.slice(0, unitsToInspect));
+      }
+    } else {
+      // Generate unit names dynamically
+      for (let i = 1; i <= unitsToInspect; i++) {
+        const unitNumber = String(i).padStart(3, '0');
+        unitList.push(`Unit ${unitNumber}`);
+      }
+    }
+
+    setSelectedUnits(unitList);
+  };
+
+  const handleCoverageChange = (coverage: string) => {
+    setSelectedCoverage(coverage);
+    if (selectedProperty) {
+      const totalUnits = selectedProperty.units || 1;
+      calculateSelectedUnits(coverage, totalUnits, selectedProperty);
+    }
+  };
+
+  const handleStartInspection = async () => {
+    setInspectionModalVisible(false);
+    if (selectedProperty) {
       try {
         await propertyService.setReadyForInspection(selectedProperty._id!);
-        navigation.navigate('UnitInspection' as never, { property: selectedProperty } as never);
+        // Navigate directly to AI Inspection with property and selected units
+        navigation.navigate('AIInspection' as never, { 
+          property: selectedProperty,
+          selectedUnits: selectedUnits,
+          coverage: selectedCoverage,
+          totalUnits: calculatedUnits
+        } as never);
       } catch (error) {
         console.error('Error setting ready for inspection:', error);
-        navigation.navigate('UnitInspection' as never, { property: selectedProperty } as never);
+        // Still navigate even if the API call fails
+        navigation.navigate('AIInspection' as never, { 
+          property: selectedProperty,
+          selectedUnits: selectedUnits,
+          coverage: selectedCoverage,
+          totalUnits: calculatedUnits
+        } as never);
       }
     }
   };
 
   const handlePropertyCardPress = (property: PropertyType) => {
-    navigation.navigate('UnitInspection' as never, { property: property } as never);
+    // Open the Ready for Inspection modal when clicking on property card
+    setSelectedProperty(property);
+    const totalUnits = property.units || 1;
+    setCalculatedUnits(totalUnits);
+    setSelectedCoverage('100');
+    calculateSelectedUnits('100', totalUnits, property);
+    setInspectionModalVisible(true);
   };
 
   const handleRemoveProperty = async () => {
@@ -493,6 +646,241 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
         onSelect={setCompliance}
         onClose={() => setCompliancePickerVisible(false)}
       />
+
+      {/* Edit Property Modal */}
+      <Modal
+        visible={editModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setEditModalVisible(false)}
+      >
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.editModalOverlay}
+        >
+          <View style={styles.editModalContent}>
+            <View style={styles.editModalHeader}>
+              <Text style={styles.editModalTitle}>Edit Property</Text>
+              <TouchableOpacity onPress={() => setEditModalVisible(false)}>
+                <Ionicons name="close" size={24} color="#1F2937" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.editModalForm} showsVerticalScrollIndicator={false}>
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Property Name *</Text>
+                <TextInput
+                  style={styles.editInput}
+                  value={editPropertyName}
+                  onChangeText={setEditPropertyName}
+                  placeholder="Enter property name"
+                  placeholderTextColor="#9CA3AF"
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Address *</Text>
+                <TextInput
+                  style={styles.editInput}
+                  value={editAddress}
+                  onChangeText={setEditAddress}
+                  placeholder="Enter street address"
+                  placeholderTextColor="#9CA3AF"
+                />
+              </View>
+
+              <View style={styles.rowInputs}>
+                <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
+                  <Text style={styles.inputLabel}>City *</Text>
+                  <TextInput
+                    style={styles.editInput}
+                    value={editCity}
+                    onChangeText={setEditCity}
+                    placeholder="City"
+                    placeholderTextColor="#9CA3AF"
+                  />
+                </View>
+                <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
+                  <Text style={styles.inputLabel}>State *</Text>
+                  {Platform.OS === 'ios' ? (
+                    <TouchableOpacity
+                      style={styles.editInput}
+                      onPress={() => setEditStatePickerVisible(true)}
+                    >
+                      <Text style={editState ? styles.pickerSelectedText : styles.pickerPlaceholderText}>
+                        {editState || 'Select State'}
+                      </Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <View style={styles.editPickerWrapper}>
+                      <Picker
+                        selectedValue={editState}
+                        onValueChange={(value: string) => setEditState(value)}
+                        style={styles.editPicker}
+                      >
+                        <Picker.Item label="Select State" value="" />
+                        {US_STATES.map((state) => (
+                          <Picker.Item key={state.value} label={state.label} value={state.value} />
+                        ))}
+                      </Picker>
+                    </View>
+                  )}
+                </View>
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Zip Code</Text>
+                <TextInput
+                  style={styles.editInput}
+                  value={editZipCode}
+                  onChangeText={setEditZipCode}
+                  placeholder="Zip Code"
+                  placeholderTextColor="#9CA3AF"
+                  keyboardType="numeric"
+                />
+              </View>
+
+              <View style={styles.rowInputs}>
+                <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
+                  <Text style={styles.inputLabel}>Buildings</Text>
+                  <TextInput
+                    style={styles.editInput}
+                    value={editBuildings}
+                    onChangeText={setEditBuildings}
+                    placeholder="No. of Buildings"
+                    placeholderTextColor="#9CA3AF"
+                    keyboardType="numeric"
+                  />
+                </View>
+                <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
+                  <Text style={styles.inputLabel}>Units</Text>
+                  <TextInput
+                    style={styles.editInput}
+                    value={editUnits}
+                    onChangeText={setEditUnits}
+                    placeholder="No. of Units"
+                    placeholderTextColor="#9CA3AF"
+                    keyboardType="numeric"
+                  />
+                </View>
+              </View>
+            </ScrollView>
+
+            <View style={styles.editModalActions}>
+              <TouchableOpacity
+                style={styles.cancelEditButton}
+                onPress={() => setEditModalVisible(false)}
+              >
+                <Text style={styles.cancelEditButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.saveEditButton, savingProperty && styles.disabledButton]}
+                onPress={handleSaveEditProperty}
+                disabled={savingProperty}
+              >
+                {savingProperty ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.saveEditButtonText}>Save Changes</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Edit State Picker Modal (iOS) */}
+      <IOSPickerModal
+        visible={editStatePickerVisible}
+        title="Select State"
+        options={STATE_OPTIONS}
+        selectedValue={editState}
+        onSelect={setEditState}
+        onClose={() => setEditStatePickerVisible(false)}
+      />
+
+      {/* Ready for Inspection Modal */}
+      <Modal
+        visible={inspectionModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setInspectionModalVisible(false)}
+      >
+        <View style={styles.inspectionModalOverlay}>
+          <View style={styles.inspectionModalContent}>
+            <View style={styles.inspectionModalHeader}>
+              <Text style={styles.inspectionModalTitle}>Ready for Inspection</Text>
+              <TouchableOpacity onPress={() => setInspectionModalVisible(false)}>
+                <Ionicons name="close" size={24} color="#1F2937" />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.inspectionPropertyName}>{selectedProperty?.name}</Text>
+            <Text style={styles.totalUnitsText}>
+              Total Units: <Text style={styles.totalUnitsValue}>{selectedProperty?.units || 1}</Text>
+            </Text>
+
+            <Text style={styles.coverageLabel}>Select Inspection Coverage</Text>
+            
+            {COVERAGE_OPTIONS.map((option) => (
+              <TouchableOpacity
+                key={option.value}
+                style={[
+                  styles.coverageOption,
+                  selectedCoverage === option.value && styles.coverageOptionSelected
+                ]}
+                onPress={() => handleCoverageChange(option.value)}
+              >
+                <View style={styles.coverageRadio}>
+                  {selectedCoverage === option.value && <View style={styles.coverageRadioInner} />}
+                </View>
+                <View style={styles.coverageTextContainer}>
+                  <Text style={[
+                    styles.coverageOptionText,
+                    selectedCoverage === option.value && styles.coverageOptionTextSelected
+                  ]}>
+                    {option.label}
+                  </Text>
+                  <Text style={styles.coverageDescription}>{option.description}</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+
+            <View style={styles.calculationResult}>
+              <Text style={styles.calculationLabel}>Units to Inspect:</Text>
+              <Text style={styles.calculationValue}>{calculatedUnits}</Text>
+            </View>
+
+            {selectedUnits.length > 0 && (
+              <View style={styles.selectedUnitsList}>
+                <Text style={styles.selectedUnitsLabel}>Selected Units:</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  <View style={styles.unitChips}>
+                    {selectedUnits.slice(0, 5).map((unit, index) => (
+                      <View key={index} style={styles.unitChip}>
+                        <Text style={styles.unitChipText}>{unit}</Text>
+                      </View>
+                    ))}
+                    {selectedUnits.length > 5 && (
+                      <View style={styles.unitChip}>
+                        <Text style={styles.unitChipText}>+{selectedUnits.length - 5} more</Text>
+                      </View>
+                    )}
+                  </View>
+                </ScrollView>
+              </View>
+            )}
+
+            <TouchableOpacity
+              style={styles.startInspectionButton}
+              onPress={handleStartInspection}
+            >
+              <Ionicons name="camera" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
+              <Text style={styles.startInspectionButtonText}>Start AI Inspection</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </>
   );
 }
@@ -790,5 +1178,271 @@ const styles = StyleSheet.create({
     height: 250,
     width: '100%',
     backgroundColor: '#FFFFFF',
+  },
+  // Edit Property Modal Styles
+  editModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  editModalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    width: '100%',
+    maxWidth: 400,
+    maxHeight: '90%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  editModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  editModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  editModalForm: {
+    padding: 16,
+    maxHeight: 400,
+  },
+  inputGroup: {
+    marginBottom: 16,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 6,
+  },
+  editInput: {
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    fontSize: 14,
+    color: '#1F2937',
+  },
+  rowInputs: {
+    flexDirection: 'row',
+  },
+  editPickerWrapper: {
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  editPicker: {
+    height: 48,
+    marginHorizontal: -8,
+  },
+  pickerSelectedText: {
+    fontSize: 14,
+    color: '#1F2937',
+  },
+  pickerPlaceholderText: {
+    fontSize: 14,
+    color: '#9CA3AF',
+  },
+  editModalActions: {
+    flexDirection: 'row',
+    padding: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+    gap: 12,
+  },
+  cancelEditButton: {
+    flex: 1,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 8,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  cancelEditButtonText: {
+    color: '#374151',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  saveEditButton: {
+    flex: 1,
+    backgroundColor: '#0E7490',
+    borderRadius: 8,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  saveEditButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  disabledButton: {
+    opacity: 0.7,
+  },
+  // Ready for Inspection Modal Styles
+  inspectionModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  inspectionModalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    width: '100%',
+    maxWidth: 400,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  inspectionModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  inspectionModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  inspectionPropertyName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#0E7490',
+    marginBottom: 4,
+  },
+  totalUnitsText: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 20,
+  },
+  totalUnitsValue: {
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  coverageLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 12,
+  },
+  coverageOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+    borderRadius: 10,
+    marginBottom: 10,
+  },
+  coverageOptionSelected: {
+    borderColor: '#0E7490',
+    backgroundColor: '#F0FDFA',
+  },
+  coverageRadio: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: '#D1D5DB',
+    marginRight: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  coverageRadioInner: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#0E7490',
+  },
+  coverageTextContainer: {
+    flex: 1,
+  },
+  coverageOptionText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  coverageOptionTextSelected: {
+    color: '#0E7490',
+  },
+  coverageDescription: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  calculationResult: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#F0FDFA',
+    borderRadius: 10,
+    padding: 14,
+    marginTop: 16,
+  },
+  calculationLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  calculationValue: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#0E7490',
+  },
+  selectedUnitsList: {
+    marginTop: 16,
+  },
+  selectedUnitsLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6B7280',
+    marginBottom: 8,
+  },
+  unitChips: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  unitChip: {
+    backgroundColor: '#E0F2FE',
+    borderRadius: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+  },
+  unitChipText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#0E7490',
+  },
+  startInspectionButton: {
+    backgroundColor: '#0E7490',
+    borderRadius: 10,
+    paddingVertical: 16,
+    marginTop: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  startInspectionButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
   },
 });

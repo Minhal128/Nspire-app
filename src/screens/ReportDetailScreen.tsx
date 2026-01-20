@@ -16,17 +16,21 @@ interface ReportDetailScreenProps {
 }
 
 export default function ReportDetailScreen({ navigation, route }: ReportDetailScreenProps) {
-  const report = route?.params?.report || {
-    property: 'Sunset Apartments',
-    unit: 'Unit 101',
-    inspector: 'John Doe',
-    date: 'Oct 5, 2024',
-    complianceScore: 'Compliant',
-    propertyId: 'P-001',
-    inspectionType: 'Annual NSPIRE Inspection',
-    totalDeficiencies: 0,
-    criticalDeficiencies: 0,
-    notes: 'All areas inspected meet NSPIRE standards. Property is well-maintained.',
+  const routeReport = route?.params?.report || {};
+  
+  // Extract and provide defaults for all fields
+  const report = {
+    property: routeReport.property || 'Unknown Property',
+    unit: routeReport.unit || 'All Units',
+    inspector: routeReport.inspector || 'Unknown',
+    date: routeReport.date || new Date().toLocaleDateString(),
+    complianceScore: routeReport.complianceScore || 'Compliant',
+    propertyId: routeReport.propertyId || 'N/A',
+    inspectionType: routeReport.inspectionType || 'INSPIRE Inspection',
+    totalDeficiencies: routeReport.totalDeficiencies ?? 0,
+    criticalDeficiencies: routeReport.criticalDeficiencies ?? 0,
+    notes: routeReport.notes || 'No notes available.',
+    rawData: routeReport.rawData || null,
   };
 
   const handleShare = () => {

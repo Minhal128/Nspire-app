@@ -68,3 +68,24 @@ export type {
   CityOption, 
   LocationStats 
 } from './locationService';
+
+export { default as networkService } from './networkService';
+export type { ConnectionStatus, NetworkState } from './networkService';
+
+export { default as offlineStorageService } from './offlineStorageService';
+export type { 
+  PendingImage, 
+  InspectionSession 
+} from './offlineStorageService';
+
+export { default as geminiService, INSPECTION_TYPES } from './openaiService';
+export type { 
+  InspectionFinding, 
+  AnalysisResult, 
+  InspectionType 
+} from './openaiService';
+
+export { default as syncService } from './syncService';
+export type { SyncProgress, SyncProgressListener } from './syncService';
+
+export { nspirePDFService, NSPIREPDFReportService, generateNSPIREReportHTML } from './nspirePDFService';

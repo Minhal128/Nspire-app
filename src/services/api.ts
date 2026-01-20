@@ -28,7 +28,8 @@ export interface ApiResponse<T = any> {
 }
 
 export interface User {
-  id: string;
+  _id: string;
+  id?: string;
   fullName: string;
   email: string;
   role: string;
@@ -54,6 +55,7 @@ export interface Property {
   zipCode: string;
   buildings: number;
   units: number;
+  unitList?: string[];  // Optional list of specific unit names/numbers
   status: string;
   owner: string;
   createdAt: string;
@@ -129,7 +131,18 @@ export const apiRequest = async <T = any>(
 ): Promise<T> => {
   // Get token from storage - it's stored with JSON.stringify, so we need to parse it
   const storedToken = await AsyncStorage.getItem(StorageKeys.USER_TOKEN);
-  const token = storedToken ? JSON.parse(storedToken) : null;
+  let token = null;
+  
+  if (storedToken) {
+    try {
+      token = JSON.parse(storedToken);
+    } catch (e) {
+      // Token might not be JSON wrapped
+      token = storedToken;
+    }
+  }
+  
+  console.log('API Request to:', endpoint, 'Token present:', !!token);
   
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',

@@ -51,3 +51,5 @@ yarn-error.*
 *.tmp
 .temp/
 tmp/
+
+.vercel

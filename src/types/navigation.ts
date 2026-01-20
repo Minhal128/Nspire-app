@@ -17,6 +17,8 @@ export type RootStackParamList = {
   InspectionChecklist: { property: any; unit: any };
   ManagementDashboard: undefined;
   OrderDashboard: undefined;
+  NSPIREReport: { report?: any; inspectionData?: any; property?: any };
+  InspectionReport: { property?: any; session?: any; findings?: any[]; images?: any[]; complianceScore?: number; overallCondition?: string };
 };
 
 export type BoardingScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Boarding'>;
