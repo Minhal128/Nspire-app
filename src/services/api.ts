@@ -132,7 +132,7 @@ export const apiRequest = async <T = any>(
   // Get token from storage - it's stored with JSON.stringify, so we need to parse it
   const storedToken = await AsyncStorage.getItem(StorageKeys.USER_TOKEN);
   let token = null;
-  
+
   if (storedToken) {
     try {
       token = JSON.parse(storedToken);
@@ -141,9 +141,9 @@ export const apiRequest = async <T = any>(
       token = storedToken;
     }
   }
-  
+
   console.log('API Request to:', endpoint, 'Token present:', !!token);
-  
+
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
@@ -170,7 +170,20 @@ export const apiRequest = async <T = any>(
 
     clearTimeout(timeoutId);
 
-    const data = await response.json();
+    // Get response as text first to handle non-JSON errors (like Vercel HTML errors)
+    const responseText = await response.text();
+    let data: any;
+
+    try {
+      data = responseText ? JSON.parse(responseText) : {};
+    } catch (e) {
+      // If it's not JSON, it's likely an HTML error page or plain text error
+      if (!response.ok) {
+        throw new Error(`API Error (${response.status}): ${responseText.substring(0, 100)}...`);
+      }
+      // If it was supposed to be a success but failed to parse JSON
+      throw new Error(`Invalid JSON response from server: ${responseText.substring(0, 50)}...`);
+    }
 
     if (!response.ok) {
       throw new Error(data.message || `HTTP error! status: ${response.status}`);
@@ -179,11 +192,11 @@ export const apiRequest = async <T = any>(
     return data as T;
   } catch (error: any) {
     clearTimeout(timeoutId);
-    
+
     if (error.name === 'AbortError') {
       throw new Error('Request timeout. Please check your connection.');
     }
-    
+
     throw error;
   }
 };
@@ -192,28 +205,28 @@ export const apiRequest = async <T = any>(
 export const api = {
   get: <T = any>(endpoint: string, options?: RequestInit) =>
     apiRequest<T>(endpoint, { ...options, method: 'GET' }),
-    
+
   post: <T = any>(endpoint: string, body?: any, options?: RequestInit) =>
     apiRequest<T>(endpoint, {
       ...options,
       method: 'POST',
       body: body ? JSON.stringify(body) : null,
     }),
-    
+
   put: <T = any>(endpoint: string, body?: any, options?: RequestInit) =>
     apiRequest<T>(endpoint, {
       ...options,
       method: 'PUT',
       body: body ? JSON.stringify(body) : null,
     }),
-    
+
   patch: <T = any>(endpoint: string, body?: any, options?: RequestInit) =>
     apiRequest<T>(endpoint, {
       ...options,
       method: 'PATCH',
       body: body ? JSON.stringify(body) : null,
     }),
-    
+
   delete: <T = any>(endpoint: string, options?: RequestInit) =>
     apiRequest<T>(endpoint, { ...options, method: 'DELETE' }),
 };

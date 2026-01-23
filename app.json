@@ -19,7 +19,11 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.inspire.app",
-      "associatedDomains": ["applinks:inspire.app", "applinks:*.inspire.app"],
+      "associatedDomains": [
+        "applinks:inspire.app", 
+        "applinks:*.inspire.app",
+        "applinks:light-mutt-72.clerk.accounts.dev"
+      ],
       "infoPlist": {
         "NSCameraUsageDescription": "This app uses the camera for document scanning and property inspection.",
         "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to save and upload inspection photos.",
@@ -46,6 +50,10 @@
               "scheme": "https",
               "host": "*.inspire.app",
               "pathPrefix": "/"
+            },
+            {
+              "scheme": "https",
+              "host": "light-mutt-72.clerk.accounts.dev"
             },
             {
               "scheme": "inspire"

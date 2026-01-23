@@ -37,6 +37,7 @@
         <action android:name="android.intent.action.VIEW"/>
         <data android:scheme="https" android:host="inspire.app" android:pathPrefix="/"/>
         <data android:scheme="https" android:host="*.inspire.app" android:pathPrefix="/"/>
+        <data android:scheme="https" android:host="light-mutt-72.clerk.accounts.dev"/>
         <data android:scheme="inspire"/>
         <category android:name="android.intent.category.BROWSABLE"/>
         <category android:name="android.intent.category.DEFAULT"/>

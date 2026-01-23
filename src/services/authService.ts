@@ -165,6 +165,45 @@ class AuthService {
   }
 
   /**
+   * Social login (Google/Facebook) with portal validation
+   */
+  async socialLogin(data: {
+    email: string;
+    fullName?: string;
+    portal: string;
+    provider: string
+  }): Promise<AuthResponse> {
+    try {
+      // Map portal names to role values
+      const portalRoleMap: { [key: string]: string } = {
+        'Inspector': 'inspector',
+        'Management': 'management',
+        'Other': 'other'
+      };
+
+      const role = portalRoleMap[data.portal] || 'inspector';
+
+      const response = await api.post<AuthResponse>("/auth/social-login", {
+        ...data,
+        role
+      });
+
+      if (response.success && response.token) {
+        // Store token and user data
+        await storeData(StorageKeys.USER_TOKEN, response.token);
+        await storeData(StorageKeys.USER_DATA, response.user);
+        await storeData(StorageKeys.USER_TYPE, response.user.role);
+      }
+
+      return response;
+    } catch (error: any) {
+      throw new Error(
+        error.message || "Social login failed. Please try again.",
+      );
+    }
+  }
+
+  /**
    * Check and restore session
    */
   async checkSession(): Promise<AuthState> {

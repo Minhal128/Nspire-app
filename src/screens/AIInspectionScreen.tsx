@@ -24,6 +24,7 @@ import { generateNSPIREReport } from '../utils/nspireReportUtils';
 import { cloudinaryService } from '../services/cloudinaryService';
 import authService from '../services/authService';
 import { inspectionService } from '../services/inspectionService';
+import { nspirePDFService } from '../services/nspirePDFService';
 
 const { width } = Dimensions.get('window');
 
@@ -36,19 +37,19 @@ type InspectionMode = 'one-by-one' | 'batch';
 
 export default function AIInspectionScreen({ navigation, route }: AIInspectionScreenProps) {
   const { property, selectedUnits, coverage, totalUnits } = route.params || {};
-  
+
   // Connection state
   const [isOnline, setIsOnline] = useState(true);
   const [checkingConnection, setCheckingConnection] = useState(true);
   const [showOfflineModal, setShowOfflineModal] = useState(false);
-  
+
   // Inspection state
   const [session, setSession] = useState<InspectionSession | null>(null);
   const [inspectionType, setInspectionType] = useState('general');
   const [processingMode, setProcessingMode] = useState<InspectionMode>('one-by-one');
   const [images, setImages] = useState<PendingImage[]>([]);
   const [findings, setFindings] = useState<InspectionFinding[]>([]);
-  
+
   // UI state
   const [analyzing, setAnalyzing] = useState(false);
   const [currentAnalysis, setCurrentAnalysis] = useState<string>('');
@@ -57,16 +58,14 @@ export default function AIInspectionScreen({ navigation, route }: AIInspectionSc
   const [showApiKeyModal, setShowApiKeyModal] = useState(false);
   const [apiKey, setApiKey] = useState('');
   const [syncProgress, setSyncProgress] = useState<SyncProgress | null>(null);
-  const [showStatusModal, setShowStatusModal] = useState(false);
-  const [selectedImageForStatus, setSelectedImageForStatus] = useState<PendingImage | null>(null);
-  
+
   // Refs
   const scrollViewRef = useRef<ScrollView>(null);
 
   // Initialize
   useEffect(() => {
     initializeInspection();
-    
+
     // Listen for network changes
     const unsubscribe = networkService.addListener((connected) => {
       setIsOnline(connected);
@@ -96,23 +95,23 @@ export default function AIInspectionScreen({ navigation, route }: AIInspectionSc
 
   const initializeInspection = async () => {
     setCheckingConnection(true);
-    
+
     try {
       // Initialize services
       await networkService.initialize();
       await offlineStorageService.initialize();
-      
+
       // Load API key
       const storedKey = await offlineStorageService.getApiKey();
       if (storedKey) {
         geminiService.setApiKey(storedKey);
         setApiKey(storedKey);
       }
-      
+
       // Check connection
       const connected = await networkService.checkConnection();
       setIsOnline(connected);
-      
+
       if (!connected) {
         setShowOfflineModal(true);
       } else {
@@ -120,19 +119,19 @@ export default function AIInspectionScreen({ navigation, route }: AIInspectionSc
         const apiTest = await geminiService.testConnection();
         if (!apiTest.success) {
           Alert.alert(
-            'API Connection Failed', 
+            'API Connection Failed',
             `Gemini API Error: ${apiTest.error}\n\nPlease check your API key and try again.`,
             [{ text: 'OK' }]
           );
         }
       }
       // API key is now pre-configured, no need to show modal
-      
+
       // Get logged-in user info
       const currentUser = await authService.getStoredUser();
       const inspectorName = currentUser?.fullName || currentUser?.email || 'Inspector';
       const inspectorId = currentUser?._id || 'INS-001';
-      
+
       // Create inspection session with inspector info
       const newSession = await offlineStorageService.createSession(
         property?._id || 'unknown',
@@ -144,7 +143,7 @@ export default function AIInspectionScreen({ navigation, route }: AIInspectionSc
         inspectorId
       );
       setSession(newSession);
-      
+
     } catch (error) {
       console.error('Error initializing inspection:', error);
       Alert.alert('Error', 'Failed to initialize inspection');
@@ -158,7 +157,7 @@ export default function AIInspectionScreen({ navigation, route }: AIInspectionSc
       Alert.alert('Error', 'Please enter a valid API key');
       return;
     }
-    
+
     try {
       await offlineStorageService.saveApiKey(apiKey.trim());
       geminiService.setApiKey(apiKey.trim());
@@ -181,15 +180,15 @@ export default function AIInspectionScreen({ navigation, route }: AIInspectionSc
 
       const result = useCamera
         ? await ImagePicker.launchCameraAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            quality: 0.8,
-            allowsEditing: false,
-          })
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          quality: 0.8,
+          allowsEditing: false,
+        })
         : await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            quality: 0.8,
-            allowsMultipleSelection: processingMode === 'batch',
-          });
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          quality: 0.8,
+          allowsMultipleSelection: processingMode === 'batch',
+        });
 
       if (!result.canceled && result.assets) {
         for (const asset of result.assets) {
@@ -227,7 +226,7 @@ export default function AIInspectionScreen({ navigation, route }: AIInspectionSc
 
     try {
       console.log('Starting AI analysis for image:', image.id);
-      
+
       // Skip Cloudinary upload - use local URI directly
       const result = await geminiService.analyzeImage(
         image.localUri,
@@ -243,8 +242,8 @@ export default function AIInspectionScreen({ navigation, route }: AIInspectionSc
         });
 
         // Update local state
-        setImages(prev => prev.map(img => 
-          img.id === image.id 
+        setImages(prev => prev.map(img =>
+          img.id === image.id
             ? { ...img, status: 'analyzed', findings: result.findings }
             : img
         ));
@@ -267,7 +266,7 @@ export default function AIInspectionScreen({ navigation, route }: AIInspectionSc
 
   const startBatchAnalysis = async () => {
     if (!session) return;
-    
+
     const pendingImages = images.filter(img => img.status === 'pending');
     if (pendingImages.length === 0) {
       Alert.alert('No Images', 'No pending images to analyze');
@@ -294,7 +293,7 @@ export default function AIInspectionScreen({ navigation, route }: AIInspectionSc
         setAnalysisProgress({ current: i + 1, total: pendingImages.length });
 
         console.log(`Analyzing image ${i + 1}/${pendingImages.length}...`);
-        
+
         // Skip Cloudinary upload - analyze directly with local URI
         const result = await geminiService.analyzeImage(
           image.localUri,
@@ -308,8 +307,8 @@ export default function AIInspectionScreen({ navigation, route }: AIInspectionSc
             findings: result.findings,
           });
 
-          setImages(prev => prev.map(img => 
-            img.id === image.id 
+          setImages(prev => prev.map(img =>
+            img.id === image.id
               ? { ...img, status: 'analyzed', findings: result.findings }
               : img
           ));
@@ -341,7 +340,7 @@ export default function AIInspectionScreen({ navigation, route }: AIInspectionSc
 
     Alert.alert(
       'Delete Image',
-      hasFindings 
+      hasFindings
         ? `Are you sure you want to delete this image? This will also remove ${imageFindings.length} associated finding(s).`
         : 'Are you sure you want to delete this image?',
       [
@@ -356,10 +355,10 @@ export default function AIInspectionScreen({ navigation, route }: AIInspectionSc
 
             // Delete image from storage
             await offlineStorageService.deleteImage(session.id, imageId);
-            
+
             // Remove image from state
             setImages(prev => prev.filter(img => img.id !== imageId));
-            
+
             // Remove associated findings (findings that have this image's URI)
             if (deletedImageUri) {
               setFindings(prev => prev.filter(f => f.imageUri !== deletedImageUri));
@@ -370,10 +369,7 @@ export default function AIInspectionScreen({ navigation, route }: AIInspectionSc
     );
   };
 
-  const viewImageStatus = (image: PendingImage) => {
-    setSelectedImageForStatus(image);
-    setShowStatusModal(true);
-  };
+
 
   const getCategoryIcon = (category: string): string => {
     const icons: Record<string, string> = {
@@ -405,7 +401,7 @@ export default function AIInspectionScreen({ navigation, route }: AIInspectionSc
     // Check for pending images - only show prompt if there are many pending
     const pendingCount = images.filter(img => img.status === 'pending').length;
     const analyzedCount = images.filter(img => img.status === 'analyzed').length;
-    
+
     // If most images are already analyzed, just go to report
     if (analyzedCount > 0 || pendingCount === 0) {
       // Show loading and go directly to report
@@ -426,16 +422,18 @@ export default function AIInspectionScreen({ navigation, route }: AIInspectionSc
         'Images Not Analyzed',
         `Your ${pendingCount} image(s) haven't been analyzed yet. Analyze now for better report quality?`,
         [
-          { text: 'Skip & View Report', style: 'cancel', onPress: async () => {
-            setAnalyzing(true);
-            setCurrentAnalysis('Preparing report...');
-            try {
-              await navigateToReport();
-            } finally {
-              setAnalyzing(false);
-              setCurrentAnalysis('');
+          {
+            text: 'Skip & View Report', style: 'cancel', onPress: async () => {
+              setAnalyzing(true);
+              setCurrentAnalysis('Preparing report...');
+              try {
+                await navigateToReport();
+              } finally {
+                setAnalyzing(false);
+                setCurrentAnalysis('');
+              }
             }
-          }},
+          },
           { text: 'Analyze Now', onPress: () => startBatchAnalysis() },
         ]
       );
@@ -455,11 +453,11 @@ export default function AIInspectionScreen({ navigation, route }: AIInspectionSc
 
   const navigateToReport = async () => {
     console.log('navigateToReport called');
-    
+
     // Calculate compliance score
     const complianceScore = calculateComplianceScore();
     const overallCondition = determineOverallCondition();
-    
+
     console.log(`Compliance Score: ${complianceScore}, Overall Condition: ${overallCondition}`);
     console.log(`Findings count: ${findings.length}`);
 
@@ -467,7 +465,7 @@ export default function AIInspectionScreen({ navigation, route }: AIInspectionSc
       // Upload images to Cloudinary for report if not already uploaded
       const totalImages = findings.length;
       let uploadedCount = 0;
-      
+
       const findingsWithCloudinaryUrls = await Promise.all(
         findings.map(async (finding, index) => {
           // Check if finding already has a Cloudinary URL
@@ -476,12 +474,12 @@ export default function AIInspectionScreen({ navigation, route }: AIInspectionSc
             setCurrentAnalysis(`Preparing report... (${uploadedCount}/${totalImages})`);
             return finding;
           }
-          
+
           // Find the corresponding image to get local URI
-          const correspondingImage = images.find(img => 
+          const correspondingImage = images.find(img =>
             img.findings && img.findings.some(f => f.id === finding.id)
           );
-          
+
           if (correspondingImage && correspondingImage.localUri) {
             setCurrentAnalysis(`Uploading image ${index + 1}/${totalImages} to Cloudinary...`);
             console.log(`Uploading image for finding ${finding.id} to Cloudinary...`);
@@ -491,7 +489,7 @@ export default function AIInspectionScreen({ navigation, route }: AIInspectionSc
                 3,
                 'nspire-inspections/reports'
               );
-              
+
               if (uploadResult.success && uploadResult.url) {
                 console.log(`Successfully uploaded image: ${uploadResult.url}`);
                 uploadedCount++;
@@ -519,7 +517,7 @@ export default function AIInspectionScreen({ navigation, route }: AIInspectionSc
               };
             }
           }
-          
+
           uploadedCount++;
           setCurrentAnalysis(`Processing ${uploadedCount}/${totalImages} images...`);
           return finding;
@@ -543,7 +541,7 @@ export default function AIInspectionScreen({ navigation, route }: AIInspectionSc
       // Save inspection to backend for Reports and Analytics sync
       setCurrentAnalysis('Saving inspection to database...');
       let savedInspectionId = null;
-      
+
       try {
         // Create inspection with all the data
         const inspectionData = {
@@ -558,11 +556,11 @@ export default function AIInspectionScreen({ navigation, route }: AIInspectionSc
         console.log('Creating inspection with data:', JSON.stringify(inspectionData, null, 2));
         const createResult = await inspectionService.createInspection(inspectionData);
         console.log('Create inspection result:', JSON.stringify(createResult, null, 2));
-        
+
         if (createResult.success && createResult.inspection?._id) {
           savedInspectionId = createResult.inspection._id;
           console.log('Inspection created with ID:', savedInspectionId);
-          
+
           // Now complete the inspection with findings
           const completeData = {
             complianceScore: complianceScore,
@@ -571,17 +569,17 @@ export default function AIInspectionScreen({ navigation, route }: AIInspectionSc
               location: f.location || 'Property',
               severity: f.severity || 'minor',
               description: f.description || '',
-              recommendation: f.recommendations?.join(', ') || '',
+              recommendation: f.recommendedAction || '',
               imageUrl: f.imageUri || '',
               nspireCode: f.nspireCode || '',
             })),
             notes: session?.notes || `Inspection completed via AI. Coverage: ${coverage || '100%'}, Units inspected: ${totalUnits || 1}`,
           };
-          
+
           console.log('Completing inspection with data:', JSON.stringify(completeData, null, 2));
           const completeResult = await inspectionService.completeInspection(savedInspectionId, completeData);
           console.log('Complete inspection result:', JSON.stringify(completeResult, null, 2));
-          
+
           if (completeResult.success) {
             console.log('Inspection completed and saved successfully');
           } else {
@@ -756,41 +754,35 @@ export default function AIInspectionScreen({ navigation, route }: AIInspectionSc
           </Text>
           <View style={[
             styles.statusBadge,
-            { backgroundColor: item.status === 'analyzed' ? '#10B981' : 
-              item.status === 'failed' ? '#EF4444' : '#F59E0B' }
+            {
+              backgroundColor: item.status === 'analyzed' ? '#10B981' :
+                item.status === 'failed' ? '#EF4444' : '#F59E0B'
+            }
           ]}>
             <Text style={styles.statusText}>
-              {item.status === 'analyzed' ? 'Analyzed' : 
-               item.status === 'failed' ? 'Failed' : 'Pending'}
+              {item.status === 'analyzed' ? 'Analyzed' :
+                item.status === 'failed' ? 'Failed' : 'Pending'}
             </Text>
           </View>
         </View>
-        
+
         {item.findings && item.findings.length > 0 && (
           <Text style={styles.findingsCount}>
             {item.findings.length} issue{item.findings.length !== 1 ? 's' : ''} found
           </Text>
         )}
-        
+
         {currentAnalysis === item.id && (
           <View style={styles.analyzingIndicator}>
             <ActivityIndicator size="small" color="#0E7490" />
             <Text style={styles.analyzingText}>Analyzing...</Text>
           </View>
         )}
-        
-        {item.status === 'analyzed' && (
-          <TouchableOpacity 
-            style={styles.viewStatusButton}
-            onPress={() => viewImageStatus(item)}
-          >
-            <Ionicons name="eye" size={14} color="#0E7490" />
-            <Text style={styles.viewStatusText}>View Status</Text>
-          </TouchableOpacity>
-        )}
+
+
       </View>
-      
-      <TouchableOpacity 
+
+      <TouchableOpacity
         style={styles.deleteButton}
         onPress={() => deleteImage(item.id)}
       >
@@ -816,7 +808,7 @@ export default function AIInspectionScreen({ navigation, route }: AIInspectionSc
       </View>
       <Text style={styles.findingTitle}>{finding.title}</Text>
       <Text style={styles.findingDescription}>{finding.description}</Text>
-      
+
       {/* NSPIRE Code Badge */}
       {finding.nspireCode && (
         <View style={styles.nspireCodeBadge}>
@@ -824,7 +816,7 @@ export default function AIInspectionScreen({ navigation, route }: AIInspectionSc
           <Text style={styles.nspireCodeText}>{finding.nspireCode}</Text>
         </View>
       )}
-      
+
       {finding.recommendedAction && (
         <View style={styles.actionContainer}>
           <Ionicons name="build-outline" size={14} color="#0E7490" />
@@ -859,7 +851,7 @@ export default function AIInspectionScreen({ navigation, route }: AIInspectionSc
         </View>
       </View>
 
-      <ScrollView 
+      <ScrollView
         ref={scrollViewRef}
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -871,7 +863,7 @@ export default function AIInspectionScreen({ navigation, route }: AIInspectionSc
         </View>
 
         {/* Inspection Type Selector */}
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.selectorButton}
           onPress={() => setShowTypeSelector(true)}
         >
@@ -914,7 +906,7 @@ export default function AIInspectionScreen({ navigation, route }: AIInspectionSc
         <View style={styles.captureSection}>
           <Text style={styles.sectionTitle}>Capture Images</Text>
           <View style={styles.captureButtons}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.captureButton}
               onPress={() => pickImage(true)}
               disabled={analyzing}
@@ -922,7 +914,7 @@ export default function AIInspectionScreen({ navigation, route }: AIInspectionSc
               <Ionicons name="camera" size={28} color="#FFFFFF" />
               <Text style={styles.captureButtonText}>Camera</Text>
             </TouchableOpacity>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.captureButton, styles.galleryButton]}
               onPress={() => pickImage(false)}
               disabled={analyzing}
@@ -939,7 +931,7 @@ export default function AIInspectionScreen({ navigation, route }: AIInspectionSc
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Images ({images.length})</Text>
               {processingMode === 'batch' && images.some(img => img.status === 'pending') && (
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.analyzeAllButton}
                   onPress={startBatchAnalysis}
                   disabled={analyzing || !isOnline}
@@ -955,14 +947,14 @@ export default function AIInspectionScreen({ navigation, route }: AIInspectionSc
                 </TouchableOpacity>
               )}
             </View>
-            
+
             {analysisProgress.total > 0 && (
               <View style={styles.progressBar}>
-                <View 
+                <View
                   style={[
-                    styles.progressFill, 
+                    styles.progressFill,
                     { width: `${(analysisProgress.current / analysisProgress.total) * 100}%` }
-                  ]} 
+                  ]}
                 />
                 <Text style={styles.progressText}>
                   {analysisProgress.current} / {analysisProgress.total}
@@ -990,7 +982,7 @@ export default function AIInspectionScreen({ navigation, route }: AIInspectionSc
         {/* Report Actions */}
         <View style={styles.reportActionsContainer}>
           {/* Preview Report Button */}
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.reportButton, styles.previewButton, images.length === 0 && styles.reportButtonDisabled]}
             onPress={generateReport}
             disabled={images.length === 0}
@@ -1000,7 +992,7 @@ export default function AIInspectionScreen({ navigation, route }: AIInspectionSc
           </TouchableOpacity>
 
           {/* Export PDF Button */}
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.reportButton, styles.exportButton, (images.length === 0 || exportingPDF) && styles.reportButtonDisabled]}
             onPress={exportPDFDirectly}
             disabled={images.length === 0 || exportingPDF}
@@ -1031,7 +1023,7 @@ export default function AIInspectionScreen({ navigation, route }: AIInspectionSc
               You can continue capturing images offline. They will be automatically analyzed when connection is restored.
             </Text>
             <View style={styles.modalButtons}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.retryButton}
                 onPress={async () => {
                   const connected = await networkService.checkConnection();
@@ -1041,7 +1033,7 @@ export default function AIInspectionScreen({ navigation, route }: AIInspectionSc
               >
                 <Text style={styles.retryButtonText}>Retry Connection</Text>
               </TouchableOpacity>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.continueButton}
                 onPress={() => setShowOfflineModal(false)}
               >
@@ -1072,7 +1064,7 @@ export default function AIInspectionScreen({ navigation, route }: AIInspectionSc
             <TouchableOpacity style={styles.saveKeyButton} onPress={saveApiKey}>
               <Text style={styles.saveKeyButtonText}>Save API Key</Text>
             </TouchableOpacity>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.skipButton}
               onPress={() => setShowApiKeyModal(false)}
             >
@@ -1110,7 +1102,7 @@ export default function AIInspectionScreen({ navigation, route }: AIInspectionSc
                 )}
               </TouchableOpacity>
             ))}
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.cancelTypeButton}
               onPress={() => setShowTypeSelector(false)}
             >
@@ -1120,272 +1112,7 @@ export default function AIInspectionScreen({ navigation, route }: AIInspectionSc
         </View>
       </Modal>
 
-      {/* Image Status Detail Modal */}
-      <Modal visible={showStatusModal} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={styles.statusModalContent}>
-            <View style={styles.statusModalHeader}>
-              <Text style={styles.statusModalTitle}>Image Analysis Status</Text>
-              <TouchableOpacity onPress={() => setShowStatusModal(false)}>
-                <Ionicons name="close" size={24} color="#1F2937" />
-              </TouchableOpacity>
-            </View>
 
-            {selectedImageForStatus && (
-              <ScrollView style={styles.statusModalScroll}>
-                {/* Image Preview */}
-                <Image 
-                  source={{ uri: selectedImageForStatus.localUri }} 
-                  style={styles.statusModalImage}
-                  resizeMode="cover"
-                />
-
-                {/* Analysis Info */}
-                <View style={styles.statusInfoSection}>
-                  <View style={styles.statusInfoRow}>
-                    <Ionicons name="time" size={16} color="#6B7280" />
-                    <Text style={styles.statusInfoLabel}>Captured:</Text>
-                    <Text style={styles.statusInfoValue}>
-                      {new Date(selectedImageForStatus.timestamp).toLocaleString()}
-                    </Text>
-                  </View>
-
-                  <View style={styles.statusInfoRow}>
-                    <Ionicons name="checkmark-circle" size={16} color="#6B7280" />
-                    <Text style={styles.statusInfoLabel}>Status:</Text>
-                    <Text style={[
-                      styles.statusInfoValue,
-                      { color: selectedImageForStatus.status === 'analyzed' ? '#10B981' : 
-                        selectedImageForStatus.status === 'failed' ? '#EF4444' : '#F59E0B' }
-                    ]}>
-                      {selectedImageForStatus.status.toUpperCase()}
-                    </Text>
-                  </View>
-
-                  {selectedImageForStatus.findings && selectedImageForStatus.findings.length > 0 && (
-                    <>
-                      <View style={styles.statusInfoRow}>
-                        <Ionicons name="alert-circle" size={16} color="#6B7280" />
-                        <Text style={styles.statusInfoLabel}>Issues Found:</Text>
-                        <Text style={styles.statusInfoValue}>
-                          {selectedImageForStatus.findings.length}
-                        </Text>
-                      </View>
-
-                      {/* Overall NSPIRE Compliance Score */}
-                      {selectedImageForStatus.findings[0]?.inspectionScore && (
-                        <View style={styles.statusInfoRow}>
-                          <Ionicons name="star" size={16} color="#F59E0B" />
-                          <Text style={styles.statusInfoLabel}>NSPIRE Score:</Text>
-                          <Text style={[
-                            styles.statusInfoValue,
-                            { color: getScoreColor(selectedImageForStatus.findings[0].inspectionScore) }
-                          ]}>
-                            {selectedImageForStatus.findings[0].inspectionScore}/100
-                          </Text>
-                        </View>
-                      )}
-
-                      {/* Inspection Completion Status */}
-                      {selectedImageForStatus.findings[0]?.inspectionStatus && (
-                        <View style={styles.statusInfoRow}>
-                          <Ionicons name="checkmark-done" size={16} color="#6B7280" />
-                          <Text style={styles.statusInfoLabel}>Inspection Status:</Text>
-                          <Text style={[
-                            styles.statusInfoValue,
-                            { color: getInspectionStatusColor(selectedImageForStatus.findings[0].inspectionStatus) }
-                          ]}>
-                            {selectedImageForStatus.findings[0].inspectionStatus.toUpperCase().replace('_', ' ')}
-                          </Text>
-                        </View>
-                      )}
-
-                      {/* Confidence Level */}
-                      {selectedImageForStatus.findings[0]?.confidenceLevel && (
-                        <View style={styles.statusInfoRow}>
-                          <Ionicons name="analytics" size={16} color="#6B7280" />
-                          <Text style={styles.statusInfoLabel}>Confidence:</Text>
-                          <Text style={[
-                            styles.statusInfoValue,
-                            { color: getScoreColor(selectedImageForStatus.findings[0].confidenceLevel) }
-                          ]}>
-                            {selectedImageForStatus.findings[0].confidenceLevel}%
-                          </Text>
-                        </View>
-                      )}
-                    </>
-                  )}
-                </View>
-
-                {/* Inspection Verification Summary */}
-                {selectedImageForStatus.findings && selectedImageForStatus.findings.length > 0 && 
-                 selectedImageForStatus.findings[0].inspectionExplanation && (
-                  <View style={styles.inspectionVerificationSection}>
-                    <Text style={styles.inspectionVerificationTitle}>Inspection Completion Analysis</Text>
-                    <Text style={styles.inspectionVerificationExplanation}>
-                      {selectedImageForStatus.findings[0].inspectionExplanation}
-                    </Text>
-                  </View>
-                )}
-
-                {/* Findings by Category */}
-                {selectedImageForStatus.findings && selectedImageForStatus.findings.length > 0 && (
-                  <View style={styles.statusFindingsSection}>
-                    <Text style={styles.statusSectionTitle}>INSPIRE Inspection Analysis</Text>
-                    
-                    {selectedImageForStatus.findings.map((finding, index) => (
-                      <View key={finding.id} style={styles.statusFindingCard}>
-                        <View style={styles.statusFindingHeader}>
-                          <View style={styles.statusCategoryBadge}>
-                            <Ionicons 
-                              name={getCategoryIcon(finding.category) as any} 
-                              size={16} 
-                              color="#0E7490" 
-                            />
-                            <Text style={styles.statusCategoryText}>
-                              {finding.category.toUpperCase()}
-                            </Text>
-                          </View>
-                          <View style={[
-                            styles.statusSeverityBadge,
-                            { backgroundColor: getSeverityColor(finding.severity) }
-                          ]}>
-                            <Text style={styles.statusSeverityText}>
-                              {finding.severity.toUpperCase()}
-                            </Text>
-                          </View>
-                        </View>
-
-                        <Text style={styles.statusFindingTitle}>{finding.title}</Text>
-                        <Text style={styles.statusFindingDescription}>{finding.description}</Text>
-
-                        {/* NSPIRE Code */}
-                        {finding.nspireCode && (
-                          <View style={styles.statusFindingDetail}>
-                            <Ionicons name="document-text" size={14} color="#7C3AED" />
-                            <Text style={styles.statusFindingDetailText}>
-                              NSPIRE Code: {finding.nspireCode}
-                            </Text>
-                          </View>
-                        )}
-
-                        {finding.location && (
-                          <View style={styles.statusFindingDetail}>
-                            <Ionicons name="location" size={14} color="#6B7280" />
-                            <Text style={styles.statusFindingDetailText}>
-                              Location: {finding.location}
-                            </Text>
-                          </View>
-                        )}
-
-                        {finding.recommendedAction && (
-                          <View style={styles.statusFindingDetail}>
-                            <Ionicons name="build" size={14} color="#0E7490" />
-                            <Text style={styles.statusFindingDetailText}>
-                              Action: {finding.recommendedAction}
-                            </Text>
-                          </View>
-                        )}
-
-                        {finding.estimatedCost && (
-                          <View style={styles.statusFindingDetail}>
-                            <Ionicons name="cash" size={14} color="#10B981" />
-                            <Text style={styles.statusFindingDetailText}>
-                              Est. Cost: {finding.estimatedCost}
-                            </Text>
-                          </View>
-                        )}
-
-                        {/* NSPIRE Inspection Quality Metrics */}
-                        <View style={styles.nspireMetricsSection}>
-                          <Text style={styles.nspireMetricsTitle}>Inspection Quality Assessment</Text>
-                          
-                          <View style={styles.nspireMetricRow}>
-                            <Text style={styles.nspireMetricLabel}>Context/Orientation:</Text>
-                            <View style={[styles.nspireMetricBadge, { backgroundColor: getQualityColor(finding.contextOrientation) }]}>
-                              <Text style={styles.nspireMetricText}>{finding.contextOrientation?.toUpperCase() || 'N/A'}</Text>
-                            </View>
-                          </View>
-
-                          <View style={styles.nspireMetricRow}>
-                            <Text style={styles.nspireMetricLabel}>Clarity & Detail:</Text>
-                            <View style={[styles.nspireMetricBadge, { backgroundColor: getQualityColor(finding.clarityDetail) }]}>
-                              <Text style={styles.nspireMetricText}>{finding.clarityDetail?.toUpperCase() || 'N/A'}</Text>
-                            </View>
-                          </View>
-
-                          <View style={styles.nspireMetricRow}>
-                            <Text style={styles.nspireMetricLabel}>Scale Reference:</Text>
-                            <View style={[styles.nspireMetricBadge, { backgroundColor: getScaleColor(finding.scaleReference) }]}>
-                              <Text style={styles.nspireMetricText}>{finding.scaleReference?.toUpperCase().replace('_', ' ') || 'N/A'}</Text>
-                            </View>
-                          </View>
-
-                          <View style={styles.nspireMetricRow}>
-                            <Text style={styles.nspireMetricLabel}>Metadata Complete:</Text>
-                            <View style={[styles.nspireMetricBadge, { backgroundColor: finding.metadataComplete ? '#10B981' : '#EF4444' }]}>
-                              <Text style={styles.nspireMetricText}>{finding.metadataComplete ? 'YES' : 'NO'}</Text>
-                            </View>
-                          </View>
-
-                          {finding.inspectionScore !== undefined && (
-                            <View style={styles.nspireScoreRow}>
-                              <Text style={styles.nspireScoreLabel}>Inspection Score:</Text>
-                              <Text style={[styles.nspireScoreValue, { color: getScoreColor(finding.inspectionScore) }]}>
-                                {finding.inspectionScore}/100
-                              </Text>
-                            </View>
-                          )}
-
-                          {finding.complianceNotes && finding.complianceNotes.length > 0 && (
-                            <View style={styles.complianceNotesSection}>
-                              <Text style={styles.complianceNotesTitle}>Compliance Notes:</Text>
-                              {finding.complianceNotes.map((note, noteIndex) => (
-                                <View key={noteIndex} style={styles.complianceNoteItem}>
-                                  <Ionicons name="checkmark-circle" size={12} color="#10B981" />
-                                  <Text style={styles.complianceNoteText}>{note}</Text>
-                                </View>
-                              ))}
-                            </View>
-                          )}
-                        </View>
-                      </View>
-                    ))}
-                  </View>
-                )}
-
-                {/* No Findings */}
-                {selectedImageForStatus.status === 'analyzed' && 
-                 (!selectedImageForStatus.findings || selectedImageForStatus.findings.length === 0) && (
-                  <View style={styles.statusNoFindings}>
-                    <Ionicons name="checkmark-circle" size={48} color="#10B981" />
-                    <Text style={styles.statusNoFindingsTitle}>No Issues Found</Text>
-                    <Text style={styles.statusNoFindingsText}>
-                      This image passed inspection with no deficiencies identified.
-                    </Text>
-                  </View>
-                )}
-
-                {/* Error Message */}
-                {selectedImageForStatus.status === 'failed' && selectedImageForStatus.error && (
-                  <View style={styles.statusErrorSection}>
-                    <Ionicons name="warning" size={24} color="#EF4444" />
-                    <Text style={styles.statusErrorTitle}>Analysis Failed</Text>
-                    <Text style={styles.statusErrorText}>{selectedImageForStatus.error}</Text>
-                  </View>
-                )}
-              </ScrollView>
-            )}
-
-            <TouchableOpacity 
-              style={styles.statusModalCloseButton}
-              onPress={() => setShowStatusModal(false)}
-            >
-              <Text style={styles.statusModalCloseText}>Close</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 }

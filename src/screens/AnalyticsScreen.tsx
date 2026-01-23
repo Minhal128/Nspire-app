@@ -23,6 +23,7 @@ import { Property, Inspection } from '../services/api';
 // Time period options with default
 const TIME_PERIOD_OPTIONS = [
   { label: 'All Time', value: '' },
+  { label: 'Last 7 Days', value: '7days' },
   { label: 'Last 30 Days', value: '30days' },
   { label: 'Last 90 Days', value: '90days' },
   { label: 'Last Year', value: 'year' },
@@ -113,6 +114,9 @@ export default function AnalyticsScreen({ navigation, onMenuPress }: AnalyticsSc
         let cutoffDate = new Date();
         
         switch (timePeriod) {
+          case '7days':
+            cutoffDate.setDate(now.getDate() - 7);
+            break;
           case '30days':
             cutoffDate.setDate(now.getDate() - 30);
             break;
@@ -376,7 +380,7 @@ export default function AnalyticsScreen({ navigation, onMenuPress }: AnalyticsSc
                       onPress={() => setPeriodPickerVisible(true)}
                     >
                       <Text style={[styles.iosPickerText, !timePeriod && { color: '#9CA3AF' }]}>
-                        {timePeriod === '30days' ? 'Last 30 Days' : timePeriod === '90days' ? 'Last 90 Days' : timePeriod === 'year' ? 'Last Year' : "Time Period"}
+                        {timePeriod === '7days' ? 'Last 7 Days' : timePeriod === '30days' ? 'Last 30 Days' : timePeriod === '90days' ? 'Last 90 Days' : timePeriod === 'year' ? 'Last Year' : "Time Period"}
                       </Text>
                     </TouchableOpacity>
                   ) : (
@@ -386,6 +390,7 @@ export default function AnalyticsScreen({ navigation, onMenuPress }: AnalyticsSc
                       style={styles.picker}
                     >
                       <Picker.Item label="Time Period" value="" />
+                      <Picker.Item label="Last 7 Days" value="7days" />
                       <Picker.Item label="Last 30 Days" value="30days" />
                       <Picker.Item label="Last 90 Days" value="90days" />
                       <Picker.Item label="Last Year" value="year" />

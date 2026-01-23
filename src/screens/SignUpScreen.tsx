@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
   View,
   Text,
@@ -18,9 +18,7 @@ import IOSPickerModal from "../components/IOSPickerModal";
 
 const LOGIN_TYPE_OPTIONS = [
   { label: 'Inspector', value: 'inspector' },
-  { label: 'Property Manager', value: 'property-manager' },
-  { label: 'Management', value: 'management' },
-  { label: 'Supervisor', value: 'supervisor' },
+  { label: 'Manager', value: 'manager' },
   { label: 'Other', value: 'other' },
 ];
 
@@ -119,152 +117,148 @@ export default function SignUpScreen({ navigation }: SignUpScreenProps) {
 
   return (
     <View style={styles.container}>
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.content}>
-            {/* Logo */}
-            <Image
-              source={require("../../logo.png")}
-              style={styles.logo}
-              resizeMode="contain"
-            />
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={styles.content}>
+          {/* Logo */}
+          <Image
+            source={require("../../logo.png")}
+            style={styles.logo}
+            resizeMode="contain"
+          />
 
-            {/* Registration Card */}
-            <View style={styles.registrationCard}>
-              <Text style={styles.title}>Registration</Text>
-              <Text style={styles.subtitle}>
-                Enter your Email ID and{"\n"}Password to register
-              </Text>
+          {/* Registration Card */}
+          <View style={styles.registrationCard}>
+            <Text style={styles.title}>Registration</Text>
+            <Text style={styles.subtitle}>
+              Enter your Email ID and{"\n"}Password to register
+            </Text>
 
-              {/* Email Input */}
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Email</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter your email ID"
-                  placeholderTextColor="#9CA3AF"
-                  value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                />
-              </View>
+            {/* Email Input */}
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Email</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter your email ID"
+                placeholderTextColor="#9CA3AF"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+            </View>
 
-              {/* Name Input */}
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Name</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter your Full Name"
-                  placeholderTextColor="#9CA3AF"
-                  value={name}
-                  onChangeText={setName}
-                />
-              </View>
+            {/* Name Input */}
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Name</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter your Full Name"
+                placeholderTextColor="#9CA3AF"
+                value={name}
+                onChangeText={setName}
+              />
+            </View>
 
-              {/* Password Input */}
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Password</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Create your Password"
-                  placeholderTextColor="#9CA3AF"
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry
-                />
-              </View>
+            {/* Password Input */}
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Password</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Create your Password"
+                placeholderTextColor="#9CA3AF"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+              />
+            </View>
 
-              {/* Confirm Password Input */}
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Confirm Password</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Confirm your Password"
-                  placeholderTextColor="#9CA3AF"
-                  value={confirmPassword}
-                  onChangeText={setConfirmPassword}
-                  secureTextEntry
-                />
-              </View>
+            {/* Confirm Password Input */}
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Confirm Password</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Confirm your Password"
+                placeholderTextColor="#9CA3AF"
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                secureTextEntry
+              />
+            </View>
 
-              {/* Login Type Picker */}
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Select Login Type</Text>
-                <View style={styles.pickerContainer}>
-                  {Platform.OS === 'ios' ? (
-                    <TouchableOpacity
-                      style={styles.iosPickerButton}
-                      onPress={() => setLoginTypePickerVisible(true)}
-                    >
-                      <Text style={[styles.iosPickerText, !loginType && { color: '#9CA3AF' }]}>
-                        {loginType ? loginType.charAt(0).toUpperCase() + loginType.slice(1).replace('-', ' ') : "Select..."}
-                      </Text>
-                    </TouchableOpacity>
-                  ) : (
-                    <Picker
-                      selectedValue={loginType}
-                      onValueChange={(itemValue: string) => setLoginType(itemValue)}
-                      style={styles.picker}
-                      enabled={!loading}
-                    >
-                      <Picker.Item label="Select..." value="" />
-                      <Picker.Item label="Inspector" value="inspector" />
-                      <Picker.Item
-                        label="Property Manager"
-                        value="property-manager"
-                      />
-                      <Picker.Item label="Management" value="management" />
-                      <Picker.Item label="Supervisor" value="supervisor" />
-                      <Picker.Item label="Other" value="other" />
-                    </Picker>
-                  )}
-                </View>
-              </View>
-
-              {/* Create Account Button */}
-              <TouchableOpacity
-                style={[
-                  styles.createButton,
-                  loading && styles.createButtonDisabled,
-                ]}
-                onPress={handleCreateAccount}
-                disabled={loading}
-              >
-                {loading ? (
-                  <ActivityIndicator color="#FFFFFF" />
+            {/* Login Type Picker */}
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Select Login Type</Text>
+              <View style={styles.pickerContainer}>
+                {Platform.OS === 'ios' ? (
+                  <TouchableOpacity
+                    style={styles.iosPickerButton}
+                    onPress={() => setLoginTypePickerVisible(true)}
+                  >
+                    <Text style={[styles.iosPickerText, !loginType && { color: '#9CA3AF' }]}>
+                      {loginType ? loginType.charAt(0).toUpperCase() + loginType.slice(1).replace('-', ' ') : "Select..."}
+                    </Text>
+                  </TouchableOpacity>
                 ) : (
-                  <Text style={styles.createButtonText}>Create Account</Text>
+                  <Picker
+                    selectedValue={loginType}
+                    onValueChange={(itemValue: string) => setLoginType(itemValue)}
+                    style={styles.picker}
+                    enabled={!loading}
+                  >
+                    <Picker.Item label="Select..." value="" />
+                    <Picker.Item label="Inspector" value="inspector" />
+                    <Picker.Item label="Manager" value="manager" />
+                    <Picker.Item label="Other" value="other" />
+                  </Picker>
                 )}
-              </TouchableOpacity>
-
-              {/* Sign In Link */}
-              <View style={styles.signInContainer}>
-                <TouchableOpacity
-                  onPress={() => navigation.navigate("SignIn", {})}
-                >
-                  <Text style={styles.signInText}>
-                    <Text style={styles.signInLink}>Sign In?</Text> if already
-                    registered
-                  </Text>
-                </TouchableOpacity>
               </View>
             </View>
-          </View>
-        </ScrollView>
 
-        {/* iOS Login Type Picker Modal */}
-        <IOSPickerModal
-          visible={loginTypePickerVisible}
-          title="Select Login Type"
-          options={LOGIN_TYPE_OPTIONS}
-          selectedValue={loginType}
-          onSelect={setLoginType}
-          onClose={() => setLoginTypePickerVisible(false)}
-        />
-      </View>
+            {/* Create Account Button */}
+            <TouchableOpacity
+              style={[
+                styles.createButton,
+                loading && styles.createButtonDisabled,
+              ]}
+              onPress={handleCreateAccount}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <Text style={styles.createButtonText}>Create Account</Text>
+              )}
+            </TouchableOpacity>
+
+            {/* Sign In Link */}
+            <View style={styles.signInContainer}>
+              <TouchableOpacity
+                onPress={() => navigation.navigate("SignIn", {})}
+              >
+                <Text style={styles.signInText}>
+                  <Text style={styles.signInLink}>Sign In?</Text> if already
+                  registered
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </ScrollView>
+
+      {/* iOS Login Type Picker Modal */}
+      <IOSPickerModal
+        visible={loginTypePickerVisible}
+        title="Select Login Type"
+        options={LOGIN_TYPE_OPTIONS}
+        selectedValue={loginType}
+        onSelect={setLoginType}
+        onClose={() => setLoginTypePickerVisible(false)}
+      />
+    </View>
   );
 }
 
@@ -329,12 +323,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   scrollContent: {
-    flexGrow: 1,
+    paddingBottom: 0,
   },
   content: {
-    flex: 1,
     alignItems: "center",
-    paddingTop: 20,
+    paddingTop: 10,
   },
   logo: {
     width: 350,
@@ -345,8 +338,10 @@ const styles = StyleSheet.create({
     backgroundColor: "#F0F9E8",
     borderRadius: 30,
     padding: 30,
+    paddingBottom: 150,
     width: "100%",
     maxWidth: 400,
+    marginBottom: 0,
   },
   title: {
     fontSize: 32,
@@ -416,15 +411,5 @@ const styles = StyleSheet.create({
   signInLink: {
     color: "#0E7490",
     fontWeight: "600",
-  },
-  iosPickerButton: {
-    height: 55,
-    justifyContent: 'center',
-    paddingHorizontal: 16,
-  },
-  iosPickerText: {
-    fontSize: 16,
-    color: '#374151',
-    paddingHorizontal: 16,
   },
 });

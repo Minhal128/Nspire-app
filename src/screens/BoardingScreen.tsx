@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ScrollView,
 } from "react-native";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { BoardingScreenNavigationProp } from "../types/navigation";
 import { Colors, Spacing, BorderRadius, FontSizes } from "../constants";
@@ -16,6 +17,16 @@ interface BoardingScreenProps {
 }
 
 export default function BoardingScreen({ navigation }: BoardingScreenProps) {
+  const handlePortalSelection = async (portalType: string) => {
+    try {
+      await AsyncStorage.setItem('selectedPortal', portalType);
+      navigation.navigate("SignIn", { userType: portalType });
+    } catch (error) {
+      console.error('Error storing portal type:', error);
+      navigation.navigate("SignIn", { userType: portalType });
+    }
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.content}>
@@ -51,9 +62,7 @@ export default function BoardingScreen({ navigation }: BoardingScreenProps) {
             </Text>
             <TouchableOpacity
               style={styles.button}
-              onPress={() =>
-                navigation.navigate("SignIn", { userType: "Inspector" })
-              }
+              onPress={() => handlePortalSelection("Inspector")}
             >
               <Text style={styles.buttonText}>Continue as Inspector</Text>
             </TouchableOpacity>
@@ -75,9 +84,7 @@ export default function BoardingScreen({ navigation }: BoardingScreenProps) {
             </Text>
             <TouchableOpacity
               style={styles.button}
-              onPress={() =>
-                navigation.navigate("SignIn", { userType: "Management" })
-              }
+              onPress={() => handlePortalSelection("Management")}
             >
               <Text style={styles.buttonText}>Continue as Management</Text>
             </TouchableOpacity>
@@ -98,9 +105,7 @@ export default function BoardingScreen({ navigation }: BoardingScreenProps) {
             </Text>
             <TouchableOpacity
               style={styles.button}
-              onPress={() =>
-                navigation.navigate("SignIn", { userType: "Other" })
-              }
+              onPress={() => handlePortalSelection("Other")}
             >
               <Text style={styles.buttonText}>Continue as Other</Text>
             </TouchableOpacity>

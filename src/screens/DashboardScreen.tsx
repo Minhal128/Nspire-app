@@ -24,6 +24,7 @@ import Sidebar from "../components/Sidebar";
 import { propertyService, authService } from "../services";
 import { Property as ApiProperty, User } from "../services/api";
 import { US_STATES } from "../constants/usStates";
+import { UNIT_SELECTION_OPTIONS } from "../utils/iosPickerUtils";
 
 interface DashboardScreenProps {
   navigation: DashboardScreenNavigationProp;
@@ -57,6 +58,7 @@ export default function DashboardScreen({
   // iOS picker modal states
   const [statePickerVisible, setStatePickerVisible] = useState(false);
   const [cityPickerVisible, setCityPickerVisible] = useState(false);
+  const [unitPickerVisible, setUnitPickerVisible] = useState(false);
   const [tempState, setTempState] = useState('');
   const [tempCity, setTempCity] = useState('');
 
@@ -717,6 +719,35 @@ export default function DashboardScreen({
                 ))}
               </Picker>
               <TouchableOpacity style={styles.iosCancelButton} onPress={() => setCityPickerVisible(false)}>
+                <Text style={styles.iosCancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+      )}
+
+      {/* iOS Unit Selection Picker Modal */}
+      {Platform.OS === 'ios' && (
+        <Modal visible={unitPickerVisible} transparent animationType="slide">
+          <View style={styles.iosModalOverlay}>
+            <View style={styles.iosModalContent}>
+              <View style={styles.iosModalHeader}>
+                <Text style={styles.iosModalTitle}>Select Units For Inspection</Text>
+                <TouchableOpacity onPress={() => { setUnitPickerVisible(false); }}>
+                  <Text style={styles.iosModalDone}>Done</Text>
+                </TouchableOpacity>
+              </View>
+              <Picker 
+                selectedValue={selectedUnitOption} 
+                onValueChange={(value) => setSelectedUnitOption(value)} 
+                style={styles.iosPickerWheel}
+              >
+                <Picker.Item label="Select an option" value="" color="#6B7280" />
+                {UNIT_SELECTION_OPTIONS.map((option) => (
+                  <Picker.Item key={option.value} label={option.label} value={option.value} color="#007AFF" />
+                ))}
+              </Picker>
+              <TouchableOpacity style={styles.iosCancelButton} onPress={() => setUnitPickerVisible(false)}>
                 <Text style={styles.iosCancelButtonText}>Cancel</Text>
               </TouchableOpacity>
             </View>

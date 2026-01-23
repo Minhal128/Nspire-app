@@ -24,8 +24,8 @@ import { Inspection, Property } from '../services/api';
 // Status options for picker
 const STATUS_OPTIONS = [
   { label: 'All Status', value: '' },
-  { label: 'Compliant', value: 'compliant' },
-  { label: 'Non-Compliant', value: 'non-compliant' },
+  { label: 'Paid', value: 'paid' },
+  { label: 'Unpaid', value: 'unpaid' },
 ];
 
 // Date range options for picker
@@ -48,7 +48,7 @@ interface Report {
   unit: string;
   inspector: string;
   date: string;
-  complianceScore: 'Compliant' | 'Non-Compliant';
+  complianceScore: 'Paid' | 'Unpaid';
   inspectionType: string;
   totalDeficiencies: number;
   criticalDeficiencies: number;
@@ -153,7 +153,7 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
             day: 'numeric',
             year: 'numeric'
           }),
-          complianceScore: isCompliant ? 'Compliant' : 'Non-Compliant',
+          complianceScore: isCompliant ? 'Paid' : 'Unpaid',
           inspectionType: (inspection as any).inspectionType || 'INSPIRE Inspection',
           totalDeficiencies,
           criticalDeficiencies,
@@ -236,8 +236,8 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
     const matchesProperty = !propertyName || report.propertyId === propertyName;
 
     const matchesStatus = !status ||
-      (status === 'compliant' && report.complianceScore === 'Compliant') ||
-      (status === 'non-compliant' && report.complianceScore === 'Non-Compliant');
+      (status === 'paid' && report.complianceScore === 'Paid') ||
+      (status === 'unpaid' && report.complianceScore === 'Unpaid');
 
     // Date range filtering could be added here
 
@@ -401,7 +401,7 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
                     onPress={() => setStatusPickerVisible(true)}
                   >
                     <Text style={[styles.iosPickerText, !status && { color: '#9CA3AF' }]}>
-                      {status === 'compliant' ? 'Compliant' : status === 'non-compliant' ? 'Non-Compliant' : "Status"}
+                      {status === 'paid' ? 'Paid' : status === 'unpaid' ? 'Unpaid' : "Status"}
                     </Text>
                   </TouchableOpacity>
                 ) : (
@@ -411,8 +411,8 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
                     style={styles.picker}
                   >
                     <Picker.Item label="Status" value="" />
-                    <Picker.Item label="Compliant" value="compliant" />
-                    <Picker.Item label="Non-Compliant" value="non-compliant" />
+                    <Picker.Item label="Paid" value="paid" />
+                    <Picker.Item label="Unpaid" value="unpaid" />
                   </Picker>
                 )}
                 <Ionicons
@@ -452,11 +452,11 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
                     <Text style={styles.reportValue}>{report.date}</Text>
                   </View>
                   <View style={styles.reportRow}>
-                    <Text style={styles.reportLabel}>Compliance{'\n'}Score</Text>
+                    <Text style={styles.reportLabel}>Payment{'\n'}Status</Text>
                     <View style={styles.complianceContainer}>
                       <View style={[
                         styles.complianceDot,
-                        report.complianceScore === 'Compliant' ? styles.compliantDot : styles.nonCompliantDot
+                        report.complianceScore === 'Paid' ? styles.compliantDot : styles.nonCompliantDot
                       ]} />
                       <Text style={styles.complianceText}>{report.complianceScore}</Text>
                     </View>

@@ -8,20 +8,20 @@ import * as FileSystem from "expo-file-system/legacy";
 // Gemini API configuration
 const GEMINI_API_URL =
   "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
-const DEFAULT_API_KEY = "AIzaSyDmjOvs3N-qiZZPJHkJz-DwtppQHctmjnM";
+const DEFAULT_API_KEY = "AIzaSyDd56D1mNcStEK2w3y-yVBXD4p46232rWM";
 
 export interface InspectionFinding {
   id: string;
   category:
-    | "structural"
-    | "electrical"
-    | "plumbing"
-    | "safety"
-    | "hvac"
-    | "exterior"
-    | "interior"
-    | "appliances"
-    | "other";
+  | "structural"
+  | "electrical"
+  | "plumbing"
+  | "safety"
+  | "hvac"
+  | "exterior"
+  | "interior"
+  | "appliances"
+  | "other";
   severity: "critical" | "major" | "minor" | "observation";
   title: string;
   description: string;
@@ -42,6 +42,7 @@ export interface InspectionFinding {
   inspectionStatus: "inspected" | "not_inspected" | "partial";
   confidenceLevel: number; // 0-100
   inspectionExplanation: string;
+  inspectionType?: string;
 }
 
 export interface InspectionVerification {
@@ -642,6 +643,7 @@ Return raw JSON only, no markdown, no explanations.`;
           inspectionExplanation:
             finding.inspectionExplanation ||
             "Inspection appears complete based on visual evidence",
+          inspectionType: inspectionType,
         }),
       );
 
@@ -656,14 +658,14 @@ Return raw JSON only, no markdown, no explanations.`;
           analysisResult.inspectionVerification?.averageConfidence || 85,
         visualIndicators: analysisResult.inspectionVerification
           ?.visualIndicators || [
-          "Property documented",
-          "Image quality adequate",
-        ],
+            "Property documented",
+            "Image quality adequate",
+          ],
         completenessFactors: analysisResult.inspectionVerification
           ?.completenessFactors || [
-          "Required areas covered",
-          "Documentation present",
-        ],
+            "Required areas covered",
+            "Documentation present",
+          ],
       };
 
       return {

@@ -4,6 +4,8 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { StatusBar } from "expo-status-bar";
 import { View, ActivityIndicator, StyleSheet } from "react-native";
 import * as Linking from "expo-linking";
+import { ClerkProvider } from '@clerk/clerk-expo';
+import * as SecureStore from 'expo-secure-store';
 
 // Import screens
 import BoardingScreen from "./src/screens/BoardingScreen";
@@ -56,6 +58,24 @@ export type RootStackParamList = {
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
+
+// Clerk token cache
+const tokenCache = {
+  async getToken(key: string) {
+    try {
+      return SecureStore.getItemAsync(key);
+    } catch (err) {
+      return null;
+    }
+  },
+  async saveToken(key: string, value: string) {
+    try {
+      return SecureStore.setItemAsync(key, value);
+    } catch (err) {
+      return;
+    }
+  },
+};
 
 // Deep linking configuration
 const prefix = Linking.createURL("/");
@@ -144,7 +164,10 @@ export default function App() {
   }
 
   return (
-    <>
+    <ClerkProvider
+      publishableKey={process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!}
+      tokenCache={tokenCache}
+    >
       <StatusBar style="dark" />
       <NavigationContainer 
         linking={linking} 
@@ -196,7 +219,7 @@ export default function App() {
           <Stack.Screen name="NSPIREReport" component={NSPIREReportScreen} />
         </Stack.Navigator>
       </NavigationContainer>
-    </>
+    </ClerkProvider>
   );
 }
 
