@@ -315,7 +315,7 @@ export const SEVERITY_COLORS = {
  * Default PDF Generation Options
  */
 export const DEFAULT_PDF_OPTIONS: PDFGenerationOptions = {
-  includeImages: true,
+  includeImages: true, // Re-enable images for proper inspector report
   imageQuality: 'medium',
   colorCodingSeverity: true,
   includeSummaryPage: true,

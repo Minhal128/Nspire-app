@@ -3,8 +3,11 @@ import { RouteProp } from '@react-navigation/native';
 
 export type RootStackParamList = {
   Boarding: undefined;
-  SignIn: { userType?: string };
-  SignUp: undefined;
+  SignIn: { userType?: string } | undefined;
+  SignUp: { userType?: string } | undefined;
+  EmailVerification: { email: string; role: string };
+  ForgotPassword: undefined;
+  Notifications: undefined;
   Dashboard: undefined;
   MyInspections: undefined;
   Reports: undefined;
@@ -14,6 +17,7 @@ export type RootStackParamList = {
   EditProperty: { property: any };
   Analytics: undefined;
   UnitInspection: { property: any };
+  AIInspection: { property: any; selectedUnits: string[]; coverage: string; totalUnits: number };
   InspectionChecklist: { property: any; unit: any };
   ManagementDashboard: undefined;
   OrderDashboard: undefined;
@@ -25,4 +29,7 @@ export type BoardingScreenNavigationProp = NativeStackNavigationProp<RootStackPa
 export type SignInScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'SignIn'>;
 export type SignInScreenRouteProp = RouteProp<RootStackParamList, 'SignIn'>;
 export type SignUpScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'SignUp'>;
+export type SignUpScreenRouteProp = RouteProp<RootStackParamList, 'SignUp'>;
+export type EmailVerificationScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'EmailVerification'>;
+export type EmailVerificationScreenRouteProp = RouteProp<RootStackParamList, 'EmailVerification'>;
 export type DashboardScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Dashboard'>;

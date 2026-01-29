@@ -40,6 +40,7 @@ export default function BoardingScreen({ navigation }: BoardingScreenProps) {
         {/* Welcome Card */}
         <ScrollView
           style={styles.welcomeCard}
+          contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={true}
         >
           <Text style={styles.welcomeTitle}>Welcome</Text>
@@ -140,6 +141,9 @@ const styles = StyleSheet.create({
     maxWidth: 400,
     flex: 1,
   },
+  scrollContent: {
+    paddingBottom: 40,
+  },
   welcomeTitle: {
     fontSize: FontSizes.xxxl,
     fontWeight: "700",
@@ -166,7 +170,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   lastOptionCard: {
-    marginBottom: 0,
+    marginBottom: 20,
   },
   iconContainer: {
     marginBottom: Spacing.lg,

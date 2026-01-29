@@ -2,15 +2,20 @@ import React, { useState, useEffect, useCallback } from "react";
 import { NavigationContainer, LinkingOptions } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { StatusBar } from "expo-status-bar";
-import { View, ActivityIndicator, StyleSheet } from "react-native";
+import { View, ActivityIndicator, StyleSheet, Text, TouchableOpacity } from "react-native";
 import * as Linking from "expo-linking";
 import { ClerkProvider } from '@clerk/clerk-expo';
 import * as SecureStore from 'expo-secure-store';
+import * as LocalAuthentication from 'expo-local-authentication';
+import { Ionicons } from '@expo/vector-icons';
 
 // Import screens
 import BoardingScreen from "./src/screens/BoardingScreen";
 import SignInScreen from "./src/screens/SignInScreen";
 import SignUpScreen from "./src/screens/SignUpScreen";
+import EmailVerificationScreen from "./src/screens/EmailVerificationScreen";
+import ForgotPasswordScreen from "./src/screens/ForgotPasswordScreen";
+import NotificationScreen from "./src/screens/NotificationScreen";
 import DashboardScreen from "./src/screens/DashboardScreen";
 import MyInspectionsScreen from "./src/screens/MyInspectionsScreen";
 import ReportsScreen from "./src/screens/ReportsScreen";
@@ -22,6 +27,7 @@ import UnitInspectionScreen from "./src/screens/UnitInspectionScreen";
 import InspectionChecklistScreen from "./src/screens/InspectionChecklistScreen";
 import SettingsScreen from "./src/screens/SettingsScreen";
 import ManagementDashboardScreen from "./src/screens/ManagementDashboardScreen";
+import ManagementReportsScreen from "./src/screens/ManagementReportsScreen";
 import ReportDetailScreen from "./src/screens/ReportDetailScreen";
 import OrderDashboardScreen from "./src/screens/OrderDashboardScreen";
 import OthersScreen from "./src/screens/OthersScreen";
@@ -36,10 +42,14 @@ import authService from "./src/services/authService";
 export type RootStackParamList = {
   Boarding: undefined;
   SignIn: { userType?: string };
-  SignUp: undefined;
+  SignUp: { userType?: string };
+  EmailVerification: { email: string; role: string };
+  ForgotPassword: undefined;
+  Notifications: undefined;
   Dashboard: undefined;
   MyInspections: undefined;
   Reports: undefined;
+  ManagementReports: undefined;
   Settings: undefined;
   AddProperty: undefined;
   RequestInspection: undefined;
@@ -58,6 +68,9 @@ export type RootStackParamList = {
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
+
+// Biometric 2FA key
+const BIOMETRIC_2FA_KEY = 'biometric_2fa_enabled';
 
 // Clerk token cache
 const tokenCache = {
@@ -87,9 +100,13 @@ const linking: LinkingOptions<RootStackParamList> = {
       Boarding: "boarding",
       SignIn: "signin",
       SignUp: "signup",
+      EmailVerification: "verify-email",
+      ForgotPassword: "forgot-password",
+      Notifications: "notifications",
       Dashboard: "dashboard",
       MyInspections: "inspections",
       Reports: "reports",
+      ManagementReports: "management-reports",
       Settings: "settings",
       AddProperty: "add-property",
       RequestInspection: "request-inspection",
@@ -118,8 +135,45 @@ function LoadingScreen() {
   );
 }
 
+// Biometric authentication screen
+function BiometricAuthScreen({ onAuthenticate }: { onAuthenticate: () => void }) {
+  const handleAuthenticate = async () => {
+    try {
+      const result = await LocalAuthentication.authenticateAsync({
+        promptMessage: 'Authenticate to access NSPIRE',
+        cancelLabel: 'Cancel',
+        disableDeviceFallback: false,
+      });
+
+      if (result.success) {
+        onAuthenticate();
+      }
+    } catch (error) {
+      console.error('Biometric auth error:', error);
+    }
+  };
+
+  return (
+    <View style={styles.biometricContainer}>
+      <View style={styles.biometricContent}>
+        <Ionicons name="finger-print" size={80} color="#0E7490" />
+        <Text style={styles.biometricTitle}>Authentication Required</Text>
+        <Text style={styles.biometricSubtitle}>
+          Use biometric authentication to access the app
+        </Text>
+        <TouchableOpacity style={styles.biometricButton} onPress={handleAuthenticate}>
+          <Ionicons name="lock-open-outline" size={24} color="#fff" />
+          <Text style={styles.biometricButtonText}>Authenticate</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
 export default function App() {
   const [isReady, setIsReady] = useState(false);
+  const [biometricRequired, setBiometricRequired] = useState(false);
+  const [biometricVerified, setBiometricVerified] = useState(false);
   const [initialRoute, setInitialRoute] = useState<keyof RootStackParamList>("Boarding");
 
   // Check authentication state on app start
@@ -127,18 +181,37 @@ export default function App() {
     const checkAuthState = async () => {
       try {
         const authState = await authService.checkSession();
-        
+
         if (authState.isAuthenticated && authState.user) {
-          // User is logged in, determine the correct dashboard
+          // User is logged in, check if biometric 2FA is enabled
+          const biometricEnabled = await SecureStore.getItemAsync(BIOMETRIC_2FA_KEY);
+          if (biometricEnabled === 'true') {
+            setBiometricRequired(true);
+            // Auto-prompt for biometric authentication
+            const result = await LocalAuthentication.authenticateAsync({
+              promptMessage: 'Authenticate to access NSPIRE',
+              cancelLabel: 'Cancel',
+              disableDeviceFallback: false,
+            });
+            if (result.success) {
+              setBiometricVerified(true);
+            }
+          } else {
+            setBiometricVerified(true);
+          }
+
+          // Determine the correct dashboard
           const dashboardRoute = authService.getDashboardRoute(authState.user.role);
           setInitialRoute(dashboardRoute as keyof RootStackParamList);
         } else {
           // User is not logged in, go to boarding
           setInitialRoute("Boarding");
+          setBiometricVerified(true); // No biometric needed for unauthenticated users
         }
       } catch (error) {
         console.error("Error checking auth state:", error);
         setInitialRoute("Boarding");
+        setBiometricVerified(true);
       } finally {
         setIsReady(true);
       }
@@ -146,6 +219,11 @@ export default function App() {
 
     checkAuthState();
   }, []);
+
+  // Handle biometric authentication success
+  const handleBiometricSuccess = () => {
+    setBiometricVerified(true);
+  };
 
   // Handle deep links when app is already open
   const onReady = useCallback(() => {
@@ -163,14 +241,24 @@ export default function App() {
     );
   }
 
+  // Show biometric authentication screen if required and not verified
+  if (biometricRequired && !biometricVerified) {
+    return (
+      <>
+        <StatusBar style="dark" />
+        <BiometricAuthScreen onAuthenticate={handleBiometricSuccess} />
+      </>
+    );
+  }
+
   return (
     <ClerkProvider
       publishableKey={process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!}
       tokenCache={tokenCache}
     >
       <StatusBar style="dark" />
-      <NavigationContainer 
-        linking={linking} 
+      <NavigationContainer
+        linking={linking}
         fallback={<LoadingScreen />}
         onReady={onReady}
       >
@@ -184,9 +272,13 @@ export default function App() {
           <Stack.Screen name="Boarding" component={BoardingScreen} />
           <Stack.Screen name="SignIn" component={SignInScreen} />
           <Stack.Screen name="SignUp" component={SignUpScreen} />
+          <Stack.Screen name="EmailVerification" component={EmailVerificationScreen} />
+          <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+          <Stack.Screen name="Notifications" component={NotificationScreen} />
           <Stack.Screen name="Dashboard" component={DashboardScreen} />
           <Stack.Screen name="MyInspections" component={MyInspectionsScreen} />
           <Stack.Screen name="Reports" component={ReportsScreen} />
+          <Stack.Screen name="ManagementReports" component={ManagementReportsScreen} />
           <Stack.Screen name="AddProperty" component={AddPropertyScreen} />
           <Stack.Screen
             name="RequestInspection"
@@ -229,5 +321,42 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "#97F0FF",
+  },
+  biometricContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#F9FAFB",
+  },
+  biometricContent: {
+    alignItems: "center",
+    padding: 40,
+  },
+  biometricTitle: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: "#1F2937",
+    marginTop: 24,
+    marginBottom: 8,
+  },
+  biometricSubtitle: {
+    fontSize: 16,
+    color: "#6B7280",
+    textAlign: "center",
+    marginBottom: 32,
+  },
+  biometricButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#0E7490",
+    paddingHorizontal: 32,
+    paddingVertical: 16,
+    borderRadius: 12,
+    gap: 8,
+  },
+  biometricButtonText: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#fff",
   },
 });

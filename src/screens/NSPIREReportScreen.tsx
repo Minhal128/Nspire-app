@@ -44,60 +44,19 @@ interface NSPIREReportScreenProps {
 }
 
 export default function NSPIREReportScreen({ navigation, route }: NSPIREReportScreenProps) {
-  const { report: initialReport, inspectionData, property } = route.params || {};
-  
+  const { report: initialReport, inspectionData, property, preGeneratedHtml } = route.params || {};
+
   const [report, setReport] = useState<NSPIREInspectionReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
-  const [htmlContent, setHtmlContent] = useState<string>('');
   const [pdfOptions, setPdfOptions] = useState<PDFGenerationOptions>(DEFAULT_PDF_OPTIONS);
-  const [activeTab, setActiveTab] = useState<'summary' | 'deficiencies' | 'preview'>('summary');
+  const [activeTab, setActiveTab] = useState<'summary' | 'deficiencies' | 'preview'>(preGeneratedHtml ? 'preview' : 'summary');
   const [showOptionsModal, setShowOptionsModal] = useState(false);
-  const [previewHtml, setPreviewHtml] = useState<string>('');
+  const [previewHtml, setPreviewHtml] = useState<string>(preGeneratedHtml || '');
   const [preparingPreview, setPreparingPreview] = useState(false);
-  
+
   const webViewRef = useRef<WebView>(null);
 
-  // Convert local image URI to base64 data URI
-  const imageToBase64 = async (imageUri: string): Promise<string> => {
-    try {
-      // If already a data URI or http URL, return as is
-      if (imageUri.startsWith('data:') || imageUri.startsWith('http://') || imageUri.startsWith('https://')) {
-        return imageUri;
-      }
-      
-      const base64 = await FileSystem.readAsStringAsync(imageUri, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
-      
-      const extension = imageUri.split('.').pop()?.toLowerCase() || 'jpeg';
-      const mimeType = extension === 'png' ? 'image/png' : 'image/jpeg';
-      
-      return `data:${mimeType};base64,${base64}`;
-    } catch (error) {
-      console.error('Error converting image to base64:', error);
-      return imageUri; // Return original URI if conversion fails
-    }
-  };
-
-  // Prepare report with base64 images for preview
-  const preparePreviewReport = async (reportData: NSPIREInspectionReport): Promise<NSPIREInspectionReport> => {
-    const deficienciesWithBase64 = await Promise.all(
-      reportData.deficiencies.map(async (def) => {
-        if (def.imageUri && !def.imageUri.startsWith('http') && !def.imageUri.startsWith('data:')) {
-          const base64Uri = await imageToBase64(def.imageUri);
-          return { ...def, imageUri: base64Uri };
-        }
-        return def;
-      })
-    );
-    
-    return {
-      ...reportData,
-      deficiencies: deficienciesWithBase64,
-    };
-  };
 
   useEffect(() => {
     initializeReport();
@@ -126,7 +85,7 @@ export default function NSPIREReportScreen({ navigation, route }: NSPIREReportSc
 
   const convertToNSPIREReport = (data: any, property: any): NSPIREInspectionReport => {
     const now = new Date();
-    
+
     // Convert findings to deficiency entries
     const deficiencies: DeficiencyEntry[] = (data.findings || []).map((finding: any, index: number) => ({
       id: finding.id || `DEF-${index + 1}`,
@@ -246,16 +205,41 @@ export default function NSPIREReportScreen({ navigation, route }: NSPIREReportSc
 
   const handleExportPDF = async () => {
     if (!report) return;
-    
+
     setExporting(true);
     try {
+      console.log('Starting PDF export...');
+
+      // Show progress to user
+      Alert.alert('Generating PDF', 'Please wait while we generate your inspection report...', [], { cancelable: false });
+
+      console.log('Generating PDF with images...');
       const result = await nspirePDFService.generateAndSharePDF(report, pdfOptions);
-      
+
+      // Dismiss the progress alert
+      Alert.alert('', '', [], { cancelable: true });
+
       if (!result.success) {
         throw new Error(result.error);
       }
+
+      console.log('PDF export successful');
+      Alert.alert('Success', 'PDF report generated and ready to share!');
     } catch (error: any) {
-      Alert.alert('Export Failed', error.message || 'Failed to export PDF');
+      console.error('PDF Export Error:', error);
+      Alert.alert('', '', [], { cancelable: true }); // Dismiss progress alert
+
+      // Provide specific error messages
+      let errorMessage = 'Failed to export PDF';
+      if (error.message.includes('timeout')) {
+        errorMessage = 'PDF generation timed out. This may be due to large images. Please try again.';
+      } else if (error.message.includes('Image')) {
+        errorMessage = 'There was an issue processing images. The PDF may have been generated without some images.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      Alert.alert('Export Failed', errorMessage);
     } finally {
       setExporting(false);
     }
@@ -263,11 +247,11 @@ export default function NSPIREReportScreen({ navigation, route }: NSPIREReportSc
 
   const handlePrintPDF = async () => {
     if (!report) return;
-    
+
     setExporting(true);
     try {
       const result = await nspirePDFService.printPDF(report, pdfOptions);
-      
+
       if (!result.success) {
         throw new Error(result.error);
       }
@@ -280,7 +264,7 @@ export default function NSPIREReportScreen({ navigation, route }: NSPIREReportSc
 
   const handleSavePDF = async () => {
     if (!report) return;
-    
+
     setExporting(true);
     try {
       // First, ensure inspection is saved to backend
@@ -295,13 +279,13 @@ export default function NSPIREReportScreen({ navigation, route }: NSPIREReportSc
             scheduledDate: new Date().toISOString(),
             notes: inspectionData.notes || '',
           };
-          
+
           const createResult = await inspectionService.createInspection(createData);
           console.log('Create result:', createResult);
-          
+
           if (createResult.success && createResult.inspection?._id) {
             const completeData = {
-              complianceScore: report.scoring.finalScore || inspectionData.complianceScore || 0,
+              complianceScore: report.metadata.finalScore || inspectionData.complianceScore || 0,
               findings: (inspectionData.findings || []).map((f: any) => ({
                 area: f.inspectionType || f.category || 'General',
                 location: f.location || 'Property',
@@ -311,12 +295,12 @@ export default function NSPIREReportScreen({ navigation, route }: NSPIREReportSc
                 imageUrl: f.imageUri || '',
                 nspireCode: f.nspireCode || '',
               })),
-              notes: `INSPIRE Inspection - Score: ${report.scoring.finalScore}`,
+              notes: `INSPIRE Inspection - Score: ${report.metadata.finalScore}`,
             };
-            
+
             const completeResult = await inspectionService.completeInspection(createResult.inspection._id, completeData);
             console.log('Complete result:', completeResult);
-            
+
             if (completeResult.success) {
               console.log('Inspection saved to backend successfully');
             }
@@ -326,11 +310,11 @@ export default function NSPIREReportScreen({ navigation, route }: NSPIREReportSc
           // Continue with PDF save even if backend fails
         }
       }
-      
+
       // Save PDF locally
       const filename = `NSPIRE_Report_${report.metadata.inspectionNo}_${Date.now()}`;
       const result = await nspirePDFService.savePDFToDevice(report, filename, pdfOptions);
-      
+
       if (result.success) {
         Alert.alert('Success', `Report saved to:\n${result.uri}\n\nInspection also synced to Reports.`);
       } else {
@@ -343,12 +327,6 @@ export default function NSPIREReportScreen({ navigation, route }: NSPIREReportSc
     }
   };
 
-  const handlePreview = () => {
-    if (!report) return;
-    const html = generateNSPIREReportHTML(report, pdfOptions);
-    setHtmlContent(html);
-    setShowPreview(true);
-  };
 
   const getSeverityColor = (severity: DeficiencySeverity): string => {
     return SEVERITY_COLORS[severity] || Colors.neutral.gray500;
@@ -356,7 +334,7 @@ export default function NSPIREReportScreen({ navigation, route }: NSPIREReportSc
 
   const renderHeader = () => (
     <View style={styles.header}>
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.backButton}
         onPress={() => navigation.goBack()}
       >
@@ -368,7 +346,7 @@ export default function NSPIREReportScreen({ navigation, route }: NSPIREReportSc
           <Text style={styles.headerSubtitle}>{report.metadata.inspectionNo}</Text>
         )}
       </View>
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.optionsButton}
         onPress={() => setShowOptionsModal(true)}
       >
@@ -395,7 +373,7 @@ export default function NSPIREReportScreen({ navigation, route }: NSPIREReportSc
 
   const renderSummaryTab = () => {
     if (!report) return null;
-    
+
     return (
       <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
         {/* Score Cards - Compact Professional Style */}
@@ -530,7 +508,7 @@ export default function NSPIREReportScreen({ navigation, route }: NSPIREReportSc
 
   const renderDeficienciesTab = () => {
     if (!report) return null;
-    
+
     return (
       <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
         {report.deficiencies.length === 0 ? (
@@ -565,8 +543,8 @@ export default function NSPIREReportScreen({ navigation, route }: NSPIREReportSc
 
               <View style={styles.deficiencyContent}>
                 {deficiency.imageUri ? (
-                  <Image 
-                    source={{ uri: deficiency.imageUri }} 
+                  <Image
+                    source={{ uri: deficiency.imageUri }}
                     style={styles.deficiencyImage}
                     resizeMode="cover"
                   />
@@ -582,7 +560,7 @@ export default function NSPIREReportScreen({ navigation, route }: NSPIREReportSc
                   <View style={styles.nspireCodeBadge}>
                     <Text style={styles.nspireCodeText}>{deficiency.nspireCode}</Text>
                   </View>
-                  
+
                   <View style={styles.locationInfo}>
                     <View style={styles.locationRow}>
                       <Text style={styles.locationLabel}>Building:</Text>
@@ -621,29 +599,71 @@ export default function NSPIREReportScreen({ navigation, route }: NSPIREReportSc
 
   // Prepare preview when tab changes to preview
   useEffect(() => {
-    if (activeTab === 'preview' && report && !previewHtml) {
+    if (activeTab === 'preview' && report && !previewHtml && !preparingPreview) {
       preparePreview();
     }
-  }, [activeTab, report]);
+  }, [activeTab, report, previewHtml, preparingPreview]);
 
   // Reset preview when options change
   useEffect(() => {
-    setPreviewHtml('');
+    if (previewHtml) {
+      setPreviewHtml('');
+    }
   }, [pdfOptions]);
 
   const preparePreview = async () => {
-    if (!report) return;
-    
+    if (!report || preparingPreview) return;
+
     setPreparingPreview(true);
     try {
-      const reportWithBase64Images = await preparePreviewReport(report);
-      const html = generateNSPIREReportHTML(reportWithBase64Images, pdfOptions);
-      setPreviewHtml(html);
+      // Check if we have pre-generated HTML from backend
+      if (preGeneratedHtml && preGeneratedHtml.length > 1000) {
+        console.log('Using pre-generated HTML from backend');
+        setPreviewHtml(preGeneratedHtml);
+        return;
+      }
+
+      console.log('Generating HTML preview locally...');
+      
+      // Generate HTML with memory optimization
+      const html = await nspirePDFService.generateHTMLPreviewAsync(report, {
+        ...pdfOptions,
+        includeImages: false, // Disable images for preview to prevent crashes
+        imageQuality: 'low'
+      });
+      
+      // Limit HTML size to prevent crashes
+      const maxSize = 50000; // 50KB limit
+      const finalHtml = html.length > maxSize ? 
+        html.substring(0, maxSize) + '\n<!-- Content truncated for performance -->\n</body></html>' : 
+        html;
+        
+      setPreviewHtml(finalHtml);
+      console.log(`Preview HTML prepared: ${finalHtml.length} bytes`);
     } catch (error) {
       console.error('Error preparing preview:', error);
-      // Fallback to original report
-      const html = generateNSPIREReportHTML(report, pdfOptions);
-      setPreviewHtml(html);
+      // Fallback to simple HTML
+      const fallbackHtml = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>INSPIRE Report Preview</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 20px; }
+            .error { color: #dc3545; background: #f8d7da; padding: 15px; border-radius: 5px; }
+          </style>
+        </head>
+        <body>
+          <h1>INSPIRE Inspection Report</h1>
+          <div class="error">
+            <h3>Preview Error</h3>
+            <p>Unable to generate full preview. The report contains ${report.deficiencies?.length || 0} deficiencies.</p>
+            <p>Use the Export PDF function to generate the complete report.</p>
+          </div>
+        </body>
+        </html>
+      `;
+      setPreviewHtml(fallbackHtml);
     } finally {
       setPreparingPreview(false);
     }
@@ -651,7 +671,7 @@ export default function NSPIREReportScreen({ navigation, route }: NSPIREReportSc
 
   const renderPreviewTab = () => {
     if (!report) return null;
-    
+
     if (preparingPreview || !previewHtml) {
       return (
         <View style={[styles.previewContainer, { justifyContent: 'center', alignItems: 'center' }]}>
@@ -660,7 +680,7 @@ export default function NSPIREReportScreen({ navigation, route }: NSPIREReportSc
         </View>
       );
     }
-    
+
     return (
       <View style={styles.previewContainer}>
         <WebView
@@ -668,11 +688,34 @@ export default function NSPIREReportScreen({ navigation, route }: NSPIREReportSc
           source={{ html: previewHtml }}
           style={styles.webView}
           scalesPageToFit={true}
-          javaScriptEnabled={true}
+          javaScriptEnabled={false} // Disable JS to prevent crashes
+          domStorageEnabled={false}
+          startInLoadingState={true}
+          renderLoading={() => (
+            <View style={[styles.previewContainer, { justifyContent: 'center', alignItems: 'center' }]}>
+              <ActivityIndicator size="large" color={Colors.primary.teal} />
+              <Text style={{ marginTop: 12, color: Colors.neutral.gray600 }}>Loading preview...</Text>
+            </View>
+          )}
+          onError={(syntheticEvent) => {
+            const { nativeEvent } = syntheticEvent;
+            console.error('WebView error:', nativeEvent);
+          }}
+          onHttpError={(syntheticEvent) => {
+            const { nativeEvent } = syntheticEvent;
+            console.error('WebView HTTP error:', nativeEvent);
+          }}
+          onLoadEnd={() => {
+            console.log('WebView loaded successfully');
+          }}
+          // Memory optimization settings
+          cacheEnabled={false}
+          incognito={true}
           originWhitelist={['*']}
-          allowFileAccess={true}
-          allowFileAccessFromFileURLs={true}
-          allowUniversalAccessFromFileURLs={true}
+          allowFileAccess={false}
+          allowFileAccessFromFileURLs={false}
+          allowUniversalAccessFromFileURLs={false}
+          mixedContentMode="never"
         />
       </View>
     );
@@ -799,7 +842,7 @@ export default function NSPIREReportScreen({ navigation, route }: NSPIREReportSc
         <Ionicons name="print-outline" size={20} color={Colors.primary.teal} />
         <Text style={styles.secondaryButtonText}>Print</Text>
       </TouchableOpacity>
-      
+
       <TouchableOpacity
         style={[styles.actionButton, styles.secondaryButton]}
         onPress={handleSavePDF}
@@ -808,7 +851,7 @@ export default function NSPIREReportScreen({ navigation, route }: NSPIREReportSc
         <Ionicons name="download-outline" size={20} color={Colors.primary.teal} />
         <Text style={styles.secondaryButtonText}>Save</Text>
       </TouchableOpacity>
-      
+
       <TouchableOpacity
         style={[styles.actionButton, styles.primaryButton]}
         onPress={handleExportPDF}
@@ -841,11 +884,11 @@ export default function NSPIREReportScreen({ navigation, route }: NSPIREReportSc
     <SafeAreaView style={styles.container}>
       {renderHeader()}
       {renderTabs()}
-      
+
       {activeTab === 'summary' && renderSummaryTab()}
       {activeTab === 'deficiencies' && renderDeficienciesTab()}
       {activeTab === 'preview' && renderPreviewTab()}
-      
+
       {renderActionButtons()}
       {renderOptionsModal()}
     </SafeAreaView>
@@ -867,7 +910,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.neutral.gray600,
   },
-  
+
   // Header
   header: {
     flexDirection: 'row',

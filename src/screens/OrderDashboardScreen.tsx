@@ -283,7 +283,7 @@ export default function OrderDashboardScreen({ navigation }: OrderDashboardScree
               resizeMode="contain"
             />
             <View style={styles.notificationBadge}>
-              <TouchableOpacity>
+              <TouchableOpacity onPress={() => navigation.navigate("Notifications" as any)}>
                 <Ionicons name="notifications-outline" size={28} color="#1F2937" />
               </TouchableOpacity>
               <Text style={styles.orText}>OR</Text>
@@ -306,7 +306,7 @@ export default function OrderDashboardScreen({ navigation }: OrderDashboardScree
           {/* Title Section */}
           <View style={styles.titleSection}>
             <Text style={styles.mainTitle}>Other Dashboard</Text>
-            <Text style={styles.subtitle}>Hi, {user?.fullName?.split(' ')[0] || 'User'}! View and track inspections</Text>
+            <Text style={styles.subtitle}>Hi, {user?.fullName?.split(' ')[0] || (user?.email ? user.email.split('@')[0] : 'User')}! View and track inspections</Text>
           </View>
 
           {loading ? (

@@ -27,6 +27,8 @@ export interface PendingImage {
   retryCount: number;
   findings?: InspectionFinding[];
   error?: string;
+  room?: string;
+  roomCategory?: 'inside' | 'outside';
 }
 
 export interface InspectionSession {
@@ -193,7 +195,9 @@ class OfflineStorageService {
     sessionId: string,
     imageUri: string,
     notes?: string,
-    tags?: string[]
+    tags?: string[],
+    room?: string,
+    roomCategory?: 'inside' | 'outside'
   ): Promise<PendingImage> {
     const session = await this.getSession(sessionId);
     if (!session) {
@@ -214,6 +218,8 @@ class OfflineStorageService {
       tags,
       status: 'pending',
       retryCount: 0,
+      room,
+      roomCategory,
     };
 
     session.images.push(pendingImage);

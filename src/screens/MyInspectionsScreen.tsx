@@ -530,7 +530,7 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
               style={styles.headerLogo}
               resizeMode="contain"
             />
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => navigation.navigate("Notifications" as any)}>
               <Ionicons name="notifications-outline" size={28} color="#1F2937" />
             </TouchableOpacity>
           </View>

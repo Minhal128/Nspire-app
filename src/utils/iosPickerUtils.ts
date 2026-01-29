@@ -165,7 +165,6 @@ export const DATE_RANGE_OPTIONS: PickerOption[] = [
 
 export const LOGIN_TYPE_OPTIONS: PickerOption[] = [
   { label: 'Inspector', value: 'inspector' },
-  { label: 'Property Manager', value: 'property-manager' },
   { label: 'Management', value: 'management' },
   { label: 'Supervisor', value: 'supervisor' },
   { label: 'Administrator', value: 'admin' },

@@ -1,4 +1,4 @@
-import * as React from "react";
+import { useOAuth, useClerk } from '@clerk/clerk-expo';
 import { useState, useEffect, useCallback } from "react";
 import {
   View,
@@ -18,13 +18,33 @@ import {
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Picker } from "@react-native-picker/picker";
-import { City } from 'country-state-city';
+import { Country, State, City, IState } from 'country-state-city';
 import { DashboardScreenNavigationProp } from "../types/navigation";
 import Sidebar from "../components/Sidebar";
 import { propertyService, authService } from "../services";
 import { Property as ApiProperty, User } from "../services/api";
-import { US_STATES } from "../constants/usStates";
 import { UNIT_SELECTION_OPTIONS } from "../utils/iosPickerUtils";
+
+// Coverage options for inspection
+const COVERAGE_OPTIONS = [
+  { label: '100% - All Units', value: '100', description: 'Inspect every unit in the property' },
+  { label: '50% - Half Units', value: '50', description: 'Inspect half of all units (randomly selected)' },
+  { label: 'Random Sample', value: 'random', description: 'Automatically select a random sample based on HUD guidelines' },
+];
+
+// Countries with their ISO codes for proper state/city lookup
+const COUNTRIES = [
+  { label: "USA", value: "USA", isoCode: "US" },
+  { label: "UK", value: "UK", isoCode: "GB" },
+  { label: "CANADA", value: "CANADA", isoCode: "CA" },
+  { label: "Australia", value: "Australia", isoCode: "AU" },
+];
+
+// Helper to get country ISO code
+const getCountryIsoCode = (countryValue: string): string => {
+  const country = COUNTRIES.find(c => c.value === countryValue);
+  return country?.isoCode || 'US';
+};
 
 interface DashboardScreenProps {
   navigation: DashboardScreenNavigationProp;
@@ -46,21 +66,32 @@ export default function DashboardScreen({
   onMenuPress,
 }: DashboardScreenProps) {
   console.log('DashboardScreen: Component mounted');
-  
+  const { signOut } = useClerk();
+
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [actionModalVisible, setActionModalVisible] = useState(false);
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const [inspectionStep, setInspectionStep] = useState(0);
   const [selectedUnitOption, setSelectedUnitOption] = useState("");
   const [loading, setLoading] = useState(true);
+
+  // Ready for Inspection Modal state
+  const [inspectionModalVisible, setInspectionModalVisible] = useState(false);
+  const [selectedCoverage, setSelectedCoverage] = useState('100');
+  const [calculatedUnits, setCalculatedUnits] = useState(0);
+  const [selectedUnits, setSelectedUnits] = useState<string[]>([]);
   const [refreshing, setRefreshing] = useState(false);
 
   // iOS picker modal states
   const [statePickerVisible, setStatePickerVisible] = useState(false);
   const [cityPickerVisible, setCityPickerVisible] = useState(false);
   const [unitPickerVisible, setUnitPickerVisible] = useState(false);
+  const [countryPickerVisible, setCountryPickerVisible] = useState(false);
   const [tempState, setTempState] = useState('');
   const [tempCity, setTempCity] = useState('');
+
+  const [tempCountry, setTempCountry] = useState('USA');
+  const [tempUnitOption, setTempUnitOption] = useState('');
 
   // Add maximum loading timeout to prevent infinite loading
   useEffect(() => {
@@ -77,9 +108,11 @@ export default function DashboardScreen({
   const [user, setUser] = useState<User | null>(null);
 
   const [propertyName, setPropertyName] = useState("");
+  const [country, setCountry] = useState("USA");
   const [state, setState] = useState("");
   const [city, setCity] = useState("");
-  const [cities, setCities] = useState<{label: string; value: string}[]>([]);
+  const [states, setStates] = useState<{ label: string; value: string }[]>([]);
+  const [cities, setCities] = useState<{ label: string; value: string }[]>([]);
   const [loadingCities, setLoadingCities] = useState(false);
   const [showSearch, setShowSearch] = useState(true);
 
@@ -88,6 +121,21 @@ export default function DashboardScreen({
     loadInitialData();
   }, []);
 
+  // Load states when country changes
+  useEffect(() => {
+    const isoCode = getCountryIsoCode(country);
+    const countryStates = State.getStatesOfCountry(isoCode) || [];
+    const formattedStates = countryStates.map((s: IState) => ({
+      label: s.name,
+      value: s.isoCode
+    })).sort((a, b) => a.label.localeCompare(b.label));
+    console.log(`Dashboard states loaded for ${country}:`, formattedStates.length);
+    setStates(formattedStates);
+    setState(''); // Clear state selection when country changes
+    setCity('');
+    setCities([]);
+  }, [country]);
+
   // Load cities when state changes
   useEffect(() => {
     if (state) {
@@ -95,8 +143,9 @@ export default function DashboardScreen({
       setCity(''); // Clear current city selection
 
       try {
-        // Get cities directly from library
-        const stateCities = City.getCitiesOfState('US', state) || [];
+        // Get cities using proper country ISO code
+        const isoCode = getCountryIsoCode(country);
+        const stateCities = City.getCitiesOfState(isoCode, state) || [];
         const formattedCities = stateCities.map(c => ({ label: c.name, value: c.name }))
           .sort((a, b) => a.label.localeCompare(b.label));
         console.log('Dashboard cities loaded:', formattedCities.length);
@@ -111,22 +160,22 @@ export default function DashboardScreen({
       setCities([]);
       setCity('');
     }
-  }, [state]);
+  }, [state, country]);
 
   const loadInitialData = async () => {
     try {
       setLoading(true);
-      
+
       // Add timeout to prevent hanging
-      const timeoutPromise = new Promise((_, reject) => 
+      const timeoutPromise = new Promise((_, reject) =>
         setTimeout(() => reject(new Error('Request timeout')), 10000)
       );
-      
+
       const dataPromise = (async () => {
         const userData = await authService.getStoredUser();
 
         // Role-based access control
-        const allowedRoles = ['inspector', 'property-manager', 'admin'];
+        const allowedRoles = ['inspector', 'admin'];
         if (!userData || !allowedRoles.includes(userData.role)) {
           Alert.alert(
             'Access Denied',
@@ -150,7 +199,7 @@ export default function DashboardScreen({
       console.error('Failed to load initial data:', error);
       // If there's an error, still show the UI but with empty data
       setProperties([]);
-      
+
       // Show an alert to inform the user about the issue
       Alert.alert(
         'Connection Issue',
@@ -233,6 +282,7 @@ export default function DashboardScreen({
   const handleLogout = async () => {
     setSidebarVisible(false);
     try {
+      await signOut(); // Sign out from Clerk
       await authService.logout();
       navigation.reset({
         index: 0,
@@ -254,30 +304,72 @@ export default function DashboardScreen({
   };
 
   const handleReadyForInspection = async () => {
-    if (selectedProperty?._id) {
-      try {
-        await propertyService.setReadyForInspection(selectedProperty._id);
-        setInspectionStep(1);
-      } catch (error: any) {
-        Alert.alert('Error', error.message || 'Failed to set property ready');
-      }
-    } else {
-      setInspectionStep(1);
+    setActionModalVisible(false);
+    if (selectedProperty) {
+      // Calculate units based on property data
+      const totalUnits = selectedProperty.units || 1;
+      setCalculatedUnits(totalUnits);
+      setSelectedCoverage('100');
+      calculateSelectedUnits('100', totalUnits, selectedProperty);
+      setInspectionModalVisible(true);
     }
   };
 
-  const handleStartInspection = () => {
+  const calculateSelectedUnits = (coverage: string, totalUnits: number, property: Property) => {
+    const unitList: string[] = [];
+    let unitsToInspect = 0;
+
+    // Calculate number of units to inspect based on coverage
+    if (coverage === '100') {
+      unitsToInspect = totalUnits;
+    } else if (coverage === '50') {
+      unitsToInspect = Math.ceil(totalUnits / 2);
+    } else if (coverage === 'random') {
+      // HUD guidelines: random sample is typically square root of total units, min 5
+      unitsToInspect = Math.max(5, Math.ceil(Math.sqrt(totalUnits)));
+      // Cap at total units
+      unitsToInspect = Math.min(unitsToInspect, totalUnits);
+    }
+
+    setCalculatedUnits(unitsToInspect);
+
+    // Generate unit names dynamically
+    for (let i = 1; i <= unitsToInspect; i++) {
+      const unitNumber = String(i).padStart(3, '0');
+      unitList.push(`Unit ${unitNumber}`);
+    }
+
+    setSelectedUnits(unitList);
+  };
+
+  const handleCoverageChange = (coverage: string) => {
+    setSelectedCoverage(coverage);
+    if (selectedProperty) {
+      const totalUnits = selectedProperty.units || 1;
+      calculateSelectedUnits(coverage, totalUnits, selectedProperty);
+    }
+  };
+
+  const handleStartInspection = async () => {
+    setInspectionModalVisible(false);
     setActionModalVisible(false);
     setInspectionStep(0);
     setSelectedUnitOption("");
-    console.log(
-      "Starting inspection with option:",
-      selectedUnitOption,
-      "for property:",
-      selectedProperty,
-    );
-    // Navigate to inspection or perform inspection logic here
-    navigation.navigate("MyInspections" as never);
+
+    if (selectedProperty) {
+      try {
+        await propertyService.setReadyForInspection(selectedProperty._id || selectedProperty.id);
+      } catch (error) {
+        console.error('Error setting ready for inspection:', error);
+      }
+      // Navigate directly to AI Inspection with property and selected units
+      navigation.navigate('AIInspection', {
+        property: selectedProperty,
+        selectedUnits: selectedUnits,
+        coverage: selectedCoverage,
+        totalUnits: calculatedUnits
+      });
+    }
   };
 
   const handleCloseActionModal = () => {
@@ -347,6 +439,113 @@ export default function DashboardScreen({
         </View>
       </Modal>
 
+      {/* Ready for Inspection Modal */}
+      <Modal
+        visible={inspectionModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setInspectionModalVisible(false)}
+      >
+        <View style={styles.inspectionModalOverlay}>
+          <View style={styles.inspectionModalContent}>
+            <View style={styles.inspectionModalHeader}>
+              <Text style={styles.inspectionModalTitle}>Ready for Inspection</Text>
+              <TouchableOpacity onPress={() => setInspectionModalVisible(false)}>
+                <Ionicons name="close" size={24} color="#1F2937" />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.inspectionPropertyName}>{selectedProperty?.name}</Text>
+            <Text style={styles.totalUnitsText}>
+              Total Units: <Text style={styles.totalUnitsValue}>{selectedProperty?.units || 1}</Text>
+            </Text>
+
+            <Text style={styles.coverageLabel}>Select Inspection Coverage</Text>
+
+            {COVERAGE_OPTIONS.map((option) => (
+              <TouchableOpacity
+                key={option.value}
+                style={[
+                  styles.coverageOption,
+                  selectedCoverage === option.value && styles.coverageOptionSelected
+                ]}
+                onPress={() => handleCoverageChange(option.value)}
+              >
+                <View style={styles.coverageRadio}>
+                  {selectedCoverage === option.value && <View style={styles.coverageRadioInner} />}
+                </View>
+                <View style={styles.coverageTextContainer}>
+                  <Text style={[
+                    styles.coverageOptionText,
+                    selectedCoverage === option.value && styles.coverageOptionTextSelected
+                  ]}>
+                    {option.label}
+                  </Text>
+                  <Text style={styles.coverageDescription}>{option.description}</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+
+            <View style={styles.calculationResult}>
+              <Text style={styles.calculationLabel}>Units to Inspect:</Text>
+              <Text style={styles.calculationValue}>{calculatedUnits}</Text>
+            </View>
+
+            {selectedUnits.length > 0 && (
+              <View style={styles.selectedUnitsList}>
+                <Text style={styles.selectedUnitsLabel}>Selected Units:</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  <View style={styles.unitChips}>
+                    {selectedUnits.slice(0, 5).map((unit, index) => (
+                      <View key={index} style={styles.unitChip}>
+                        <Text style={styles.unitChipText}>{unit}</Text>
+                      </View>
+                    ))}
+                    {selectedUnits.length > 5 && (
+                      <View style={styles.unitChip}>
+                        <Text style={styles.unitChipText}>+{selectedUnits.length - 5} more</Text>
+                      </View>
+                    )}
+                  </View>
+                </ScrollView>
+              </View>
+            )}
+
+            <TouchableOpacity
+              style={styles.startInspectionButton}
+              onPress={handleStartInspection}
+            >
+              <Ionicons name="camera" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
+              <Text style={styles.startInspectionButtonText}>Start AI Inspection</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Sidebar Modal */}
+      <Modal
+        visible={sidebarVisible}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setSidebarVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.sidebarContainer}>
+            <Sidebar
+              onClose={() => setSidebarVisible(false)}
+              onNavigate={handleSidebarNavigate}
+              onLogout={handleLogout}
+              userType="Inspector"
+            />
+          </View>
+          <TouchableOpacity
+            style={styles.modalBackdrop}
+            activeOpacity={1}
+            onPress={() => setSidebarVisible(false)}
+          />
+        </View>
+      </Modal>
+
       {/* Action Modal */}
       <Modal
         visible={actionModalVisible}
@@ -362,121 +561,37 @@ export default function DashboardScreen({
           <Pressable style={styles.actionModalContent} onPress={() => { }}>
             <Text style={styles.actionModalTitle}>Action</Text>
 
-            {inspectionStep === 0 ? (
-              <>
-                <TouchableOpacity
-                  style={styles.actionButton}
-                  onPress={handleEditProperty}
-                >
-                  <Text style={styles.actionButtonText}>Edit Property</Text>
-                </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={handleEditProperty}
+            >
+              <Text style={styles.actionButtonText}>Edit Property</Text>
+            </TouchableOpacity>
 
-                <TouchableOpacity
-                  style={[styles.actionButton, styles.inspectionModalButton]}
-                  onPress={handleReadyForInspection}
-                >
-                  <Text
-                    style={[
-                      styles.actionButtonText,
-                      styles.inspectionModalButtonText,
-                    ]}
-                  >
-                    Ready For Inspection
-                  </Text>
-                </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.actionButton, styles.inspectionModalButton]}
+              onPress={handleReadyForInspection}
+            >
+              <Text
+                style={[
+                  styles.actionButtonText,
+                  styles.inspectionModalButtonText,
+                ]}
+              >
+                Ready For Inspection
+              </Text>
+            </TouchableOpacity>
 
-                <TouchableOpacity
-                  style={[styles.actionButton, styles.removeButton]}
-                  onPress={handleRemoveProperty}
-                >
-                  <Text
-                    style={[styles.actionButtonText, styles.removeButtonText]}
-                  >
-                    Remove Property
-                  </Text>
-                </TouchableOpacity>
-              </>
-            ) : (
-              <>
-                <Text style={styles.unitSelectionLabel}>
-                  Select Units For Inspection
-                </Text>
-
-                <View style={styles.unitPickerContainer}>
-                  {Platform.OS === 'ios' ? (
-                    <TouchableOpacity
-                      style={styles.iosPickerButton}
-                      onPress={() => setUnitPickerVisible(true)}
-                    >
-                      <Text style={[styles.iosPickerText, !selectedUnitOption && { color: '#9CA3AF' }]}>
-                        {selectedUnitOption ? UNIT_SELECTION_OPTIONS.find(opt => opt.value === selectedUnitOption)?.label || selectedUnitOption : "Select an option"}
-                      </Text>
-                    </TouchableOpacity>
-                  ) : (
-                    <Picker
-                      selectedValue={selectedUnitOption}
-                      onValueChange={(itemValue: string) =>
-                        setSelectedUnitOption(itemValue)
-                      }
-                      style={styles.unitPicker}
-                    >
-                      <Picker.Item
-                        label="Select an option"
-                        value=""
-                        color="#9CA3AF"
-                      />
-                      <Picker.Item
-                        label="Random Select Unit (Max 32 units)"
-                        value="random_32"
-                        color="#1F2937"
-                      />
-                      <Picker.Item
-                        label="Select unit 50%"
-                        value="select_50"
-                        color="#1F2937"
-                      />
-                      <Picker.Item
-                        label="Select unit 100%"
-                        value="select_100"
-                        color="#1F2937"
-                      />
-                    </Picker>
-                  )}
-                  <Ionicons
-                    name="chevron-down"
-                    size={18}
-                    color="#6B7280"
-                    style={styles.pickerIcon}
-                  />
-                </View>
-
-                {selectedUnitOption !== "" && (
-                  <TouchableOpacity
-                    style={[styles.actionButton, styles.startInspectionButton]}
-                    onPress={handleStartInspection}
-                  >
-                    <Text
-                      style={[
-                        styles.actionButtonText,
-                        styles.startInspectionButtonText,
-                      ]}
-                    >
-                      Start Inspection
-                    </Text>
-                  </TouchableOpacity>
-                )}
-
-                <TouchableOpacity
-                  style={[styles.actionButton, styles.backButton]}
-                  onPress={() => {
-                    setInspectionStep(0);
-                    setSelectedUnitOption("");
-                  }}
-                >
-                  <Text style={styles.actionButtonText}>Back</Text>
-                </TouchableOpacity>
-              </>
-            )}
+            <TouchableOpacity
+              style={[styles.actionButton, styles.removeButton]}
+              onPress={handleRemoveProperty}
+            >
+              <Text
+                style={[styles.actionButtonText, styles.removeButtonText]}
+              >
+                Remove Property
+              </Text>
+            </TouchableOpacity>
           </Pressable>
         </View>
       </Modal>
@@ -493,7 +608,7 @@ export default function DashboardScreen({
               style={styles.headerLogo}
               resizeMode="contain"
             />
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => navigation.navigate("Notifications")}>
               <Ionicons
                 name="notifications-outline"
                 size={28}
@@ -521,7 +636,7 @@ export default function DashboardScreen({
               <View style={styles.avatarContainer}>
                 <Ionicons name="person" size={32} color="#FFFFFF" />
               </View>
-              <Text style={styles.greetingText}>Hi, {user?.fullName?.split(' ')[0] || 'User'}</Text>
+              <Text style={styles.greetingText}>Hi, {user?.fullName?.split(' ')[0] || (user?.email ? user.email.split('@')[0] : 'User')}</Text>
             </View>
           </View>
 
@@ -561,13 +676,39 @@ export default function DashboardScreen({
               </View>
             </View>
 
+            {/* Country Picker */}
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Country</Text>
+              {Platform.OS === 'ios' ? (
+                <TouchableOpacity style={styles.iosPickerButton} onPress={() => { setTempCountry(country); setCountryPickerVisible(true); }}>
+                  <Text style={[styles.iosPickerText, !country && styles.placeholderText]}>
+                    {country || 'Select Country'}
+                  </Text>
+                  <Ionicons name="chevron-down" size={20} color="#6B7280" />
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.pickerContainer}>
+                  <Picker
+                    selectedValue={country}
+                    onValueChange={(itemValue: string) => setCountry(itemValue)}
+                    style={styles.picker}
+                    dropdownIconColor="#6B7280"
+                  >
+                    {COUNTRIES.map((c) => (
+                      <Picker.Item key={c.value} label={c.label} value={c.value} color="#1F2937" />
+                    ))}
+                  </Picker>
+                </View>
+              )}
+            </View>
+
             {/* State Picker */}
             <View style={styles.inputContainer}>
               <Text style={styles.label}>State</Text>
               {Platform.OS === 'ios' ? (
                 <TouchableOpacity style={styles.iosPickerButton} onPress={() => { setTempState(state); setStatePickerVisible(true); }}>
                   <Text style={[styles.iosPickerText, !state && styles.placeholderText]}>
-                    {state ? US_STATES.find(s => s.value === state)?.label || 'Select State' : 'Select State'}
+                    {state ? states.find(s => s.value === state)?.label || 'Select State' : 'Select State'}
                   </Text>
                   <Ionicons name="chevron-down" size={20} color="#6B7280" />
                 </TouchableOpacity>
@@ -580,7 +721,7 @@ export default function DashboardScreen({
                     dropdownIconColor="#6B7280"
                   >
                     <Picker.Item label="Select State" value="" color="#6B7280" />
-                    {US_STATES.map((stateItem) => (
+                    {states.map((stateItem) => (
                       <Picker.Item key={stateItem.value} label={stateItem.label} value={stateItem.value} color="#1F2937" />
                     ))}
                   </Picker>
@@ -689,7 +830,7 @@ export default function DashboardScreen({
               </View>
               <Picker selectedValue={tempState} onValueChange={setTempState} style={styles.iosPickerWheel}>
                 <Picker.Item label="Select State" value="" color="#6B7280" />
-                {US_STATES.map((stateItem) => (
+                {states.map((stateItem) => (
                   <Picker.Item key={stateItem.value} label={stateItem.label} value={stateItem.value} color="#007AFF" />
                 ))}
               </Picker>
@@ -726,20 +867,44 @@ export default function DashboardScreen({
         </Modal>
       )}
 
-      {/* iOS Unit Selection Picker Modal */}
+      {/* iOS Country Picker Modal */}
+      {Platform.OS === 'ios' && (
+        <Modal visible={countryPickerVisible} transparent animationType="slide">
+          <View style={styles.iosModalOverlay}>
+            <View style={styles.iosModalContent}>
+              <View style={styles.iosModalHeader}>
+                <Text style={styles.iosModalTitle}>Select Country</Text>
+                <TouchableOpacity onPress={() => { setCountry(tempCountry); setCountryPickerVisible(false); }}>
+                  <Text style={styles.iosModalDone}>Done</Text>
+                </TouchableOpacity>
+              </View>
+              <Picker selectedValue={tempCountry} onValueChange={setTempCountry} style={styles.iosPickerWheel}>
+                {COUNTRIES.map((c) => (
+                  <Picker.Item key={c.value} label={c.label} value={c.value} color="#007AFF" />
+                ))}
+              </Picker>
+              <TouchableOpacity style={styles.iosCancelButton} onPress={() => setCountryPickerVisible(false)}>
+                <Text style={styles.iosCancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+      )}
+
+      {/* iOS Unit Selection Picker Modal - MOVED OUTSIDE ACTION MODAL */}
       {Platform.OS === 'ios' && (
         <Modal visible={unitPickerVisible} transparent animationType="slide">
           <View style={styles.iosModalOverlay}>
             <View style={styles.iosModalContent}>
               <View style={styles.iosModalHeader}>
                 <Text style={styles.iosModalTitle}>Select Units For Inspection</Text>
-                <TouchableOpacity onPress={() => { setUnitPickerVisible(false); }}>
+                <TouchableOpacity onPress={() => { setSelectedUnitOption(tempUnitOption); setUnitPickerVisible(false); }}>
                   <Text style={styles.iosModalDone}>Done</Text>
                 </TouchableOpacity>
               </View>
-              <Picker 
-                selectedValue={selectedUnitOption} 
-                onValueChange={(value) => setSelectedUnitOption(value)} 
+              <Picker
+                selectedValue={tempUnitOption}
+                onValueChange={(value) => setTempUnitOption(value)}
                 style={styles.iosPickerWheel}
               >
                 <Picker.Item label="Select an option" value="" color="#6B7280" />
@@ -971,20 +1136,7 @@ const styles = StyleSheet.create({
     color: '#0E7490',
     fontWeight: '600',
   },
-  iosPickerButton: {
-    height: 55,
-    justifyContent: 'center',
-    paddingHorizontal: 12,
-  },
-  iosPickerText: {
-    fontSize: 16,
-    color: '#1F2937',
-  },
-  iosPicker: {
-    height: 250,
-    width: '100%',
-    backgroundColor: '#FFFFFF',
-  },
+
 
   propertyId: {
     color: "#0E7490",
@@ -1107,14 +1259,6 @@ const styles = StyleSheet.create({
     height: 50,
     color: "#1F2937",
   },
-  startInspectionButton: {
-    backgroundColor: "#22C55E",
-    borderColor: "#22C55E",
-    borderWidth: 0,
-  },
-  startInspectionButtonText: {
-    color: "#FFFFFF",
-  },
   backButton: {
     backgroundColor: "#6B7280",
     borderColor: "#6B7280",
@@ -1166,7 +1310,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   iosModalContent: {
-    backgroundColor: '#2C2C2E',
+    backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingBottom: 30,
@@ -1178,24 +1322,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 15,
     borderBottomWidth: 1,
-    borderBottomColor: '#3A3A3C',
+    borderBottomColor: '#E5E7EB',
   },
   iosModalTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: '#1F2937',
   },
   iosModalDone: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#007AFF',
+    color: '#0EA5E9',
   },
   iosPickerWheel: {
-    backgroundColor: '#2C2C2E',
+    backgroundColor: '#FFFFFF',
   },
   iosCancelButton: {
     marginHorizontal: 16,
-    backgroundColor: '#3A3A3C',
+    backgroundColor: '#F3F4F6',
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
@@ -1203,6 +1347,160 @@ const styles = StyleSheet.create({
   iosCancelButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#007AFF',
+    color: '#EF4444',
+  },
+  // Ready for Inspection Modal Styles
+  inspectionModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  inspectionModalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    width: '100%',
+    maxWidth: 400,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  inspectionModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  inspectionModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  inspectionPropertyName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#0E7490',
+    marginBottom: 4,
+  },
+  totalUnitsText: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 20,
+  },
+  totalUnitsValue: {
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  coverageLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 12,
+  },
+  coverageOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+    borderRadius: 10,
+    marginBottom: 10,
+  },
+  coverageOptionSelected: {
+    borderColor: '#0E7490',
+    backgroundColor: '#F0FDFA',
+  },
+  coverageRadio: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: '#D1D5DB',
+    marginRight: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  coverageRadioInner: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#0E7490',
+  },
+  coverageTextContainer: {
+    flex: 1,
+  },
+  coverageOptionText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  coverageOptionTextSelected: {
+    color: '#0E7490',
+  },
+  coverageDescription: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  calculationResult: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#F0FDFA',
+    borderRadius: 10,
+    padding: 14,
+    marginTop: 16,
+  },
+  calculationLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  calculationValue: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#0E7490',
+  },
+  selectedUnitsList: {
+    marginTop: 16,
+  },
+  selectedUnitsLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6B7280',
+    marginBottom: 8,
+  },
+  unitChips: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  unitChip: {
+    backgroundColor: '#E0F2FE',
+    borderRadius: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+  },
+  unitChipText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#0E7490',
+  },
+  startInspectionButton: {
+    backgroundColor: '#0E7490',
+    borderRadius: 10,
+    paddingVertical: 16,
+    marginTop: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  startInspectionButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
   },
 });

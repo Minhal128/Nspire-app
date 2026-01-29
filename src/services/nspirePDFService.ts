@@ -20,6 +20,169 @@ import {
   DeficiencySeverity,
 } from '../types/nspireReport';
 
+const getImageExtension = (uri: string): string => {
+  const cleanUri = uri.split('?')[0].split('#')[0];
+  const extension = cleanUri.toLowerCase().split('.').pop();
+  if (!extension || extension.length > 5) {
+    return 'jpeg';
+  }
+  return extension;
+};
+
+const getImageMimeType = (extension: string): string => {
+  const mimeTypes: Record<string, string> = {
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    png: 'image/png',
+    gif: 'image/gif',
+    webp: 'image/webp',
+  };
+  return mimeTypes[extension] || 'image/jpeg';
+};
+
+/**
+ * Convert local image URI to base64 data URL for PDF embedding
+ */
+const convertImageToBase64DataUrl = async (imageUri: string): Promise<string> => {
+  try {
+    if (!imageUri) {
+      console.warn('Empty image URI provided');
+      return '';
+    }
+
+    console.log('Converting image:', imageUri.substring(0, 100) + '...');
+
+    // If already a data URL, return as-is
+    if (imageUri.startsWith('data:')) {
+      console.log('Image is already a data URL');
+      return imageUri;
+    }
+
+    // Handle Cloudinary URLs (remote) and other HTTP URLs
+    if (imageUri.includes('cloudinary.com') || imageUri.startsWith('http://') || imageUri.startsWith('https://')) {
+      console.log('Remote image detected, using URL directly:', imageUri.substring(0, 50) + '...');
+      // For WebView and expo-print, remote URLs work fine and save memory/processing
+      return imageUri;
+    }
+
+    // Handle local file URIs
+    console.log('Processing local image file');
+    try {
+      let localPath = imageUri;
+
+      // Handle different URI formats
+      if (localPath.startsWith('file://')) {
+        localPath = localPath.replace('file://', '');
+      }
+
+      // Determine image type
+      const extension = getImageExtension(imageUri);
+      const mimeType = getImageMimeType(extension);
+
+      console.log('Reading local file as base64...');
+      const base64 = await FileSystem.readAsStringAsync(imageUri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+
+      if (!base64) {
+        console.warn('Failed to read local image as base64');
+        return '';
+      }
+
+      const dataUrl = `data:${mimeType};base64,${base64}`;
+      console.log('Successfully converted local image to data URL');
+      return dataUrl;
+    } catch (localError) {
+      console.error('Error processing local image:', localError);
+      return '';
+    }
+  } catch (error) {
+    console.error('Error in convertImageToBase64DataUrl:', error);
+    return '';
+  }
+};
+
+const sleep = (ms: number) => new Promise(res => setTimeout(res, ms));
+
+const generateTempFilename = (extension: string) => {
+  // Use random component to avoid collisions under concurrent processing
+  const rand = Math.floor(Math.random() * 1e9);
+  return `${FileSystem.cacheDirectory}temp_pdf_image_${Date.now()}_${rand}.${extension}`;
+};
+
+const downloadWithRetries = async (sourceUri: string, destPath: string, attempts = 3): Promise<string | null> => {
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const result = await FileSystem.downloadAsync(sourceUri, destPath);
+      // result.uri should point to the actual file
+      const fileUri = (result && (result as any).uri) || destPath;
+      let info = await FileSystem.getInfoAsync(fileUri);
+      if (info.exists) return fileUri;
+      // Try stripping file:// scheme if present
+      if (fileUri.startsWith('file://')) {
+        const altPath = fileUri.replace('file://', '');
+        info = await FileSystem.getInfoAsync(altPath);
+        if (info.exists) return altPath;
+      }
+      console.warn(`Download attempt ${i + 1} completed but file not found at ${fileUri}`);
+    } catch (err) {
+      console.warn(`Download attempt ${i + 1} failed for ${sourceUri}:`, err);
+    }
+    // backoff
+    await sleep(300 * (i + 1));
+  }
+  return null;
+};
+
+/**
+ * Process all images in the report and convert to base64 data URLs
+ */
+const processReportImages = async (report: NSPIREInspectionReport): Promise<NSPIREInspectionReport> => {
+  console.log('Processing report images...');
+  // Deep clone the report to avoid mutating the original
+  const processedReport = JSON.parse(JSON.stringify(report)) as NSPIREInspectionReport;
+
+  // Process deficiency images with individual error handling
+  if (processedReport.deficiencies && processedReport.deficiencies.length > 0) {
+    console.log(`Processing ${processedReport.deficiencies.length} deficiency images...`);
+
+    // Process images sequentially to avoid overwhelming the system
+    for (let index = 0; index < processedReport.deficiencies.length; index++) {
+      const def = processedReport.deficiencies[index];
+
+      if (def.imageUri) {
+        try {
+          console.log(`Converting image ${index + 1}/${processedReport.deficiencies.length}: ${def.imageUri.substring(0, 50)}...`);
+
+          // Add timeout for individual image conversion
+          const conversionPromise = convertImageToBase64DataUrl(def.imageUri);
+          const timeoutPromise = new Promise<string>((_, reject) =>
+            setTimeout(() => reject(new Error('Image conversion timeout')), 30000)
+          );
+
+          const base64DataUrl = await Promise.race([conversionPromise, timeoutPromise]);
+
+          if (base64DataUrl && base64DataUrl.startsWith('data:')) {
+            processedReport.deficiencies[index].imageUri = base64DataUrl;
+            console.log(`✅ Successfully converted image ${index + 1}`);
+          } else {
+            console.warn(`⚠️ Image ${index + 1} conversion returned empty result, removing from report`);
+            processedReport.deficiencies[index].imageUri = undefined;
+          }
+        } catch (imageError: any) {
+          console.error(`❌ Error converting image ${index + 1}:`, imageError.message);
+          processedReport.deficiencies[index].imageUri = undefined;
+        }
+      }
+    }
+
+    const successfulImages = processedReport.deficiencies.filter(def => def.imageUri).length;
+    console.log(`Image processing complete: ${successfulImages}/${processedReport.deficiencies.length} images converted successfully`);
+  }
+
+  return processedReport;
+};
+
 /**
  * Generate PDF HTML content from NSPIRE report data
  */
@@ -28,7 +191,7 @@ export const generateNSPIREReportHTML = (
   options: PDFGenerationOptions = DEFAULT_PDF_OPTIONS
 ): string => {
   const styles = generateStyles(options);
-  
+
   let html = `
 <!DOCTYPE html>
 <html lang="en">
@@ -59,7 +222,7 @@ export const generateNSPIREReportHTML = (
 </body>
 </html>
   `;
-  
+
   return html;
 };
 
@@ -357,19 +520,34 @@ const generateStyles = (options: PDFGenerationOptions): string => {
       object-fit: cover;
       border-radius: 4px;
       border: 1px solid #D1D5DB;
+      display: block;
     }
     
     .image-placeholder {
       width: 100px;
       height: 75px;
-      background: #F3F4F6;
+      background: #F9FAFB;
       border: 2px dashed #D1D5DB;
       border-radius: 4px;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
-      font-size: 8pt;
-      color: #9CA3AF;
+      font-size: 7pt;
+      color: #6B7280;
+      text-align: center;
+      padding: 4px;
+    }
+    
+    .placeholder-icon {
+      font-size: 16pt;
+      margin-bottom: 2px;
+      opacity: 0.5;
+    }
+    
+    .placeholder-text {
+      font-size: 6pt;
+      line-height: 1.2;
     }
     
     .location-cell {
@@ -879,10 +1057,22 @@ const generateDeficiencyTable = (deficiencies: DeficiencyEntry[], options: PDFGe
           ${deficiencies.map(def => `
             <tr class="avoid-break">
               <td>
-                ${options.includeImages && def.imageUri 
-                  ? `<img src="${def.imageUri}" alt="Deficiency" class="deficiency-image" />`
-                  : `<div class="image-placeholder">No Image</div>`
-                }
+                ${options.includeImages && def.imageUri
+      ? (def.imageUri.startsWith('data:') || def.imageUri.startsWith('http'))
+        ? `<img src="${def.imageUri}" alt="Deficiency Image" class="deficiency-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+                         <div class="image-placeholder" style="display: none;">
+                           <div class="placeholder-icon">📷</div>
+                           <div class="placeholder-text">Image Failed to Load</div>
+                         </div>`
+        : `<div class="image-placeholder">
+                           <div class="placeholder-icon">📷</div>
+                           <div class="placeholder-text">Image Processing Failed</div>
+                         </div>`
+      : `<div class="image-placeholder">
+                       <div class="placeholder-icon">📷</div>
+                       <div class="placeholder-text">No Image Available</div>
+                     </div>`
+    }
               </td>
               <td class="location-cell">
                 <div class="location-item">
@@ -999,20 +1189,145 @@ class NSPIREPDFReportService {
     options: PDFGenerationOptions = DEFAULT_PDF_OPTIONS
   ): Promise<{ uri: string; success: boolean; error?: string }> {
     try {
-      const html = generateNSPIREReportHTML(report, options);
-      
-      const { uri } = await Print.printToFileAsync({
+      console.log('Starting PDF generation...');
+      console.log('Report data:', {
+        deficiencies: report.deficiencies?.length || 0,
+        metadata: report.metadata?.inspectionNo || 'Unknown',
+        includeImages: options.includeImages
+      });
+
+      let processedReport = report;
+
+      if (options.includeImages) {
+        console.log('Processing images for PDF...');
+        try {
+          // Process images with timeout to prevent hanging
+          const imageProcessingPromise = processReportImages(report);
+          const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => {
+              console.error('Image processing timeout reached (60s)');
+              reject(new Error('Image conversion timeout'));
+            }, 60000)
+          );
+
+          processedReport = await Promise.race([imageProcessingPromise, timeoutPromise]) as NSPIREInspectionReport;
+          console.log('Images processed successfully');
+        } catch (imageError) {
+          console.warn('Image processing failed, generating PDF without images:', imageError);
+          // Create a version without images
+          processedReport = {
+            ...report,
+            deficiencies: report.deficiencies.map(def => ({
+              ...def,
+              imageUri: undefined
+            }))
+          };
+        }
+      }
+
+      console.log('Generating HTML...');
+      const html = generateNSPIREReportHTML(processedReport, options);
+
+      // Validate HTML is not empty
+      if (!html || html.trim().length < 100) {
+        throw new Error('Generated HTML is empty or too short');
+      }
+
+      console.log('HTML generated successfully, length:', html.length);
+
+      console.log('Converting HTML to PDF...');
+      const printResult = await Print.printToFileAsync({
         html,
         base64: false,
+        width: options.pageSize === 'a4' ? 595 : 612,
+        height: options.pageSize === 'a4' ? 842 : 792,
+        margins: {
+          left: 50,
+          right: 50,
+          top: 50,
+          bottom: 50,
+        },
       });
-      
-      return { uri, success: true };
+
+      // Validate PDF was created
+      if (!printResult.uri) {
+        throw new Error('PDF generation returned empty URI');
+      }
+
+      // Check if PDF file exists
+      const pdfInfo = await FileSystem.getInfoAsync(printResult.uri);
+      if (!pdfInfo.exists) {
+        throw new Error('Generated PDF file does not exist');
+      }
+
+      console.log('PDF generated successfully:', printResult.uri);
+      console.log('PDF file size:', pdfInfo.size, 'bytes');
+
+      return { uri: printResult.uri, success: true };
     } catch (error: any) {
       console.error('PDF Generation Error:', error);
-      return { 
-        uri: '', 
-        success: false, 
-        error: error.message || 'Failed to generate PDF' 
+      console.error('Error stack:', error.stack);
+      return {
+        uri: '',
+        success: false,
+        error: error.message || 'Failed to generate PDF'
+      };
+    }
+  }
+
+  /**
+   * Generate a simple test PDF to verify PDF generation works
+   */
+  async generateTestPDF(): Promise<{ uri: string; success: boolean; error?: string }> {
+    try {
+      console.log('Generating test PDF...');
+
+      const testHTML = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Test PDF</title>
+  <style>
+    body { 
+      font-family: Arial, sans-serif; 
+      padding: 20px; 
+      background: white;
+    }
+    .header { 
+      color: #0E7490; 
+      font-size: 24px; 
+      margin-bottom: 20px; 
+    }
+    .content { 
+      font-size: 14px; 
+      line-height: 1.5; 
+    }
+  </style>
+</head>
+<body>
+  <div class="header">INSPIRE Test Report</div>
+  <div class="content">
+    <p>This is a test PDF to verify PDF generation is working correctly.</p>
+    <p>Generated at: ${new Date().toLocaleString()}</p>
+    <p>If you can see this content, PDF generation is working.</p>
+  </div>
+</body>
+</html>`;
+
+      const { uri } = await Print.printToFileAsync({
+        html: testHTML,
+        base64: false,
+      });
+
+      console.log('Test PDF generated successfully:', uri);
+      return { uri, success: true };
+    } catch (error: any) {
+      console.error('Test PDF Generation Error:', error);
+      return {
+        uri: '',
+        success: false,
+        error: error.message || 'Failed to generate test PDF'
       };
     }
   }
@@ -1026,14 +1341,14 @@ class NSPIREPDFReportService {
   ): Promise<{ success: boolean; error?: string }> {
     try {
       const result = await this.generatePDF(report, options);
-      
+
       if (!result.success) {
         throw new Error(result.error);
       }
-      
+
       // Check if sharing is available
       const isAvailable = await Sharing.isAvailableAsync();
-      
+
       if (isAvailable) {
         await Sharing.shareAsync(result.uri, {
           mimeType: 'application/pdf',
@@ -1042,16 +1357,16 @@ class NSPIREPDFReportService {
         });
         return { success: true };
       } else {
-        return { 
-          success: false, 
-          error: 'Sharing is not available on this device' 
+        return {
+          success: false,
+          error: 'Sharing is not available on this device'
         };
       }
     } catch (error: any) {
       console.error('Share PDF Error:', error);
-      return { 
-        success: false, 
-        error: error.message || 'Failed to share PDF' 
+      return {
+        success: false,
+        error: error.message || 'Failed to share PDF'
       };
     }
   }
@@ -1066,25 +1381,25 @@ class NSPIREPDFReportService {
   ): Promise<{ uri: string; success: boolean; error?: string }> {
     try {
       const result = await this.generatePDF(report, options);
-      
+
       if (!result.success) {
         throw new Error(result.error);
       }
-      
+
       const destinationUri = `${FileSystem.documentDirectory}${filename}.pdf`;
-      
+
       await FileSystem.moveAsync({
         from: result.uri,
         to: destinationUri,
       });
-      
+
       return { uri: destinationUri, success: true };
     } catch (error: any) {
       console.error('Save PDF Error:', error);
-      return { 
-        uri: '', 
-        success: false, 
-        error: error.message || 'Failed to save PDF' 
+      return {
+        uri: '',
+        success: false,
+        error: error.message || 'Failed to save PDF'
       };
     }
   }
@@ -1097,22 +1412,27 @@ class NSPIREPDFReportService {
     options: PDFGenerationOptions = DEFAULT_PDF_OPTIONS
   ): Promise<{ success: boolean; error?: string }> {
     try {
-      const html = generateNSPIREReportHTML(report, options);
-      
+      // Process images to convert local URIs to base64 data URLs
+      const processedReport = options.includeImages
+        ? await processReportImages(report)
+        : report;
+
+      const html = generateNSPIREReportHTML(processedReport, options);
+
       await Print.printAsync({ html });
-      
+
       return { success: true };
     } catch (error: any) {
       console.error('Print PDF Error:', error);
-      return { 
-        success: false, 
-        error: error.message || 'Failed to print PDF' 
+      return {
+        success: false,
+        error: error.message || 'Failed to print PDF'
       };
     }
   }
 
   /**
-   * Generate HTML preview
+   * Generate HTML preview (synchronous - images may not display correctly)
    */
   generateHTMLPreview(
     report: NSPIREInspectionReport,
@@ -1122,16 +1442,31 @@ class NSPIREPDFReportService {
   }
 
   /**
+   * Generate HTML preview with processed images (async)
+   */
+  async generateHTMLPreviewAsync(
+    report: NSPIREInspectionReport,
+    options: PDFGenerationOptions = DEFAULT_PDF_OPTIONS
+  ): Promise<string> {
+    // Process images to convert local URIs to base64 data URLs
+    const processedReport = options.includeImages
+      ? await processReportImages(report)
+      : report;
+
+    return generateNSPIREReportHTML(processedReport, options);
+  }
+
+  /**
    * Create sample/mock report for testing
    */
   createSampleReport(): NSPIREInspectionReport {
     const now = new Date();
-    
+
     return {
       reportId: `RPT-${Date.now()}`,
       version: '1.0',
       generatedAt: now.toISOString(),
-      
+
       metadata: {
         inspectionNo: `INSP-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
         inspectionType: 'General NSPIRE',
@@ -1152,14 +1487,14 @@ class NSPIREPDFReportService {
         inspectorName: 'Inspector Smith',
         inspectorId: 'INS-00567',
       },
-      
+
       inspectionData: [
         { type: 'Building', propertyTotal: 5, sampleSize: 3, totalUnitsInspected: 3 },
         { type: 'Unit', propertyTotal: 100, sampleSize: 23, totalUnitsInspected: 23 },
         { type: 'Site', propertyTotal: 1, sampleSize: 1, totalUnitsInspected: 1 },
         { type: 'Common Area', propertyTotal: 8, sampleSize: 8, totalUnitsInspected: 8 },
       ],
-      
+
       occupancyInfo: {
         totalUnits: 100,
         occupiedUnits: 94,
@@ -1168,7 +1503,7 @@ class NSPIREPDFReportService {
         assistedUnits: 75,
         marketRateUnits: 25,
       },
-      
+
       summary: {
         lifeThreatening: 1,
         severe: 3,
@@ -1180,14 +1515,14 @@ class NSPIREPDFReportService {
         repeatDeficiencies: 5,
         newDeficiencies: 19,
       },
-      
+
       categoryBreakdown: [
         { category: 'Electrical System', nspireSection: 'BS-2', deficiencyCount: 5, totalDeductions: 15, lifeThreatening: 1, severe: 1, moderate: 2, low: 1 },
         { category: 'Plumbing', nspireSection: 'BS-1/BS-6', deficiencyCount: 7, totalDeductions: 12, lifeThreatening: 0, severe: 1, moderate: 3, low: 3 },
         { category: 'Structural', nspireSection: 'BE-3/BE-6', deficiencyCount: 4, totalDeductions: 8, lifeThreatening: 0, severe: 0, moderate: 2, low: 2 },
         { category: 'Safety/Fire', nspireSection: 'BS-4/HS', deficiencyCount: 8, totalDeductions: 20, lifeThreatening: 0, severe: 1, moderate: 1, low: 6 },
       ],
-      
+
       deficiencies: [
         {
           id: '1',
@@ -1296,9 +1631,9 @@ class NSPIREPDFReportService {
           status: 'Open',
         },
       ],
-      
+
       generalComments: 'Overall, the property is in fair condition with some areas requiring immediate attention. The management has been cooperative during the inspection process. Building A electrical systems need comprehensive review. Building B plumbing shows signs of aging infrastructure.',
-      
+
       recommendations: [
         'Address all Life-Threatening deficiencies within 24 hours',
         'Schedule professional electrical inspection for Building A',
@@ -1306,7 +1641,7 @@ class NSPIREPDFReportService {
         'Review and update preventive maintenance schedule for plumbing systems',
         'Install additional lighting in common areas to meet illumination standards',
       ],
-      
+
       certification: {
         certifiedBy: 'Inspector Smith',
         certificationDate: now.toLocaleDateString(),

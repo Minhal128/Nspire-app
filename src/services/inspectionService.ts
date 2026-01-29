@@ -113,6 +113,34 @@ class InspectionService {
   }
 
   /**
+   * Get all inspections across the system (for management portal)
+   */
+  async getAllInspections(filters?: InspectionFilters): Promise<{ success: boolean; inspections: Inspection[]; pagination: any }> {
+    try {
+      const params = new URLSearchParams();
+      
+      if (filters) {
+        if (filters.status) params.append('status', filters.status);
+        if (filters.property) params.append('property', filters.property);
+        if (filters.page) params.append('page', filters.page.toString());
+        if (filters.limit) params.append('limit', filters.limit.toString());
+      }
+
+      const queryString = params.toString();
+      const endpoint = queryString ? `/admin/inspections?${queryString}` : '/admin/inspections';
+      
+      console.log('Fetching all inspections from endpoint:', endpoint);
+      const response = await api.get<{ success: boolean; inspections: Inspection[]; pagination: any }>(endpoint);
+      console.log('All inspections response:', JSON.stringify(response).substring(0, 200));
+      return response;
+    } catch (error: any) {
+      console.error('Error in getAllInspections:', error.message);
+      // Return empty data on error (e.g., auth issues) instead of throwing
+      return { success: false, inspections: [], pagination: { page: 1, limit: 10, total: 0, pages: 0 } };
+    }
+  }
+
+  /**
    * Get a single inspection by ID
    */
   async getInspection(id: string): Promise<{ success: boolean; inspection: Inspection }> {

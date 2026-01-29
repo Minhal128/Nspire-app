@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  Image, 
-  TouchableOpacity, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  Image,
+  TouchableOpacity,
   SafeAreaView,
   ScrollView,
   Modal,
@@ -23,7 +23,7 @@ interface ManagementDashboardScreenProps {
 
 export default function ManagementDashboardScreen({ navigation }: ManagementDashboardScreenProps) {
   console.log('ManagementDashboardScreen: Component mounted');
-  
+
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -48,7 +48,7 @@ export default function ManagementDashboardScreen({ navigation }: ManagementDash
     needsAttentionCount: 0,
     nonCompliantCount: 0
   });
-  
+
   // State for New Inspection Modal
   const [newInspectionModalVisible, setNewInspectionModalVisible] = useState(false);
   const [allProperties, setAllProperties] = useState<Property[]>([]);
@@ -59,27 +59,29 @@ export default function ManagementDashboardScreen({ navigation }: ManagementDash
   const loadInitialData = useCallback(async () => {
     try {
       // Add timeout to prevent hanging
-      const timeoutPromise = new Promise((_, reject) => 
+      const timeoutPromise = new Promise((_, reject) =>
         setTimeout(() => reject(new Error('Request timeout')), 10000)
       );
-      
+
       const dataPromise = (async () => {
         const storedUser = await authService.getStoredUser();
-        
+
         // Role-based access control
-        const allowedRoles = ['management', 'supervisor', 'admin'];
+        const allowedRoles = ['management', 'supervisor', 'admin', 'property-manager'];
         if (!storedUser || !allowedRoles.includes(storedUser.role)) {
           Alert.alert(
             'Access Denied',
             'You do not have permission to access the Management portal.',
-            [{ text: 'OK', onPress: () => {
-              authService.logout();
-              navigation.reset({ index: 0, routes: [{ name: 'Boarding' }] });
-            }}]
+            [{
+              text: 'OK', onPress: () => {
+                authService.logout();
+                navigation.reset({ index: 0, routes: [{ name: 'Boarding' }] });
+              }
+            }]
           );
           return;
         }
-        
+
         setUser(storedUser);
         await fetchData();
       })();
@@ -90,7 +92,7 @@ export default function ManagementDashboardScreen({ navigation }: ManagementDash
       // If there's an error, still show the UI but with empty data
       setProperties([]);
       setInspections([]);
-      
+
       // Show an alert to inform the user about the issue
       Alert.alert(
         'Connection Issue',
@@ -118,13 +120,13 @@ export default function ManagementDashboardScreen({ navigation }: ManagementDash
       if (inspectionsResponse.success && inspectionsResponse.inspections) {
         const inspectionData = inspectionsResponse.inspections || [];
         setInspections(inspectionData);
-        
+
         // Calculate compliance stats
         const compliant = inspectionData.filter((i: Inspection) => i.status === 'completed' || (i.complianceScore && i.complianceScore >= 80)).length;
         const needsAttention = inspectionData.filter((i: Inspection) => i.status === 'in-progress' || (i.complianceScore && i.complianceScore >= 50 && i.complianceScore < 80)).length;
         const nonCompliant = inspectionData.filter((i: Inspection) => i.complianceScore && i.complianceScore < 50).length;
         const total = inspectionData.length || 1;
-        
+
         setComplianceStats({
           complianceScore: Math.round((compliant / total) * 100),
           compliantCount: compliant,
@@ -147,11 +149,11 @@ export default function ManagementDashboardScreen({ navigation }: ManagementDash
   useEffect(() => {
     loadInitialData();
   }, [loadInitialData]);
-  
+
   const handleMenuPress = () => {
     setSidebarVisible(true);
   };
-  
+
   const handleSidebarNavigate = (screen: string) => {
     setSidebarVisible(false);
     if (screen === 'Dashboard') {
@@ -160,14 +162,14 @@ export default function ManagementDashboardScreen({ navigation }: ManagementDash
     } else if (screen === 'MyInspections') {
       navigation.navigate('MyInspections');
     } else if (screen === 'Reports') {
-      navigation.navigate('Reports');
+      navigation.navigate('ManagementReports');
     } else if (screen === 'Analytics') {
       navigation.navigate('Analytics');
     } else if (screen === 'Settings') {
       navigation.navigate('Settings');
     }
   };
-  
+
   const handleLogout = async () => {
     setSidebarVisible(false);
     await authService.logout();
@@ -209,15 +211,15 @@ export default function ManagementDashboardScreen({ navigation }: ManagementDash
     }
 
     setNewInspectionModalVisible(false);
-    
+
     // Navigate to InspectionChecklist with selected property and unit
-    navigation.navigate('InspectionChecklist', { 
+    navigation.navigate('InspectionChecklist', {
       property: selectedProperty,
-      unit: selectedUnit ? { 
-        id: selectedUnit, 
+      unit: selectedUnit ? {
+        id: selectedUnit,
         name: `Unit ${selectedUnit}`,
-        unitNumber: selectedUnit 
-      } : null 
+        unitNumber: selectedUnit
+      } : null
     });
   };
 
@@ -249,7 +251,7 @@ export default function ManagementDashboardScreen({ navigation }: ManagementDash
               userType="Management"
             />
           </View>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.modalBackdrop}
             activeOpacity={1}
             onPress={() => setSidebarVisible(false)}
@@ -268,7 +270,7 @@ export default function ManagementDashboardScreen({ navigation }: ManagementDash
           <View style={styles.inspectionModalContent}>
             <View style={styles.inspectionModalHeader}>
               <Text style={styles.inspectionModalTitle}>Start New Inspection</Text>
-              <TouchableOpacity 
+              <TouchableOpacity
                 onPress={() => setNewInspectionModalVisible(false)}
                 style={styles.closeButton}
               >
@@ -284,7 +286,19 @@ export default function ManagementDashboardScreen({ navigation }: ManagementDash
             ) : (
               <ScrollView style={styles.inspectionModalBody} showsVerticalScrollIndicator={false}>
                 {/* Property Selection */}
-                <Text style={styles.inputLabel}>Select Property *</Text>
+                <View style={styles.propertyLabelRow}>
+                  <Text style={[styles.inputLabel, { marginBottom: 0 }]}>Select Property *</Text>
+                  <TouchableOpacity
+                    style={styles.addPropertyInlineButton}
+                    onPress={() => {
+                      setNewInspectionModalVisible(false);
+                      navigation.navigate('AddProperty' as never);
+                    }}
+                  >
+                    <Ionicons name="add-circle-outline" size={18} color="#0E7490" />
+                    <Text style={styles.addPropertyInlineText}>Add Property</Text>
+                  </TouchableOpacity>
+                </View>
                 {allProperties.length === 0 ? (
                   <View style={styles.noPropertiesContainer}>
                     <Ionicons name="home-outline" size={40} color="#9CA3AF" />
@@ -365,13 +379,13 @@ export default function ManagementDashboardScreen({ navigation }: ManagementDash
             )}
 
             <View style={styles.inspectionModalFooter}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.cancelModalButton}
                 onPress={() => setNewInspectionModalVisible(false)}
               >
                 <Text style={styles.cancelModalButtonText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[
                   styles.startModalButton,
                   !selectedProperty && styles.startModalButtonDisabled
@@ -393,19 +407,19 @@ export default function ManagementDashboardScreen({ navigation }: ManagementDash
             <TouchableOpacity onPress={handleMenuPress}>
               <Ionicons name="menu" size={28} color="#1F2937" />
             </TouchableOpacity>
-            <Image 
-              source={require('../../logo.png')} 
+            <Image
+              source={require('../../logo.png')}
               style={styles.headerLogo}
               resizeMode="contain"
             />
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => navigation.navigate("Notifications" as any)}>
               <Ionicons name="notifications-outline" size={28} color="#1F2937" />
             </TouchableOpacity>
           </View>
         </View>
 
-        <ScrollView 
-          style={styles.scrollView} 
+        <ScrollView
+          style={styles.scrollView}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -421,7 +435,7 @@ export default function ManagementDashboardScreen({ navigation }: ManagementDash
             <View style={styles.avatarContainer}>
               <Ionicons name="person" size={28} color="#FFFFFF" />
             </View>
-            <Text style={styles.greetingText}>Hi, {user?.fullName?.split(' ')[0] || 'User'}</Text>
+            <Text style={styles.greetingText}>Hi, {user?.fullName?.split(' ')[0] || (user?.email ? user.email.split('@')[0] : 'User')}</Text>
           </View>
 
           {loading ? (
@@ -437,7 +451,7 @@ export default function ManagementDashboardScreen({ navigation }: ManagementDash
                     <Ionicons name="home" size={20} color="#1F2937" />
                     <Text style={styles.sectionTitle}>My Properties</Text>
                   </View>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={styles.addPropertyButton}
                     onPress={() => navigation.navigate('AddProperty')}
                   >
@@ -456,15 +470,15 @@ export default function ManagementDashboardScreen({ navigation }: ManagementDash
                       <Text style={styles.propertyName}>{property.name}</Text>
                       <Text style={styles.propertyLocation}>{property.city}, {property.state}</Text>
                       <Text style={styles.propertyUnits}>{property.units || 0} Units</Text>
-                      
+
                       <View style={styles.propertyActions}>
-                        <TouchableOpacity 
+                        <TouchableOpacity
                           style={styles.viewUnitsButton}
                           onPress={() => navigation.navigate('UnitInspection', { propertyId: property._id })}
                         >
                           <Text style={styles.viewUnitsText}>View Units</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity 
+                        <TouchableOpacity
                           style={styles.startInspectionButton}
                           onPress={() => navigation.navigate('InspectionChecklist', { propertyId: property._id })}
                         >
@@ -486,7 +500,7 @@ export default function ManagementDashboardScreen({ navigation }: ManagementDash
               <View style={styles.section}>
                 <View style={styles.sectionHeader}>
                   <Text style={styles.sectionTitle}>Inspections Overview</Text>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={styles.startInspectionHeaderButton}
                     onPress={handleOpenNewInspection}
                   >
@@ -506,10 +520,10 @@ export default function ManagementDashboardScreen({ navigation }: ManagementDash
                         {typeof inspection.property === 'object' ? inspection.property.name : 'Property'} / {typeof inspection.unit === 'object' && inspection.unit ? `Unit ${(inspection.unit as any).unitNumber || (inspection.unit as any).name || 'Unknown'}` : 'Unit'}
                       </Text>
                       <View style={styles.compliantBadge}>
-                        <Ionicons 
-                          name={inspection.status === 'completed' ? "checkmark-circle" : "time"} 
-                          size={16} 
-                          color={inspection.status === 'completed' ? "#10B981" : "#F59E0B"} 
+                        <Ionicons
+                          name={inspection.status === 'completed' ? "checkmark-circle" : "time"}
+                          size={16}
+                          color={inspection.status === 'completed' ? "#10B981" : "#F59E0B"}
                         />
                         <Text style={[
                           styles.compliantText,
@@ -536,7 +550,7 @@ export default function ManagementDashboardScreen({ navigation }: ManagementDash
                 {/* Circular Progress */}
                 <View style={styles.complianceCircleContainer}>
                   <View style={styles.circleBackground} />
-                  
+
                   {/* Progress ring - Left half */}
                   <View style={styles.progressLeftHalf}>
                     <View style={[
@@ -547,7 +561,7 @@ export default function ManagementDashboardScreen({ navigation }: ManagementDash
                       }
                     ]} />
                   </View>
-                  
+
                   {/* Progress ring - Right half */}
                   {complianceStats.complianceScore > 50 && (
                     <View style={styles.progressRightHalf}>
@@ -557,7 +571,7 @@ export default function ManagementDashboardScreen({ navigation }: ManagementDash
                       ]} />
                     </View>
                   )}
-                  
+
                   {/* Center text */}
                   <View style={styles.progressTextContainer}>
                     <Text style={styles.progressPercentage}>{complianceStats.complianceScore}%</Text>
@@ -572,13 +586,13 @@ export default function ManagementDashboardScreen({ navigation }: ManagementDash
                     <Text style={styles.legendLabel}>Compliant</Text>
                     <Text style={styles.legendValue}>{complianceStats.compliantCount}</Text>
                   </View>
-                  
+
                   <View style={styles.legendItem}>
                     <View style={[styles.legendDot, { backgroundColor: '#F59E0B' }]} />
                     <Text style={styles.legendLabel}>Needs Attention</Text>
                     <Text style={styles.legendValue}>{complianceStats.needsAttentionCount}</Text>
                   </View>
-                  
+
                   <View style={styles.legendItem}>
                     <View style={[styles.legendDot, { backgroundColor: '#EF4444' }]} />
                     <Text style={styles.legendLabel}>Non-Compliant</Text>
@@ -586,7 +600,7 @@ export default function ManagementDashboardScreen({ navigation }: ManagementDash
                   </View>
                 </View>
 
-                <TouchableOpacity onPress={() => navigation.navigate('Reports')}>
+                <TouchableOpacity onPress={() => navigation.navigate('ManagementReports')}>
                   <Text style={styles.viewAllLink}>View Full Report</Text>
                 </TouchableOpacity>
               </View>
@@ -964,6 +978,26 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#374151',
     marginBottom: 12,
+  },
+  propertyLabelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  addPropertyInlineButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    backgroundColor: '#E0F7FA',
+  },
+  addPropertyInlineText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#0E7490',
   },
   modalLoadingContainer: {
     paddingVertical: 60,

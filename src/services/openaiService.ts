@@ -4,11 +4,31 @@
  */
 
 import * as FileSystem from "expo-file-system/legacy";
+import * as ImageManipulator from "expo-image-manipulator";
 
 // Gemini API configuration
 const GEMINI_API_URL =
   "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
-const DEFAULT_API_KEY = "AIzaSyDd56D1mNcStEK2w3y-yVBXD4p46232rWM";
+// API key must be configured by user - no hardcoded keys for security
+const DEFAULT_API_KEY = "AIzaSyDgcUtepC_UU-SRJnrb96hYO3JyZiuTiUM";
+
+// Helper function to convert technical API errors to user-friendly messages
+const getUserFriendlyError = (errorMessage: string, statusCode?: number): string => {
+  if (statusCode === 429 || errorMessage.toLowerCase().includes('quota') || errorMessage.toLowerCase().includes('rate')) {
+    return 'AI service is experiencing high traffic. Please wait a moment and try again.';
+  }
+  if (statusCode === 503 || errorMessage.toLowerCase().includes('unavailable')) {
+    return 'AI service is temporarily unavailable. Please try again shortly.';
+  }
+  if (statusCode === 401 || statusCode === 403 || errorMessage.toLowerCase().includes('api key')) {
+    return 'AI service configuration issue. Please contact support.';
+  }
+  if (errorMessage.toLowerCase().includes('network') || errorMessage.toLowerCase().includes('fetch')) {
+    return 'Network connection issue. Please check your internet connection.';
+  }
+  // Default user-friendly message
+  return 'AI analysis temporarily unavailable. Please try again in a moment.';
+};
 
 export interface InspectionFinding {
   id: string;
@@ -325,11 +345,34 @@ class GeminiService {
   }
 
   /**
-   * Convert image to base64
+   * Strip EXIF metadata from image for security
+   * Re-encodes the image to remove all metadata including GPS, camera info, etc.
+   */
+  private async stripImageMetadata(imageUri: string): Promise<string> {
+    try {
+      // Use ImageManipulator to re-encode the image, which strips all EXIF data
+      const result = await ImageManipulator.manipulateAsync(
+        imageUri,
+        [], // No transformations needed, just re-encoding
+        { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
+      );
+      return result.uri;
+    } catch (error) {
+      console.error("Error stripping image metadata:", error);
+      // Fall back to original URI if manipulation fails
+      return imageUri;
+    }
+  }
+
+  /**
+   * Convert image to base64 (with metadata stripped for security)
    */
   private async imageToBase64(imageUri: string): Promise<string> {
     try {
-      const base64 = await FileSystem.readAsStringAsync(imageUri, {
+      // First strip metadata from the image for security
+      const cleanImageUri = await this.stripImageMetadata(imageUri);
+      
+      const base64 = await FileSystem.readAsStringAsync(cleanImageUri, {
         encoding: FileSystem.EncodingType.Base64,
       });
       return base64;
@@ -466,7 +509,7 @@ Return raw JSON only, no markdown, no explanations.`;
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        const errorMessage =
+        const technicalError =
           errorData.error?.message ||
           errorData.error?.details ||
           `HTTP ${response.status}: ${response.statusText}`;
@@ -477,7 +520,9 @@ Return raw JSON only, no markdown, no explanations.`;
           errorData,
         });
 
-        throw new Error(`Gemini API Error: ${errorMessage}`);
+        // Use user-friendly error message
+        const userFriendlyError = getUserFriendlyError(technicalError, response.status);
+        throw new Error(userFriendlyError);
       }
 
       const data = await response.json();

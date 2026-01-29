@@ -12,6 +12,8 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
 import Sidebar from '../components/Sidebar';
 import { inspectionService, authService } from '../services';
 
@@ -30,14 +32,14 @@ export default function InspectionChecklistScreen({ navigation, route }: Inspect
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [saving, setSaving] = useState(false);
   const { property, unit, inspection } = route.params || {};
-  
+
   // State for inspection data
   const [complianceScore, setComplianceScore] = useState(inspection?.score || 88);
   const [totalItems, setTotalItems] = useState(inspection?.totalItems || 17);
   const [checkedItems, setCheckedItems] = useState(inspection?.checkedItems || 15);
   const [issuesRequireFollowUp, setIssuesRequireFollowUp] = useState(inspection?.issueCount || 2);
   const [photosAdded, setPhotosAdded] = useState(inspection?.photosCount || 5);
-  
+
   const [issues, setIssues] = useState<Issue[]>(inspection?.issues || [
     {
       id: '1',
@@ -50,7 +52,7 @@ export default function InspectionChecklistScreen({ navigation, route }: Inspect
       description: ''
     }
   ]);
-  
+
   const [additionalNotes, setAdditionalNotes] = useState(
     inspection?.notes || "Overall condition is satisfactory. Minor maintenance is required."
   );
@@ -98,7 +100,7 @@ export default function InspectionChecklistScreen({ navigation, route }: Inspect
   const handleSaveDraft = async () => {
     try {
       setSaving(true);
-      
+
       const inspectionData = {
         property: property?._id,
         unit: unit?.id,
@@ -119,7 +121,7 @@ export default function InspectionChecklistScreen({ navigation, route }: Inspect
       } else {
         await inspectionService.createInspection(inspectionData);
       }
-      
+
       Alert.alert('Success', 'Draft saved successfully!');
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to save draft');
@@ -131,7 +133,7 @@ export default function InspectionChecklistScreen({ navigation, route }: Inspect
   const handleCompleteInspection = async () => {
     try {
       setSaving(true);
-      
+
       const inspectionData = {
         property: property?._id,
         unit: unit?.id,
@@ -156,7 +158,7 @@ export default function InspectionChecklistScreen({ navigation, route }: Inspect
       } else {
         await inspectionService.createInspection(inspectionData);
       }
-      
+
       Alert.alert('Success', 'Inspection completed successfully!', [
         { text: 'OK', onPress: () => navigation.goBack() }
       ]);
@@ -167,8 +169,73 @@ export default function InspectionChecklistScreen({ navigation, route }: Inspect
     }
   };
 
-  const handleExportPDF = () => {
-    Alert.alert('Export PDF', 'PDF export will be available in a future update.');
+  const handleExportPDF = async () => {
+    try {
+      setSaving(true);
+      const htmlContent = `
+        <html>
+          <head>
+            <style>
+              body { font-family: 'Helvetica', sans-serif; padding: 20px; color: #1F2937; }
+              h1 { color: #0D6A8D; border-bottom: 2px solid #0D6A8D; padding-bottom: 10px; }
+              .header { margin-bottom: 20px; }
+              .section { margin-bottom: 25px; }
+              .section-title { font-size: 18px; font-weight: bold; margin-bottom: 10px; color: #374151; }
+              .score-box { background: #F3F4F6; padding: 20px; border-radius: 8px; text-align: center; }
+              .score { font-size: 36px; font-weight: bold; color: #10B981; }
+              .issue { margin-bottom: 10px; padding-left: 20px; position: relative; }
+              .issue:before { content: '•'; position: absolute; left: 0; font-weight: bold; }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <h1>Inspection Report</h1>
+              <p><strong>Property:</strong> ${property?.name || 'N/A'}</p>
+              <p><strong>Unit:</strong> ${unit?.name || 'N/A'}</p>
+              <p><strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
+            </div>
+
+            <div class="section">
+              <div class="score-box">
+                <div class="section-title">Compliance Score</div>
+                <div class="score">${complianceScore}%</div>
+                <p>Compliant</p>
+              </div>
+            </div>
+
+            <div class="section">
+              <div class="section-title">Issues Found</div>
+              ${issues.map(issue => `
+                <div class="issue">
+                  <strong>${issue.title}</strong><br/>
+                  ${issue.description || 'No description provided'}
+                </div>
+              `).join('')}
+            </div>
+
+            <div class="section">
+              <div class="section-title">Additional Notes</div>
+              <p>${additionalNotes || 'No additional notes'}</p>
+            </div>
+          </body>
+        </html>
+      `;
+
+      const { uri } = await Print.printToFileAsync({ html: htmlContent });
+
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, {
+          mimeType: 'application/pdf',
+          dialogTitle: 'Inspection Report',
+          UTI: 'com.adobe.pdf'
+        });
+      }
+    } catch (error) {
+      console.error('PDF Export error:', error);
+      Alert.alert('Error', 'Failed to generate PDF report');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -180,7 +247,7 @@ export default function InspectionChecklistScreen({ navigation, route }: Inspect
         transparent={true}
         onRequestClose={() => setSidebarVisible(false)}
       >
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.modalOverlay}
           activeOpacity={1}
           onPress={() => setSidebarVisible(false)}
@@ -202,12 +269,12 @@ export default function InspectionChecklistScreen({ navigation, route }: Inspect
             <TouchableOpacity onPress={handleMenuPress}>
               <Ionicons name="menu" size={28} color="#1F2937" />
             </TouchableOpacity>
-            <Image 
-              source={require('../../logo.png')} 
+            <Image
+              source={require('../../logo.png')}
               style={styles.headerLogo}
               resizeMode="contain"
             />
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => navigation.navigate("Notifications" as any)}>
               <Ionicons name="notifications-outline" size={28} color="#1F2937" />
             </TouchableOpacity>
           </View>
@@ -229,12 +296,12 @@ export default function InspectionChecklistScreen({ navigation, route }: Inspect
           {/* Compliance Score Card */}
           <View style={styles.complianceCard}>
             <Text style={styles.cardTitle}>Compliance Score</Text>
-            
+
             {/* Circular Progress */}
             <View style={styles.circularProgressContainer}>
               {/* Background ring */}
               <View style={styles.circleBackground} />
-              
+
               {/* Progress ring - Left half */}
               <View style={styles.progressLeftHalf}>
                 <View style={[
@@ -245,7 +312,7 @@ export default function InspectionChecklistScreen({ navigation, route }: Inspect
                   }
                 ]} />
               </View>
-              
+
               {/* Progress ring - Right half */}
               {complianceScore > 50 && (
                 <View style={styles.progressRightHalf}>
@@ -255,7 +322,7 @@ export default function InspectionChecklistScreen({ navigation, route }: Inspect
                   ]} />
                 </View>
               )}
-              
+
               {/* Center text */}
               <View style={styles.progressTextContainer}>
                 <Text style={styles.progressPercentage}>{complianceScore}%</Text>
@@ -300,15 +367,15 @@ export default function InspectionChecklistScreen({ navigation, route }: Inspect
           {/* Action Buttons */}
           <View style={styles.actionButtonsContainer}>
             <View style={styles.topButtonsRow}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.shareButton}
                 onPress={handleShareReport}
                 disabled={saving}
               >
                 <Text style={styles.shareButtonText}>Share Report</Text>
               </TouchableOpacity>
-              
-              <TouchableOpacity 
+
+              <TouchableOpacity
                 style={[styles.saveDraftButton, saving && styles.buttonDisabled]}
                 onPress={handleSaveDraft}
                 disabled={saving}
@@ -321,7 +388,7 @@ export default function InspectionChecklistScreen({ navigation, route }: Inspect
               </TouchableOpacity>
             </View>
 
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.completeButton, saving && styles.buttonDisabled]}
               onPress={handleCompleteInspection}
               disabled={saving}
@@ -333,7 +400,7 @@ export default function InspectionChecklistScreen({ navigation, route }: Inspect
               )}
             </TouchableOpacity>
 
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.exportButton}
               onPress={handleExportPDF}
               disabled={saving}

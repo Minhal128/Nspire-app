@@ -35,6 +35,32 @@ interface AIInspectionScreenProps {
 
 type InspectionMode = 'one-by-one' | 'batch';
 
+// Room definitions for Inside and Outside
+const INSIDE_ROOMS = [
+  'Basement', 'Business Space', 'Classroom', 'Closet/Utility', 'Day Care',
+  'Halls/Corridors/Stairs', 'Kitchen', 'Laundry Room', 'Leased Commercial',
+  'Library', 'Lobby', 'Maintenance Shop', 'Mechanical Room', 'Office',
+  'Other Community Space', 'Parking Garage', 'Patio/Porch/Balcony',
+  'Receptional Room', 'Recreation Room', 'Refuse/Compactor Room', 'Restrooms',
+  'Salon', 'Store', 'Workout Room'
+];
+
+const OUTSIDE_ROOMS = [
+  'Building Site N', 'Building Site S', 'Building Site W', 'Building Site E',
+  'Courtyard', 'Exterior E', 'Exterior N', 'Exterior S', 'Exterior W',
+  'Garage/Carport', 'Grounds', 'Other', 'Parking Lot/Driveway/Roads',
+  'Patio/Porch/Balcony', 'Playground', 'Roof (flat)', 'Sidewalks/Walkways/Stoops'
+];
+
+interface RoomImages {
+  room: string;
+  category: 'inside' | 'outside';
+  images: string[];
+  analyzed: boolean;
+  savedToCloud: boolean;
+  cloudinaryUrls?: string[];
+}
+
 export default function AIInspectionScreen({ navigation, route }: AIInspectionScreenProps) {
   const { property, selectedUnits, coverage, totalUnits } = route.params || {};
 
@@ -49,6 +75,37 @@ export default function AIInspectionScreen({ navigation, route }: AIInspectionSc
   const [processingMode, setProcessingMode] = useState<InspectionMode>('one-by-one');
   const [images, setImages] = useState<PendingImage[]>([]);
   const [findings, setFindings] = useState<InspectionFinding[]>([]);
+
+  // Room capture state
+  const [showRoomSelectionModal, setShowRoomSelectionModal] = useState(false);
+  const [roomCategory, setRoomCategory] = useState<'inside' | 'outside'>('inside');
+  const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
+  const [roomImages, setRoomImages] = useState<RoomImages[]>([]);
+  const [currentRoomPhotos, setCurrentRoomPhotos] = useState<string[]>([]);
+  const [showCameraPreview, setShowCameraPreview] = useState(false);
+  const [showPostSaveOptions, setShowPostSaveOptions] = useState(false);
+  const [savingToCloud, setSavingToCloud] = useState(false);
+  const [analysisTimeEstimate, setAnalysisTimeEstimate] = useState<string>('');
+  const [showAnalysisSuccessModal, setShowAnalysisSuccessModal] = useState(false);
+  const [analysisSuccessData, setAnalysisSuccessData] = useState<{ count: number; rooms: string[] }>({ count: 0, rooms: [] });
+  const [showYellowPopup, setShowYellowPopup] = useState(false);
+
+  // Custom rooms state
+  const [customRooms, setCustomRooms] = useState<string[]>([]);
+  const [showAddRoomModal, setShowAddRoomModal] = useState(false);
+  const [newRoomName, setNewRoomName] = useState('');
+
+  // Background upload queue
+  const [uploadQueue, setUploadQueue] = useState<{ photoUri: string; room: string; category: 'inside' | 'outside' }[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState({ completed: 0, total: 0 });
+
+  // SECRET: Background analysis queue (analyzes previous room while user captures next room)
+  const [backgroundAnalysisQueue, setBackgroundAnalysisQueue] = useState<PendingImage[]>([]);
+  const [isBackgroundAnalyzing, setIsBackgroundAnalyzing] = useState(false);
+  const [backgroundAnalysisRoom, setBackgroundAnalysisRoom] = useState<string>('');
+  const backgroundQueueRef = useRef<PendingImage[]>([]);
+  const backgroundRoomRef = useRef<string>('');
 
   // UI state
   const [analyzing, setAnalyzing] = useState(false);
@@ -118,9 +175,16 @@ export default function AIInspectionScreen({ navigation, route }: AIInspectionSc
         // Test Gemini API connection
         const apiTest = await geminiService.testConnection();
         if (!apiTest.success) {
+          // Show user-friendly error message instead of technical details
+          const userFriendlyMessage = apiTest.error?.includes('429') || apiTest.error?.includes('quota') || apiTest.error?.includes('rate')
+            ? 'AI service is currently experiencing high traffic. Please wait a moment and try again.'
+            : apiTest.error?.includes('API Error')
+              ? 'AI service is temporarily unavailable. Please try again in a few moments.'
+              : 'Unable to connect to AI service. Please check your internet connection.';
+
           Alert.alert(
-            'API Connection Failed',
-            `Gemini API Error: ${apiTest.error}\n\nPlease check your API key and try again.`,
+            'AI Service Busy',
+            userFriendlyMessage,
             [{ text: 'OK' }]
           );
         }
@@ -167,6 +231,354 @@ export default function AIInspectionScreen({ navigation, route }: AIInspectionSc
     }
   };
 
+  // Room capture functions
+  const handleCameraPress = () => {
+    setShowYellowPopup(true);
+    setRoomCategory('inside');
+    setSelectedRoom(null);
+    setCurrentRoomPhotos([]);
+  };
+
+  const handleRoomSelect = async (room: string) => {
+    setSelectedRoom(room);
+    await captureRoomPhoto();
+  };
+
+  const captureRoomPhoto = async () => {
+    try {
+      const permission = await ImagePicker.requestCameraPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert('Permission Required', 'Please grant camera access');
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 0.8,
+        allowsEditing: false,
+      });
+
+      if (!result.canceled && result.assets && result.assets[0]) {
+        setCurrentRoomPhotos(prev => [...prev, result.assets[0].uri]);
+        setShowCameraPreview(true);
+      }
+    } catch (error) {
+      console.error('Error capturing photo:', error);
+      Alert.alert('Error', 'Failed to capture photo');
+    }
+  };
+
+  const addMorePhotos = async () => {
+    await captureRoomPhoto();
+  };
+
+  // Background upload processor
+  useEffect(() => {
+    const processUploadQueue = async () => {
+      if (isUploading || uploadQueue.length === 0) return;
+
+      setIsUploading(true);
+      const currentQueue = [...uploadQueue];
+
+      for (let i = 0; i < currentQueue.length; i++) {
+        const item = currentQueue[i];
+        setUploadProgress({ completed: i, total: currentQueue.length });
+
+        try {
+          const result = await cloudinaryService.uploadImage(item.photoUri);
+          if (result.success && result.url) {
+            // Update roomImages with cloudinary URL
+            setRoomImages(prev => {
+              const roomIndex = prev.findIndex(r => r.room === item.room && r.category === item.category);
+              if (roomIndex >= 0) {
+                const updated = [...prev];
+                updated[roomIndex] = {
+                  ...updated[roomIndex],
+                  savedToCloud: true,
+                  cloudinaryUrls: [...(updated[roomIndex].cloudinaryUrls || []), result.url!],
+                };
+                return updated;
+              }
+              return prev;
+            });
+
+            // Update image in main images array with cloudinary URL
+            setImages(prev => prev.map(img =>
+              img.localUri === item.photoUri
+                ? { ...img, cloudinaryUrl: result.url }
+                : img
+            ));
+          }
+        } catch (error) {
+          console.error('Background upload error:', error);
+        }
+      }
+
+      setUploadQueue([]);
+      setIsUploading(false);
+      setUploadProgress({ completed: 0, total: 0 });
+    };
+
+    processUploadQueue();
+  }, [uploadQueue, isUploading]);
+
+  // SECRET: Background analysis processor - analyzes previous room while user captures next room
+  useEffect(() => {
+    // Keep refs in sync
+    backgroundQueueRef.current = backgroundAnalysisQueue;
+    backgroundRoomRef.current = backgroundAnalysisRoom;
+  }, [backgroundAnalysisQueue, backgroundAnalysisRoom]);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    const processBackgroundAnalysis = async () => {
+      if (isBackgroundAnalyzing) return;
+      if (backgroundQueueRef.current.length === 0) return;
+      if (!isOnline || !session) return;
+      if (!geminiService.isConfigured()) return;
+
+      setIsBackgroundAnalyzing(true);
+      const imagesToAnalyze = [...backgroundQueueRef.current];
+      const roomName = backgroundRoomRef.current;
+
+      console.log(`[AUTO-ANALYZE] Starting analysis for ${roomName}: ${imagesToAnalyze.length} images`);
+
+      for (const image of imagesToAnalyze) {
+        if (isCancelled) break;
+
+        try {
+          // Skip if already analyzed
+          if (image.status === 'analyzed') continue;
+
+          console.log(`[AUTO-ANALYZE] Analyzing image ${imagesToAnalyze.indexOf(image) + 1}/${imagesToAnalyze.length}: ${image.id}`);
+
+          const result = await geminiService.analyzeImage(
+            image.localUri,
+            session.inspectionType,
+            `Property: ${session.propertyName}, Address: ${session.propertyAddress}, Room: ${image.room || roomName}`
+          );
+
+          if (result.success && !isCancelled) {
+            // Add room info to findings
+            const findingsWithRoom = result.findings.map(f => ({
+              ...f,
+              location: image.room ? `${image.room} - ${f.location}` : f.location,
+            }));
+
+            // Update image with findings silently
+            setImages(prev => prev.map(img =>
+              img.id === image.id
+                ? {
+                  ...img,
+                  status: 'analyzed' as const,
+                  findings: findingsWithRoom,
+                  notes: result.summary,
+                  analyzedAt: new Date().toISOString(),
+                }
+                : img
+            ));
+
+            // Add findings to global findings list
+            setFindings(prev => [...prev, ...findingsWithRoom]);
+
+            // Update storage with findings
+            if (session) {
+              await offlineStorageService.updateImage(session.id, image.id, {
+                status: 'analyzed',
+                findings: findingsWithRoom,
+              }).catch(err => console.log('Storage update error:', err));
+            }
+
+            // Update room record
+            setRoomImages(prev => prev.map(r =>
+              r.room === roomName
+                ? { ...r, analyzed: true }
+                : r
+            ));
+
+            console.log(`[AUTO-ANALYZE] ✓ Analyzed: ${image.id} in ${roomName} - ${result.findings.length} findings`);
+          } else if (!result.success) {
+            console.error(`[AUTO-ANALYZE] ✗ Failed: ${image.id}`, result.error);
+            // Mark as failed
+            setImages(prev => prev.map(img =>
+              img.id === image.id
+                ? { ...img, status: 'failed' as const, error: result.error }
+                : img
+            ));
+          }
+        } catch (error) {
+          console.error(`[AUTO-ANALYZE] ✗ Error analyzing ${image.id}:`, error);
+          // Mark as failed
+          setImages(prev => prev.map(img =>
+            img.id === image.id
+              ? { ...img, status: 'failed' as const, error: String(error) }
+              : img
+          ));
+        }
+      }
+
+      if (!isCancelled) {
+        setBackgroundAnalysisQueue([]);
+        setIsBackgroundAnalyzing(false);
+        setBackgroundAnalysisRoom('');
+
+        const succeededCount = imagesToAnalyze.filter(img =>
+          images.find(i => i.id === img.id && i.status === 'analyzed')
+        ).length;
+
+        console.log(`[AUTO-ANALYZE] ✓ Complete for ${roomName}: ${succeededCount}/${imagesToAnalyze.length} analyzed`);
+      }
+    };
+
+    // Small delay to ensure state is settled
+    const timer = setTimeout(() => {
+      processBackgroundAnalysis();
+    }, 500);
+
+    return () => {
+      isCancelled = true;
+      clearTimeout(timer);
+    };
+  }, [backgroundAnalysisQueue.length, isBackgroundAnalyzing, isOnline, session, images]);
+
+  const saveRoomPhotos = async () => {
+    if (!selectedRoom || currentRoomPhotos.length === 0) return;
+
+    // INSTANT: No loading spinner, immediate state update
+    const newRoomRecord: RoomImages = {
+      room: selectedRoom,
+      category: roomCategory,
+      images: currentRoomPhotos,
+      analyzed: false,
+      savedToCloud: false,
+      cloudinaryUrls: [],
+    };
+
+    // Update room images immediately (sync)
+    setRoomImages(prev => {
+      const existingIndex = prev.findIndex(r => r.room === selectedRoom && r.category === roomCategory);
+      if (existingIndex >= 0) {
+        const updated = [...prev];
+        updated[existingIndex] = {
+          ...updated[existingIndex],
+          images: [...updated[existingIndex].images, ...currentRoomPhotos],
+        };
+        return updated;
+      }
+      return [...prev, newRoomRecord];
+    });
+
+    // Create pending images instantly in memory (no await, no storage write)
+    const newPendingImages: PendingImage[] = currentRoomPhotos.map((photoUri, index) => ({
+      id: `${Date.now()}-${index}-${Math.random().toString(36).substr(2, 9)}`,
+      localUri: photoUri,
+      propertyId: session?.propertyId || property?._id || '',
+      inspectionId: session?.id || '',
+      inspectionType: session?.inspectionType || inspectionType,
+      timestamp: new Date().toISOString(),
+      status: 'pending' as const,
+      retryCount: 0,
+      room: selectedRoom,
+      roomCategory: roomCategory,
+    }));
+
+    // Add to images state immediately
+    setImages(prev => [...prev, ...newPendingImages]);
+
+    // Show post-save options IMMEDIATELY
+    setShowCameraPreview(false);
+    setShowPostSaveOptions(true);
+
+    // Calculate analysis time estimate
+    const totalImages = images.length + currentRoomPhotos.length;
+    if (totalImages > 50) {
+      const minutes = Math.ceil(totalImages / 20);
+      setAnalysisTimeEstimate(`For better accuracy with ${totalImages} images, analysis may take approximately ${minutes} minutes`);
+    } else {
+      setAnalysisTimeEstimate('');
+    }
+
+    // Queue for background: storage write + Cloudinary upload (non-blocking)
+    const queueItems = currentRoomPhotos.map(photoUri => ({
+      photoUri,
+      room: selectedRoom,
+      category: roomCategory,
+    }));
+    setUploadQueue(prev => [...prev, ...queueItems]);
+
+    // Background: persist to storage (fire and forget)
+    if (session) {
+      Promise.all(
+        currentRoomPhotos.map(photoUri =>
+          offlineStorageService.addImageToSession(
+            session.id,
+            photoUri,
+            undefined,
+            undefined,
+            selectedRoom,
+            roomCategory
+          ).catch(err => console.log('Background storage write error:', err))
+        )
+      ).catch(() => { });
+    }
+  };
+
+  // Custom room functions
+  const addCustomRoom = () => {
+    if (!newRoomName.trim()) {
+      Alert.alert('Error', 'Please enter a room name');
+      return;
+    }
+
+    const trimmedName = newRoomName.trim();
+    if (customRooms.includes(trimmedName)) {
+      Alert.alert('Error', 'This room already exists');
+      return;
+    }
+
+    setCustomRooms(prev => [...prev, trimmedName]);
+    setNewRoomName('');
+  };
+
+  const removeCustomRoom = (roomName: string) => {
+    setCustomRooms(prev => prev.filter(r => r !== roomName));
+  };
+
+  const finishAddingRooms = () => {
+    setShowAddRoomModal(false);
+    setNewRoomName('');
+  };
+
+  const handleAnalyzeRoom = async () => {
+    setShowPostSaveOptions(false);
+    setShowRoomSelectionModal(false);
+    setCurrentRoomPhotos([]);
+    setSelectedRoom(null);
+
+    // Start batch analysis for all pending images
+    await startBatchAnalysis();
+  };
+
+  const handleMoveToNextRoom = () => {
+    // Just close the modal and reset state - no background analysis
+    setShowPostSaveOptions(false);
+    setCurrentRoomPhotos([]);
+    setSelectedRoom(null);
+    // Stay in modal to select next room
+  };
+
+  const getCompletedRooms = (category: 'inside' | 'outside') => {
+    return roomImages
+      .filter(r => r.category === category)
+      .map(r => r.room);
+  };
+
+  const getRoomPhotoCount = (room: string, category: 'inside' | 'outside') => {
+    const roomRecord = roomImages.find(r => r.room === room && r.category === category);
+    return roomRecord?.images.length || 0;
+  };
+
   const pickImage = async (useCamera: boolean) => {
     try {
       const permission = useCamera
@@ -201,11 +613,18 @@ export default function AIInspectionScreen({ navigation, route }: AIInspectionSc
     }
   };
 
-  const addImage = async (uri: string) => {
+  const addImage = async (uri: string, room?: string, category?: 'inside' | 'outside') => {
     if (!session) return;
 
     try {
-      const pendingImage = await offlineStorageService.addImageToSession(session.id, uri);
+      const pendingImage = await offlineStorageService.addImageToSession(
+        session.id,
+        uri,
+        undefined,
+        undefined,
+        room,
+        category
+      );
       setImages(prev => [...prev, pendingImage]);
 
       // If online and one-by-one mode, analyze immediately
@@ -267,9 +686,19 @@ export default function AIInspectionScreen({ navigation, route }: AIInspectionSc
   const startBatchAnalysis = async () => {
     if (!session) return;
 
+    // Get all pending images (not currently being analyzed)
     const pendingImages = images.filter(img => img.status === 'pending');
+
     if (pendingImages.length === 0) {
-      Alert.alert('No Images', 'No pending images to analyze');
+      const alreadyAnalyzed = images.filter(img => img.status === 'analyzed').length;
+      if (alreadyAnalyzed > 0) {
+        // All images already analyzed
+        const analyzedRooms = [...new Set(images.filter(img => img.status === 'analyzed' && img.room).map(img => img.room!))];
+        setAnalysisSuccessData({ count: alreadyAnalyzed, rooms: analyzedRooms });
+        setShowAnalysisSuccessModal(true);
+      } else {
+        Alert.alert('No Images', 'No images to analyze. Please capture some photos first.');
+      }
       return;
     }
 
@@ -287,6 +716,8 @@ export default function AIInspectionScreen({ navigation, route }: AIInspectionSc
     setAnalysisProgress({ current: 0, total: pendingImages.length });
 
     try {
+      const analyzedRooms: string[] = [];
+
       for (let i = 0; i < pendingImages.length; i++) {
         const image = pendingImages[i];
         setCurrentAnalysis(image.id);
@@ -294,25 +725,36 @@ export default function AIInspectionScreen({ navigation, route }: AIInspectionSc
 
         console.log(`Analyzing image ${i + 1}/${pendingImages.length}...`);
 
+        // Track room for this image
+        if (image.room && !analyzedRooms.includes(image.room)) {
+          analyzedRooms.push(image.room);
+        }
+
         // Skip Cloudinary upload - analyze directly with local URI
         const result = await geminiService.analyzeImage(
           image.localUri,
           session.inspectionType,
-          `Property: ${session.propertyName}, Address: ${session.propertyAddress}`
+          `Property: ${session.propertyName}, Address: ${session.propertyAddress}, Room: ${image.room || 'General'}`
         );
 
         if (result.success) {
+          // Add room info to each finding
+          const findingsWithRoom = result.findings.map(f => ({
+            ...f,
+            location: image.room ? `${image.room} - ${f.location}` : f.location,
+          }));
+
           await offlineStorageService.updateImage(session.id, image.id, {
             status: 'analyzed',
-            findings: result.findings,
+            findings: findingsWithRoom,
           });
 
           setImages(prev => prev.map(img =>
             img.id === image.id
-              ? { ...img, status: 'analyzed', findings: result.findings }
+              ? { ...img, status: 'analyzed', findings: findingsWithRoom }
               : img
           ));
-          setFindings(prev => [...prev, ...result.findings]);
+          setFindings(prev => [...prev, ...findingsWithRoom]);
         } else {
           await offlineStorageService.updateImage(session.id, image.id, {
             status: 'failed',
@@ -321,7 +763,9 @@ export default function AIInspectionScreen({ navigation, route }: AIInspectionSc
         }
       }
 
-      Alert.alert('Analysis Complete', `Analyzed ${pendingImages.length} images`);
+      // Show success modal
+      setAnalysisSuccessData({ count: pendingImages.length, rooms: analyzedRooms });
+      setShowAnalysisSuccessModal(true);
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to complete analysis');
     } finally {
@@ -744,52 +1188,66 @@ export default function AIInspectionScreen({ navigation, route }: AIInspectionSc
     }
   };
 
-  const renderImageItem = ({ item }: { item: PendingImage }) => (
-    <View style={styles.imageCard}>
-      <Image source={{ uri: item.localUri }} style={styles.thumbnail} />
-      <View style={styles.imageInfo}>
-        <View style={styles.imageHeader}>
-          <Text style={styles.imageTime}>
-            {new Date(item.timestamp).toLocaleTimeString()}
-          </Text>
-          <View style={[
-            styles.statusBadge,
-            {
-              backgroundColor: item.status === 'analyzed' ? '#10B981' :
-                item.status === 'failed' ? '#EF4444' : '#F59E0B'
-            }
-          ]}>
-            <Text style={styles.statusText}>
-              {item.status === 'analyzed' ? 'Analyzed' :
-                item.status === 'failed' ? 'Failed' : 'Pending'}
+  const renderImageItem = ({ item }: { item: PendingImage }) => {
+    // Format date safely
+    const getTimeDisplay = () => {
+      try {
+        if (!item.timestamp) return 'Just now';
+        const date = new Date(item.timestamp);
+        if (isNaN(date.getTime())) return 'Just now';
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      } catch {
+        return 'Just now';
+      }
+    };
+
+    return (
+      <View style={styles.imageCard}>
+        <Image source={{ uri: item.localUri }} style={styles.thumbnail} />
+        <View style={styles.imageInfo}>
+          <View style={styles.imageHeader}>
+            <Text style={styles.imageTime}>
+              {item.room ? `${item.room}` : getTimeDisplay()}
             </Text>
+            <View style={[
+              styles.statusBadge,
+              {
+                backgroundColor: item.status === 'analyzed' ? '#10B981' :
+                  item.status === 'failed' ? '#EF4444' : '#F59E0B'
+              }
+            ]}>
+              <Text style={styles.statusText}>
+                {item.status === 'analyzed' ? 'Analyzed' :
+                  item.status === 'failed' ? 'Failed' : 'Pending'}
+              </Text>
+            </View>
           </View>
+
+          {item.findings && item.findings.length > 0 && (
+            <Text style={styles.findingsCount}>
+              {item.findings.length} issue{item.findings.length !== 1 ? 's' : ''} found
+            </Text>
+          )}
+
+          {currentAnalysis === item.id && (
+            <View style={styles.analyzingIndicator}>
+              <ActivityIndicator size="small" color="#0E7490" />
+              <Text style={styles.analyzingText}>Analyzing...</Text>
+            </View>
+          )}
+
+
         </View>
 
-        {item.findings && item.findings.length > 0 && (
-          <Text style={styles.findingsCount}>
-            {item.findings.length} issue{item.findings.length !== 1 ? 's' : ''} found
-          </Text>
-        )}
-
-        {currentAnalysis === item.id && (
-          <View style={styles.analyzingIndicator}>
-            <ActivityIndicator size="small" color="#0E7490" />
-            <Text style={styles.analyzingText}>Analyzing...</Text>
-          </View>
-        )}
-
-
+        <TouchableOpacity
+          style={styles.deleteButton}
+          onPress={() => deleteImage(item.id)}
+        >
+          <Ionicons name="trash-outline" size={20} color="#EF4444" />
+        </TouchableOpacity>
       </View>
-
-      <TouchableOpacity
-        style={styles.deleteButton}
-        onPress={() => deleteImage(item.id)}
-      >
-        <Ionicons name="trash-outline" size={20} color="#EF4444" />
-      </TouchableOpacity>
-    </View>
-  );
+    );
+  };
 
   const renderFindingItem = (finding: InspectionFinding, index: number) => (
     <View key={finding.id} style={styles.findingCard}>
@@ -851,6 +1309,18 @@ export default function AIInspectionScreen({ navigation, route }: AIInspectionSc
         </View>
       </View>
 
+      {/* Background Upload Indicator */}
+      {isUploading && uploadProgress.total > 0 && (
+        <View style={styles.uploadIndicator}>
+          <ActivityIndicator size="small" color="#0E7490" />
+          <Text style={styles.uploadIndicatorText}>
+            Uploading to cloud: {uploadProgress.completed + 1}/{uploadProgress.total}
+          </Text>
+        </View>
+      )}
+
+      {/* Background Analysis runs secretly - no visible indicator */}
+
       <ScrollView
         ref={scrollViewRef}
         style={styles.scrollView}
@@ -905,10 +1375,26 @@ export default function AIInspectionScreen({ navigation, route }: AIInspectionSc
         {/* Image Capture Buttons */}
         <View style={styles.captureSection}>
           <Text style={styles.sectionTitle}>Capture Images</Text>
+
+          {/* Room Summary */}
+          {roomImages.length > 0 && (
+            <View style={styles.roomSummary}>
+              <Text style={styles.roomSummaryTitle}>Captured Rooms: {roomImages.length}</Text>
+              <View style={styles.roomChips}>
+                {roomImages.map((room, index) => (
+                  <View key={index} style={styles.roomChip}>
+                    <Text style={styles.roomChipText}>{room.room}</Text>
+                    <Text style={styles.roomChipCount}>{room.images.length} photos</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+
           <View style={styles.captureButtons}>
             <TouchableOpacity
               style={styles.captureButton}
-              onPress={() => pickImage(true)}
+              onPress={handleCameraPress}
               disabled={analyzing}
             >
               <Ionicons name="camera" size={28} color="#FFFFFF" />
@@ -971,11 +1457,69 @@ export default function AIInspectionScreen({ navigation, route }: AIInspectionSc
           </View>
         )}
 
-        {/* Findings Section */}
+        {/* Findings Section - Grouped by Room */}
         {findings.length > 0 && (
           <View style={styles.findingsSection}>
             <Text style={styles.sectionTitle}>Findings ({findings.length})</Text>
-            {findings.map((finding, index) => renderFindingItem(finding, index))}
+
+            {/* Group findings by room from images */}
+            {(() => {
+              // Get unique rooms from analyzed images
+              const roomsWithFindings = images
+                .filter(img => img.status === 'analyzed' && img.room)
+                .reduce((acc, img) => {
+                  if (img.room && !acc.includes(img.room)) {
+                    acc.push(img.room);
+                  }
+                  return acc;
+                }, [] as string[]);
+
+              // General findings (no room assigned)
+              const generalImages = images.filter(img => img.status === 'analyzed' && !img.room);
+
+              return (
+                <>
+                  {roomsWithFindings.map((room) => {
+                    const roomImgs = images.filter(img => img.room === room && img.status === 'analyzed');
+                    const roomFindings = roomImgs.flatMap(img => img.findings || []);
+
+                    if (roomFindings.length === 0) return null;
+
+                    return (
+                      <View key={room} style={styles.roomFindingsSection}>
+                        <View style={styles.roomFindingsHeader}>
+                          <Ionicons name="location" size={18} color="#0E7490" />
+                          <Text style={styles.roomFindingsTitle}>{room}</Text>
+                          <View style={styles.roomFindingsCount}>
+                            <Text style={styles.roomFindingsCountText}>
+                              {roomFindings.length} issue{roomFindings.length !== 1 ? 's' : ''}
+                            </Text>
+                          </View>
+                        </View>
+                        <View style={styles.roomFindingsContent}>
+                          {roomFindings.map((finding, index) => renderFindingItem(finding, index))}
+                        </View>
+                      </View>
+                    );
+                  })}
+
+                  {/* General findings without room */}
+                  {generalImages.length > 0 && generalImages.some(img => img.findings && img.findings.length > 0) && (
+                    <View style={styles.roomFindingsSection}>
+                      <View style={styles.roomFindingsHeader}>
+                        <Ionicons name="images" size={18} color="#6B7280" />
+                        <Text style={styles.roomFindingsTitle}>General</Text>
+                      </View>
+                      <View style={styles.roomFindingsContent}>
+                        {generalImages.flatMap(img => img.findings || []).map((finding, index) =>
+                          renderFindingItem(finding, index)
+                        )}
+                      </View>
+                    </View>
+                  )}
+                </>
+              );
+            })()}
           </View>
         )}
 
@@ -1112,6 +1656,416 @@ export default function AIInspectionScreen({ navigation, route }: AIInspectionSc
         </View>
       </Modal>
 
+      {/* Room Selection Modal */}
+      <Modal visible={showRoomSelectionModal} animationType="slide" presentationStyle="pageSheet">
+        <SafeAreaView style={styles.roomModalContainer}>
+          {/* Room Modal Header */}
+          <View style={styles.roomModalHeader}>
+            <TouchableOpacity onPress={() => {
+              setShowRoomSelectionModal(false);
+              setSelectedRoom(null);
+              setCurrentRoomPhotos([]);
+              setShowCameraPreview(false);
+              setShowPostSaveOptions(false);
+            }}>
+              <Ionicons name="arrow-back" size={24} color="#1F2937" />
+            </TouchableOpacity>
+            <Text style={styles.roomModalTitle}>
+              {showCameraPreview ? `Capture: ${selectedRoom}` : showPostSaveOptions ? 'Photos Saved' : 'Select Area'}
+            </Text>
+            <TouchableOpacity onPress={() => {
+              setShowRoomSelectionModal(false);
+              setSelectedRoom(null);
+              setCurrentRoomPhotos([]);
+            }}>
+              <Text style={styles.doneText}>Done</Text>
+            </TouchableOpacity>
+          </View>
+
+          {!showCameraPreview && !showPostSaveOptions && (
+            <>
+              {/* Inside/Outside Toggle */}
+              <View style={styles.categoryToggle}>
+                <TouchableOpacity
+                  style={[styles.categoryButton, roomCategory === 'inside' && styles.categoryButtonActive]}
+                  onPress={() => setRoomCategory('inside')}
+                >
+                  <Ionicons name="home" size={20} color={roomCategory === 'inside' ? '#FFFFFF' : '#0E7490'} />
+                  <Text style={[styles.categoryButtonText, roomCategory === 'inside' && styles.categoryButtonTextActive]}>
+                    Inside
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.categoryButton, roomCategory === 'outside' && styles.categoryButtonActive]}
+                  onPress={() => setRoomCategory('outside')}
+                >
+                  <Ionicons name="leaf" size={20} color={roomCategory === 'outside' ? '#FFFFFF' : '#0E7490'} />
+                  <Text style={[styles.categoryButtonText, roomCategory === 'outside' && styles.categoryButtonTextActive]}>
+                    Outside
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Section Switcher Label with Add Room Button */}
+              <View style={styles.sectionHeaderRow}>
+                <Text style={styles.sectionSwitcherLabel}>Section Switcher</Text>
+                <TouchableOpacity
+                  style={styles.addRoomButton}
+                  onPress={() => setShowAddRoomModal(true)}
+                >
+                  <Ionicons name="add-circle" size={20} color="#0E7490" />
+                  <Text style={styles.addRoomButtonText}>Room</Text>
+                  {customRooms.length > 0 && (
+                    <View style={styles.roomCounterBadge}>
+                      <Text style={styles.roomCounterText}>{customRooms.length}</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              </View>
+
+              {/* Room Grid */}
+              <ScrollView style={styles.roomGrid} showsVerticalScrollIndicator={false}>
+                <View style={styles.roomButtonsContainer}>
+                  {/* Default rooms + Custom rooms */}
+                  {[...(roomCategory === 'inside' ? INSIDE_ROOMS : OUTSIDE_ROOMS), ...customRooms].map((room, index) => {
+                    const completedRooms = getCompletedRooms(roomCategory);
+                    const isCompleted = completedRooms.includes(room);
+                    const photoCount = getRoomPhotoCount(room, roomCategory);
+
+                    return (
+                      <TouchableOpacity
+                        key={index}
+                        style={[
+                          styles.roomButton,
+                          isCompleted && styles.roomButtonCompleted
+                        ]}
+                        onPress={() => handleRoomSelect(room)}
+                      >
+                        <Text style={[
+                          styles.roomButtonText,
+                          isCompleted && styles.roomButtonTextCompleted
+                        ]}>
+                          {room}
+                        </Text>
+                        {isCompleted && (
+                          <View style={styles.roomPhotoCountBadge}>
+                            <Text style={styles.roomPhotoCountText}>{photoCount}</Text>
+                          </View>
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </ScrollView>
+            </>
+          )}
+
+          {/* Camera Preview */}
+          {showCameraPreview && (
+            <View style={styles.cameraPreviewContainer}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoStrip}>
+                {currentRoomPhotos.map((photo, index) => (
+                  <View key={index} style={styles.previewPhotoContainer}>
+                    <Image source={{ uri: photo }} style={styles.previewPhoto} />
+                    <View style={styles.photoIndex}>
+                      <Text style={styles.photoIndexText}>{index + 1}</Text>
+                    </View>
+                  </View>
+                ))}
+                <TouchableOpacity style={styles.addMoreButton} onPress={addMorePhotos}>
+                  <Ionicons name="add-circle" size={40} color="#0E7490" />
+                  <Text style={styles.addMoreText}>Add More</Text>
+                </TouchableOpacity>
+              </ScrollView>
+
+              <Text style={styles.photoCountLabel}>{selectedRoom}: {currentRoomPhotos.length} Photos</Text>
+
+              <View style={styles.saveButtonsContainer}>
+                <TouchableOpacity
+                  style={styles.cancelPhotoButton}
+                  onPress={() => {
+                    setShowCameraPreview(false);
+                    setCurrentRoomPhotos([]);
+                    setSelectedRoom(null);
+                  }}
+                >
+                  <Text style={styles.cancelPhotoButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.savePhotoButton}
+                  onPress={saveRoomPhotos}
+                >
+                  <Ionicons name="checkmark-circle" size={20} color="#FFFFFF" />
+                  <Text style={styles.savePhotoButtonText}>Save</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+
+          {/* Post Save Options */}
+          {showPostSaveOptions && (
+            <View style={styles.postSaveContainer}>
+              <View style={styles.successIcon}>
+                <Ionicons name="checkmark-circle" size={64} color="#10B981" />
+              </View>
+              <Text style={styles.successTitle}>Photos Saved!</Text>
+              <Text style={styles.successSubtitle}>
+                {currentRoomPhotos.length} photos saved for {selectedRoom}
+              </Text>
+
+              {analysisTimeEstimate && (
+                <View style={styles.timeEstimateBox}>
+                  <Ionicons name="time" size={20} color="#F59E0B" />
+                  <Text style={styles.timeEstimateText}>{analysisTimeEstimate}</Text>
+                </View>
+              )}
+
+              <View style={styles.postSaveButtons}>
+                <TouchableOpacity
+                  style={styles.analyzeButton}
+                  onPress={handleAnalyzeRoom}
+                >
+                  <Ionicons name="flash" size={22} color="#FFFFFF" />
+                  <Text style={styles.analyzeButtonText}>Analyze All</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.nextRoomButton}
+                  onPress={handleMoveToNextRoom}
+                >
+                  <Ionicons name="arrow-forward" size={22} color="#0E7490" />
+                  <Text style={styles.nextRoomButtonText}>Move to Next Room</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+        </SafeAreaView>
+      </Modal>
+
+      {/* Add Custom Room Modal */}
+      <Modal visible={showAddRoomModal} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.addRoomModalContent}>
+            <View style={styles.addRoomModalHeader}>
+              <Text style={styles.addRoomModalTitle}>Add Custom Rooms</Text>
+              <TouchableOpacity onPress={finishAddingRooms}>
+                <Ionicons name="close-circle" size={28} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.addRoomModalSubtitle}>
+              Add custom room names that will appear in your room selector
+            </Text>
+
+            {/* Input row */}
+            <View style={styles.addRoomInputRow}>
+              <TextInput
+                style={styles.addRoomInput}
+                placeholder="Enter room name..."
+                placeholderTextColor="#9CA3AF"
+                value={newRoomName}
+                onChangeText={setNewRoomName}
+                autoCapitalize="words"
+                onSubmitEditing={addCustomRoom}
+              />
+              <TouchableOpacity
+                style={styles.addRoomSubmitButton}
+                onPress={addCustomRoom}
+              >
+                <Ionicons name="add" size={24} color="#FFFFFF" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Custom rooms list */}
+            {customRooms.length > 0 && (
+              <View style={styles.customRoomsList}>
+                <Text style={styles.customRoomsListLabel}>
+                  Added Rooms ({customRooms.length}):
+                </Text>
+                <ScrollView style={styles.customRoomsScroll} showsVerticalScrollIndicator={false}>
+                  {customRooms.map((room, index) => (
+                    <View key={index} style={styles.customRoomItem}>
+                      <View style={styles.customRoomInfo}>
+                        <Ionicons name="cube" size={18} color="#0E7490" />
+                        <Text style={styles.customRoomName}>{room}</Text>
+                      </View>
+                      <TouchableOpacity
+                        onPress={() => removeCustomRoom(room)}
+                        style={styles.removeRoomButton}
+                      >
+                        <Ionicons name="trash" size={18} color="#EF4444" />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+
+            {customRooms.length === 0 && (
+              <View style={styles.noCustomRooms}>
+                <Ionicons name="cube-outline" size={48} color="#D1D5DB" />
+                <Text style={styles.noCustomRoomsText}>
+                  No custom rooms added yet
+                </Text>
+              </View>
+            )}
+
+            <TouchableOpacity
+              style={styles.finishAddingButton}
+              onPress={finishAddingRooms}
+            >
+              <Text style={styles.finishAddingButtonText}>Done</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Analysis Success Modal */}
+      <Modal visible={showAnalysisSuccessModal} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.analysisSuccessModal}>
+            <View style={styles.successIconLarge}>
+              <Ionicons name="checkmark-circle" size={72} color="#10B981" />
+            </View>
+            <Text style={styles.analysisSuccessTitle}>Analysis Complete!</Text>
+            <Text style={styles.analysisSuccessSubtitle}>
+              Successfully analyzed {analysisSuccessData.count} images
+            </Text>
+
+            {analysisSuccessData.rooms.length > 0 && (
+              <View style={styles.analyzedRoomsList}>
+                <Text style={styles.analyzedRoomsLabel}>Rooms Analyzed:</Text>
+                {analysisSuccessData.rooms.map((room, index) => (
+                  <View key={index} style={styles.analyzedRoomItem}>
+                    <Ionicons name="checkmark" size={16} color="#10B981" />
+                    <Text style={styles.analyzedRoomText}>{room}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            <TouchableOpacity
+              style={styles.viewReportButton}
+              onPress={() => {
+                setShowAnalysisSuccessModal(false);
+                // Scroll to findings section
+                scrollViewRef.current?.scrollToEnd({ animated: true });
+              }}
+            >
+              <Ionicons name="document-text" size={20} color="#FFFFFF" />
+              <Text style={styles.viewReportButtonText}>View Summary</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.closeSuccessButton}
+              onPress={() => setShowAnalysisSuccessModal(false)}
+            >
+              <Text style={styles.closeSuccessButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Yellow Camera Popup */}
+      <Modal visible={showYellowPopup} transparent animationType="fade">
+        <View style={styles.yellowModalOverlay}>
+          <View style={styles.yellowPopupContent}>
+            {/* Table Structure matching the image */}
+            <View style={styles.yellowTable}>
+              {/* Row 1: PROPERTY */}
+              <View style={styles.yellowTableRowFull}>
+                <Text style={styles.yellowTableLabel}>PROPERTY</Text>
+              </View>
+
+              {/* Row 2: PROPERTY TYPE */}
+              <View style={styles.yellowTableRowFull}>
+                <Text style={styles.yellowTableLabel}>PROPERTY TYPE</Text>
+              </View>
+
+              {/* Row 3: INSIDE | OUTSIDE */}
+              <View style={styles.yellowTableRowSplit}>
+                <TouchableOpacity
+                  style={styles.yellowTableCell}
+                  onPress={() => setRoomCategory('inside')}
+                >
+                  <View style={[styles.selectionPill, roomCategory === 'inside' && styles.selectionPillActive]}>
+                    <Text style={[styles.yellowTableLabel, roomCategory === 'inside' && styles.yellowTableLabelActive]}>INSIDE</Text>
+                  </View>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.yellowTableCell}
+                  onPress={() => setRoomCategory('outside')}
+                >
+                  <View style={[styles.selectionPill, roomCategory === 'outside' && styles.selectionPillActive]}>
+                    <Text style={[styles.yellowTableLabel, roomCategory === 'outside' && styles.yellowTableLabelActive]}>OUTSIDE</Text>
+                  </View>
+                </TouchableOpacity>
+              </View>
+
+              {/* Row 4: Heading change | Heading change */}
+              <View style={styles.yellowTableRowSplit}>
+                <TouchableOpacity
+                  style={styles.yellowTableCell}
+                  onPress={() => {
+                    setShowYellowPopup(false);
+                    setShowRoomSelectionModal(true);
+                  }}
+                >
+                  <Text style={styles.yellowTableLabelSmall}>Heading change</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.yellowTableCell}
+                  onPress={() => {
+                    setShowYellowPopup(false);
+                    setShowRoomSelectionModal(true);
+                  }}
+                >
+                  <Text style={styles.yellowTableLabelSmall}>Heading change</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Row 5: Deficiency selected | Deficiency selected */}
+              <View style={styles.yellowTableRowSplit}>
+                <View style={styles.yellowTableCell}>
+                  <Text style={styles.yellowTableLabelSmall}>Deficiency selected</Text>
+                </View>
+                <View style={styles.yellowTableCell}>
+                  <Text style={styles.yellowTableLabelSmall}>Deficiency selected</Text>
+                </View>
+              </View>
+
+              {/* Row 6: Camera for inspection | Deficiency selected */}
+              <View style={styles.yellowTableRowSplit}>
+                <TouchableOpacity
+                  style={styles.yellowTableCell}
+                  onPress={() => {
+                    setShowYellowPopup(false);
+                    // If room is already selected, go directly to camera, otherwise show room selection
+                    if (selectedRoom) {
+                      captureRoomPhoto();
+                    } else {
+                      setShowRoomSelectionModal(true);
+                    }
+                  }}
+                >
+                  <Text style={styles.yellowTableLabelSmall}>Camera for inspection</Text>
+                </TouchableOpacity>
+                <View style={styles.yellowTableCell}>
+                  <Text style={styles.yellowTableLabelSmall}>Deficiency selected</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Close Button beneath table */}
+            <TouchableOpacity
+              style={styles.yellowPopupCloseButton}
+              onPress={() => setShowYellowPopup(false)}
+            >
+              <Text style={styles.yellowPopupCloseButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
 
     </SafeAreaView>
   );
@@ -1166,6 +2120,22 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: '#6B7280',
+  },
+  uploadIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#F0F9FF',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0F2FE',
+  },
+  uploadIndicatorText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#0E7490',
   },
   scrollView: {
     flex: 1,
@@ -1963,5 +2933,677 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#1F2937',
     lineHeight: 18,
+  },
+  // Room Selection Modal Styles
+  roomModalContainer: {
+    flex: 1,
+    backgroundColor: '#F9FAFB',
+  },
+  roomModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  roomModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  doneText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#0E7490',
+  },
+  categoryToggle: {
+    flexDirection: 'row',
+    padding: 12,
+    gap: 12,
+    backgroundColor: '#FFFFFF',
+  },
+  categoryButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#0E7490',
+    backgroundColor: '#FFFFFF',
+  },
+  categoryButtonActive: {
+    backgroundColor: '#0E7490',
+    borderColor: '#0E7490',
+  },
+  categoryButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#0E7490',
+  },
+  categoryButtonTextActive: {
+    color: '#FFFFFF',
+  },
+  sectionSwitcherLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+  addRoomButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#F0F9FF',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#0E7490',
+  },
+  addRoomButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0E7490',
+  },
+  roomCounterBadge: {
+    backgroundColor: '#0E7490',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 6,
+  },
+  roomCounterText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  roomGrid: {
+    flex: 1,
+    paddingHorizontal: 12,
+  },
+  roomButtonsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingBottom: 20,
+  },
+  roomButton: {
+    width: '23%',
+    marginHorizontal: '1%',
+    marginVertical: 6,
+    paddingVertical: 14,
+    paddingHorizontal: 6,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 70,
+  },
+  roomButtonCompleted: {
+    backgroundColor: '#ECFDF5',
+    borderColor: '#10B981',
+  },
+  roomButtonText: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#374151',
+    textAlign: 'center',
+  },
+  roomButtonTextCompleted: {
+    color: '#059669',
+  },
+  roomPhotoCountBadge: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    backgroundColor: '#10B981',
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  roomPhotoCountText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  roomSummary: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+  },
+  roomSummaryTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  roomChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  roomChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#E0F7FA',
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  roomChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#0E7490',
+  },
+  roomChipCount: {
+    fontSize: 11,
+    color: '#0E7490',
+    opacity: 0.8,
+  },
+  // Camera Preview Styles
+  cameraPreviewContainer: {
+    flex: 1,
+    padding: 16,
+  },
+  photoStrip: {
+    maxHeight: 200,
+    marginBottom: 16,
+  },
+  previewPhotoContainer: {
+    marginRight: 12,
+    position: 'relative',
+  },
+  previewPhoto: {
+    width: 150,
+    height: 180,
+    borderRadius: 12,
+  },
+  photoIndex: {
+    position: 'absolute',
+    bottom: 8,
+    left: 8,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  photoIndexText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  addMoreButton: {
+    width: 120,
+    height: 180,
+    backgroundColor: '#E0F7FA',
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#0E7490',
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addMoreText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0E7490',
+    marginTop: 8,
+  },
+  photoCountLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  saveButtonsContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    paddingHorizontal: 16,
+  },
+  cancelPhotoButton: {
+    flex: 1,
+    paddingVertical: 16,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#D1D5DB',
+    alignItems: 'center',
+  },
+  cancelPhotoButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  savePhotoButton: {
+    flex: 1,
+    flexDirection: 'row',
+    gap: 8,
+    paddingVertical: 16,
+    borderRadius: 12,
+    backgroundColor: '#10B981',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  savePhotoButtonDisabled: {
+    opacity: 0.6,
+  },
+  savePhotoButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  // Post Save Options Styles
+  postSaveContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
+  },
+  successIcon: {
+    marginBottom: 16,
+  },
+  successTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 8,
+  },
+  successSubtitle: {
+    fontSize: 16,
+    color: '#6B7280',
+    marginBottom: 24,
+    textAlign: 'center',
+  },
+  timeEstimateBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#FEF3C7',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 32,
+  },
+  timeEstimateText: {
+    fontSize: 14,
+    color: '#92400E',
+    flex: 1,
+  },
+  autoAnalysisBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#DBEAFE',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 16,
+  },
+  autoAnalysisText: {
+    fontSize: 14,
+    color: '#0E7490',
+    fontWeight: '500',
+  },
+  postSaveButtons: {
+    width: '100%',
+    gap: 12,
+  },
+  analyzeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    paddingVertical: 18,
+    borderRadius: 12,
+    backgroundColor: '#0E7490',
+  },
+  analyzeButtonText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  nextRoomButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    paddingVertical: 18,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#0E7490',
+    backgroundColor: '#FFFFFF',
+  },
+  nextRoomButtonText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#0E7490',
+  },
+  // Room Findings Styles
+  roomFindingsSection: {
+    marginBottom: 20,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  roomFindingsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0F9FF',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0F2FE',
+  },
+  roomFindingsTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0E7490',
+    marginLeft: 10,
+    flex: 1,
+  },
+  roomFindingsCount: {
+    backgroundColor: '#0E7490',
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  roomFindingsCountText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  roomFindingsContent: {
+    padding: 12,
+    gap: 12,
+  },
+  // Analysis Success Modal Styles
+  analysisSuccessModal: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 28,
+    width: '90%',
+    maxWidth: 360,
+    alignItems: 'center',
+  },
+  successIconLarge: {
+    marginBottom: 16,
+  },
+  analysisSuccessTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  analysisSuccessSubtitle: {
+    fontSize: 16,
+    color: '#6B7280',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  analyzedRoomsList: {
+    width: '100%',
+    backgroundColor: '#F0FDF4',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
+  },
+  analyzedRoomsLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 12,
+  },
+  analyzedRoomItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 4,
+  },
+  analyzedRoomText: {
+    fontSize: 14,
+    color: '#059669',
+    fontWeight: '500',
+  },
+  viewReportButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#0E7490',
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    width: '100%',
+    marginBottom: 12,
+  },
+  viewReportButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  closeSuccessButton: {
+    paddingVertical: 8,
+  },
+  closeSuccessButtonText: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  // Add Custom Room Modal Styles
+  addRoomModalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 24,
+    width: '90%',
+    maxWidth: 400,
+    maxHeight: '80%',
+  },
+  addRoomModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  addRoomModalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  addRoomModalSubtitle: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 20,
+    lineHeight: 20,
+  },
+  addRoomInputRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 20,
+  },
+  addRoomInput: {
+    flex: 1,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 16,
+    color: '#1F2937',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  addRoomSubmitButton: {
+    backgroundColor: '#0E7490',
+    borderRadius: 12,
+    width: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  customRoomsList: {
+    flex: 1,
+    marginBottom: 16,
+  },
+  customRoomsListLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 12,
+  },
+  customRoomsScroll: {
+    maxHeight: 200,
+  },
+  customRoomItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#F0F9FF',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 8,
+  },
+  customRoomInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  customRoomName: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#1F2937',
+  },
+  removeRoomButton: {
+    padding: 8,
+  },
+  noCustomRooms: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+  },
+  noCustomRoomsText: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    marginTop: 12,
+  },
+  finishAddingButton: {
+    backgroundColor: '#0E7490',
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  finishAddingButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  // Yellow Camera Popup Styles (Re-themed to App Theme)
+  yellowModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  yellowPopupContent: {
+    width: '100%',
+    maxWidth: 340,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 5,
+    overflow: 'hidden',
+  },
+  yellowTable: {
+    backgroundColor: '#FFFFFF',
+  },
+  yellowTableRowFull: {
+    height: 60,
+    borderBottomWidth: 1,
+    borderColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    backgroundColor: '#F9FAFB',
+  },
+  yellowTableRowSplit: {
+    flexDirection: 'row',
+    height: 90,
+    borderBottomWidth: 1,
+    borderColor: '#F3F4F6',
+  },
+  yellowTableCell: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    borderRightWidth: 1,
+    borderColor: '#F3F4F6',
+  },
+  selectionPill: {
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  selectionPillActive: {
+    backgroundColor: '#0E7490', // App Primary Color
+    elevation: 2,
+    shadowColor: '#0E7490',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  },
+  yellowTableLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#374151',
+    textAlign: 'center',
+    letterSpacing: 0.5,
+  },
+  yellowTableLabelActive: {
+    color: '#FFFFFF',
+  },
+  yellowTableLabelSmall: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#6B7280',
+    textAlign: 'center',
+  },
+  yellowPopupCloseButton: {
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 16,
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderColor: '#F3F4F6',
+  },
+  yellowPopupCloseButtonText: {
+    color: '#0E7490',
+    fontWeight: '600',
+    fontSize: 15,
   },
 });

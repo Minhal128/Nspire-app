@@ -221,7 +221,7 @@ export default function UnitInspectionScreen({ navigation, route }: UnitInspecti
               style={styles.headerLogo}
               resizeMode="contain"
             />
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => navigation.navigate("Notifications" as any)}>
               <Ionicons name="notifications-outline" size={28} color="#1F2937" />
             </TouchableOpacity>
           </View>

@@ -12,13 +12,21 @@ import {
   Alert,
   Platform,
   Modal,
+  Share,
 } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
+import * as Print from 'expo-print';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import Sidebar from '../components/Sidebar';
 import IOSPickerModal from '../components/IOSPickerModal';
 import { inspectionService, propertyService, authService } from '../services';
 import { Property, Inspection } from '../services/api';
+
+// Inspector Dashboard URL - for sharing
+const INSPECTOR_DASHBOARD_URL = 'https://nspire-five.vercel.app/login?role=inspector';
 
 // Time period options with default
 const TIME_PERIOD_OPTIONS = [
@@ -112,7 +120,7 @@ export default function AnalyticsScreen({ navigation, onMenuPress }: AnalyticsSc
       if (timePeriod) {
         const now = new Date();
         let cutoffDate = new Date();
-        
+
         switch (timePeriod) {
           case '7days':
             cutoffDate.setDate(now.getDate() - 7);
@@ -314,7 +322,7 @@ export default function AnalyticsScreen({ navigation, onMenuPress }: AnalyticsSc
               style={styles.headerLogo}
               resizeMode="contain"
             />
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => navigation.navigate("Notifications" as any)}>
               <Ionicons name="notifications-outline" size={28} color="#1F2937" />
             </TouchableOpacity>
           </View>
@@ -524,25 +532,71 @@ export default function AnalyticsScreen({ navigation, onMenuPress }: AnalyticsSc
             </View>
           </View>
 
-          {/* Action Buttons */}
           <View style={styles.actionButtonsContainer}>
             <TouchableOpacity
               style={styles.exportButton}
-              onPress={() => {
-                console.log('Exporting analytics data');
-                setSuccessMessage('Analytics data exported successfully! Check your downloads folder.');
-                setSuccessModalVisible(true);
+              onPress={async () => {
+                try {
+                  setLoading(true);
+                  const htmlContent = `
+                  <html>
+                    <head>
+                      <style>
+                        body { font-family: 'Helvetica', sans-serif; padding: 20px; color: #1F2937; }
+                        h1 { color: #0E7490; border-bottom: 2px solid #0E7490; padding-bottom: 10px; }
+                        .summary { margin: 20px 0; padding: 15px; background: #F3F4F6; border-radius: 8px; }
+                        .stat { margin-bottom: 10px; font-size: 16px; }
+                        .stat-label { font-weight: bold; }
+                        .section-title { font-size: 18px; font-weight: bold; margin: 25px 0 15px; color: #374151; }
+                        table { width: 100%; border-collapse: collapse; }
+                        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #E5E7EB; }
+                        th { background-color: #F9FAFB; }
+                      </style>
+                    </head>
+                    <body>
+                      <h1>NSPIRE Analytics Report</h1>
+                      <p>Generated: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}</p>
+                      <div class="summary">
+                        <div class="stat"><span class="stat-label">Total Inspections:</span> ${analytics.totalInspections}</div>
+                        <div class="stat"><span class="stat-label">Compliant:</span> ${analytics.compliantCount} (${compliantPercent}%)</div>
+                        <div class="stat"><span class="stat-label">Needs Attention:</span> ${analytics.needsAttentionCount} (${needsAttentionPercent}%)</div>
+                        <div class="stat"><span class="stat-label">Non-Compliant:</span> ${analytics.nonCompliantCount} (${nonCompliantPercent}%)</div>
+                      </div>
+                      <div class="section-title">Property Performance</div>
+                      <table>
+                        <thead><tr><th>Property</th><th>Score</th></tr></thead>
+                        <tbody>
+                          ${analytics.propertyPerformance.map(p => `<tr><td>${p.name}</td><td>${p.score}%</td></tr>`).join('')}
+                        </tbody>
+                      </table>
+                    </body>
+                  </html>
+                `;
+                  const { uri } = await Print.printToFileAsync({ html: htmlContent });
+                  if (await Sharing.isAvailableAsync()) {
+                    await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: 'Analytics Report' });
+                  }
+                } catch (error) {
+                  console.error('PDF Export error:', error);
+                  Alert.alert('Error', 'Failed to generate PDF report');
+                } finally {
+                  setLoading(false);
+                }
               }}
             >
               <Ionicons name="download-outline" size={18} color="#FFFFFF" />
-              <Text style={styles.exportButtonText}>Export Analytics</Text>
+              <Text style={styles.exportButtonText}>Export PDF Report</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.shareButton}
-              onPress={() => {
-                console.log('Sharing dashboard');
-                setSuccessMessage('Dashboard link copied to clipboard! Share with your team.');
-                setSuccessModalVisible(true);
+              onPress={async () => {
+                try {
+                  await Clipboard.setStringAsync(INSPECTOR_DASHBOARD_URL);
+                  setSuccessMessage('Dashboard link copied to clipboard!');
+                  setSuccessModalVisible(true);
+                } catch (error) {
+                  console.error('Clipboard error:', error);
+                }
               }}
             >
               <Ionicons name="share-social-outline" size={18} color="#0E7490" />
@@ -554,7 +608,6 @@ export default function AnalyticsScreen({ navigation, onMenuPress }: AnalyticsSc
         </ScrollView>
       </SafeAreaView>
 
-      {/* Success Modal */}
       <Modal
         visible={successModalVisible}
         animationType="fade"
@@ -576,7 +629,6 @@ export default function AnalyticsScreen({ navigation, onMenuPress }: AnalyticsSc
         </View>
       </Modal>
 
-      {/* iOS Property Picker Modal */}
       <IOSPickerModal
         visible={propertyPickerVisible}
         title="Select Property"
@@ -586,7 +638,6 @@ export default function AnalyticsScreen({ navigation, onMenuPress }: AnalyticsSc
         onClose={() => setPropertyPickerVisible(false)}
       />
 
-      {/* iOS Period Picker Modal */}
       <IOSPickerModal
         visible={periodPickerVisible}
         title="Select Time Period"

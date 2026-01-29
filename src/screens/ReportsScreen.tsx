@@ -235,13 +235,35 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
 
     const matchesProperty = !propertyName || report.propertyId === propertyName;
 
+    // Status filter - compare case-insensitively
     const matchesStatus = !status ||
-      (status === 'paid' && report.complianceScore === 'Paid') ||
-      (status === 'unpaid' && report.complianceScore === 'Unpaid');
+      (status.toLowerCase() === report.complianceScore.toLowerCase());
 
-    // Date range filtering could be added here
+    // Date range filtering
+    let matchesDateRange = true;
+    if (dateRange) {
+      const reportDate = new Date(report.date);
+      const now = new Date();
+      let cutoffDate = new Date();
+      
+      switch (dateRange) {
+        case '7days':
+          cutoffDate.setDate(now.getDate() - 7);
+          break;
+        case '30days':
+          cutoffDate.setDate(now.getDate() - 30);
+          break;
+        case '90days':
+          cutoffDate.setDate(now.getDate() - 90);
+          break;
+        default:
+          cutoffDate = new Date(0); // Include all dates
+      }
+      
+      matchesDateRange = reportDate >= cutoffDate;
+    }
 
-    return matchesSearch && matchesProperty && matchesStatus;
+    return matchesSearch && matchesProperty && matchesStatus && matchesDateRange;
   });
 
   if (loading) {
@@ -291,7 +313,7 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
               style={styles.headerLogo}
               resizeMode="contain"
             />
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => navigation.navigate("Notifications" as any)}>
               <Ionicons name="notifications-outline" size={28} color="#1F2937" />
             </TouchableOpacity>
           </View>

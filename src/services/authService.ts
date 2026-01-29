@@ -265,14 +265,47 @@ class AuthService {
     switch (role) {
       case "management":
       case "supervisor":
+      case "property-manager":
         return "ManagementDashboard";
       case "other":
       case "order":
         return "OrderDashboard";
       case "inspector":
-      case "property-manager":
       default:
         return "Dashboard";
+    }
+  }
+
+  /**
+   * Get captcha image for registration
+   */
+  async getCaptcha(): Promise<{ success: boolean; captchaId: string; captchaImage: string }> {
+    try {
+      const response = await api.get<{ success: boolean; captchaId: string; captchaImage: string }>(
+        "/captcha/generate"
+      );
+      return response;
+    } catch (error: any) {
+      throw new Error(error.message || "Failed to load captcha");
+    }
+  }
+
+  /**
+   * Register new user with captcha verification
+   */
+  async signupWithCaptcha(credentials: SignupCredentials & { captchaId: string; captchaCode: string }): Promise<AuthResponse & { requiresVerification?: boolean }> {
+    try {
+      const response = await api.post<AuthResponse & { requiresVerification?: boolean }>(
+        "/auth/signup",
+        credentials,
+      );
+
+      // Don't store token - user needs to verify email first
+      return response;
+    } catch (error: any) {
+      throw new Error(
+        error.message || "Registration failed. Please try again.",
+      );
     }
   }
 }

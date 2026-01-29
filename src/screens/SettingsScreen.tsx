@@ -12,14 +12,20 @@ import {
   ActivityIndicator,
   Platform,
   Modal,
+  Switch,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import * as ImagePicker from 'expo-image-picker';
+import * as LocalAuthentication from 'expo-local-authentication';
+import * as SecureStore from 'expo-secure-store';
 import Sidebar from '../components/Sidebar';
 import IOSPickerModal from '../components/IOSPickerModal';
 import { authService, userService } from '../services';
 import { User } from '../services/api';
+
+// Biometric 2FA key
+const BIOMETRIC_2FA_KEY = 'biometric_2fa_enabled';
 
 // Language options
 const LANGUAGE_OPTIONS = [
@@ -38,6 +44,14 @@ const TIMEZONE_OPTIONS = [
   { label: 'GMT +01:00 (CET)', value: 'GMT +01:00 (CET)' },
 ];
 
+// Country options for phone number validation with flags (4 countries only)
+const COUNTRY_OPTIONS = [
+  { label: '🇺🇸 +1', value: 'USA', code: '+1', minDigits: 10, maxDigits: 10, flag: '🇺🇸', name: 'United States' },
+  { label: '🇨🇦 +1', value: 'Canada', code: '+1', minDigits: 10, maxDigits: 10, flag: '🇨🇦', name: 'Canada' },
+  { label: '🇬🇧 +44', value: 'UK', code: '+44', minDigits: 10, maxDigits: 11, flag: '🇬🇧', name: 'United Kingdom' },
+  { label: '🇦🇺 +61', value: 'Australia', code: '+61', minDigits: 9, maxDigits: 9, flag: '🇦🇺', name: 'Australia' },
+];
+
 interface SettingsScreenProps {
   navigation: any;
 }
@@ -51,6 +65,7 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [phoneCountry, setPhoneCountry] = useState('USA');
   const [role, setRole] = useState('');
   const [language, setLanguage] = useState('English US');
   const [timezone, setTimezone] = useState('GMT +05:00');
@@ -63,6 +78,7 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
   // iOS Picker Modal states
   const [languagePickerVisible, setLanguagePickerVisible] = useState(false);
   const [timezonePickerVisible, setTimezonePickerVisible] = useState(false);
+  const [countryPickerVisible, setCountryPickerVisible] = useState(false);
 
   // Notification preferences
   const [inspectionReminderEmail, setInspectionReminderEmail] = useState(true);
@@ -78,6 +94,68 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [suggestedPassword, setSuggestedPassword] = useState('');
+  
+  // Biometric 2FA
+  const [biometricEnabled, setBiometricEnabled] = useState(false);
+  const [biometricSupported, setBiometricSupported] = useState(false);
+  const [biometricEnrolled, setBiometricEnrolled] = useState(false);
+
+  // Generate strong password suggestion
+  const generateStrongPassword = () => {
+    const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const lowercase = 'abcdefghijklmnopqrstuvwxyz';
+    const numbers = '0123456789';
+    const symbols = '!@#$%^&*';
+    const allChars = uppercase + lowercase + numbers + symbols;
+    
+    let password = '';
+    // Ensure at least one of each type
+    password += uppercase[Math.floor(Math.random() * uppercase.length)];
+    password += lowercase[Math.floor(Math.random() * lowercase.length)];
+    password += numbers[Math.floor(Math.random() * numbers.length)];
+    password += symbols[Math.floor(Math.random() * symbols.length)];
+    
+    // Fill the rest
+    for (let i = 0; i < 8; i++) {
+      password += allChars[Math.floor(Math.random() * allChars.length)];
+    }
+    
+    // Shuffle the password
+    return password.split('').sort(() => Math.random() - 0.5).join('');
+  };
+
+  // Validate password strength
+  const validatePasswordStrength = (password: string): { valid: boolean; message: string } => {
+    if (password.length < 8) {
+      return { valid: false, message: 'Password must be at least 8 characters' };
+    }
+    if (!/[A-Z]/.test(password)) {
+      return { valid: false, message: 'Password must contain at least one uppercase letter' };
+    }
+    if (!/[a-z]/.test(password)) {
+      return { valid: false, message: 'Password must contain at least one lowercase letter' };
+    }
+    if (!/[0-9]/.test(password)) {
+      return { valid: false, message: 'Password must contain at least one number' };
+    }
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+      return { valid: false, message: 'Password must contain at least one special character' };
+    }
+    return { valid: true, message: '' };
+  };
+
+  // Check if new password matches old password
+  const handleNewPasswordChange = (text: string) => {
+    setNewPassword(text);
+    if (oldPassword && text === oldPassword) {
+      setPasswordError('New password must be different from old password');
+    } else {
+      const validation = validatePasswordStrength(text);
+      setPasswordError(validation.valid ? '' : validation.message);
+    }
+  };
 
   const loadUserData = useCallback(async () => {
     try {
@@ -100,6 +178,71 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
   useEffect(() => {
     loadUserData();
   }, [loadUserData]);
+
+  // Check biometric hardware and enrollment status
+  const checkBiometricSupport = useCallback(async () => {
+    try {
+      const hasHardware = await LocalAuthentication.hasHardwareAsync();
+      setBiometricSupported(hasHardware);
+      
+      if (hasHardware) {
+        const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+        setBiometricEnrolled(isEnrolled);
+      }
+      
+      // Load saved 2FA preference
+      const savedStatus = await SecureStore.getItemAsync(BIOMETRIC_2FA_KEY);
+      if (savedStatus === 'true') {
+        setBiometricEnabled(true);
+      }
+    } catch (error) {
+      console.error('Error checking biometric support:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    checkBiometricSupport();
+  }, [checkBiometricSupport]);
+
+  // Handle biometric 2FA toggle
+  const handleBiometric2FAToggle = async (value: boolean) => {
+    try {
+      if (value) {
+        // Enable - authenticate first to confirm user identity
+        const result = await LocalAuthentication.authenticateAsync({
+          promptMessage: 'Authenticate to enable biometric login',
+          cancelLabel: 'Cancel',
+          disableDeviceFallback: false,
+        });
+        
+        if (result.success) {
+          await SecureStore.setItemAsync(BIOMETRIC_2FA_KEY, 'true');
+          setBiometricEnabled(true);
+          setSuccessMessage('Biometric authentication enabled successfully!');
+          setSuccessModalVisible(true);
+        } else {
+          Alert.alert('Authentication Failed', 'Could not verify your identity. Please try again.');
+        }
+      } else {
+        // Disable - authenticate to confirm
+        const result = await LocalAuthentication.authenticateAsync({
+          promptMessage: 'Authenticate to disable biometric login',
+          cancelLabel: 'Cancel',
+          disableDeviceFallback: false,
+        });
+        
+        if (result.success) {
+          await SecureStore.deleteItemAsync(BIOMETRIC_2FA_KEY);
+          setBiometricEnabled(false);
+          setSuccessMessage('Biometric authentication disabled.');
+          setSuccessModalVisible(true);
+        }
+      }
+    } catch (error) {
+      console.error('Error toggling biometric 2FA:', error);
+      Alert.alert('Error', 'Failed to update biometric settings. Please try again.');
+    }
+  };
 
   const pickImage = async () => {
     // Request permission
@@ -218,8 +361,32 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
           setEmail(editValue);
           break;
         case 'phone':
-          updateData.phone = editValue;
-          setPhone(editValue);
+          // Validate phone number based on selected country
+          const countryConfig = COUNTRY_OPTIONS.find(c => c.value === phoneCountry);
+          if (!countryConfig) {
+            Alert.alert('Error', 'Please select a valid country');
+            setSaving(false);
+            return;
+          }
+          
+          // Remove all non-digit characters for validation
+          const digitsOnly = editValue.replace(/\D/g, '');
+          
+          if (digitsOnly.length < countryConfig.minDigits || digitsOnly.length > countryConfig.maxDigits) {
+            const digitRange = countryConfig.minDigits === countryConfig.maxDigits 
+              ? `${countryConfig.minDigits} digits`
+              : `${countryConfig.minDigits}-${countryConfig.maxDigits} digits`;
+            Alert.alert('Error', `Phone number for ${countryConfig.name} must be ${digitRange}`);
+            setSaving(false);
+            return;
+          }
+          
+          // Save as integer (full phone with country code stripped to digits)
+          const fullPhoneDigits = countryConfig.code.replace(/\D/g, '') + digitsOnly;
+          updateData.phone = parseInt(fullPhoneDigits, 10);
+          
+          // Display format for UI
+          setPhone(`${countryConfig.code} ${editValue}`);
           break;
       }
 
@@ -261,13 +428,22 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
       return;
     }
 
+    if (newPassword === oldPassword) {
+      setPasswordError('New password must be different from old password');
+      Alert.alert('Error', 'New password must be different from your current password');
+      return;
+    }
+
     if (newPassword !== confirmPassword) {
       Alert.alert('Error', 'New passwords do not match');
       return;
     }
 
-    if (newPassword.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters');
+    // Validate password strength
+    const validation = validatePasswordStrength(newPassword);
+    if (!validation.valid) {
+      setPasswordError(validation.message);
+      Alert.alert('Weak Password', validation.message);
       return;
     }
 
@@ -280,6 +456,8 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
       setOldPassword('');
       setNewPassword('');
       setConfirmPassword('');
+      setPasswordError('');
+      setSuggestedPassword('');
       setSuccessMessage('Password changed successfully!');
       setSuccessModalVisible(true);
     } catch (error: any) {
@@ -287,31 +465,6 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
     } finally {
       setSaving(false);
     }
-  };
-
-  const handleLogoutSession = async () => {
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout from this session?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Logout',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await authService.logout();
-              navigation.reset({
-                index: 0,
-                routes: [{ name: 'Boarding' as never }],
-              });
-            } catch (error) {
-              console.error('Error logging out session:', error);
-            }
-          }
-        },
-      ]
-    );
   };
 
   if (loading) {
@@ -361,7 +514,7 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
               style={styles.headerLogo}
               resizeMode="contain"
             />
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => navigation.navigate("Notifications" as any)}>
               <Ionicons name="notifications-outline" size={28} color="#1F2937" />
             </TouchableOpacity>
           </View>
@@ -422,26 +575,51 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
               </View>
             </View>
 
-            {/* Phone Field */}
+            {/* Phone Field with Country Flag Selector */}
             <View style={styles.fieldContainer}>
               <View style={styles.fieldHeader}>
                 <Text style={styles.fieldLabel}>Phone</Text>
-                <TouchableOpacity onPress={() => handleEditField('phone', phone)}>
+                <TouchableOpacity onPress={() => handleEditField('phone', phone.replace(/^\+\d+\s/, ''))}>
                   <Text style={styles.editLink}>Edit</Text>
                 </TouchableOpacity>
               </View>
-              <View style={styles.fieldInput}>
-                <Text style={styles.fieldValue}>{phone}</Text>
+              <View style={styles.phoneFieldRow}>
+                {Platform.OS === 'ios' ? (
+                  <TouchableOpacity
+                    style={styles.countryPickerButton}
+                    onPress={() => setCountryPickerVisible(true)}
+                  >
+                    <Text style={styles.flagText}>
+                      {COUNTRY_OPTIONS.find(c => c.value === phoneCountry)?.flag || '🇺🇸'}
+                    </Text>
+                    <Text style={styles.countryCodeText}>
+                      {COUNTRY_OPTIONS.find(c => c.value === phoneCountry)?.code || '+1'}
+                    </Text>
+                    <Ionicons name="chevron-down" size={16} color="#6B7280" />
+                  </TouchableOpacity>
+                ) : (
+                  <View style={styles.countryPickerContainer}>
+                    <Picker
+                      selectedValue={phoneCountry}
+                      onValueChange={(itemValue) => setPhoneCountry(itemValue)}
+                      style={styles.countryPicker}
+                    >
+                      {COUNTRY_OPTIONS.map((country) => (
+                        <Picker.Item key={country.value} label={country.label} value={country.value} />
+                      ))}
+                    </Picker>
+                  </View>
+                )}
+                <View style={styles.phoneValueContainer}>
+                  <Text style={styles.fieldValue}>{phone || 'Not set'}</Text>
+                </View>
               </View>
             </View>
 
-            {/* Role Field */}
+            {/* Role Field - Read Only (no edit authority for users) */}
             <View style={styles.fieldContainer}>
               <View style={styles.fieldHeader}>
                 <Text style={styles.fieldLabel}>Role</Text>
-                <TouchableOpacity onPress={() => handleEditField('role', role)}>
-                  <Text style={styles.editLink}>Edit</Text>
-                </TouchableOpacity>
               </View>
               <View style={styles.fieldInput}>
                 <Text style={styles.fieldValue}>{role}</Text>
@@ -669,15 +847,41 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
             </View>
 
             <View style={styles.passwordFieldContainer}>
-              <Text style={styles.passwordLabel}>New Password</Text>
+              <View style={styles.passwordLabelRow}>
+                <Text style={styles.passwordLabel}>New Password</Text>
+                <TouchableOpacity 
+                  onPress={() => {
+                    const suggested = generateStrongPassword();
+                    setSuggestedPassword(suggested);
+                    setNewPassword(suggested);
+                    setConfirmPassword(suggested);
+                    setPasswordError('');
+                  }}
+                  style={styles.suggestPasswordButton}
+                >
+                  <Ionicons name="key-outline" size={14} color="#0E7490" />
+                  <Text style={styles.suggestPasswordText}>Suggest</Text>
+                </TouchableOpacity>
+              </View>
               <TextInput
-                style={styles.passwordInput}
-                placeholder="Enter your old password"
+                style={[styles.passwordInput, passwordError ? styles.passwordInputError : null]}
+                placeholder="Enter your new password"
                 placeholderTextColor="#9CA3AF"
-                secureTextEntry
+                secureTextEntry={!suggestedPassword}
                 value={newPassword}
-                onChangeText={setNewPassword}
+                onChangeText={handleNewPasswordChange}
               />
+              {passwordError ? (
+                <Text style={styles.passwordErrorText}>{passwordError}</Text>
+              ) : null}
+              {suggestedPassword ? (
+                <Text style={styles.suggestedPasswordNote}>
+                  Suggested password applied - tap to copy or change
+                </Text>
+              ) : null}
+              <Text style={styles.passwordRequirements}>
+                Min 8 chars, 1 uppercase, 1 lowercase, 1 number, 1 special char
+              </Text>
             </View>
 
             <View style={styles.passwordFieldContainer}>
@@ -686,7 +890,7 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
                 style={styles.passwordInput}
                 placeholder="Confirm your new password"
                 placeholderTextColor="#9CA3AF"
-                secureTextEntry
+                secureTextEntry={!suggestedPassword}
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
               />
@@ -705,32 +909,34 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
             </TouchableOpacity>
 
             {/* 2FA Toggle */}
-            <Text style={styles.sectionTitle}>2FA Toggle</Text>
-            <TouchableOpacity style={styles.twoFactorButton}>
-              <Ionicons name="lock-closed" size={20} color="#1F2937" />
-              <Text style={styles.twoFactorText}>Enable Two-Factor Authentication</Text>
-            </TouchableOpacity>
-
-            {/* Session Management */}
-            <Text style={styles.sectionTitle}>Session Management</Text>
-            <View style={styles.sessionCard}>
-              <View style={styles.sessionHeader}>
-                <Ionicons name="desktop-outline" size={24} color="#1F2937" />
-                <Text style={styles.sessionTitle}>Web Browser</Text>
-              </View>
-              <View style={styles.sessionDetails}>
-                <View style={styles.sessionRow}>
-                  <Text style={styles.sessionDevice}>Chrome On Windows</Text>
-                  <Text style={styles.sessionIP}>192.168.0.15</Text>
-                </View>
-                <View style={styles.sessionRow}>
-                  <Text style={styles.sessionLocation}>NewYork NY</Text>
-                  <Text style={styles.sessionTime}>2 hours ago</Text>
+            <Text style={styles.sectionTitle}>Biometric Authentication</Text>
+            <View style={styles.biometricContainer}>
+              <View style={styles.biometricInfo}>
+                <Ionicons 
+                  name={Platform.OS === 'ios' ? 'finger-print' : 'finger-print'} 
+                  size={24} 
+                  color={biometricSupported ? '#10B981' : '#9CA3AF'} 
+                />
+                <View style={styles.biometricTextContainer}>
+                  <Text style={styles.biometricTitle}>
+                    {Platform.OS === 'ios' ? 'Face ID / Touch ID' : 'Fingerprint / Face Unlock'}
+                  </Text>
+                  <Text style={styles.biometricDescription}>
+                    {!biometricSupported 
+                      ? 'Your device does not support biometric authentication'
+                      : !biometricEnrolled
+                        ? 'No biometrics enrolled on this device'
+                        : 'Use biometric authentication when opening the app'}
+                  </Text>
                 </View>
               </View>
-              <TouchableOpacity onPress={handleLogoutSession}>
-                <Text style={styles.logoutText}>Log Out</Text>
-              </TouchableOpacity>
+              <Switch
+                value={biometricEnabled}
+                onValueChange={handleBiometric2FAToggle}
+                disabled={!biometricSupported || !biometricEnrolled}
+                trackColor={{ false: '#D1D5DB', true: '#10B981' }}
+                thumbColor={biometricEnabled ? '#fff' : '#f4f3f4'}
+              />
             </View>
           </View>
 
@@ -748,13 +954,40 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
         <View style={styles.editModalOverlay}>
           <View style={styles.editModalContent}>
             <Text style={styles.editModalTitle}>Edit {editField.charAt(0).toUpperCase() + editField.slice(1)}</Text>
-            <TextInput
-              style={styles.editModalInput}
-              value={editValue}
-              onChangeText={setEditValue}
-              placeholder={`Enter ${editField}`}
-              placeholderTextColor="#9CA3AF"
-            />
+            {editField === 'phone' && (
+              <View style={styles.phoneEditHeader}>
+                <TouchableOpacity 
+                  style={styles.phoneFlagSelector}
+                  onPress={() => setCountryPickerVisible(true)}
+                >
+                  <Text style={styles.flagTextLarge}>
+                    {COUNTRY_OPTIONS.find(c => c.value === phoneCountry)?.flag || '🇺🇸'}
+                  </Text>
+                  <Ionicons name="chevron-down" size={14} color="#6B7280" />
+                </TouchableOpacity>
+                <Text style={styles.phoneHint}>
+                  Enter {COUNTRY_OPTIONS.find(c => c.value === phoneCountry)?.minDigits === COUNTRY_OPTIONS.find(c => c.value === phoneCountry)?.maxDigits 
+                    ? COUNTRY_OPTIONS.find(c => c.value === phoneCountry)?.maxDigits 
+                    : `${COUNTRY_OPTIONS.find(c => c.value === phoneCountry)?.minDigits}-${COUNTRY_OPTIONS.find(c => c.value === phoneCountry)?.maxDigits}`} digits
+                </Text>
+              </View>
+            )}
+            <View style={editField === 'phone' ? styles.phoneEditRow : undefined}>
+              {editField === 'phone' && (
+                <Text style={styles.phoneCodePrefix}>
+                  {COUNTRY_OPTIONS.find(c => c.value === phoneCountry)?.code}
+                </Text>
+              )}
+              <TextInput
+                style={editField === 'phone' ? styles.phoneEditInput : styles.editModalInput}
+                value={editValue}
+                onChangeText={setEditValue}
+                placeholder={editField === 'phone' ? 'Enter phone number' : `Enter ${editField}`}
+                placeholderTextColor="#9CA3AF"
+                keyboardType={editField === 'phone' ? 'phone-pad' : 'default'}
+                maxLength={editField === 'phone' ? COUNTRY_OPTIONS.find(c => c.value === phoneCountry)?.maxDigits : undefined}
+              />
+            </View>
             <View style={styles.editModalButtons}>
               <TouchableOpacity
                 style={styles.editModalCancelButton}
@@ -813,6 +1046,16 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
         selectedValue={timezone}
         onSelect={setTimezone}
         onClose={() => setTimezonePickerVisible(false)}
+      />
+
+      {/* iOS Country Picker Modal */}
+      <IOSPickerModal
+        visible={countryPickerVisible}
+        title="Select Country"
+        options={COUNTRY_OPTIONS.map(c => ({ label: c.label, value: c.value }))}
+        selectedValue={phoneCountry}
+        onSelect={setPhoneCountry}
+        onClose={() => setCountryPickerVisible(false)}
       />
     </>
   );
@@ -945,6 +1188,92 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6B7280',
   },
+  phoneFieldRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  countryPickerButton: {
+    backgroundColor: '#F3F4F6',
+    borderRadius: 8,
+    padding: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    minWidth: 120,
+  },
+  countryPickerText: {
+    fontSize: 14,
+    color: '#1F2937',
+    fontWeight: '500',
+  },
+  countryPickerContainer: {
+    backgroundColor: '#F3F4F6',
+    borderRadius: 8,
+    minWidth: 140,
+    height: 50,
+    justifyContent: 'center',
+  },
+  countryPicker: {
+    height: 50,
+    color: '#1F2937',
+  },
+  phoneValueContainer: {
+    flex: 1,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 8,
+    padding: 14,
+  },
+  phoneEditRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  phoneCodePrefix: {
+    fontSize: 14,
+    color: '#1F2937',
+    fontWeight: '600',
+    paddingLeft: 14,
+    paddingRight: 8,
+  },
+  phoneEditInput: {
+    flex: 1,
+    padding: 14,
+    fontSize: 14,
+    color: '#1F2937',
+  },
+  phoneHint: {
+    fontSize: 12,
+    color: '#6B7280',
+  },
+  phoneEditHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    gap: 12,
+  },
+  phoneFlagSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    gap: 4,
+  },
+  flagText: {
+    fontSize: 20,
+  },
+  flagTextLarge: {
+    fontSize: 24,
+  },
+  countryCodeText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1F2937',
+  },
   pickerContainer: {
     backgroundColor: '#F3F4F6',
     borderRadius: 8,
@@ -1064,12 +1393,52 @@ const styles = StyleSheet.create({
     color: '#1F2937',
     marginBottom: 8,
   },
+  passwordLabelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  suggestPasswordButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    backgroundColor: '#E0F7FA',
+    borderRadius: 6,
+  },
+  suggestPasswordText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#0E7490',
+  },
   passwordInput: {
     backgroundColor: '#F3F4F6',
     borderRadius: 8,
     padding: 14,
     fontSize: 14,
     color: '#374151',
+  },
+  passwordInputError: {
+    borderWidth: 1,
+    borderColor: '#EF4444',
+  },
+  passwordErrorText: {
+    fontSize: 12,
+    color: '#EF4444',
+    marginTop: 4,
+  },
+  suggestedPasswordNote: {
+    fontSize: 11,
+    color: '#10B981',
+    marginTop: 4,
+    fontStyle: 'italic',
+  },
+  passwordRequirements: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    marginTop: 4,
   },
   twoFactorButton: {
     flexDirection: 'row',
@@ -1088,53 +1457,33 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#1F2937',
   },
-  sessionCard: {
-    backgroundColor: '#F9FAFB',
-    borderRadius: 8,
-    padding: 16,
-    marginBottom: 16,
-  },
-  sessionHeader: {
+  biometricContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 12,
+    justifyContent: 'space-between',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
   },
-  sessionTitle: {
-    fontSize: 14,
+  biometricInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  biometricTextContainer: {
+    marginLeft: 12,
+    flex: 1,
+  },
+  biometricTitle: {
+    fontSize: 15,
     fontWeight: '600',
     color: '#1F2937',
   },
-  sessionDetails: {
-    gap: 6,
-    marginBottom: 12,
-  },
-  sessionRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  sessionDevice: {
-    fontSize: 14,
-    color: '#374151',
-  },
-  sessionIP: {
-    fontSize: 14,
+  biometricDescription: {
+    fontSize: 12,
     color: '#6B7280',
-  },
-  sessionLocation: {
-    fontSize: 14,
-    color: '#6B7280',
-  },
-  sessionTime: {
-    fontSize: 14,
-    color: '#6B7280',
-  },
-  logoutText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#EF4444',
-    textAlign: 'center',
+    marginTop: 2,
   },
   modalOverlay: {
     flex: 1,

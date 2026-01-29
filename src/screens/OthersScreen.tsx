@@ -71,9 +71,8 @@ export default function OthersScreen({ navigation }: OthersScreenProps) {
   const formatUserType = (role: string) => {
     switch (role) {
       case "management":
-        return "Management";
       case "property-manager":
-        return "Property Manager";
+        return "Management";
       case "supervisor":
         return "Supervisor";
       case "admin":
@@ -219,7 +218,7 @@ export default function OthersScreen({ navigation }: OthersScreenProps) {
               resizeMode="contain"
             />
             <View style={styles.notificationBadge}>
-              <TouchableOpacity>
+              <TouchableOpacity onPress={() => navigation.navigate("Notifications" as any)}>
                 <Ionicons
                   name="notifications-outline"
                   size={28}
