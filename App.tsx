@@ -19,6 +19,7 @@ import NotificationScreen from "./src/screens/NotificationScreen";
 import DashboardScreen from "./src/screens/DashboardScreen";
 import MyInspectionsScreen from "./src/screens/MyInspectionsScreen";
 import ReportsScreen from "./src/screens/ReportsScreen";
+import InspectionStatusScreen from "./src/screens/InspectionStatusScreen";
 import AddPropertyScreen from "./src/screens/AddPropertyScreen";
 import RequestInspectionScreen from "./src/screens/RequestInspectionScreen";
 import EditPropertyScreen from "./src/screens/EditPropertyScreen";
@@ -33,8 +34,17 @@ import OrderDashboardScreen from "./src/screens/OrderDashboardScreen";
 import OthersScreen from "./src/screens/OthersScreen";
 import LocationStatsScreen from "./src/screens/LocationStatsScreen";
 import AIInspectionScreen from "./src/screens/AIInspectionScreen";
+import InspectionCategoryScreen from "./src/screens/InspectionCategoryScreen";
+import ModuleSelectionScreen from "./src/screens/ModuleSelectionScreen";
+import DeficiencyFillingScreen from "./src/screens/DeficiencyFillingScreen";
+import InspectionSummaryScreen from "./src/screens/InspectionSummaryScreen";
 import InspectionReportScreen from "./src/screens/InspectionReportScreen";
 import NSPIREReportScreen from "./src/screens/NSPIREReportScreen";
+import PropertyInfoScreen from "./src/screens/PropertyInfoScreen";
+import InspectionCategoriesScreen from "./src/screens/InspectionCategoriesScreen";
+import UnitLocationsScreen from "./src/screens/UnitLocationsScreen";
+import LocationInspectionScreen from "./src/screens/LocationInspectionScreen";
+import DeficiencyDetailScreen from "./src/screens/DeficiencyDetailScreen";
 
 // Import auth service
 import authService from "./src/services/authService";
@@ -49,6 +59,7 @@ export type RootStackParamList = {
   Dashboard: undefined;
   MyInspections: undefined;
   Reports: undefined;
+  InspectionStatus: undefined;
   ManagementReports: undefined;
   Settings: undefined;
   AddProperty: undefined;
@@ -62,9 +73,30 @@ export type RootStackParamList = {
   OrderDashboard: undefined;
   Others: undefined;
   LocationStats: undefined;
-  AIInspection: { property: any };
+  AIInspection: { property: any; selectedUnits?: string[]; coverage?: string; totalUnits?: number; samplingInfo?: any };
+  ModuleSelection: { property: any; selectedUnits?: string[]; coverage?: string; totalUnits?: number; samplingInfo?: any; category: 'inside' | 'outside' };
+  DeficiencyFilling: { property: any; selectedUnits?: string[]; coverage?: string; totalUnits?: number; samplingInfo?: any; category: 'inside' | 'outside'; selectedModule?: any };
+  LegacyAIInspection: { property: any };
   InspectionReport: { property: any; session: any; findings: any[]; images: any[]; complianceScore: number; overallCondition: string };
   NSPIREReport: { report?: any; inspectionData?: any; property?: any };
+  PropertyInfo: { property: any; selectedUnits: string[] };
+  InspectionCategories: { property: any; selectedUnits: string[]; buildingId: string };
+  UnitLocations: { property: any; selectedUnits: string[]; buildingId: string };
+  LocationInspection: { property: any; selectedUnits: string[]; buildingId: string; location: string };
+  DeficiencyDetail: { 
+    property: any; 
+    selectedUnits: string[]; 
+    buildingId: string; 
+    location: string; 
+    itemId: string;
+    itemName: string;
+  };
+  InspectionSummary: {
+    property: any;
+    selectedUnits: string[];
+    buildingId: string;
+    inspectionData: any;
+  };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -106,6 +138,7 @@ const linking: LinkingOptions<RootStackParamList> = {
       Dashboard: "dashboard",
       MyInspections: "inspections",
       Reports: "reports",
+      InspectionStatus: "inspection-status",
       ManagementReports: "management-reports",
       Settings: "settings",
       AddProperty: "add-property",
@@ -278,6 +311,7 @@ export default function App() {
           <Stack.Screen name="Dashboard" component={DashboardScreen} />
           <Stack.Screen name="MyInspections" component={MyInspectionsScreen} />
           <Stack.Screen name="Reports" component={ReportsScreen} />
+          <Stack.Screen name="InspectionStatus" component={InspectionStatusScreen} />
           <Stack.Screen name="ManagementReports" component={ManagementReportsScreen} />
           <Stack.Screen name="AddProperty" component={AddPropertyScreen} />
           <Stack.Screen
@@ -306,9 +340,18 @@ export default function App() {
           />
           <Stack.Screen name="Others" component={OthersScreen} />
           <Stack.Screen name="LocationStats" component={LocationStatsScreen} />
-          <Stack.Screen name="AIInspection" component={AIInspectionScreen} />
+          <Stack.Screen name="AIInspection" component={InspectionCategoryScreen} />
+          <Stack.Screen name="ModuleSelection" component={ModuleSelectionScreen} />
+          <Stack.Screen name="DeficiencyFilling" component={DeficiencyFillingScreen} />
+          <Stack.Screen name="InspectionSummary" component={InspectionSummaryScreen} />
+          <Stack.Screen name="LegacyAIInspection" component={AIInspectionScreen} />
           <Stack.Screen name="InspectionReport" component={InspectionReportScreen} />
           <Stack.Screen name="NSPIREReport" component={NSPIREReportScreen} />
+          <Stack.Screen name="PropertyInfo" component={PropertyInfoScreen} />
+          <Stack.Screen name="InspectionCategories" component={InspectionCategoriesScreen} />
+          <Stack.Screen name="UnitLocations" component={UnitLocationsScreen} />
+          <Stack.Screen name="LocationInspection" component={LocationInspectionScreen} />
+          <Stack.Screen name="DeficiencyDetail" component={DeficiencyDetailScreen} />
         </Stack.Navigator>
       </NavigationContainer>
     </ClerkProvider>

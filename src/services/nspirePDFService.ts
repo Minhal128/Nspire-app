@@ -29,6 +29,35 @@ const getImageExtension = (uri: string): string => {
   return extension;
 };
 
+/**
+ * Clean up accidental JSON from text content
+ */
+const cleanJsonContent = (text: string): string => {
+  if (!text) return '';
+
+  // If it looks like JSON findings, try to extract the description or title
+  if (text.trim().startsWith('{') || text.trim().startsWith('[')) {
+    try {
+      const parsed = JSON.parse(text);
+      if (parsed.findings && Array.isArray(parsed.findings) && parsed.findings.length > 0) {
+        return parsed.findings[0].description || parsed.findings[0].title || text;
+      }
+      if (parsed.description) return parsed.description;
+      if (parsed.title) return parsed.title;
+    } catch (e) {
+      // Not valid JSON, but maybe contains it?
+    }
+  }
+
+  // Remove common JSON-like markers if they appear at the start
+  return text
+    .replace(/^\{\s*"findings"\s*:\s*\[\s*\{\s*/i, '')
+    .replace(/^"title"\s*:\s*"/i, '')
+    .replace(/^"description"\s*:\s*"/i, '')
+    .replace(/"\s*\}\s*\]\s*\}$/i, '')
+    .trim();
+};
+
 const getImageMimeType = (extension: string): string => {
   const mimeTypes: Record<string, string> = {
     jpg: 'image/jpeg',
@@ -60,8 +89,29 @@ const convertImageToBase64DataUrl = async (imageUri: string): Promise<string> =>
 
     // Handle Cloudinary URLs (remote) and other HTTP URLs
     if (imageUri.includes('cloudinary.com') || imageUri.startsWith('http://') || imageUri.startsWith('https://')) {
-      console.log('Remote image detected, using URL directly:', imageUri.substring(0, 50) + '...');
-      // For WebView and expo-print, remote URLs work fine and save memory/processing
+      console.log('Remote image detected, downloading for base64 conversion:', imageUri.substring(0, 50) + '...');
+
+      const extension = getImageExtension(imageUri);
+      const tempPath = generateTempFilename(extension);
+
+      const downloadedUri = await downloadWithRetries(imageUri, tempPath);
+
+      if (downloadedUri) {
+        console.log('Successfully downloaded remote image, now converting to base64');
+        const mimeType = getImageMimeType(extension);
+        const base64 = await FileSystem.readAsStringAsync(downloadedUri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+
+        // Clean up temp file
+        await FileSystem.deleteAsync(downloadedUri, { idempotent: true });
+
+        if (base64) {
+          return `data:${mimeType};base64,${base64}`;
+        }
+      }
+
+      console.warn('Failed to download/convert remote image, falling back to original URL');
       return imageUri;
     }
 
@@ -90,7 +140,7 @@ const convertImageToBase64DataUrl = async (imageUri: string): Promise<string> =>
       }
 
       const dataUrl = `data:${mimeType};base64,${base64}`;
-      console.log('Successfully converted local image to data URL');
+      console.log('Successfully converted local image to data URL', { length: dataUrl.length });
       return dataUrl;
     } catch (localError) {
       console.error('Error processing local image:', localError);
@@ -137,8 +187,8 @@ const downloadWithRetries = async (sourceUri: string, destPath: string, attempts
 /**
  * Process all images in the report and convert to base64 data URLs
  */
-const processReportImages = async (report: NSPIREInspectionReport): Promise<NSPIREInspectionReport> => {
-  console.log('Processing report images...');
+const processReportImages = async (report: NSPIREInspectionReport, forceBase64: boolean = true): Promise<NSPIREInspectionReport> => {
+  console.log('Processing report images...', { forceBase64 });
   // Deep clone the report to avoid mutating the original
   const processedReport = JSON.parse(JSON.stringify(report)) as NSPIREInspectionReport;
 
@@ -154,19 +204,34 @@ const processReportImages = async (report: NSPIREInspectionReport): Promise<NSPI
         try {
           console.log(`Converting image ${index + 1}/${processedReport.deficiencies.length}: ${def.imageUri.substring(0, 50)}...`);
 
-          // Add timeout for individual image conversion
-          const conversionPromise = convertImageToBase64DataUrl(def.imageUri);
-          const timeoutPromise = new Promise<string>((_, reject) =>
-            setTimeout(() => reject(new Error('Image conversion timeout')), 30000)
-          );
+          // If remote and not forcing base64 (e.g., for preview), keep as is
+          // Improved remote check and protocol enforcement
+          let imageUrl = def.imageUri;
+          if (imageUrl.includes('cloudinary.com') && !imageUrl.startsWith('http')) {
+            imageUrl = `https:${imageUrl.startsWith('//') ? '' : '//'}${imageUrl}`;
+          }
 
-          const base64DataUrl = await Promise.race([conversionPromise, timeoutPromise]);
+          const isRemote = imageUrl.startsWith('http') || imageUrl.startsWith('https');
 
-          if (base64DataUrl && base64DataUrl.startsWith('data:')) {
-            processedReport.deficiencies[index].imageUri = base64DataUrl;
-            console.log(`✅ Successfully converted image ${index + 1}`);
+          let base64DataUrl;
+          if (isRemote && !forceBase64) {
+            base64DataUrl = imageUrl;
+            console.log(`Using remote URI directly for image ${index + 1}`);
           } else {
-            console.warn(`⚠️ Image ${index + 1} conversion returned empty result, removing from report`);
+            // Add timeout for individual image conversion
+            const conversionPromise = convertImageToBase64DataUrl(imageUrl);
+            const timeoutPromise = new Promise<string>((_, reject) =>
+              setTimeout(() => reject(new Error('Image conversion timeout')), 30000)
+            );
+
+            base64DataUrl = await Promise.race([conversionPromise, timeoutPromise]);
+          }
+
+          if (base64DataUrl && (base64DataUrl.startsWith('data:') || base64DataUrl.startsWith('http'))) {
+            processedReport.deficiencies[index].imageUri = base64DataUrl;
+            console.log(`✅ Successfully ${base64DataUrl.startsWith('http') ? 'kept remote' : 'converted'} image ${index + 1}`);
+          } else {
+            console.warn(`⚠️ Image ${index + 1} processing failed, removing from report`);
             processedReport.deficiencies[index].imageUri = undefined;
           }
         } catch (imageError: any) {
@@ -1096,7 +1161,7 @@ const generateDeficiencyTable = (deficiencies: DeficiencyEntry[], options: PDFGe
                 <div class="deficiency-name">${def.deficiencyName}</div>
                 <span class="nspire-code">${def.nspireCode}</span>
               </td>
-              <td class="details-cell">${def.deficiencyDetails}</td>
+              <td class="details-cell">${cleanJsonContent(def.deficiencyDetails)}</td>
               <td class="comments-cell">${def.comments || '-'}</td>
               <td class="deduction-cell">-${def.deductionPts}</td>
               <td style="text-align: center;">
@@ -1449,8 +1514,9 @@ class NSPIREPDFReportService {
     options: PDFGenerationOptions = DEFAULT_PDF_OPTIONS
   ): Promise<string> {
     // Process images to convert local URIs to base64 data URLs
+    // For preview, we don't force base64 for remote images (Cloudinary)
     const processedReport = options.includeImages
-      ? await processReportImages(report)
+      ? await processReportImages(report, false)
       : report;
 
     return generateNSPIREReportHTML(processedReport, options);

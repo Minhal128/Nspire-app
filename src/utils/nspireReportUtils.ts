@@ -18,6 +18,38 @@ import {
 import { InspectionFinding } from '../services/openaiService';
 
 /**
+ * Sanitize description from AI to remove any potential JSON residue
+ */
+export const sanitizeAIDescription = (text: string): string => {
+  if (!text) return '';
+
+  // Try to parse as JSON if it looks like one
+  const trimmed = text.trim();
+  if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (parsed.findings && Array.isArray(parsed.findings) && parsed.findings.length > 0) {
+        return parsed.findings[0].description || parsed.findings[0].title || text;
+      }
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed[0].description || parsed[0].title || text;
+      }
+    } catch (e) {
+      // Not valid JSON, proceed to regex cleanup
+    }
+  }
+
+  // Regex cleanup for common JSON-like garbage from AI
+  return text
+    .replace(/^\{\s*"findings"\s*:\s*\[\s*\{\s*/i, '')
+    .replace(/^"title"\s*:\s*"/i, '')
+    .replace(/^"description"\s*:\s*"/i, '')
+    .replace(/"\s*\}\s*\]\s*\}$/i, '')
+    .replace(/\\"/g, '"') // Unescape quotes
+    .trim();
+};
+
+/**
  * Map AI inspection finding severity to NSPIRE severity
  */
 export const mapFindingSeverityToNSPIRE = (severity: string): DeficiencySeverity => {
@@ -93,11 +125,11 @@ export const convertFindingsToDeficiencies = (
   propertyInfo?: { building?: string; unit?: string }
 ): DeficiencyEntry[] => {
   const now = new Date();
-  
+
   return findings.map((finding, index) => {
     const severity = mapFindingSeverityToNSPIRE(finding.severity);
     const nspireCode = finding.nspireCode || mapCategoryToNSPIRECode(finding.category);
-    
+
     return {
       id: finding.id || `DEF-${index + 1}`,
       imageUri: finding.imageUri || '',
@@ -108,14 +140,14 @@ export const convertFindingsToDeficiencies = (
       area: finding.category || 'General',
       deficiencyName: finding.title,
       nspireCode,
-      deficiencyDetails: finding.description,
+      deficiencyDetails: sanitizeAIDescription(finding.description),
       comments: finding.recommendedAction || '',
       deductionPts: calculateDeductionPoints(severity),
       repeatIndicator: false,
       severity,
       inspectedDate: now.toLocaleDateString(),
-      inspectedTime: finding.timestamp 
-        ? new Date(finding.timestamp).toLocaleTimeString() 
+      inspectedTime: finding.timestamp
+        ? new Date(finding.timestamp).toLocaleTimeString()
         : now.toLocaleTimeString(),
       inspectorId: 'INS-001',
       correctiveAction: finding.recommendedAction,
@@ -292,29 +324,29 @@ export const generateNSPIREReport = (
 
   // Build inspection data table
   const inspectionDataRows: InspectionDataRow[] = [
-    { 
-      type: 'Building', 
-      propertyTotal: property?.buildings || 1, 
-      sampleSize: 1, 
-      totalUnitsInspected: 1 
+    {
+      type: 'Building',
+      propertyTotal: property?.buildings || 1,
+      sampleSize: 1,
+      totalUnitsInspected: 1
     },
-    { 
-      type: 'Unit', 
-      propertyTotal: property?.units || 1, 
-      sampleSize: 1, 
-      totalUnitsInspected: 1 
+    {
+      type: 'Unit',
+      propertyTotal: property?.units || 1,
+      sampleSize: 1,
+      totalUnitsInspected: 1
     },
-    { 
-      type: 'Site', 
-      propertyTotal: 1, 
-      sampleSize: 1, 
-      totalUnitsInspected: 1 
+    {
+      type: 'Site',
+      propertyTotal: 1,
+      sampleSize: 1,
+      totalUnitsInspected: 1
     },
-    { 
-      type: 'Common Area', 
-      propertyTotal: property?.commonAreas || 1, 
-      sampleSize: 1, 
-      totalUnitsInspected: 1 
+    {
+      type: 'Common Area',
+      propertyTotal: property?.commonAreas || 1,
+      sampleSize: 1,
+      totalUnitsInspected: 1
     },
   ];
 
@@ -330,7 +362,7 @@ export const generateNSPIREReport = (
 
   // Generate recommendations based on findings
   const recommendations: string[] = [];
-  
+
   if (summary.lifeThreatening > 0) {
     recommendations.push('Address all Life-Threatening deficiencies within 24 hours');
   }
@@ -433,11 +465,11 @@ export const importReportFromJSON = (jsonString: string): NSPIREInspectionReport
   try {
     const report = JSON.parse(jsonString) as NSPIREInspectionReport;
     const validation = validateNSPIREReport(report);
-    
+
     if (!validation.valid) {
       console.warn('Report validation warnings:', validation.errors);
     }
-    
+
     return report;
   } catch (error) {
     console.error('Failed to parse report JSON:', error);

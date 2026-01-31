@@ -35,6 +35,7 @@ import {
   DeficiencySeverity,
 } from '../types/nspireReport';
 import { inspectionService } from '../services/inspectionService';
+import { sanitizeAIDescription } from '../utils/nspireReportUtils';
 
 const { width, height } = Dimensions.get('window');
 
@@ -580,7 +581,9 @@ export default function NSPIREReportScreen({ navigation, route }: NSPIREReportSc
 
               <View style={styles.deficiencyDescription}>
                 <Text style={styles.descriptionLabel}>Details:</Text>
-                <Text style={styles.descriptionText}>{deficiency.deficiencyDetails}</Text>
+                <Text style={styles.descriptionText}>
+                  {sanitizeAIDescription(deficiency.deficiencyDetails)}
+                </Text>
               </View>
 
               {deficiency.comments && (
@@ -624,20 +627,20 @@ export default function NSPIREReportScreen({ navigation, route }: NSPIREReportSc
       }
 
       console.log('Generating HTML preview locally...');
-      
+
       // Generate HTML with memory optimization
       const html = await nspirePDFService.generateHTMLPreviewAsync(report, {
         ...pdfOptions,
-        includeImages: false, // Disable images for preview to prevent crashes
+        includeImages: true, // Enable images for preview
         imageQuality: 'low'
       });
-      
+
       // Limit HTML size to prevent crashes
       const maxSize = 50000; // 50KB limit
-      const finalHtml = html.length > maxSize ? 
-        html.substring(0, maxSize) + '\n<!-- Content truncated for performance -->\n</body></html>' : 
+      const finalHtml = html.length > maxSize ?
+        html.substring(0, maxSize) + '\n<!-- Content truncated for performance -->\n</body></html>' :
         html;
-        
+
       setPreviewHtml(finalHtml);
       console.log(`Preview HTML prepared: ${finalHtml.length} bytes`);
     } catch (error) {

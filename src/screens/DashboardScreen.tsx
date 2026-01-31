@@ -1,5 +1,5 @@
 import { useOAuth, useClerk } from '@clerk/clerk-expo';
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -15,13 +15,21 @@ import {
   Platform,
   Modal,
   Pressable,
+  Animated,
 } from "react-native";
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Picker } from "@react-native-picker/picker";
 import { Country, State, City, IState } from 'country-state-city';
 import { DashboardScreenNavigationProp } from "../types/navigation";
 import Sidebar from "../components/Sidebar";
-import { propertyService, authService } from "../services";
+import { 
+  propertyService, 
+  authService,
+  generateRandomUnitSample,
+  isRandomSelectionAvailable
+} from "../services";
+import type { UnitSample } from "../services";
 import { Property as ApiProperty, User } from "../services/api";
 import { UNIT_SELECTION_OPTIONS } from "../utils/iosPickerUtils";
 
@@ -29,7 +37,7 @@ import { UNIT_SELECTION_OPTIONS } from "../utils/iosPickerUtils";
 const COVERAGE_OPTIONS = [
   { label: '100% - All Units', value: '100', description: 'Inspect every unit in the property' },
   { label: '50% - Half Units', value: '50', description: 'Inspect half of all units (randomly selected)' },
-  { label: 'Random Sample', value: 'random', description: 'Automatically select a random sample based on HUD guidelines' },
+  { label: 'Random Sample', value: 'random', description: 'Automatically select a random sample based on NSPIRE guidelines' },
 ];
 
 // Countries with their ISO codes for proper state/city lookup
@@ -115,6 +123,11 @@ export default function DashboardScreen({
   const [cities, setCities] = useState<{ label: string; value: string }[]>([]);
   const [loadingCities, setLoadingCities] = useState(false);
   const [showSearch, setShowSearch] = useState(true);
+
+  // Refresh icon animation
+  const rotateAnim = useRef(new Animated.Value(0)).current;
+  const [iconAnimating, setIconAnimating] = useState(false);
+  const animationRef = useRef<any>(null);
 
   // Load user and properties on mount
   useEffect(() => {
@@ -244,11 +257,49 @@ export default function DashboardScreen({
     }
   };
 
+  // Refresh properties when the screen gains focus (so edits/updates reflect immediately)
+  useFocusEffect(
+    useCallback(() => {
+      fetchProperties();
+    }, [])
+  );
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await fetchProperties();
     setRefreshing(false);
   }, []);
+
+  const startRotate = () => {
+    if (iconAnimating) return;
+    setIconAnimating(true);
+    rotateAnim.setValue(0);
+    animationRef.current = Animated.loop(
+      Animated.timing(rotateAnim, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true,
+      })
+    );
+    animationRef.current.start();
+  };
+
+  const stopRotate = () => {
+    try {
+      animationRef.current?.stop();
+    } catch (e) {}
+    rotateAnim.setValue(0);
+    setIconAnimating(false);
+  };
+
+  const handleRefreshIconPress = async () => {
+    try {
+      startRotate();
+      await fetchProperties();
+    } finally {
+      stopRotate();
+    }
+  };
 
   const handleSearch = async () => {
     setLoading(true);
@@ -272,6 +323,8 @@ export default function DashboardScreen({
       navigation.navigate("MyInspections" as never);
     } else if (screen === "Reports") {
       navigation.navigate("Reports" as never);
+    } else if (screen === "InspectionStatus") {
+      navigation.navigate("InspectionStatus" as never);
     } else if (screen === "Analytics") {
       navigation.navigate("Analytics" as never);
     } else if (screen === "Settings") {
@@ -325,10 +378,26 @@ export default function DashboardScreen({
     } else if (coverage === '50') {
       unitsToInspect = Math.ceil(totalUnits / 2);
     } else if (coverage === 'random') {
-      // HUD guidelines: random sample is typically square root of total units, min 5
-      unitsToInspect = Math.max(5, Math.ceil(Math.sqrt(totalUnits)));
-      // Cap at total units
-      unitsToInspect = Math.min(unitsToInspect, totalUnits);
+      // Use NSPIRE hardcoded sampling for properties with 1-32 units
+      if (isRandomSelectionAvailable(totalUnits)) {
+        try {
+          const propertyId = property._id || property.id || `property_${Date.now()}`;
+          const sample = generateRandomUnitSample(totalUnits, propertyId);
+          unitsToInspect = sample.unitsToInspect;
+          setSelectedUnits(sample.selectedUnits);
+          setCalculatedUnits(unitsToInspect);
+          return; // Early return since we already set the selected units
+        } catch (error) {
+          console.error('Error generating NSPIRE sample:', error);
+          // Fallback to old method if NSPIRE sampling fails
+          unitsToInspect = Math.max(5, Math.ceil(Math.sqrt(totalUnits)));
+          unitsToInspect = Math.min(unitsToInspect, totalUnits);
+        }
+      } else {
+        // For properties with more than 32 units, use fallback method
+        unitsToInspect = Math.max(5, Math.ceil(Math.sqrt(totalUnits)));
+        unitsToInspect = Math.min(unitsToInspect, totalUnits);
+      }
     }
 
     setCalculatedUnits(unitsToInspect);
@@ -362,12 +431,10 @@ export default function DashboardScreen({
       } catch (error) {
         console.error('Error setting ready for inspection:', error);
       }
-      // Navigate directly to AI Inspection with property and selected units
-      navigation.navigate('AIInspection', {
+      // Navigate to PropertyInfo screen with property and selected units
+      navigation.navigate('PropertyInfo', {
         property: selectedProperty,
         selectedUnits: selectedUnits,
-        coverage: selectedCoverage,
-        totalUnits: calculatedUnits
       });
     }
   };
@@ -642,9 +709,18 @@ export default function DashboardScreen({
 
           {/* Search Section */}
           <View style={styles.searchSection}>
-            <Text style={styles.searchTitle}>
-              Search By Name, City Or State
-            </Text>
+            <View style={styles.searchTitleRow}>
+              <Text style={styles.searchTitle}>
+                Search By Name, City Or State
+              </Text>
+              <TouchableOpacity onPress={handleRefreshIconPress} style={styles.refreshIconButton} disabled={iconAnimating} accessibilityLabel="Refresh properties">
+                <Animated.View style={{ transform: [{ rotate: rotateAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }] }}>
+                  <Animated.View>
+                    <Ionicons name={iconAnimating ? 'refresh' : 'refresh'} size={20} color={iconAnimating ? '#0E7490' : '#1F2937'} />
+                  </Animated.View>
+                </Animated.View>
+              </TouchableOpacity>
+            </View>
 
             {/* Action Button */}
             <TouchableOpacity
@@ -986,6 +1062,12 @@ const styles = StyleSheet.create({
     paddingTop: 15,
     paddingBottom: 15,
   },
+  searchTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
   searchTitle: {
     fontSize: 14,
     fontWeight: "700",
@@ -1078,6 +1160,10 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginBottom: 10,
     width: 100,
+  },
+  refreshIconButton: {
+    padding: 6,
+    marginLeft: 8,
   },
   searchButtonText: {
     color: "#FFFFFF",

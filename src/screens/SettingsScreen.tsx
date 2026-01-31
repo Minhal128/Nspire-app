@@ -940,6 +940,75 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
             </View>
           </View>
 
+          {/* Delete Account Card */}
+          <View style={styles.card}>
+            <View style={styles.dangerHeader}>
+              <Text style={styles.dangerCardTitle}>Danger Zone</Text>
+              <Ionicons name="warning" size={20} color="#EF4444" style={styles.warningIcon} />
+            </View>
+            <Text style={styles.cardDescription}>
+              Permanently delete your account and all associated data. This action cannot be undone.
+            </Text>
+
+            <TouchableOpacity
+              style={styles.deleteAccountButton}
+              onPress={() => {
+                Alert.alert(
+                  'Delete Account',
+                  'Are you sure you want to delete your account? This action cannot be undone and all your data will be permanently deleted.',
+                  [
+                    {
+                      text: 'Cancel',
+                      style: 'cancel',
+                    },
+                    {
+                      text: 'Delete',
+                      style: 'destructive',
+                      onPress: async () => {
+                        // Show confirmation dialog
+                        Alert.alert(
+                          'Final Confirmation',
+                          'This is your last chance. Type DELETE to confirm account deletion.',
+                          [
+                            {
+                              text: 'Cancel',
+                              style: 'cancel',
+                            },
+                            {
+                              text: 'Confirm Delete',
+                              style: 'destructive',
+                              onPress: async () => {
+                                try {
+                                  setSaving(true);
+                                  // TODO: Call API to delete account
+                                  // await userService.deleteAccount();
+                                  
+                                  // Logout and navigate to boarding
+                                  await authService.logout();
+                                  navigation.reset({
+                                    index: 0,
+                                    routes: [{ name: 'Boarding' as never }],
+                                  });
+                                } catch (error: any) {
+                                  Alert.alert('Error', error.message || 'Failed to delete account');
+                                } finally {
+                                  setSaving(false);
+                                }
+                              },
+                            },
+                          ]
+                        );
+                      },
+                    },
+                  ]
+                );
+              }}
+            >
+              <Ionicons name="trash-outline" size={20} color="#FFFFFF" />
+              <Text style={styles.deleteAccountButtonText}>Delete My Account</Text>
+            </TouchableOpacity>
+          </View>
+
           <View style={{ height: 40 }} />
         </ScrollView>
       </SafeAreaView>
@@ -1618,5 +1687,34 @@ const styles = StyleSheet.create({
   iosPickerText: {
     fontSize: 14,
     color: '#374151',
+  },
+  dangerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 6,
+  },
+  dangerCardTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#EF4444',
+  },
+  warningIcon: {
+    marginTop: -2,
+  },
+  deleteAccountButton: {
+    backgroundColor: '#EF4444',
+    borderRadius: 8,
+    paddingVertical: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    marginTop: 8,
+  },
+  deleteAccountButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
   },
 });

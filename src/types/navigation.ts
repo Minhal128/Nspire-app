@@ -11,6 +11,7 @@ export type RootStackParamList = {
   Dashboard: undefined;
   MyInspections: undefined;
   Reports: undefined;
+  InspectionStatus: undefined;
   Settings: undefined;
   AddProperty: undefined;
   RequestInspection: undefined;
@@ -23,6 +24,24 @@ export type RootStackParamList = {
   OrderDashboard: undefined;
   NSPIREReport: { report?: any; inspectionData?: any; property?: any };
   InspectionReport: { property?: any; session?: any; findings?: any[]; images?: any[]; complianceScore?: number; overallCondition?: string };
+  PropertyInfo: { property: any; selectedUnits: string[] };
+  InspectionCategories: { property: any; selectedUnits: string[]; buildingId: string };
+  UnitLocations: { property: any; selectedUnits: string[]; buildingId: string };
+  LocationInspection: { property: any; selectedUnits: string[]; buildingId: string; location: string };
+  DeficiencyDetail: { 
+    property: any; 
+    selectedUnits: string[]; 
+    buildingId: string; 
+    location: string; 
+    itemId: string;
+    itemName: string;
+  };
+  InspectionSummary: {
+    property: any;
+    selectedUnits: string[];
+    buildingId: string;
+    inspectionData: any;
+  };
 };
 
 export type BoardingScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Boarding'>;

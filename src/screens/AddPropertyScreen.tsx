@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,12 +6,14 @@ import {
   TextInput,
   TouchableOpacity,
   SafeAreaView,
-  ScrollView,
   Alert,
   ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
   Modal,
+  Platform,
+  ScrollView,
+  KeyboardAvoidingView,
+  NativeSyntheticEvent,
+  TextInputFocusEventData,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
@@ -160,7 +162,7 @@ export default function AddPropertyScreen({ navigation }: AddPropertyScreenProps
         </TouchableOpacity>
       </View>
 
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 60}>
         <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
           <View style={styles.formContainer}>
             <View style={styles.infoBanner}>
@@ -258,7 +260,14 @@ export default function AddPropertyScreen({ navigation }: AddPropertyScreenProps
 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Postal Code</Text>
-              <TextInput style={styles.input} placeholder="Enter Postal Code" placeholderTextColor="#6B7280" value={postalCode} onChangeText={setPostalCode} />
+              <TextInput
+                style={styles.input}
+                placeholder="Enter Postal Code"
+                placeholderTextColor="#6B7280"
+                value={postalCode}
+                onChangeText={setPostalCode}
+                returnKeyType="done"
+              />
             </View>
 
             <TouchableOpacity style={[styles.submitButton, loading && styles.submitButtonDisabled]} onPress={handleSubmit} disabled={loading}>

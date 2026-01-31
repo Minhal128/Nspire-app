@@ -20,7 +20,14 @@ import { Picker } from '@react-native-picker/picker';
 import { Country, State, City, ICountry, IState, ICity } from 'country-state-city';
 import Sidebar from '../components/Sidebar';
 import IOSPickerModal from '../components/IOSPickerModal';
-import { authService, inspectionService, propertyService } from '../services';
+import { 
+  authService, 
+  inspectionService, 
+  propertyService,
+  generateRandomUnitSample,
+  isRandomSelectionAvailable
+} from '../services';
+import type { UnitSample } from '../services';
 import { Inspection, Property as PropertyType, User } from '../services/api';
 import { US_STATES } from '../constants/usStates';
 import { US_STATE_OPTIONS } from '../utils/iosPickerUtils';
@@ -41,7 +48,7 @@ const STATE_OPTIONS = [
 const COVERAGE_OPTIONS = [
   { label: '100% - All Units', value: '100', description: 'Inspect every unit in the property' },
   { label: '50% - Half Units', value: '50', description: 'Inspect half of all units (randomly selected)' },
-  { label: 'Random Sample', value: 'random', description: 'Automatically select a random sample based on HUD guidelines' },
+  { label: 'Random Sample', value: 'random', description: 'Automatically select a random sample based on NSPIRE guidelines' },
 ];
 
 interface MyInspectionsScreenProps {
@@ -352,10 +359,26 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
     } else if (coverage === '50') {
       unitsToInspect = Math.ceil(totalUnits / 2);
     } else if (coverage === 'random') {
-      // HUD guidelines: random sample is typically square root of total units, min 5
-      unitsToInspect = Math.max(5, Math.ceil(Math.sqrt(totalUnits)));
-      // Cap at total units
-      unitsToInspect = Math.min(unitsToInspect, totalUnits);
+      // Use NSPIRE hardcoded sampling for properties with 1-32 units
+      if (isRandomSelectionAvailable(totalUnits)) {
+        try {
+          const propertyId = property._id || property.id || `property_${Date.now()}`;
+          const sample = generateRandomUnitSample(totalUnits, propertyId);
+          unitsToInspect = sample.unitsToInspect;
+          setSelectedUnits(sample.selectedUnits);
+          setCalculatedUnits(unitsToInspect);
+          return; // Early return since we already set the selected units
+        } catch (error) {
+          console.error('Error generating NSPIRE sample:', error);
+          // Fallback to old method if NSPIRE sampling fails
+          unitsToInspect = Math.max(5, Math.ceil(Math.sqrt(totalUnits)));
+          unitsToInspect = Math.min(unitsToInspect, totalUnits);
+        }
+      } else {
+        // For properties with more than 32 units, use fallback method
+        unitsToInspect = Math.max(5, Math.ceil(Math.sqrt(totalUnits)));
+        unitsToInspect = Math.min(unitsToInspect, totalUnits);
+      }
     }
 
     setCalculatedUnits(unitsToInspect);
@@ -395,21 +418,17 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
     if (selectedProperty) {
       try {
         await propertyService.setReadyForInspection(selectedProperty._id!);
-        // Navigate directly to AI Inspection with property and selected units
-        navigation.navigate('AIInspection' as never, { 
+        // Navigate to PropertyInfo screen with property and selected units
+        navigation.navigate('PropertyInfo' as never, { 
           property: selectedProperty,
           selectedUnits: selectedUnits,
-          coverage: selectedCoverage,
-          totalUnits: calculatedUnits
         } as never);
       } catch (error) {
         console.error('Error setting ready for inspection:', error);
         // Still navigate even if the API call fails
-        navigation.navigate('AIInspection' as never, { 
+        navigation.navigate('PropertyInfo' as never, { 
           property: selectedProperty,
           selectedUnits: selectedUnits,
-          coverage: selectedCoverage,
-          totalUnits: calculatedUnits
         } as never);
       }
     }

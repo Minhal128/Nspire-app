@@ -89,3 +89,12 @@ export { default as syncService } from './syncService';
 export type { SyncProgress, SyncProgressListener } from './syncService';
 
 export { nspirePDFService, NSPIREPDFReportService, generateNSPIREReportHTML } from './nspirePDFService';
+
+export { 
+  generateRandomUnitSample, 
+  getUnitsToInspect, 
+  isRandomSelectionAvailable, 
+  getSamplingExplanation,
+  NSPIRE_SAMPLING_REFERENCE 
+} from './unitSamplingService';
+export type { UnitSample } from './unitSamplingService';

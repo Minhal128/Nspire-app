@@ -14,7 +14,14 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Sidebar from '../components/Sidebar';
-import { propertyService, authService } from '../services';
+import { 
+  propertyService, 
+  authService, 
+  generateRandomUnitSample, 
+  isRandomSelectionAvailable, 
+  getSamplingExplanation 
+} from '../services';
+import type { UnitSample } from '../services';
 
 interface UnitInspectionScreenProps {
   navigation: any;
@@ -33,6 +40,8 @@ export default function UnitInspectionScreen({ navigation, route }: UnitInspecti
   const [refreshing, setRefreshing] = useState(false);
   const [units, setUnits] = useState<Unit[]>([]);
   const [user, setUser] = useState<any>(null);
+  const [randomSample, setRandomSample] = useState<UnitSample | null>(null);
+  const [showRandomSample, setShowRandomSample] = useState(false);
   const { property } = route.params || {};
 
   const loadUnits = useCallback(async () => {
@@ -148,6 +157,46 @@ export default function UnitInspectionScreen({ navigation, route }: UnitInspecti
     } as never);
   };
 
+  const handleRandomUnitSelection = () => {
+    try {
+      const totalUnits = units.length;
+      const propertyId = property?._id || property?.id || `property_${Date.now()}`;
+      
+      // Check if random selection is available
+      if (!isRandomSelectionAvailable(totalUnits)) {
+        Alert.alert(
+          'Random Selection Not Available',
+          `Random unit selection is only available for properties with 1-32 units. This property has ${totalUnits} units.`,
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+      
+      // Generate random sample
+      const sample = generateRandomUnitSample(totalUnits, propertyId);
+      setRandomSample(sample);
+      setShowRandomSample(true);
+      
+    } catch (error) {
+      console.error('Error generating random sample:', error);
+      Alert.alert(
+        'Error',
+        'Failed to generate random unit sample. Please try again.',
+        [{ text: 'OK' }]
+      );
+    }
+  };
+
+  const handleStartRandomInspection = () => {
+    if (!randomSample) return;
+    
+    setShowRandomSample(false);
+    navigation.navigate('PropertyInfo' as never, { 
+      property: property,
+      selectedUnits: randomSample.selectedUnits,
+    } as never);
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'needs-attention':
@@ -209,6 +258,76 @@ export default function UnitInspectionScreen({ navigation, route }: UnitInspecti
         </TouchableOpacity>
       </Modal>
 
+      {/* Random Sample Modal */}
+      <Modal
+        visible={showRandomSample}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowRandomSample(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.randomSampleModal}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Random Unit Sample</Text>
+              <TouchableOpacity 
+                onPress={() => setShowRandomSample(false)}
+                style={styles.closeButton}
+              >
+                <Ionicons name="close" size={24} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+            
+            {randomSample && (
+              <View style={styles.modalContent}>
+                <View style={styles.sampleSummary}>
+                  <Text style={styles.sampleSummaryTitle}>Sampling Summary</Text>
+                  <Text style={styles.sampleSummaryText}>
+                    Property has {randomSample.totalUnits} units
+                  </Text>
+                  <Text style={styles.sampleSummaryText}>
+                    {randomSample.unitsToInspect} units selected for inspection
+                  </Text>
+                </View>
+                
+                <View style={styles.selectedUnitsContainer}>
+                  <Text style={styles.selectedUnitsTitle}>Selected Units:</Text>
+                  <View style={styles.selectedUnitsList}>
+                    {randomSample.selectedUnits.map((unit, index) => (
+                      <View key={index} style={styles.selectedUnitChip}>
+                        <Text style={styles.selectedUnitText}>{unit}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+                
+                <View style={styles.samplingNote}>
+                  <Ionicons name="information-circle" size={16} color="#0E7490" />
+                  <Text style={styles.samplingNoteText}>
+                    This selection is consistent and will be the same each time for this property.
+                  </Text>
+                </View>
+                
+                <View style={styles.modalActions}>
+                  <TouchableOpacity 
+                    style={styles.cancelButton}
+                    onPress={() => setShowRandomSample(false)}
+                  >
+                    <Text style={styles.cancelButtonText}>Cancel</Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity 
+                    style={styles.startInspectionButton}
+                    onPress={handleStartRandomInspection}
+                  >
+                    <Text style={styles.startInspectionButtonText}>Start Inspection</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+          </View>
+        </View>
+      </Modal>
+
       <SafeAreaView style={styles.container}>
         {/* Header */}
         <View style={styles.headerContainer}>
@@ -244,14 +363,38 @@ export default function UnitInspectionScreen({ navigation, route }: UnitInspecti
             </Text>
             <Text style={styles.propertyAddress}>New York</Text>
             
-            {/* AI Inspection Button */}
-            <TouchableOpacity 
-              style={styles.aiInspectionButton}
-              onPress={handleStartAIInspection}
-            >
-              <Ionicons name="sparkles" size={20} color="#FFFFFF" />
-              <Text style={styles.aiInspectionButtonText}>Start AI Inspection</Text>
-            </TouchableOpacity>
+            {/* Action Buttons */}
+            <View style={styles.actionButtonsContainer}>
+              {/* AI Inspection Button */}
+              <TouchableOpacity 
+                style={styles.aiInspectionButton}
+                onPress={handleStartAIInspection}
+              >
+                <Ionicons name="sparkles" size={20} color="#FFFFFF" />
+                <Text style={styles.aiInspectionButtonText}>Start AI Inspection</Text>
+              </TouchableOpacity>
+              
+              {/* Random Unit Selection Button */}
+              {isRandomSelectionAvailable(units.length) && (
+                <TouchableOpacity 
+                  style={styles.randomSelectionButton}
+                  onPress={handleRandomUnitSelection}
+                >
+                  <Ionicons name="shuffle" size={20} color="#FFFFFF" />
+                  <Text style={styles.randomSelectionButtonText}>Random Unit Selection</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+            
+            {/* Sampling Info */}
+            {isRandomSelectionAvailable(units.length) && (
+              <View style={styles.samplingInfoContainer}>
+                <Ionicons name="information-circle-outline" size={16} color="#6B7280" />
+                <Text style={styles.samplingInfoText}>
+                  {getSamplingExplanation(units.length)}
+                </Text>
+              </View>
+            )}
           </View>
 
           {/* Units List */}
@@ -358,6 +501,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6B7280',
   },
+  actionButtonsContainer: {
+    marginTop: 16,
+    gap: 12,
+  },
   aiInspectionButton: {
     flexDirection: 'row',
     backgroundColor: '#0E7490',
@@ -365,7 +512,6 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 16,
     gap: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -377,6 +523,40 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
+  },
+  randomSelectionButton: {
+    flexDirection: 'row',
+    backgroundColor: '#7C3AED',
+    borderRadius: 10,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  randomSelectionButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  samplingInfoContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 8,
+    gap: 8,
+  },
+  samplingInfoText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#6B7280',
+    lineHeight: 18,
   },
   unitsList: {
     paddingHorizontal: 20,
@@ -445,5 +625,121 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 4,
     elevation: 5,
+  },
+  // Random Sample Modal Styles
+  randomSampleModal: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    margin: 20,
+    marginTop: 100,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  closeButton: {
+    padding: 4,
+  },
+  modalContent: {
+    padding: 20,
+  },
+  sampleSummary: {
+    backgroundColor: '#F0F9FF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+  },
+  sampleSummaryTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0E7490',
+    marginBottom: 8,
+  },
+  sampleSummaryText: {
+    fontSize: 14,
+    color: '#374151',
+    marginBottom: 4,
+  },
+  selectedUnitsContainer: {
+    marginBottom: 20,
+  },
+  selectedUnitsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 12,
+  },
+  selectedUnitsList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  selectedUnitChip: {
+    backgroundColor: '#7C3AED',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  selectedUnitText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  samplingNote: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#F0F9FF',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 24,
+    gap: 8,
+  },
+  samplingNoteText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#0E7490',
+    lineHeight: 18,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  cancelButton: {
+    flex: 1,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 10,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    color: '#6B7280',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  startInspectionButton: {
+    flex: 1,
+    backgroundColor: '#7C3AED',
+    borderRadius: 10,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  startInspectionButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
   },
 });

@@ -29,6 +29,13 @@ export interface PendingImage {
   error?: string;
   room?: string;
   roomCategory?: 'inside' | 'outside';
+  deficiencyContext?: {
+    category: string;
+    deficiencySelected: string;
+    deficiencyDetail: string;
+    deficiencyCriteria: string;
+    codeCompliance: string;
+  };
 }
 
 export interface InspectionSession {
@@ -102,7 +109,7 @@ class OfflineStorageService {
     try {
       const filename = `${inspectionId}_${Date.now()}.jpg`;
       const localPath = `${this.imageDirectory}${filename}`;
-      
+
       await FileSystem.copyAsync({
         from: imageUri,
         to: localPath,
@@ -153,7 +160,7 @@ class OfflineStorageService {
     try {
       const sessions = await this.getAllSessions();
       const index = sessions.findIndex(s => s.id === session.id);
-      
+
       if (index >= 0) {
         sessions[index] = session;
       } else {
@@ -197,7 +204,8 @@ class OfflineStorageService {
     notes?: string,
     tags?: string[],
     room?: string,
-    roomCategory?: 'inside' | 'outside'
+    roomCategory?: 'inside' | 'outside',
+    deficiencyContext?: PendingImage['deficiencyContext']
   ): Promise<PendingImage> {
     const session = await this.getSession(sessionId);
     if (!session) {
@@ -220,6 +228,7 @@ class OfflineStorageService {
       retryCount: 0,
       room,
       roomCategory,
+      deficiencyContext,
     };
 
     session.images.push(pendingImage);
@@ -242,12 +251,12 @@ class OfflineStorageService {
     const imageIndex = session.images.findIndex(img => img.id === imageId);
     if (imageIndex >= 0) {
       session.images[imageIndex] = { ...session.images[imageIndex], ...updates };
-      
+
       // If findings were added, also add to session findings
       if (updates.findings) {
         session.findings.push(...updates.findings);
       }
-      
+
       await this.saveSession(session);
     }
   }

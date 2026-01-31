@@ -350,6 +350,18 @@ class GeminiService {
    */
   private async stripImageMetadata(imageUri: string): Promise<string> {
     try {
+      // Validate imageUri
+      if (!imageUri || typeof imageUri !== 'string') {
+        console.warn('Invalid imageUri provided to stripImageMetadata:', imageUri);
+        return imageUri;
+      }
+
+      // Skip metadata stripping for remote URLs (http/https)
+      if (imageUri.startsWith('http://') || imageUri.startsWith('https://')) {
+        console.log('Skipping metadata stripping for remote URL');
+        return imageUri;
+      }
+
       // Use ImageManipulator to re-encode the image, which strips all EXIF data
       const result = await ImageManipulator.manipulateAsync(
         imageUri,
@@ -369,9 +381,33 @@ class GeminiService {
    */
   private async imageToBase64(imageUri: string): Promise<string> {
     try {
-      // First strip metadata from the image for security
+      // Validate imageUri
+      if (!imageUri || typeof imageUri !== 'string') {
+        throw new Error('Invalid image URI provided');
+      }
+
+      // For remote URLs (Cloudinary), fetch and convert
+      if (imageUri.startsWith('http://') || imageUri.startsWith('https://')) {
+        console.log('Fetching remote image from:', imageUri);
+        const response = await fetch(imageUri);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch image: ${response.status}`);
+        }
+        const blob = await response.blob();
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const base64 = (reader.result as string).split(',')[1];
+            resolve(base64);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+      }
+
+      // For local files, strip metadata first
       const cleanImageUri = await this.stripImageMetadata(imageUri);
-      
+
       const base64 = await FileSystem.readAsStringAsync(cleanImageUri, {
         encoding: FileSystem.EncodingType.Base64,
       });
@@ -384,11 +420,22 @@ class GeminiService {
 
   /**
    * Analyze a single image using Gemini Pro Vision
+   * @param imageUri - The image to analyze
+   * @param inspectionType - Type of inspection (nspire, hqs, general)
+   * @param propertyContext - Optional property context information
+   * @param deficiencyContext - Optional pre-selected deficiency to focus analysis on
    */
   async analyzeImage(
     imageUri: string,
     inspectionType: string = "general",
     propertyContext?: string,
+    deficiencyContext?: {
+      category: string;
+      deficiencySelected: string;
+      deficiencyDetail: string;
+      deficiencyCriteria: string;
+      codeCompliance: string;
+    },
   ): Promise<AnalysisResult> {
     if (!this.apiKey) {
       return {
@@ -416,11 +463,37 @@ class GeminiService {
         INSPECTION_TYPES.find((t) => t.id === inspectionType) ||
         INSPECTION_TYPES[2];
 
+      // Build deficiency-specific context if provided
+      let deficiencyPromptSection = "";
+      if (deficiencyContext) {
+        deficiencyPromptSection = `
+INSPECTOR-SELECTED DEFICIENCY FOCUS:
+The inspector has pre-selected the following deficiency type to evaluate in this image. 
+
+Category: ${deficiencyContext.category}
+Pre-selected Deficiency: ${deficiencyContext.deficiencySelected}
+Criteria/Detail: ${deficiencyContext.deficiencyDetail} - ${deficiencyContext.deficiencyCriteria}
+
+CRITICAL INSTRUCTIONS FOR THIS DEFICIENCY:
+1. Focus your analysis primarily on finding evidence related to this specific deficiency.
+2. PARAPHRASE: Do NOT copy the pre-selected text verbatim. Rewrite the finding and description in your own professional words based on exactly what you see in the image.
+3. BE CONCISE: Avoid long sentences. Use clear, inspection-grade language (e.g., "Corroded dryer duct material observed" instead of repeating a full sentence from the criteria).
+4. If the pre-selected deficiency is NOT present in the image, report what IS present and note the discrepancy.
+
+Prioritize this deficiency type but also report any other significant issues visible.
+`;
+      }
+
       const systemPrompt = `${inspectionConfig.prompt}
 
 ${propertyContext ? `Property Context: ${propertyContext}` : ""}
+${deficiencyPromptSection}
 
-CRITICAL: Respond with ONLY a raw JSON object. Do NOT use markdown formatting, code blocks, or any other text.
+System Context: Proper inspection documentation requires clear, narrative descriptions. 
+
+CRITICAL: Respond with ONLY a raw JSON object. Do NOT use markdown formatting, code blocks, or any other introductory text.
+Your entire response MUST start with '{' and end with '}'.
+STRICT FORBIDDEN: Do NOT include raw JSON structures or key-value pairs inside the "description" or "title" fields. Use plain, human-readable paragraphs only.
 
 Required JSON format:
 {
@@ -543,19 +616,34 @@ Return raw JSON only, no markdown, no explanations.`;
         // Remove ```json and ``` markers
         jsonText = jsonText.replace(/```json\s*/g, "").replace(/```\s*/g, "");
 
-        // Try to find JSON in the cleaned text
-        const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
+        // Try to find JSON in the cleaned text - more robust regex
+        const jsonMatch = jsonText.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
         if (jsonMatch) {
-          let jsonString = jsonMatch[0];
+          let jsonString = jsonMatch[0].trim();
+
+          // If it started with [, it's just findings, wrap it
+          if (jsonString.startsWith('[')) {
+            jsonString = `{"findings": ${jsonString}}`;
+          }
 
           // Try to fix common JSON issues (truncated responses)
           try {
             analysisResult = JSON.parse(jsonString);
           } catch (initialParseError) {
             // Try to fix truncated JSON by closing open brackets
-            console.log("Attempting to fix truncated JSON...");
-            jsonString = this.fixTruncatedJson(jsonString);
-            analysisResult = JSON.parse(jsonString);
+            console.log("Attempting to fix JSON with advanced cleanup...");
+            try {
+              jsonString = this.fixTruncatedJson(jsonString);
+              analysisResult = JSON.parse(jsonString);
+            } catch (secondParseError) {
+              console.log("Secondary parse failed, trying partial extraction...");
+              const extracted = this.extractInfoFromText(content);
+              if (extracted.title || extracted.description) {
+                analysisResult = { findings: [extracted] };
+              } else {
+                throw secondParseError;
+              }
+            }
           }
         } else {
           // If no JSON found, create a basic response
@@ -959,6 +1047,125 @@ Return raw JSON only, no markdown, no explanations.`;
         ],
       },
     };
+  }
+
+  /**
+   * Analyze a deficiency image with specific context
+   * Used for focused deficiency analysis in inspection flow
+   */
+  async analyzeDeficiency(
+    imageUrl: string,
+    deficiencyName: string,
+    itemName: string
+  ): Promise<{
+    analysis: string;
+    severity: string;
+    recommendations: string;
+  }> {
+    try {
+      const base64Image = await this.imageToBase64(imageUrl);
+
+      const deficiencyPrompt = `You are an expert property inspector analyzing a specific deficiency.
+
+DEFICIENCY CONTEXT:
+- Item: ${itemName}
+- Deficiency Type: ${deficiencyName}
+
+Analyze this image and provide:
+1. A detailed analysis of the deficiency shown
+2. Severity assessment (Life-Threatening, Severe, Moderate, or Low)
+3. Specific recommendations for repair
+
+CRITICAL: Respond with ONLY a raw JSON object. Do NOT use markdown formatting or code blocks.
+
+Required JSON format:
+{
+  "analysis": "Detailed description of what you observe in the image related to this deficiency",
+  "severity": "Moderate",
+  "recommendations": "Specific repair recommendations based on the deficiency observed"
+}
+
+Valid severity levels: Life-Threatening, Severe, Moderate, Low
+
+Return raw JSON only.`;
+
+      const response = await fetch(`${GEMINI_API_URL}?key=${this.apiKey}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                {
+                  text: deficiencyPrompt,
+                },
+                {
+                  inline_data: {
+                    mime_type: "image/jpeg",
+                    data: base64Image,
+                  },
+                },
+              ],
+            },
+          ],
+          generationConfig: {
+            temperature: 0.2,
+            maxOutputTokens: 1024,
+            topP: 0.8,
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const technicalError =
+          errorData.error?.message || `HTTP ${response.status}`;
+        const userFriendlyError = getUserFriendlyError(technicalError, response.status);
+        throw new Error(userFriendlyError);
+      }
+
+      const data = await response.json();
+      const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+      if (!content) {
+        throw new Error("No response from AI");
+      }
+
+      // Parse JSON response
+      let result;
+      try {
+        let jsonText = content.replace(/```json\s*/g, "").replace(/```\s*/g, "");
+        const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
+
+        if (jsonMatch) {
+          result = JSON.parse(jsonMatch[0]);
+        } else {
+          throw new Error("No JSON found");
+        }
+      } catch (parseError) {
+        // Fallback: extract from text
+        result = {
+          analysis: content.substring(0, 200) + "...",
+          severity: "Moderate",
+          recommendations: "Professional inspection and repair recommended",
+        };
+      }
+
+      return {
+        analysis: result.analysis || "Deficiency observed in image",
+        severity: result.severity || "Moderate",
+        recommendations: result.recommendations || "Repair as needed",
+      };
+    } catch (error: any) {
+      console.error("Error analyzing deficiency:", error);
+      return {
+        analysis: `${deficiencyName} observed in ${itemName}. AI analysis temporarily unavailable.`,
+        severity: "Moderate",
+        recommendations: "Manual inspection recommended to assess severity and repair needs.",
+      };
+    }
   }
 }
 
