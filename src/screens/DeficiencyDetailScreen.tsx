@@ -266,13 +266,8 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         {/* Deficiency Selected */}
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>DEFICIENCY SELECTED</Text>
-<<<<<<< HEAD
           <TouchableOpacity 
             style={[styles.dropdown, selectedDeficiency && styles.dropdownSelected]}
-=======
-          <TouchableOpacity
-            style={styles.dropdown}
->>>>>>> 3aac976f54a9203e2cac3faffbe592ecb276d272
             onPress={() => setShowDeficiencyPicker(true)}
             activeOpacity={0.7}
           >
@@ -303,7 +298,6 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               <Ionicons name="chevron-down" size={16} color="#666666" />
             </TouchableOpacity>
           </View>
-<<<<<<< HEAD
           <View style={styles.halfSection}>
             <Text style={styles.sectionLabel}>DEFICIENCY CRITERIA</Text>
             <TouchableOpacity 
@@ -315,76 +309,6 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               </Text>
               <Ionicons name="chevron-down" size={16} color="#666666" />
             </TouchableOpacity>
-=======
-        </View>
-
-        {/* Deficiency Detail */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>DEFICIENCY DETAIL</Text>
-          <TouchableOpacity
-            style={styles.dropdown}
-            onPress={() => setShowDetailPicker(true)}
-            disabled={!selectedDeficiency}
-          >
-            <Text style={[styles.dropdownText, !selectedDeficiency && styles.placeholderText]}>
-              {selectedDeficiency ? selectedDeficiency.detail : '--Select--'}
-            </Text>
-            <Ionicons name="chevron-down" size={20} color="#666666" />
-          </TouchableOpacity>
-        </View>
-
-        {/* Deficiency Criteria */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>DEFICIENCY CRITERIA</Text>
-          <View style={styles.textAreaContainer}>
-            <Text style={styles.textAreaValue}>
-              {deficiencyCriteria || 'For example, 20 feet distance.'}
-            </Text>
-          </View>
-        </View>
-
-        {/* Code and Local Compliance */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>CODE AND LOCAL COMPLIANCE</Text>
-          <View style={styles.textAreaContainer}>
-            <Text style={styles.textAreaPlaceholder}>
-              {CODE_COMPLIANCE}
-            </Text>
-          </View>
-        </View>
-
-        {/* Note */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>NOTE</Text>
-          <View style={styles.textAreaContainer}>
-            <TextInput
-              style={styles.textArea}
-              placeholder="Write your observation..."
-              value={note}
-              onChangeText={setNote}
-              multiline
-              numberOfLines={4}
-              placeholderTextColor="#999999"
-            />
-          </View>
-        </View>
-
-        {/* Location */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>LOCATION</Text>
-          <View style={styles.dropdown}>
-            <Text style={styles.dropdownText}>Building {buildingId}</Text>
-          </View>
-        </View>
-
-        {/* Health & Safety */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>HEALTH & SAFETY</Text>
-          <View style={styles.textAreaContainer}>
-            <Text style={styles.textAreaValue}>
-              {selectedDeficiency ? selectedDeficiency.severity : 'Moderate'}
-            </Text>
->>>>>>> 3aac976f54a9203e2cac3faffbe592ecb276d272
           </View>
         </View>
 
