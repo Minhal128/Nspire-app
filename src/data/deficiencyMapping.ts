@@ -153,6 +153,692 @@ export const DOOR_SUBCATEGORIES_OUTSIDE = [
   { id: 'garage_door', name: 'Garage Door' }
 ];
 
+// ==========================================
+// 5. DRAIN - with Subcategories
+// ==========================================
+export const DRAIN_DEFICIENCIES: ItemDeficiencies = {
+  itemName: 'Drain',
+  deficiencies: []  // Empty - use subcategories
+};
+
+// 5a. Drain subcategory
+export const DRAIN_DRAIN_DEFICIENCIES: ItemDeficiencies = {
+  itemName: 'Drain',
+  deficiencies: [
+    {
+      id: 'drain_1',
+      name: 'Drain is fully clogged.',
+      detail: 'Standing water is present over the floor drain, or the floor drain is blocked such that the inspector believes water would be unable to drain.',
+      criteria: 'Standing water is present over the floor drain, or the floor drain is blocked such that the inspector believes water would be unable to drain.',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.5/n',
+      code: 'DRAIN-01'
+    }
+  ]
+};
+
+// 5b. Site Drainage subcategory
+export const SITE_DRAINAGE_DEFICIENCIES: ItemDeficiencies = {
+  itemName: 'Site Drainage',
+  deficiencies: [
+    {
+      id: 'site_drain_1',
+      name: 'Erosion is present.',
+      detail: 'Exposed the footer or, when more than 2 feet from the built environment, is deep enough to potentially undermine supporting soil as determined by the inspector.',
+      criteria: 'Exposed the footer or, when more than 2 feet from the built environment, is deep enough to potentially undermine supporting soil as determined by the inspector.',
+      severity: 'Severe',
+      repairBy: '24 Hrs.',
+      points: '14.8/n',
+      code: 'SITE-DRAIN-01'
+    },
+    {
+      id: 'site_drain_2',
+      name: 'Grate is not secure or does not cover the site\'s drainage systems at the collection point.',
+      detail: 'Grate is not secure or does not cover the site drainage system\'s collection point.',
+      criteria: 'Grate is not secure or does not cover the site drainage system\'s collection point.',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.5/n',
+      code: 'SITE-DRAIN-02'
+    },
+    {
+      id: 'site_drain_3',
+      name: 'Water runoff is unable to flow through the site drainage system.',
+      detail: 'Standing water is present at the entrance of the outflow pipe. OR Drainage is blocked such that the inspector believes water is unable to drain in the event of precipitation.',
+      criteria: 'Standing water is present at the entrance of the outflow pipe. OR Drainage is blocked such that the inspector believes water is unable to drain in the event of precipitation.',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.5/n',
+      code: 'SITE-DRAIN-03'
+    }
+  ]
+};
+
+export const DRAIN_SUBCATEGORIES_OUTSIDE = [
+  { id: 'drain', name: 'Drain' },
+  { id: 'site_drainage', name: 'Site Drainage' }
+];
+
+// ==========================================
+// 7. ELECTRICAL - with Subcategories
+// ==========================================
+export const ELECTRICAL_PARENT_DEFICIENCIES: ItemDeficiencies = {
+  itemName: 'Electrical',
+  deficiencies: []  // Empty - use subcategories
+};
+
+// 7a. Electrical - Conductor, Outlet, and Switch
+export const ELECTRICAL_CONDUCTOR_OUTLET_SWITCH: ItemDeficiencies = {
+  itemName: 'Electrical - Conductor, Outlet, and Switch',
+  deficiencies: [
+    {
+      id: 'elec_cos_1',
+      name: 'Exposed electrical conductor.',
+      detail: 'Electrical systems are deficient if conductors lack proper insulation or enclosure—such as exposed wiring, open ports, or missing covers—or if there\'s an opening or gap larger than 1/2 inch.',
+      criteria: 'Electrical systems are deficient if conductors lack proper insulation or enclosure—such as exposed wiring, open ports, or missing covers—or if there\'s an opening or gap larger than 1/2 inch.',
+      severity: 'Life-Threatening',
+      repairBy: '24Hrs',
+      points: '30/n',
+      code: 'ELEC-COS-01'
+    },
+    {
+      id: 'elec_cos_2',
+      name: 'The AFCI outlet or AFCI breaker does not reset, and if damaged, it is considered as exposed conductor.',
+      detail: 'AFCI outlet or AFCI breaker does not have visible damage, and the test or reset button is inoperable (i.e., overall system or component thereof is not meeting function or purpose).',
+      criteria: 'AFCI outlet or AFCI breaker does not have visible damage, and the test or reset button is inoperable (i.e., overall system or component thereof is not meeting function or purpose).',
+      severity: 'Life-Threatening',
+      repairBy: '24Hrs',
+      points: '30/n',
+      code: 'ELEC-COS-02'
+    },
+    {
+      id: 'elec_cos_3',
+      name: 'Electrical service panel is not reasonably accessible.',
+      detail: 'The electrical service panel is not reasonably accessible (i.e., it cannot be reached and opened without moving obstructions, dismantling, destructive measures, or actions that may pose a risk to persons or their personal property).',
+      criteria: 'The electrical service panel is not reasonably accessible (i.e., it cannot be reached and opened without moving obstructions, dismantling, destructive measures, or actions that may pose a risk to persons or their personal property).',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.5/n',
+      code: 'ELEC-COS-03'
+    },
+    {
+      id: 'elec_cos_4',
+      name: 'Unprotected outlet is present within six feet of a water source.',
+      detail: 'An unprotected outlet is present within six feet of a water source (i.e., sink, bathtub, shower, water faucet, toilet) that is located in the same room, and outlet is not GFCI protected.',
+      criteria: 'An outlet, not GFCI-protected, is present within six feet of a water source (i.e., sink, bathtub, shower, water faucet, toilet) located in the same room.',
+      severity: 'Life-Threatening',
+      repairBy: '24Hrs',
+      points: '30/n',
+      code: 'ELEC-COS-04'
+    },
+    {
+      id: 'elec_cos_5',
+      name: 'GFCI outlet or GFCI breaker does not have visible damage, and the test or reset button is inoperable.',
+      detail: 'GFCI outlet or GFCI breaker does not have visible damage and the test or reset button is inoperable (i.e., overall system or component thereof is not meeting function or purpose).',
+      criteria: 'GFCI outlet or GFCI breaker does not have visible damage and the test or reset button is inoperable (i.e., overall system or component thereof is not meeting function or purpose).',
+      severity: 'Life-Threatening',
+      repairBy: '24Hrs',
+      points: '30/n',
+      code: 'ELEC-COS-05'
+    }
+  ]
+};
+
+// 7b. Electrical Service Panel
+export const ELECTRICAL_SERVICE_PANEL_OUTSIDE: ItemDeficiencies = {
+  itemName: 'Electrical Service Panel',
+  deficiencies: [
+    {
+      id: 'esp_out_1',
+      name: 'Electrical service panel is not reasonably accessible.',
+      detail: 'The electrical service panel is not reasonably accessible (i.e., it cannot be reached and opened without moving obstructions, dismantling, destructive measures, or actions that may pose a risk to persons or their personal property).',
+      criteria: 'The electrical service panel is not reasonably accessible (i.e., it cannot be reached and opened without moving obstructions, dismantling, destructive measures, or actions that may pose a risk to persons or their personal property).',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.5/n',
+      code: 'ESP-OUT-01'
+    },
+    {
+      id: 'esp_out_2',
+      name: 'The overcurrent protection device is contaminated by infestation, paint, or other foreign materials.',
+      detail: 'The overcurrent protection device (i.e., fuse or breaker) is contaminated (e.g., water, rust, corrosion).',
+      criteria: 'The overcurrent protection device (i.e., fuse or breaker) is contaminated (e.g., water, rust, corrosion).',
+      severity: 'Severe',
+      repairBy: '24 Hrs.',
+      points: '14.8/n',
+      code: 'ESP-OUT-02'
+    },
+    {
+      id: 'esp_out_3',
+      name: 'The overcurrent protection device is damaged.',
+      detail: 'The overcurrent protection device (i.e., fuse or breaker) is damaged (i.e., visibly defective; impacts functionality) such that it may not interrupt the circuit during an overcurrent condition.',
+      criteria: 'The overcurrent protection device (i.e., fuse or breaker) is damaged (i.e., visibly defective; impacts functionality) such that it may not interrupt the circuit during an overcurrent condition.',
+      severity: 'Life-Threatening',
+      repairBy: '24Hrs',
+      points: '30/n',
+      code: 'ESP-OUT-03'
+    }
+  ]
+};
+
+export const ELECTRICAL_SUBCATEGORIES_OUTSIDE = [
+  { id: 'elec_conductor', name: 'Electrical - Conductor, Outlet, and Switch' },
+  { id: 'elec_service_panel', name: 'Electrical Service Panel' }
+];
+
+// ==========================================
+// 9. FIRE SAFETY - with Subcategories
+// ==========================================
+export const FIRE_SAFETY_PARENT_DEFICIENCIES: ItemDeficiencies = {
+  itemName: 'Fire Safety',
+  deficiencies: []  // Empty - use subcategories
+};
+
+// 9a. Exit Sign
+export const EXIT_SIGN_DEFICIENCIES: ItemDeficiencies = {
+  itemName: 'Exit Sign',
+  deficiencies: [
+    {
+      id: 'exit_sign_1',
+      name: 'Exit sign is damaged, missing, obstructed, or not adequately illuminated',
+      detail: 'An exit sign is deficient if it\'s damaged, missing, obstructed so "EXIT" isn\'t clearly visible, or not properly illuminated.',
+      criteria: 'An exit sign is deficient if it\'s damaged, missing, obstructed so "EXIT" isn\'t clearly visible, or not properly illuminated.',
+      severity: 'Life-Threatening',
+      repairBy: '24Hrs',
+      points: '30/n',
+      code: 'EXIT-SIGN-01'
+    }
+  ]
+};
+
+// 9b. Fire Escape
+export const FIRE_ESCAPE_DEFICIENCIES: ItemDeficiencies = {
+  itemName: 'Fire Escape',
+  deficiencies: [
+    {
+      id: 'fire_esc_1',
+      name: 'Fire escape component is damaged, or missing.',
+      detail: 'A stair, ladder, platform, guardrail, or handrail is deficient if it is visibly damaged or missing in a way that affects its functionality or intended safety.',
+      criteria: 'A stair, ladder, platform, guardrail, or handrail is deficient if it is visibly damaged or missing in a way that affects its functionality or intended safety.',
+      severity: 'Life-Threatening',
+      repairBy: '24Hrs',
+      points: '30/n',
+      code: 'FIRE-ESC-01'
+    }
+  ]
+};
+
+// 9c. Fire Extinguisher
+export const FIRE_EXTINGUISHER_DEFICIENCIES: ItemDeficiencies = {
+  itemName: 'Fire Extinguisher',
+  deficiencies: [
+    {
+      id: 'fire_ext_1',
+      name: 'A fire extinguisher is damaged or missing.',
+      detail: 'A fire extinguisher is deficient if it is visibly damaged or missing, including cases where prior installation is evident but the unit is no longer present or complete.',
+      criteria: 'A fire extinguisher is deficient if it is visibly damaged or missing, including cases where prior installation is evident but the unit is no longer present or complete.',
+      severity: 'Severe',
+      repairBy: '24 Hrs.',
+      points: '14.8/n',
+      code: 'FIRE-EXT-01'
+    },
+    {
+      id: 'fire_ext_2',
+      name: 'The fire extinguisher pressure gauge reads over or undercharged.',
+      detail: 'Pressure gauge indicates that the fire extinguisher is over or under charged.',
+      criteria: 'Pressure gauge indicates that the fire extinguisher is over or under charged.',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.5/n',
+      code: 'FIRE-EXT-02'
+    },
+    {
+      id: 'fire_ext_3',
+      name: 'The fire extinguisher tag is missing or illegible or expired.',
+      detail: 'The date on the service tag of any fire extinguisher has exceeded one year. OR The fire extinguisher tag is missing or illegible. OR A non-chargeable or disposable fire extinguisher is more than 12 years old (based on manufacture date).',
+      criteria: 'The date on the service tag of any fire extinguisher has exceeded one year. OR The fire extinguisher tag is missing or illegible. OR A non-chargeable or disposable fire extinguisher is more than 12 years old (based on manufacture date).',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.5/n',
+      code: 'FIRE-EXT-03'
+    }
+  ]
+};
+
+// 9d. Flammable and Combustible Item
+export const FLAMMABLE_COMBUSTIBLE_DEFICIENCIES: ItemDeficiencies = {
+  itemName: 'Flammable and Combustible Item',
+  deficiencies: [
+    {
+      id: 'flam_1',
+      name: 'The flammable or combustible material is on or within 3 feet of an ignition source.',
+      detail: 'Flammable or combustible materials are deficient if placed within 3 feet of thermal comfort appliances or fuel-burning water heaters, if improperly stored near ignition sources, or if chemicals are improperly stored in general.',
+      criteria: 'Flammable or combustible materials are deficient if placed within 3 feet of thermal comfort appliances or fuel-burning water heaters, if improperly stored near ignition sources, or if chemicals are improperly stored in general.',
+      severity: 'Life-Threatening',
+      repairBy: '24Hrs',
+      points: '30/n',
+      code: 'FLAM-01'
+    }
+  ]
+};
+
+// 9e. Sprinkler Assembly
+export const SPRINKLER_ASSEMBLY_DEFICIENCIES: ItemDeficiencies = {
+  itemName: 'Sprinkler Assembly',
+  deficiencies: [
+    {
+      id: 'sprink_1',
+      name: 'The sprinkler assembly component is damaged, inoperable, or missing, and it is detrimental to performance.',
+      detail: 'The sprinkler assembly component is damaged, inoperable, or missing.',
+      criteria: 'The sprinkler assembly component is damaged, inoperable, or missing.',
+      severity: 'Life-Threatening',
+      repairBy: '24Hrs',
+      points: '30/n',
+      code: 'SPRINK-01'
+    },
+    {
+      id: 'sprink_2',
+      name: 'Sprinkler head assembly has evidence of corrosion.',
+      detail: 'Sprinkler head assembly has evidence of corrosion.',
+      criteria: 'Sprinkler head assembly has evidence of corrosion.',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.5/n',
+      code: 'SPRINK-02'
+    },
+    {
+      id: 'sprink_3',
+      name: 'Sprinkler assembly has evidence of debris, paint, or foreign material detrimental to performance.',
+      detail: 'Foreign material covers 50% or more of the sprinkler assembly or 50% or more of the glass bulb on the sprinkler assembly.',
+      criteria: 'Foreign material covers 50% or more of the sprinkler assembly or 50% or more of the glass bulb on the sprinkler assembly.',
+      severity: 'Severe',
+      repairBy: '24 Hrs.',
+      points: '14.8/n',
+      code: 'SPRINK-03'
+    },
+    {
+      id: 'sprink_4',
+      name: 'Sprinkler head assembly is obstructed by an item, object, or encasement within 18 inches of the sprinkler head.',
+      detail: 'Sprinkler head assembly is obstructed by item, object, or encasement within 18 inches of the sprinkler head.',
+      criteria: 'Sprinkler head assembly is obstructed by item, object, or encasement within 18 inches of the sprinkler head.',
+      severity: 'Severe',
+      repairBy: '24 Hrs.',
+      points: '14.8/n',
+      code: 'SPRINK-04'
+    }
+  ]
+};
+
+export const FIRE_SAFETY_SUBCATEGORIES_OUTSIDE = [
+  { id: 'exit_sign', name: 'Exit Sign' },
+  { id: 'fire_escape', name: 'Fire Escape' },
+  { id: 'fire_extinguisher', name: 'Fire Extinguisher' },
+  { id: 'flammable_combustible', name: 'Flammable and Combustible Item' },
+  { id: 'sprinkler_assembly', name: 'Sprinkler Assembly' }
+];
+
+// ==========================================
+// 11. HAZARD - with Subcategories
+// ==========================================
+export const HAZARD_PARENT_DEFICIENCIES: ItemDeficiencies = {
+  itemName: 'Hazard',
+  deficiencies: []  // Empty - use subcategories
+};
+
+// 11a. Rat
+export const RAT_DEFICIENCIES: ItemDeficiencies = {
+  itemName: 'Rat',
+  deficiencies: [
+    {
+      id: 'rat_1',
+      name: 'Evidence of rats',
+      detail: 'Evidence of rats is found. (i.e., a live or dead rat or droppings, chewed holes).',
+      criteria: 'Evidence of rats is found. (i.e., a live or dead rat or droppings, chewed holes).',
+      severity: 'Severe',
+      repairBy: '24 Hrs.',
+      points: '14.8/n',
+      code: 'RAT-01'
+    }
+  ]
+};
+
+// 11b. Litter
+export const LITTER_DEFICIENCIES: ItemDeficiencies = {
+  itemName: 'Litter',
+  deficiencies: [
+    {
+      id: 'litter_1',
+      name: 'Litter is accumulated in an undesignated area',
+      detail: 'Litter is considered deficient if 10 or more small items or any large discarded items are found in a 10×10 ft area not designated for garbage disposal.',
+      criteria: 'Litter is considered deficient if 10 or more small items or any large discarded items are found in a 10×10 ft area not designated for garbage disposal.',
+      severity: 'Low',
+      repairBy: '60 Day',
+      points: '2.40/n',
+      code: 'LITTER-01'
+    }
+  ]
+};
+
+// 11c. Sharp edges
+export const SHARP_EDGES_DEFICIENCIES: ItemDeficiencies = {
+  itemName: 'Sharp edges',
+  deficiencies: [
+    {
+      id: 'sharp_1',
+      name: 'A sharp edge that can result in a cut or puncture hazard is present.',
+      detail: 'A sharp edge that can result in a cut or puncture hazard that is likely to require emergency care (e.g., stitches) is present within the built environment (i.e., human-made structures, features, and facilities).',
+      criteria: 'A sharp edge that can result in a cut or puncture hazard that is likely to require emergency care (e.g., stitches) is present within the built environment (i.e., human-made structures, features, and facilities).',
+      severity: 'Life-Threatening',
+      repairBy: '24Hrs',
+      points: '30/n',
+      code: 'SHARP-01'
+    }
+  ]
+};
+
+// 11d. Trip hazard
+export const TRIP_HAZARD_DEFICIENCIES: ItemDeficiencies = {
+  itemName: 'Trip hazard',
+  deficiencies: [
+    {
+      id: 'trip_1',
+      name: 'Trip hazard on walking surface.',
+      detail: 'A walking surface is deficient if it has an abrupt change in elevation of ¾ inch or more, or a horizontal gap of 2 inches or more perpendicular to the normal path of travel.',
+      criteria: 'A walking surface is deficient if it has an abrupt change in elevation of ¾ inch or more, or a horizontal gap of 2 inches or more perpendicular to the normal path of travel.',
+      severity: 'Life-Threatening',
+      repairBy: '24Hrs',
+      points: '30/n',
+      code: 'TRIP-01'
+    }
+  ]
+};
+
+export const HAZARD_SUBCATEGORIES_OUTSIDE = [
+  { id: 'rat', name: 'Rat' },
+  { id: 'litter', name: 'Litter' },
+  { id: 'sharp_edges', name: 'Sharp edges' },
+  { id: 'trip_hazard', name: 'Trip hazard' }
+];
+
+// ==========================================
+// 16. LIGHTING - with Subcategories
+// ==========================================
+export const LIGHTING_PARENT_DEFICIENCIES: ItemDeficiencies = {
+  itemName: 'Lighting',
+  deficiencies: []  // Empty - use subcategories
+};
+
+// 16a. Lighting - Auxiliary
+export const LIGHTING_AUXILIARY_DEFICIENCIES: ItemDeficiencies = {
+  itemName: 'Lighting - Auxiliary',
+  deficiencies: [
+    {
+      id: 'light_aux_1',
+      name: 'Auxiliary lighting is damaged, missing or fail to illuminate when tested',
+      detail: 'Auxiliary lighting is not present or not installed. Missing or fails to illuminate when tested.',
+      criteria: 'Auxiliary lighting is not present or not installed. Missing or fails to illuminate when tested.',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.5/n',
+      code: 'LIGHT-AUX-01'
+    }
+  ]
+};
+
+// 16b. Lighting - Exterior
+export const LIGHTING_EXTERIOR_DEFICIENCIES: ItemDeficiencies = {
+  itemName: 'Lighting - Exterior',
+  deficiencies: [
+    {
+      id: 'light_ext_1',
+      name: 'A permanently installed light fixture is damaged, inoperable, missing or not secure',
+      detail: 'A permanently installed light fixture is not secure to the designed attachment point or the attachment point is not stable.',
+      criteria: 'A permanently installed light fixture is not secure to the designed attachment point or the attachment point is not stable.',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.5/n',
+      code: 'LIGHT-EXT-01'
+    }
+  ]
+};
+
+export const LIGHTING_SUBCATEGORIES_OUTSIDE = [
+  { id: 'lighting_auxiliary', name: 'Lighting - Auxiliary' },
+  { id: 'lighting_exterior', name: 'Lighting - Exterior' }
+];
+
+// ==========================================
+// 17. PARKING - with Subcategories
+// ==========================================
+export const PARKING_PARENT_DEFICIENCIES: ItemDeficiencies = {
+  itemName: 'Parking Lots, Driveways, Roads',
+  deficiencies: []  // Empty - use subcategories
+};
+
+// 17a. Parking Lot
+export const PARKING_LOT_DEFICIENCIES: ItemDeficiencies = {
+  itemName: 'Parking Lot',
+  deficiencies: [
+    {
+      id: 'park_lot_1',
+      name: 'The parking lot has any one pothole greater than 4 inches deep and 1 square foot or more significant.',
+      detail: 'A parking lot is deficient if it has a single pothole over 4 inches deep and 1 square foot in size, or multiple potholes that together exceed 4 inches in depth and 144 square inches in area.',
+      criteria: 'A parking lot is deficient if it has a single pothole over 4 inches deep and 1 square foot in size, or multiple potholes that together exceed 4 inches in depth and 144 square inches in area.',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.5/n',
+      code: 'PARK-LOT-01'
+    },
+    {
+      id: 'park_lot_2',
+      name: 'Parking lot has ponding.',
+      detail: 'More than 3 inches of water have accumulated in the parking lot, and 5% or more of the area is unusable.',
+      criteria: 'More than 3 inches of water have accumulated in the parking lot, and 5% or more of the area is unusable.',
+      severity: 'Low',
+      repairBy: '60 Day',
+      points: '2.40/n',
+      code: 'PARK-LOT-02'
+    }
+  ]
+};
+
+// 17b. Private Roads and Driveways
+export const PRIVATE_ROADS_DRIVEWAYS_DEFICIENCIES: ItemDeficiencies = {
+  itemName: 'Private Roads and Driveways',
+  deficiencies: [
+    {
+      id: 'priv_road_1',
+      name: 'Road or driveway access to the property is blocked or impassable for vehicles.',
+      detail: 'Not including temporary obstruction.',
+      criteria: 'Not including temporary obstruction.',
+      severity: 'Severe',
+      repairBy: '24 Hrs.',
+      points: '14.8/n',
+      code: 'PRIV-ROAD-01'
+    },
+    {
+      id: 'priv_road_2',
+      name: 'Any one pothole is at least 4 inches deep and covers an area of 1 square foot or greater.',
+      detail: 'The driveway is not functionally adequate.',
+      criteria: 'The driveway is not functionally adequate.',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.5/n',
+      code: 'PRIV-ROAD-02'
+    }
+  ]
+};
+
+export const PARKING_SUBCATEGORIES_OUTSIDE = [
+  { id: 'parking_lot', name: 'Parking Lot' },
+  { id: 'private_roads', name: 'Private Roads and Driveways' }
+];
+
+// ==========================================
+// 19. RAILINGS - with Subcategories
+// ==========================================
+export const RAILINGS_PARENT_DEFICIENCIES: ItemDeficiencies = {
+  itemName: 'Railings',
+  deficiencies: []  // Empty - use subcategories
+};
+
+// 19a. Guardrail
+export const GUARDRAIL_DEFICIENCIES: ItemDeficiencies = {
+  itemName: 'Guardrail',
+  deficiencies: [
+    {
+      id: 'guard_1',
+      name: 'The guardrail is missing or not installed, limiting its safe use.',
+      detail: 'A guardrail is deficient if it\'s missing or not installed along a walking surface over 30 inches above the floor or grade in areas accessible to residents.',
+      criteria: 'A guardrail is deficient if it\'s missing or not installed along a walking surface over 30 inches above the floor or grade in areas accessible to residents.',
+      severity: 'Life-Threatening',
+      repairBy: '24Hrs',
+      points: '30/n',
+      code: 'GUARD-01'
+    },
+    {
+      id: 'guard_2',
+      name: 'Guardrail component is missing or damaged. Does not limit the safe use. The guardrail is functionally adequate.',
+      detail: 'A guardrail is deficient if it\'s missing critical components, visibly damaged, under 30 inches in height, or not securely attached enough to prevent fall hazards.',
+      criteria: 'A guardrail is deficient if it\'s missing critical components, visibly damaged, under 30 inches in height, or not securely attached enough to prevent fall hazards.',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.5/n',
+      code: 'GUARD-02'
+    }
+  ]
+};
+
+// 19b. Handrail
+export const HANDRAIL_DEFICIENCIES: ItemDeficiencies = {
+  itemName: 'Handrail',
+  deficiencies: [
+    {
+      id: 'hand_1',
+      name: 'Handrail is missing.',
+      detail: 'Handrail is missing (i.e., evidence of prior installation, but now not present or is incomplete).',
+      criteria: 'Handrail is missing (i.e., evidence of prior installation, but now not present or is incomplete).',
+      severity: 'Severe',
+      repairBy: '24 Hrs.',
+      points: '14.8/n',
+      code: 'HAND-01'
+    },
+    {
+      id: 'hand_2',
+      name: 'Handrail is not functionally adequate.',
+      detail: 'Handrail is not functionally adequate (i.e., it cannot reasonably be grasped by hand to provide stability or support when ascending or descending stairways). OR Handrail is not continuous for the full length of each flight of stairs. OR Handrail is not between 28 inches and 42 inches in height.',
+      criteria: 'Handrail is not functionally adequate (i.e., it cannot reasonably be grasped by hand to provide stability or support when ascending or descending stairways). OR Handrail is not continuous for the full length of each flight of stairs. OR Handrail is not between 28 inches and 42 inches in height.',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.5/n',
+      code: 'HAND-02'
+    },
+    {
+      id: 'hand_3',
+      name: 'Handrail is not installed where required.',
+      detail: '4 or more stair risers are present, and a handrail is not installed. OR A ramp has a rise greater than 6 inches or a horizontal projection greater than 72 inches and a handrail is not installed on both sides.',
+      criteria: '4 or more stair risers are present, and a handrail is not installed. OR A ramp has a rise greater than 6 inches or a horizontal projection greater than 72 inches and a handrail is not installed on both sides.',
+      severity: 'Severe',
+      repairBy: '24 Hrs.',
+      points: '14.8/n',
+      code: 'HAND-03'
+    },
+    {
+      id: 'hand_4',
+      name: 'Handrail is not secured.',
+      detail: 'There is movement in the anchors of the handrail.',
+      criteria: 'There is movement in the anchors of the handrail.',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.5/n',
+      code: 'HAND-04'
+    }
+  ]
+};
+
+export const RAILINGS_SUBCATEGORIES_OUTSIDE = [
+  { id: 'guardrail', name: 'Guardrail' },
+  { id: 'handrail', name: 'Handrail' }
+];
+
+// ==========================================
+// 24. RETAINING WALL - with Subcategories
+// ==========================================
+export const RETAINING_WALL_PARENT_DEFICIENCIES: ItemDeficiencies = {
+  itemName: 'RETAINING WALL',
+  deficiencies: []  // Empty - use subcategories
+};
+
+// 24a. Retaining wall
+export const RETAINING_WALL_SUBCATEGORY: ItemDeficiencies = {
+  itemName: 'Retaining wall',
+  deficiencies: [
+    {
+      id: 'ret_wall_1',
+      name: 'Retaining wall is leaning away from the fill side.',
+      detail: 'Retaining wall is leaning away from the fill side.',
+      criteria: 'Retaining wall is leaning away from the fill side.',
+      severity: 'Severe',
+      repairBy: '24 Hrs.',
+      points: '14.8/n',
+      code: 'RET-WALL-01'
+    },
+    {
+      id: 'ret_wall_2',
+      name: 'Retaining wall is partially or completely collapsed.',
+      detail: 'The retaining wall is (sloped) partially or completely collapsed.',
+      criteria: 'The retaining wall is (sloped) partially or completely collapsed.',
+      severity: 'Life-Threatening',
+      repairBy: '24Hrs',
+      points: '30/n',
+      code: 'RET-WALL-02'
+    }
+  ]
+};
+
+// 24b. Wall - Exterior
+export const WALL_EXTERIOR_DEFICIENCIES: ItemDeficiencies = {
+  itemName: 'Wall - Exterior',
+  deficiencies: [
+    {
+      id: 'wall_ext_1',
+      name: 'Exterior wall component(s) is not functionally adequate.',
+      detail: 'Exterior wall component(s) is not functionally adequate (i.e., impacts the integrity of the wall assembly or building envelope, or does not allow exterior wall to separate the accommodation inside from that outside).',
+      criteria: 'Exterior wall component(s) is not functionally adequate (i.e., impacts the integrity of the wall assembly or building envelope, or does not allow exterior wall to separate the accommodation inside from that outside).',
+      severity: 'Severe',
+      repairBy: '24 Hrs.',
+      points: '14.8/n',
+      code: 'WALL-EXT-01'
+    },
+    {
+      id: 'wall_ext_2',
+      name: 'Exterior wall covering has missing sections of at least 1 square foot per wall.',
+      detail: 'Cumulatively, 1 square foot or more of an exterior wall covering is missing (i.e., evidence of prior installation, but now not present or is incomplete).',
+      criteria: 'Cumulatively, 1 square foot or more of an exterior wall covering is missing (i.e., evidence of prior installation, but now not present or is incomplete).',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.5/n',
+      code: 'WALL-EXT-02'
+    },
+    {
+      id: 'wall_ext_3',
+      name: 'Exterior wall has peeling paint of 10 square feet or more',
+      detail: 'Cumulatively, there is 10 square feet or more of peeling paint on an exterior wall built after 1978.',
+      criteria: 'Cumulatively, there is 10 square feet or more of peeling paint on an exterior wall built after 1978.',
+      severity: 'Low',
+      repairBy: '60 Day',
+      points: '2.40/n',
+      code: 'WALL-EXT-03'
+    }
+  ]
+};
+
+export const RETAINING_WALL_SUBCATEGORIES_OUTSIDE = [
+  { id: 'retaining_wall', name: 'Retaining wall' },
+  { id: 'wall_exterior', name: 'Wall - Exterior' }
+];
+
 // 4c. Door - Entry (for Inside)
 export const DOOR_ENTRY_DEFICIENCIES: ItemDeficiencies = {
   itemName: 'Door - Entry',
@@ -357,53 +1043,6 @@ export const GARAGE_DOOR_DEFICIENCIES: ItemDeficiencies = {
       repairBy: '30 Day',
       points: '5.5/n',
       code: 'GARAGE-02'
-    }
-  ]
-};
-
-// 5. Drain
-export const DRAIN_DEFICIENCIES: ItemDeficiencies = {
-  itemName: 'Drain',
-  deficiencies: [
-    {
-      id: 'drain_1',
-      name: 'Drain is fully clogged.',
-      detail: 'Standing water is present over the floor drain, or the floor drain is blocked such that the inspector believes water would be unable to drain.',
-      criteria: 'Blocked sewage system or standing water.',
-      severity: 'Moderate',
-      repairBy: '30 Day',
-      points: '5.5/n',
-      code: 'DRAIN-01'
-    },
-    {
-      id: 'drain_2',
-      name: 'Site Drainage - Erosion',
-      detail: 'Erosion is present.',
-      criteria: 'Exposed the footer or, when more than 2 feet from the built environment, is deep enough to potentially undermine supporting soil.',
-      severity: 'Severe',
-      repairBy: '24 Hrs.',
-      points: '14.8/n',
-      code: 'DRAIN-02'
-    },
-    {
-      id: 'drain_3',
-      name: 'Site Drainage - Grate',
-      detail: 'Grate is not secure or does not cover the site\'s drainage systems at the collection point.',
-      criteria: 'Grate is not secure or does not cover the site drainage system\'s collection point.',
-      severity: 'Moderate',
-      repairBy: '30 Day',
-      points: '5.5/n',
-      code: 'DRAIN-03'
-    },
-    {
-      id: 'drain_4',
-      name: 'Site Drainage - Runoff',
-      detail: 'Water runoff is unable to flow through the site drainage system.',
-      criteria: 'Standing water is present at the entrance of the outflow pipe OR Drainage is blocked.',
-      severity: 'Moderate',
-      repairBy: '30 Day',
-      points: '5.5/n',
-      code: 'DRAIN-04'
     }
   ]
 };
@@ -777,7 +1416,24 @@ export const HAZARD_DEFICIENCIES: ItemDeficiencies = {
   ]
 };
 
-// 12. HVAC
+// 12. HVAC - OUTSIDE (single deficiency per user data)
+export const HVAC_OUTSIDE_DEFICIENCIES: ItemDeficiencies = {
+  itemName: 'HVAC',
+  deficiencies: [
+    {
+      id: 'hvac_out_1',
+      name: 'Fuel-burning heating system or device exhaust vent is misaligned, blocked, disconnected, damaged or missing',
+      detail: 'Fuel burning heating system or device is present. AND exhaust vent is misaligned, blocked, disconnected, or improperly connected through to the ceiling or wall. OR Exhaust vent is damaged (i.e., visibly defective; impacts functionality). OR Exhaust vent is missing (i.e., evidence of prior installation, but now not present or is incomplete).',
+      criteria: 'Metal tape is not a substitute for an improperly connected flue vent.',
+      severity: 'Life-Threatening',
+      repairBy: '24Hrs',
+      points: '30/n',
+      code: 'HVAC-OUT-01'
+    }
+  ]
+};
+
+// 12. HVAC - INSIDE (comprehensive deficiencies)
 export const HVAC_DEFICIENCIES: ItemDeficiencies = {
   itemName: 'HVAC',
   deficiencies: [
@@ -2466,7 +3122,7 @@ export const getDeficienciesForItem = (itemName: string, locationType?: string):
     return isInside ? HAZARD_INSIDE_DEFICIENCIES : HAZARD_DEFICIENCIES;
   }
   if (normalizedName.includes('hvac') || normalizedName.includes('heating') || normalizedName.includes('air conditioning')) {
-    return HVAC_DEFICIENCIES;
+    return isInside ? HVAC_DEFICIENCIES : HVAC_OUTSIDE_DEFICIENCIES;
   }
   if (normalizedName.includes('leak') && (normalizedName.includes('gas') || normalizedName.includes('oil'))) {
     return LEAK_GAS_OIL_DEFICIENCIES;
@@ -2573,9 +3229,17 @@ export const hasSubcategories = (itemName: string, locationType?: string): boole
   const normalizedName = cleanedName.toLowerCase();
   const isOutside = locationType?.toLowerCase() === 'outside';
   
-  // Door in Outside section has subcategories
-  if (isOutside && normalizedName === 'door') {
-    return true;
+  if (isOutside) {
+    // Outside categories with subcategories
+    if (normalizedName === 'door') return true;
+    if (normalizedName === 'drain') return true;
+    if (normalizedName === 'electrical') return true;
+    if (normalizedName === 'fire safety') return true;
+    if (normalizedName === 'hazard') return true;
+    if (normalizedName === 'lighting') return true;
+    if (normalizedName.includes('parking') || normalizedName.includes('driveway') || normalizedName.includes('road')) return true;
+    if (normalizedName === 'railings') return true;
+    if (normalizedName.includes('retaining wall') || normalizedName === 'retaining wall') return true;
   }
   return false;
 };
@@ -2586,8 +3250,16 @@ export const getSubcategoriesForItem = (itemName: string, locationType?: string)
   const normalizedName = cleanedName.toLowerCase();
   const isOutside = locationType?.toLowerCase() === 'outside';
   
-  if (isOutside && normalizedName === 'door') {
-    return DOOR_SUBCATEGORIES_OUTSIDE;
+  if (isOutside) {
+    if (normalizedName === 'door') return DOOR_SUBCATEGORIES_OUTSIDE;
+    if (normalizedName === 'drain') return DRAIN_SUBCATEGORIES_OUTSIDE;
+    if (normalizedName === 'electrical') return ELECTRICAL_SUBCATEGORIES_OUTSIDE;
+    if (normalizedName === 'fire safety') return FIRE_SAFETY_SUBCATEGORIES_OUTSIDE;
+    if (normalizedName === 'hazard') return HAZARD_SUBCATEGORIES_OUTSIDE;
+    if (normalizedName === 'lighting') return LIGHTING_SUBCATEGORIES_OUTSIDE;
+    if (normalizedName.includes('parking') || normalizedName.includes('driveway') || normalizedName.includes('road')) return PARKING_SUBCATEGORIES_OUTSIDE;
+    if (normalizedName === 'railings') return RAILINGS_SUBCATEGORIES_OUTSIDE;
+    if (normalizedName.includes('retaining wall') || normalizedName === 'retaining wall') return RETAINING_WALL_SUBCATEGORIES_OUTSIDE;
   }
   return [];
 };
@@ -2596,11 +3268,91 @@ export const getSubcategoriesForItem = (itemName: string, locationType?: string)
 export const getDeficienciesForSubcategory = (subcategoryName: string): ItemDeficiencies => {
   const normalizedName = subcategoryName.toLowerCase();
   
+  // Door subcategories
   if (normalizedName.includes('door - general standard') || normalizedName === 'door - general standard') {
     return DOOR_GENERAL_STANDARD_OUTSIDE;
   }
-  if (normalizedName.includes('garage door')) {
+  if (normalizedName === 'garage door' || normalizedName.includes('garage door')) {
     return GARAGE_DOOR_OUTSIDE;
+  }
+  
+  // Drain subcategories
+  if (normalizedName === 'drain') {
+    return DRAIN_DRAIN_DEFICIENCIES;
+  }
+  if (normalizedName === 'site drainage' || normalizedName.includes('site drainage')) {
+    return SITE_DRAINAGE_DEFICIENCIES;
+  }
+  
+  // Electrical subcategories
+  if (normalizedName.includes('conductor') || normalizedName.includes('outlet') || normalizedName.includes('switch')) {
+    return ELECTRICAL_CONDUCTOR_OUTLET_SWITCH;
+  }
+  if (normalizedName === 'electrical service panel' || normalizedName.includes('service panel')) {
+    return ELECTRICAL_SERVICE_PANEL_OUTSIDE;
+  }
+  
+  // Fire Safety subcategories
+  if (normalizedName === 'exit sign' || normalizedName.includes('exit sign')) {
+    return EXIT_SIGN_DEFICIENCIES;
+  }
+  if (normalizedName === 'fire escape' || normalizedName.includes('fire escape')) {
+    return FIRE_ESCAPE_DEFICIENCIES;
+  }
+  if (normalizedName === 'fire extinguisher' || normalizedName.includes('fire extinguisher')) {
+    return FIRE_EXTINGUISHER_DEFICIENCIES;
+  }
+  if (normalizedName.includes('flammable') || normalizedName.includes('combustible')) {
+    return FLAMMABLE_COMBUSTIBLE_DEFICIENCIES;
+  }
+  if (normalizedName.includes('sprinkler')) {
+    return SPRINKLER_ASSEMBLY_DEFICIENCIES;
+  }
+  
+  // Hazard subcategories
+  if (normalizedName === 'rat') {
+    return RAT_DEFICIENCIES;
+  }
+  if (normalizedName === 'litter') {
+    return LITTER_DEFICIENCIES;
+  }
+  if (normalizedName === 'sharp edges' || normalizedName.includes('sharp')) {
+    return SHARP_EDGES_DEFICIENCIES;
+  }
+  if (normalizedName === 'trip hazard' || normalizedName.includes('trip')) {
+    return TRIP_HAZARD_DEFICIENCIES;
+  }
+  
+  // Lighting subcategories
+  if (normalizedName.includes('auxiliary')) {
+    return LIGHTING_AUXILIARY_DEFICIENCIES;
+  }
+  if (normalizedName.includes('exterior')) {
+    return LIGHTING_EXTERIOR_DEFICIENCIES;
+  }
+  
+  // Parking subcategories
+  if (normalizedName === 'parking lot' || normalizedName.includes('parking lot')) {
+    return PARKING_LOT_DEFICIENCIES;
+  }
+  if (normalizedName.includes('private roads') || normalizedName.includes('driveways')) {
+    return PRIVATE_ROADS_DRIVEWAYS_DEFICIENCIES;
+  }
+  
+  // Railings subcategories
+  if (normalizedName === 'guardrail' || normalizedName.includes('guardrail')) {
+    return GUARDRAIL_DEFICIENCIES;
+  }
+  if (normalizedName === 'handrail' || normalizedName.includes('handrail')) {
+    return HANDRAIL_DEFICIENCIES;
+  }
+  
+  // Retaining Wall subcategories
+  if (normalizedName === 'retaining wall') {
+    return RETAINING_WALL_SUBCATEGORY;
+  }
+  if (normalizedName === 'wall - exterior' || normalizedName.includes('wall - exterior')) {
+    return WALL_EXTERIOR_DEFICIENCIES;
   }
   
   return {
