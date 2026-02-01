@@ -1701,9 +1701,9 @@ export const PAINT_DEFICIENCIES: ItemDeficiencies = {
   deficiencies: [
     {
       id: 'paint_1',
-      name: 'Less than 2 SF Deteriorated Paint',
-      detail: 'Paint is deteriorated (peeling, chipping, etc). < 2 sq ft per room or < 10% per component.',
-      criteria: 'De minimis damage: Less than 2 sq ft per room deteriorated paint.',
+      name: 'Less than 2 SF - Paint in a Unit or inside the target property is deteriorated, below the level required for lead-safe work practices by a lead-certified firm or for passing clearance.',
+      detail: 'Paint is deteriorated (e.g., peeling, chipping, chalking, cracking, or detached from the substrate). For large surface areas in the Unit, deteriorated paint is less than or equal to 2 square feet, per room; for small surface areas, less than or equal to 10% per component ("de minimis").',
+      criteria: 'Less than 2 square feet per room deteriorated paint, damage to the surface such as holes that expose paint layers, and friction on painted surfaces.',
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
@@ -1711,9 +1711,9 @@ export const PAINT_DEFICIENCIES: ItemDeficiencies = {
     },
     {
       id: 'paint_2',
-      name: 'More than 2 SF Deteriorated Paint',
-      detail: 'Paint is deteriorated (peeling, chipping, etc). > 2 sq ft per room or > 10% per component.',
-      criteria: 'Significant damage: More than 2 sq ft per room deteriorated paint.',
+      name: 'More than 2 SF - Paint in a Unit or Inside the target property is deteriorated – above the level required for lead-safe work practices by a lead certified firm and passing clearance.',
+      detail: 'Paint is deteriorated (e.g., peeling, chipping, chalking, cracking, or detached from the substrate). For large surface areas in the Unit, deteriorated paint is more than 2 square feet, per room; for small surface areas, greater than 10% per component ("significant").',
+      criteria: 'More than 2 square feet per room deteriorated paint, damage to the surface such as holes that expose paint layers, and friction on painted surfaces.',
       severity: 'Severe',
       repairBy: '24 Hrs.',
       points: '14.8/n',
