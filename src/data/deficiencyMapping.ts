@@ -1816,9 +1816,9 @@ export const ROOF_DEFICIENCIES: ItemDeficiencies = {
   deficiencies: [
     {
       id: 'roof_1',
-      name: 'Gutter component is damaged, missing, or unfixed.',
-      detail: 'Gutter component is damaged (i.e., visibly defective; impacts functionality). OR Gutter component is missing (i.e., evidence of prior installation, but now not present or is incomplete). OR Gutter component is unfixed.',
-      criteria: 'Gutter or downspout missing or damaged components.',
+      name: 'Restricted flow of water from a roof drain, gutter, or downspout.',
+      detail: 'Debris is limiting the ability of water to drain; water may not be present. Or an area of approximately 25 sq. ft. of ponding water is located above the drain. OR Gutter component is damaged (i.e., visibly defective; impacts functionality). OR Gutter component is missing (i.e., evidence of prior installation, but now not present or is incomplete). OR Gutter component is unfixed.',
+      criteria: 'The condition is not caused by recent rain.',
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
@@ -1826,19 +1826,19 @@ export const ROOF_DEFICIENCIES: ItemDeficiencies = {
     },
     {
       id: 'roof_2',
-      name: 'Restricted flow of water from a roof drain, gutter, or downspout.',
-      detail: 'Debris is limiting the ability of water to drain; water may not be present. Or an area of approximately 25 sq. ft. of ponding water is located above the drain.',
-      criteria: 'The condition is not caused by recent rain.',
-      severity: 'Moderate',
-      repairBy: '30 Day',
-      points: '5.5/n',
+      name: 'Roof assembly has a hole.',
+      detail: 'Unintentional holes of any size are found. Or, intentional holes of any size are found and are not covered by vents or screens.',
+      criteria: 'Not including the missing vent that had been installed and is now missing.',
+      severity: 'Severe',
+      repairBy: '24 Hrs.',
+      points: '14.8/n',
       code: 'ROOF-02'
     },
     {
       id: 'roof_3',
-      name: 'Roof assembly has a hole.',
-      detail: 'Unintentional holes of any size are found. Or, intentional holes of any size are found and are not covered by vents or screens.',
-      criteria: 'Not including the missing vent that had been installed and is now missing.',
+      name: 'Roof assembly is damaged.',
+      detail: 'Roof assembly has damage (i.e., visibly defective; impacts functionality) present that causes one or more components to become unstable.',
+      criteria: 'Any part of the roof assembly that is damaged may impact the functionality of other sections of roof.',
       severity: 'Severe',
       repairBy: '24 Hrs.',
       points: '14.8/n',
@@ -1846,33 +1846,23 @@ export const ROOF_DEFICIENCIES: ItemDeficiencies = {
     },
     {
       id: 'roof_4',
-      name: 'Roof assembly is damaged.',
-      detail: 'Roof assembly has damage (i.e., visibly defective; impacts functionality) present that causes one or more components to become unstable.',
-      criteria: 'Any part of the roof assembly that is damaged may impact the functionality of other sections of roof.',
-      severity: 'Severe',
-      repairBy: '24 Hrs.',
-      points: '14.8/n',
-      code: 'ROOF-04'
-    },
-    {
-      id: 'roof_5',
       name: 'Roof surface has standing water.',
       detail: 'Water ponding in area approximately 25 sq. ft. or greater on a flat roof surface not near drain or scupper.',
       criteria: 'Condition is not caused by recent rain.',
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
-      code: 'ROOF-05'
+      code: 'ROOF-04'
     },
     {
-      id: 'roof_6',
+      id: 'roof_5',
       name: 'Substrate is exposed.',
       detail: 'Any amount of substrate is exposed.',
       criteria: 'Visually observed.',
       severity: 'Severe',
       repairBy: '24 Hrs.',
       points: '14.8/n',
-      code: 'ROOF-06'
+      code: 'ROOF-05'
     }
   ]
 };

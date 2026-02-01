@@ -58,6 +58,17 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const [note, setNote] = useState('');
   const [images, setImages] = useState<string[]>([]);
 
+  // Expandable text modal states
+  const [showExpandedText, setShowExpandedText] = useState(false);
+  const [expandedTextTitle, setExpandedTextTitle] = useState('');
+  const [expandedTextContent, setExpandedTextContent] = useState('');
+
+  // Custom text input states
+  const [customDeficiencyName, setCustomDeficiencyName] = useState('');
+  const [customDeficiencyDetail, setCustomDeficiencyDetail] = useState('');
+  const [customDeficiencyCriteria, setCustomDeficiencyCriteria] = useState('');
+  const [isCustomEntry, setIsCustomEntry] = useState(false);
+
   useEffect(() => {
     // Check if item has subcategories (e.g., Door in Outside section)
     const hasSubcats = hasSubcategories(itemName, location);
@@ -106,6 +117,19 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     setSelectedDeficiency(null);
     setRepairBy('');
     setDeficiencyCriteria('');
+    setCustomDeficiencyName('');
+    setCustomDeficiencyDetail('');
+    setCustomDeficiencyCriteria('');
+    setIsCustomEntry(false);
+  };
+
+  // Show expanded text modal
+  const handleShowExpandedText = (title: string, content: string) => {
+    if (content && content !== '-- Select deficiency first --') {
+      setExpandedTextTitle(title);
+      setExpandedTextContent(content);
+      setShowExpandedText(true);
+    }
   };
 
   const requestPermissions = async (useCamera: boolean) => {
@@ -340,7 +364,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           )}
         </View>
 
-        {/* DEFICIENCY DETAIL - For subcategory items: dropdown to pick deficiency; For non-subcategory items: read-only display */}
+        {/* DEFICIENCY DETAIL - For subcategory items: dropdown to pick deficiency; For non-subcategory items: editable display */}
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>DEFICIENCY DETAIL</Text>
           {itemHasSubcategories ? (
@@ -374,26 +398,61 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               )}
             </>
           ) : (
-            // For items without subcategories: Read-only detail display
-            <View style={[styles.criteriaDropdownBox, selectedDeficiency && styles.criteriaDropdownBoxActive]}>
-              <Text style={[styles.criteriaDropdownText, !selectedDeficiency && styles.placeholderText]} numberOfLines={4}>
-                {selectedDeficiency ? selectedDeficiency.detail : '-- Select deficiency first --'}
-              </Text>
-            </View>
+            // For items without subcategories: Editable detail with tap-to-expand
+            <TouchableOpacity 
+              style={[styles.criteriaDropdownBox, selectedDeficiency && styles.criteriaDropdownBoxActive]}
+              onPress={() => handleShowExpandedText('Deficiency Detail', selectedDeficiency?.detail || customDeficiencyDetail || '')}
+              activeOpacity={0.8}
+            >
+              <TextInput
+                style={[styles.criteriaDropdownTextEditable, !selectedDeficiency && !customDeficiencyDetail && styles.placeholderText]}
+                placeholder="-- Select deficiency first or type here --"
+                placeholderTextColor="#9CA3AF"
+                value={customDeficiencyDetail || selectedDeficiency?.detail || ''}
+                onChangeText={(text) => {
+                  setCustomDeficiencyDetail(text);
+                  setIsCustomEntry(true);
+                }}
+                multiline
+                numberOfLines={4}
+              />
+              <TouchableOpacity 
+                style={styles.expandButton}
+                onPress={() => handleShowExpandedText('Deficiency Detail', selectedDeficiency?.detail || customDeficiencyDetail || '')}
+              >
+                <Ionicons name="expand-outline" size={18} color="#0E7490" />
+              </TouchableOpacity>
+            </TouchableOpacity>
           )}
         </View>
 
-        {/* Deficiency Criteria - Single full-width dropdown */}
+        {/* Deficiency Criteria - Editable with tap-to-expand */}
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>DEFICIENCY CRITERIA</Text>
-          <View style={[styles.criteriaDropdownBox, selectedDeficiency && styles.criteriaDropdownBoxActive]}>
-            <Text style={[styles.criteriaDropdownText, !selectedDeficiency && styles.placeholderText]} numberOfLines={3}>
-              {deficiencyCriteria || '-- Select deficiency first --'}
-            </Text>
-            <View style={styles.criteriaDropdownIcon}>
-              <Ionicons name="chevron-down" size={20} color={selectedDeficiency ? "#0E7490" : "#9CA3AF"} />
-            </View>
-          </View>
+          <TouchableOpacity 
+            style={[styles.criteriaDropdownBox, selectedDeficiency && styles.criteriaDropdownBoxActive]}
+            onPress={() => handleShowExpandedText('Deficiency Criteria', deficiencyCriteria || customDeficiencyCriteria || '')}
+            activeOpacity={0.8}
+          >
+            <TextInput
+              style={[styles.criteriaDropdownTextEditable, !selectedDeficiency && !customDeficiencyCriteria && styles.placeholderText]}
+              placeholder="-- Select deficiency first or type here --"
+              placeholderTextColor="#9CA3AF"
+              value={customDeficiencyCriteria || deficiencyCriteria || ''}
+              onChangeText={(text) => {
+                setCustomDeficiencyCriteria(text);
+                setDeficiencyCriteria(text);
+              }}
+              multiline
+              numberOfLines={3}
+            />
+            <TouchableOpacity 
+              style={styles.expandButton}
+              onPress={() => handleShowExpandedText('Deficiency Criteria', deficiencyCriteria || customDeficiencyCriteria || '')}
+            >
+              <Ionicons name="expand-outline" size={18} color="#0E7490" />
+            </TouchableOpacity>
+          </TouchableOpacity>
         </View>
 
         {/* PIC Section */}
@@ -592,6 +651,39 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                 </TouchableOpacity>
               ))}
             </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Expanded Text Modal - Shows full text when user taps on truncated content */}
+      <Modal
+        visible={showExpandedText}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setShowExpandedText(false)}
+      >
+        <View style={styles.expandedTextOverlay}>
+          <View style={styles.expandedTextContent}>
+            <View style={styles.expandedTextHeader}>
+              <Text style={styles.expandedTextTitle}>{expandedTextTitle}</Text>
+              <TouchableOpacity 
+                onPress={() => setShowExpandedText(false)}
+                style={styles.expandedTextCloseButton}
+              >
+                <Ionicons name="close" size={24} color="#666666" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.expandedTextScrollView} showsVerticalScrollIndicator={true}>
+              <Text style={styles.expandedTextBody} selectable={true}>
+                {expandedTextContent || 'No content available'}
+              </Text>
+            </ScrollView>
+            <TouchableOpacity 
+              style={styles.expandedTextDoneButton}
+              onPress={() => setShowExpandedText(false)}
+            >
+              <Text style={styles.expandedTextDoneButtonText}>Done</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -1073,6 +1165,81 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#0E7490',
     fontWeight: '600',
+  },
+  // Editable text input style for criteria/detail boxes
+  criteriaDropdownTextEditable: {
+    flex: 1,
+    fontSize: 14,
+    color: '#1A1A1A',
+    lineHeight: 20,
+    textAlignVertical: 'top',
+    paddingRight: 30,
+  },
+  // Expand button for showing full text
+  expandButton: {
+    position: 'absolute',
+    right: 12,
+    top: 12,
+    padding: 4,
+    backgroundColor: '#E0F2FE',
+    borderRadius: 8,
+  },
+  // Expanded text modal styles
+  expandedTextOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  expandedTextContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    width: '100%',
+    maxHeight: '80%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  expandedTextHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5E5',
+  },
+  expandedTextTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1A1A1A',
+  },
+  expandedTextCloseButton: {
+    padding: 4,
+  },
+  expandedTextScrollView: {
+    padding: 16,
+    maxHeight: 400,
+  },
+  expandedTextBody: {
+    fontSize: 15,
+    color: '#333333',
+    lineHeight: 24,
+  },
+  expandedTextDoneButton: {
+    backgroundColor: '#0E7490',
+    margin: 16,
+    marginTop: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  expandedTextDoneButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
   },
 });
 
