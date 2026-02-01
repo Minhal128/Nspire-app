@@ -110,8 +110,8 @@ export const DOOR_GENERAL_STANDARD_OUTSIDE: ItemDeficiencies = {
     {
       id: 'door_gen_std_1',
       name: 'Installed Lock cannot be engaged from both sides.',
-      detail: 'An exterior door is deficient if any component is damaged, inoperable, or missing in a way that affects its intended function.',
-      criteria: 'Lock cannot be engaged from interior or exterior.',
+      detail: 'Lock cannot be engaged from interior or exterior.',
+      criteria: 'An exterior door is deficient if any component is damaged, inoperable, or missing in a way that affects its intended function.',
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
@@ -127,8 +127,8 @@ export const GARAGE_DOOR_OUTSIDE: ItemDeficiencies = {
     {
       id: 'garage_out_1',
       name: 'Garage door does not open, close, or remains closed.',
-      detail: 'Garage door has a hole of any size that penetrates through to the interior.',
-      criteria: 'Door will not open and remain open.',
+      detail: 'Garage door mechanism is not functioning properly.',
+      criteria: 'Garage door has a hole of any size that penetrates through to the interior.',
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
@@ -137,8 +137,8 @@ export const GARAGE_DOOR_OUTSIDE: ItemDeficiencies = {
     {
       id: 'garage_out_2',
       name: 'Garage door has a hole.',
-      detail: 'Door will not open and remain open.',
-      criteria: 'Hole penetrating to interior.',
+      detail: 'Hole is present in the garage door.',
+      criteria: 'Door will not open and remain open.',
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
