@@ -17,7 +17,14 @@ import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../types/navigation';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { getDeficienciesForItem, DeficiencyOption, CODE_COMPLIANCE } from '../data/deficiencyMapping';
+import { 
+  getDeficienciesForItem, 
+  getDeficienciesForSubcategory,
+  hasSubcategories, 
+  getSubcategoriesForItem,
+  DeficiencyOption, 
+  CODE_COMPLIANCE 
+} from '../data/deficiencyMapping';
 import { cloudinaryService } from '../services/cloudinaryService';
 import { geminiService } from '../services/openaiService';
 
@@ -35,6 +42,12 @@ interface Props {
 const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const { property, selectedUnits, buildingId, location, itemId, itemName } = route.params;
 
+  // Subcategory state (for items like Door in Outside section)
+  const [showSubcategoryPicker, setShowSubcategoryPicker] = useState(false);
+  const [availableSubcategories, setAvailableSubcategories] = useState<{ id: string; name: string }[]>([]);
+  const [selectedSubcategory, setSelectedSubcategory] = useState<{ id: string; name: string } | null>(null);
+  const [itemHasSubcategories, setItemHasSubcategories] = useState(false);
+
   const [availableDeficiencies, setAvailableDeficiencies] = useState<DeficiencyOption[]>([]);
   const [selectedDeficiency, setSelectedDeficiency] = useState<DeficiencyOption | null>(null);
   const [showDeficiencyPicker, setShowDeficiencyPicker] = useState(false);
@@ -46,15 +59,41 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const [images, setImages] = useState<string[]>([]);
 
   useEffect(() => {
-    // Load deficiencies for the selected item - NO autofill, user must select
-    // Pass location type to get Inside vs Outside specific deficiencies
-    const itemDeficiencies = getDeficienciesForItem(itemName, location);
-    setAvailableDeficiencies(itemDeficiencies.deficiencies);
-    // Reset selection when item changes - user must manually select from dropdown
+    // Check if item has subcategories (e.g., Door in Outside section)
+    const hasSubcats = hasSubcategories(itemName, location);
+    setItemHasSubcategories(hasSubcats);
+    
+    if (hasSubcats) {
+      // Get subcategories for this item
+      const subcats = getSubcategoriesForItem(itemName, location);
+      setAvailableSubcategories(subcats);
+      setAvailableDeficiencies([]);  // Wait for subcategory selection
+      setSelectedSubcategory(null);
+    } else {
+      // Load deficiencies directly for the selected item
+      const itemDeficiencies = getDeficienciesForItem(itemName, location);
+      setAvailableDeficiencies(itemDeficiencies.deficiencies);
+      setAvailableSubcategories([]);
+    }
+    
+    // Reset selection when item changes
     setSelectedDeficiency(null);
     setRepairBy('');
     setDeficiencyCriteria('');
   }, [itemName, location]);
+
+  // Handle subcategory selection
+  const handleSelectSubcategory = (subcategory: { id: string; name: string }) => {
+    setSelectedSubcategory(subcategory);
+    // Load deficiencies for selected subcategory
+    const subDeficiencies = getDeficienciesForSubcategory(subcategory.name);
+    setAvailableDeficiencies(subDeficiencies.deficiencies);
+    setShowSubcategoryPicker(false);
+    // Reset deficiency selection
+    setSelectedDeficiency(null);
+    setRepairBy('');
+    setDeficiencyCriteria('');
+  };
 
   const handleSelectDeficiency = (deficiency: DeficiencyOption) => {
     setSelectedDeficiency(deficiency);
@@ -263,12 +302,39 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        {/* Deficiency Selected */}
+        {/* Subcategory Selection - Only shown when item has subcategories (e.g., Door in Outside) */}
+        {itemHasSubcategories && (
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>SELECT SUBCATEGORY</Text>
+            <TouchableOpacity 
+              style={[styles.dropdown, selectedSubcategory && styles.dropdownSelected]}
+              onPress={() => setShowSubcategoryPicker(true)}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.dropdownText, !selectedSubcategory && styles.placeholderText]} numberOfLines={2}>
+                {selectedSubcategory ? selectedSubcategory.name : '-- Select Subcategory --'}
+              </Text>
+              <Ionicons name="chevron-down" size={20} color={selectedSubcategory ? "#0E7490" : "#666666"} />
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Deficiency Selected - Disabled until subcategory is selected (if applicable) */}
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>DEFICIENCY SELECTED</Text>
           <TouchableOpacity 
-            style={[styles.dropdown, selectedDeficiency && styles.dropdownSelected]}
-            onPress={() => setShowDeficiencyPicker(true)}
+            style={[
+              styles.dropdown, 
+              selectedDeficiency && styles.dropdownSelected,
+              itemHasSubcategories && !selectedSubcategory && styles.detailBoxDisabled
+            ]}
+            onPress={() => {
+              if (itemHasSubcategories && !selectedSubcategory) {
+                Alert.alert('Select Subcategory', 'Please select a subcategory first.');
+                return;
+              }
+              setShowDeficiencyPicker(true);
+            }}
             activeOpacity={0.7}
           >
             <Text style={[styles.dropdownText, !selectedDeficiency && styles.placeholderText]} numberOfLines={2}>
@@ -394,6 +460,56 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           </View>
         </View>
       </ScrollView>
+
+      {/* Subcategory Picker Modal */}
+      <Modal
+        visible={showSubcategoryPicker}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowSubcategoryPicker(false)}
+      >
+        <View style={styles.pickerModalOverlay}>
+          <View style={styles.pickerModalContent}>
+            <View style={styles.pickerHeader}>
+              <Text style={styles.pickerTitle}>Select Subcategory</Text>
+              <TouchableOpacity 
+                onPress={() => setShowSubcategoryPicker(false)}
+                style={styles.pickerCloseButton}
+              >
+                <Ionicons name="close" size={24} color="#666666" />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.pickerSubtitle}>
+              {availableSubcategories.length} option{availableSubcategories.length !== 1 ? 's' : ''} available
+            </Text>
+            <ScrollView style={styles.pickerList} showsVerticalScrollIndicator={true}>
+              {availableSubcategories.map((subcategory) => (
+                <TouchableOpacity
+                  key={subcategory.id}
+                  style={[
+                    styles.pickerItem,
+                    selectedSubcategory?.id === subcategory.id && styles.pickerItemSelected
+                  ]}
+                  onPress={() => handleSelectSubcategory(subcategory)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.pickerItemHeader}>
+                    <Text style={[
+                      styles.pickerItemText,
+                      selectedSubcategory?.id === subcategory.id && styles.pickerItemTextSelected
+                    ]}>
+                      {subcategory.name}
+                    </Text>
+                    {selectedSubcategory?.id === subcategory.id && (
+                      <Ionicons name="checkmark-circle" size={20} color="#0E7490" />
+                    )}
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
 
       {/* Deficiency Picker Modal */}
       <Modal

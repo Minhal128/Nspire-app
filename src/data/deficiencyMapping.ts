@@ -97,54 +97,63 @@ export const DRYER_VENT_DEFICIENCIES: ItemDeficiencies = {
   ]
 };
 
-// 4. Door
+// 4. Door (Parent Category for Outside)
 export const DOOR_DEFICIENCIES: ItemDeficiencies = {
   itemName: 'Door',
+  deficiencies: []  // Empty - use subcategories instead
+};
+
+// 4a. Door - General Standard (OUTSIDE subcategory)
+export const DOOR_GENERAL_STANDARD_OUTSIDE: ItemDeficiencies = {
+  itemName: 'Door - General Standard',
   deficiencies: [
     {
-      id: 'door_1',
-      name: 'Entry door cannot be secured.',
-      detail: 'Entry door cannot be secured (i.e., access controlled) by at least one installed lock.',
-      criteria: 'Installed locks can not be engaged from both sides.',
-      severity: 'Life-Threatening',
-      repairBy: '24Hrs',
-      points: '30/n',
-      code: 'DOOR-01'
-    },
-    {
-      id: 'door_2',
-      name: 'Entry door component is damage inoperable or missing.',
-      detail: 'Entry door component is inoperable, missing, and it does not limit the door\'s ability to provide privacy or protection from weather or infestation.',
-      criteria: 'A hole 1/4 inch or greater in diameter or a split or crack 1/4 inch or greater in width that penetrates through the door.',
+      id: 'door_gen_std_1',
+      name: 'Installed Lock cannot be engaged from both sides.',
+      detail: 'An exterior door is deficient if any component is damaged, inoperable, or missing in a way that affects its intended function.',
+      criteria: 'Lock cannot be engaged from interior or exterior.',
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
-      code: 'DOOR-02'
-    },
-    {
-      id: 'door_3',
-      name: 'The entry door frame, threshold, or trim is damaged.',
-      detail: 'The entry door frame, threshold, or trim is damaged or missing (i.e. visibly defective; impacts functionality).',
-      criteria: 'Observed evidence of prior installation, now missing.',
-      severity: 'Moderate',
-      repairBy: '30 Day',
-      points: '5.5/n',
-      code: 'DOOR-03'
-    },
-    {
-      id: 'door_4',
-      name: 'Entry door is missing',
-      detail: 'Evidence of prior installation',
-      criteria: 'Not present or is incomplete.',
-      severity: 'Life-Threatening',
-      repairBy: '24Hrs',
-      points: '30/n',
-      code: 'DOOR-04'
+      code: 'DOOR-GEN-STD-01'
     }
   ]
 };
 
-// 4a. Door - Entry
+// 4b. Garage Door (OUTSIDE subcategory)
+export const GARAGE_DOOR_OUTSIDE: ItemDeficiencies = {
+  itemName: 'Garage Door',
+  deficiencies: [
+    {
+      id: 'garage_out_1',
+      name: 'Garage door does not open, close, or remains closed.',
+      detail: 'Garage door has a hole of any size that penetrates through to the interior.',
+      criteria: 'Door will not open and remain open.',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.5/n',
+      code: 'GARAGE-OUT-01'
+    },
+    {
+      id: 'garage_out_2',
+      name: 'Garage door has a hole.',
+      detail: 'Door will not open and remain open.',
+      criteria: 'Hole penetrating to interior.',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.5/n',
+      code: 'GARAGE-OUT-02'
+    }
+  ]
+};
+
+// Door Subcategories for Outside
+export const DOOR_SUBCATEGORIES_OUTSIDE = [
+  { id: 'door_gen_std', name: 'Door - General Standard' },
+  { id: 'garage_door', name: 'Garage Door' }
+];
+
+// 4c. Door - Entry (for Inside)
 export const DOOR_ENTRY_DEFICIENCIES: ItemDeficiencies = {
   itemName: 'Door - Entry',
   deficiencies: [
@@ -2408,11 +2417,14 @@ export const getDeficienciesForItem = (itemName: string, locationType?: string):
   if (normalizedName.includes('door – fire') || normalizedName.includes('door fire') || normalizedName.includes('fire labeled') || normalizedName.includes('fire-labeled')) {
     return DOOR_FIRE_LABELED_DEFICIENCIES;
   }
-  if (normalizedName.includes('door - general') || normalizedName.includes('door general') || normalizedName.includes('door-general')) {
-    return DOOR_GENERAL_DEFICIENCIES;
+  if (normalizedName.includes('door - general standard') || normalizedName === 'door - general standard') {
+    return DOOR_GENERAL_STANDARD_OUTSIDE;
   }
   if (normalizedName.includes('garage door')) {
-    return GARAGE_DOOR_DEFICIENCIES;
+    return isInside ? GARAGE_DOOR_DEFICIENCIES : GARAGE_DOOR_OUTSIDE;
+  }
+  if (normalizedName.includes('door - general') || normalizedName.includes('door general') || normalizedName.includes('door-general')) {
+    return DOOR_GENERAL_DEFICIENCIES;
   }
   // Electrical Service Panel before generic Electrical
   if (normalizedName.includes('electrical service panel') || normalizedName.includes('service panel')) {
@@ -2552,5 +2564,47 @@ export const getDeficienciesForItem = (itemName: string, locationType?: string):
   return {
     itemName: itemName,
     deficiencies: GENERAL_COMMENT_DEFICIENCIES.deficiencies
+  };
+};
+
+// Helper function to check if an item has subcategories
+export const hasSubcategories = (itemName: string, locationType?: string): boolean => {
+  const cleanedName = itemName.replace(/^\d+\.\s*/, '');
+  const normalizedName = cleanedName.toLowerCase();
+  const isOutside = locationType?.toLowerCase() === 'outside';
+  
+  // Door in Outside section has subcategories
+  if (isOutside && normalizedName === 'door') {
+    return true;
+  }
+  return false;
+};
+
+// Helper function to get subcategories for an item
+export const getSubcategoriesForItem = (itemName: string, locationType?: string): { id: string; name: string }[] => {
+  const cleanedName = itemName.replace(/^\d+\.\s*/, '');
+  const normalizedName = cleanedName.toLowerCase();
+  const isOutside = locationType?.toLowerCase() === 'outside';
+  
+  if (isOutside && normalizedName === 'door') {
+    return DOOR_SUBCATEGORIES_OUTSIDE;
+  }
+  return [];
+};
+
+// Helper function to get deficiencies for a subcategory
+export const getDeficienciesForSubcategory = (subcategoryName: string): ItemDeficiencies => {
+  const normalizedName = subcategoryName.toLowerCase();
+  
+  if (normalizedName.includes('door - general standard') || normalizedName === 'door - general standard') {
+    return DOOR_GENERAL_STANDARD_OUTSIDE;
+  }
+  if (normalizedName.includes('garage door')) {
+    return GARAGE_DOOR_OUTSIDE;
+  }
+  
+  return {
+    itemName: subcategoryName,
+    deficiencies: []
   };
 };
