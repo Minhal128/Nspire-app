@@ -40,8 +40,8 @@ export const CHIMNEY_DEFICIENCIES: ItemDeficiencies = {
     {
       id: 'chim_1',
       name: 'A vertical or near vertical passageway connected to a fireplace or wood-burning appliance.',
-      detail: 'A visually accessible chimney, flue, or firebox is incomplete or damaged such that it may not safely contain fire and convey smoke.',
-      criteria: 'A visually accessible, observed chimney, flue, or firebox connected to a fireplace or wood-burning appliance is damaged (i.e., visibly defective; impacts functionality).',
+      detail: 'A visually accessible (i.e., can be reasonably accessed and observed) chimney, flue, or firebox connected to a fireplace or wood-burning appliance is incomplete (i.e., evidence of a previously installed component that is now not present) such that it may not safely contain fire and convey smoke and combustion gases to the exterior. OR A visually accessible (i.e., can be reasonably accessed and observed) chimney, flue, or firebox connected to a fireplace or wood-burning appliance is damaged (i.e., visibly defective; impacts functionality) such that it may not safely contain fire and convey smoke and combustion gases to the exterior.',
+      criteria: 'A visually accessible, observed chimney, flue, or firebox connected to a fireplace or wood-burning appliance is damaged (i.e., visibly defective; impacts functionality) such that it may not safely contain fire and convey smoke and combustion gases to the exterior.',
       severity: 'Life-Threatening',
       repairBy: '24Hrs',
       points: '30/n',
@@ -1349,8 +1349,8 @@ export const FOUNDATION_DEFICIENCIES: ItemDeficiencies = {
   deficiencies: [
     {
       id: 'found_1',
-      name: 'Foundation exposed rebar or Foundation is spalling/flaking.',
-      detail: 'The structure has exposed rebar OR foundation is spalling/flaking (depth > 3/4 inch).',
+      name: 'Foundation exposed rebar or Foundation is spalling, flaking, or chipping.',
+      detail: 'The structure has exposed rebar. OR The foundation is spalling, flaking, or chipping, and the affected area goes into the foundation at a depth of ¾ inch or greater. Evaluation by a qualified contractor is recommended.',
       criteria: 'Foundation exhibits a sign of severe failure.',
       severity: 'Severe',
       repairBy: '24 Hrs.',
@@ -1360,8 +1360,8 @@ export const FOUNDATION_DEFICIENCIES: ItemDeficiencies = {
     {
       id: 'found_2',
       name: 'Foundation is cracked.',
-      detail: 'Crack is present with a width of 1/4 inch or greater and a length of 12 inches or greater.',
-      criteria: 'Foundation cracks (e.g., cracks in walls, non-functioning doors, unlevel floors).',
+      detail: 'Crack is present with a width of ¼ inch or greater and a length of 12 inches or greater. Evaluation by a qualified contractor is recommended.',
+      criteria: 'Foundation cracks (e.g., cracks in walls, non-functioning doors, unlevel floors, or windows).',
       severity: 'Severe',
       repairBy: '24 Hrs.',
       points: '14.8/n',
@@ -1370,8 +1370,8 @@ export const FOUNDATION_DEFICIENCIES: ItemDeficiencies = {
     {
       id: 'found_3',
       name: 'Foundation infiltrated by water.',
-      detail: 'Evidence of water infiltration through the foundation.',
-      criteria: 'Excessive dampness, collected water, stains, or mineral deposits.',
+      detail: 'Evidence of water infiltration through the foundation. Evaluation by a qualified contractor is recommended.',
+      criteria: '(e.g., excessive dampness, collected water, stains, or mineral deposits).',
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
@@ -1565,7 +1565,7 @@ export const LEAK_SEWAGE_DEFICIENCIES: ItemDeficiencies = {
     {
       id: 'leak_sew_2',
       name: 'Cap to the cleanout or pump cover is detached or missing.',
-      detail: 'Cap to the cleanout or pump cover is detached or missing (evidence of prior installation).',
+      detail: 'Cap to the cleanout or pump cover is detached or missing (i.e., evidence of prior installation, but now not present or is incomplete).',
       criteria: 'Cap to the cleanout or pump cover is detached or missing.',
       severity: 'Moderate',
       repairBy: '30 Day',
@@ -1575,7 +1575,7 @@ export const LEAK_SEWAGE_DEFICIENCIES: ItemDeficiencies = {
     {
       id: 'leak_sew_3',
       name: 'Cleanout cap or riser is damaged.',
-      detail: 'Cap to the cleanout or pump cover is damaged (visibly defective, impacts functionality).',
+      detail: 'Cap to the cleanout or pump cover is detached or missing (i.e., visibly defective, impacts functionality).',
       criteria: 'Cleanout cap or riser is damaged.',
       severity: 'Moderate',
       repairBy: '30 Day',
@@ -1816,8 +1816,8 @@ export const ROOF_DEFICIENCIES: ItemDeficiencies = {
   deficiencies: [
     {
       id: 'roof_1',
-      name: 'Gutters/Downspouts',
-      detail: 'Gutter component is damaged, missing, or unfixed.',
+      name: 'Gutter component is damaged, missing, or unfixed.',
+      detail: 'Gutter component is damaged (i.e., visibly defective; impacts functionality). OR Gutter component is missing (i.e., evidence of prior installation, but now not present or is incomplete). OR Gutter component is unfixed.',
       criteria: 'Gutter or downspout missing or damaged components.',
       severity: 'Moderate',
       repairBy: '30 Day',
@@ -1826,9 +1826,9 @@ export const ROOF_DEFICIENCIES: ItemDeficiencies = {
     },
     {
       id: 'roof_2',
-      name: 'Restricted flow of water',
-      detail: 'Debris is limiting ability of water to drain OR 25 sq ft ponding above drain.',
-      criteria: 'Condition is not caused by recent rain.',
+      name: 'Restricted flow of water from a roof drain, gutter, or downspout.',
+      detail: 'Debris is limiting the ability of water to drain; water may not be present. Or an area of approximately 25 sq. ft. of ponding water is located above the drain.',
+      criteria: 'The condition is not caused by recent rain.',
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
@@ -1837,8 +1837,8 @@ export const ROOF_DEFICIENCIES: ItemDeficiencies = {
     {
       id: 'roof_3',
       name: 'Roof assembly has a hole.',
-      detail: 'Unintentional holes of any size, or intentional holes not covered by vents/screens.',
-      criteria: 'Hole present (not including missing vent).',
+      detail: 'Unintentional holes of any size are found. Or, intentional holes of any size are found and are not covered by vents or screens.',
+      criteria: 'Not including the missing vent that had been installed and is now missing.',
       severity: 'Severe',
       repairBy: '24 Hrs.',
       points: '14.8/n',
@@ -1847,8 +1847,8 @@ export const ROOF_DEFICIENCIES: ItemDeficiencies = {
     {
       id: 'roof_4',
       name: 'Roof assembly is damaged.',
-      detail: 'Roof assembly has damage causing instability.',
-      criteria: 'Damage impacts functionality of roof sections.',
+      detail: 'Roof assembly has damage (i.e., visibly defective; impacts functionality) present that causes one or more components to become unstable.',
+      criteria: 'Any part of the roof assembly that is damaged may impact the functionality of other sections of roof.',
       severity: 'Severe',
       repairBy: '24 Hrs.',
       points: '14.8/n',
@@ -1857,7 +1857,7 @@ export const ROOF_DEFICIENCIES: ItemDeficiencies = {
     {
       id: 'roof_5',
       name: 'Roof surface has standing water.',
-      detail: 'Water ponding approx 25 sq ft or greater on flat roof not near drain.',
+      detail: 'Water ponding in area approximately 25 sq. ft. or greater on a flat roof surface not near drain or scupper.',
       criteria: 'Condition is not caused by recent rain.',
       severity: 'Moderate',
       repairBy: '30 Day',
@@ -1883,9 +1883,9 @@ export const SIDEWALK_DEFICIENCIES: ItemDeficiencies = {
   deficiencies: [
     {
       id: 'side_1',
-      name: 'Blocked or impassable',
+      name: 'Sidewalk, walkway, or ramp is blocked or impassable.',
       detail: 'Sidewalk, walkway, or ramp is blocked or impassable.',
-      criteria: 'Does not provide clear path due to overgrown vegetation or obstructions.',
+      criteria: 'The Sidewalk, walkway, or ramp does not provide a clear path for travel due to overgrown vegetation or other obstructions.',
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
@@ -1893,9 +1893,9 @@ export const SIDEWALK_DEFICIENCIES: ItemDeficiencies = {
     },
     {
       id: 'side_2',
-      name: 'Not functionally adequate',
-      detail: 'Does not provide a defined and safe path of exterior travel.',
-      criteria: 'Damage or deterioration disrupts ability to walk safely.',
+      name: 'Sidewalk, walkway, or ramp is not functionally adequate.',
+      detail: 'Sidewalk, walkway, or ramp is not functionally adequate (i.e., does not provide a defined and safe path of exterior travel for pedestrians).',
+      criteria: 'Functionally adequate is described as damage or deterioration to the extent that it disrupts a person\'s ability to walk safely.',
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
@@ -1911,8 +1911,8 @@ export const STAIRS_DEFICIENCIES: ItemDeficiencies = {
     {
       id: 'stair_1',
       name: 'Step or stair is not functionally adequate.',
-      detail: 'May not allow for personal traffic from one level to the next.',
-      criteria: 'Damaged, deterioration, unstable material, or unintentional dimensional changes.',
+      detail: 'Step or stair is not functionally adequate (i.e., may not allow for personal traffic from one level to the next).',
+      criteria: 'Damaged or deterioration, unintentional dimensional changes that may interrupt a person\'s walking pattern or movement, or unstable material.',
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
@@ -1921,7 +1921,7 @@ export const STAIRS_DEFICIENCIES: ItemDeficiencies = {
     {
       id: 'stair_2',
       name: 'Stringer damaged.',
-      detail: 'Stringer is damaged (visibly defective; impacts functionality).',
+      detail: 'Stringer is damaged (i.e., visibly defective; impacts functionality).',
       criteria: 'Stringer is visible and deficiency is observed.',
       severity: 'Severe',
       repairBy: '24 Hrs.',
@@ -1931,7 +1931,7 @@ export const STAIRS_DEFICIENCIES: ItemDeficiencies = {
     {
       id: 'stair_3',
       name: 'Tread is missing or damaged.',
-      detail: 'Tread missing, loose, unlevel, or nosing damaged >1 inch depth or 4 inches wide.',
+      detail: 'Tread on a set of stairs is missing Or tread on a set of stairs is loose or unlevel. Or a portion of the tread nosing that is greater than 1 inch in depth or 4 inches wide is damaged or broken.',
       criteria: 'Accessory treads are present and verified to be functional.',
       severity: 'Severe',
       repairBy: '24 Hrs.',
@@ -1949,7 +1949,7 @@ export const STRUCTURAL_DEFICIENCIES: ItemDeficiencies = {
       id: 'struct_1',
       name: 'Structural system exhibits signs of serious failure.',
       detail: 'Structural system exhibits signs of serious failure and may threaten the resident\'s safety.',
-      criteria: 'Structural elements include ceiling, chimney, floor, foundation, roof, walls.',
+      criteria: 'Structural elements include the ceiling, chimney, floor, foundation, roof assembly, wall exterior, and wall interior.',
       severity: 'Life-Threatening',
       repairBy: '24Hrs',
       points: '30/n',
@@ -2022,7 +2022,7 @@ export const WATER_HEATER_DEFICIENCIES: ItemDeficiencies = {
     {
       id: 'wh_1',
       name: 'Chimney or flue piping is blocked, misaligned, or missing.',
-      detail: 'Chimney or flue piping is blocked, misaligned, or missing.',
+      detail: 'Chimney or flue piping is blocked, misaligned, or missing (i.e., evidence of prior installation, but now not present or is incomplete).',
       criteria: 'The vent is damaged, misaligned, or not connected properly.',
       severity: 'Life-Threatening',
       repairBy: '24Hrs',
@@ -2031,9 +2031,9 @@ export const WATER_HEATER_DEFICIENCIES: ItemDeficiencies = {
     },
     {
       id: 'wh_2',
-      name: 'Gas shutoff valve is damaged, missing or not installed.',
-      detail: 'Gas shutoff valve is damaged, missing, or not installed.',
-      criteria: 'Unable to shutoff gas in case of an emergency.',
+      name: 'Gas shutoff valve is damaged, missing or not installed',
+      detail: 'Gas shutoff valve is damaged (i.e., visibly defective; impacts functionality). OR Gas shutoff valve is missing (i.e., evidence of prior installation, but is now not present or is incomplete). OR Gas shutoff valve is not installed (i.e., never installed, but should have been).',
+      criteria: 'Unable to shut off gas in case of an emergency.',
       severity: 'Life-Threatening',
       repairBy: '24Hrs',
       points: '30/n',
@@ -2041,8 +2041,8 @@ export const WATER_HEATER_DEFICIENCIES: ItemDeficiencies = {
     },
     {
       id: 'wh_3',
-      name: 'TPRV failure.',
-      detail: 'TPRV has active leak, is obstructed, or discharge piping is damaged/capped/sloped upward/unsuitable material.',
+      name: 'TPRV has an active leak. Or TPRV is obstructed such that the TPRV is unable to be fully actuated. OR Relief valve discharge piping is damaged d (i.e., visibly defective; impacts functionality), capped, has an upward slope, or is constructed of unsuitable material.',
+      detail: 'TPRV is obstructed such that the TPRV is unable to be fully actuated. OR, relief valve discharge piping is damaged (i.e., visibly defective; impacts functionality), is capped, has an upward slope, or is constructed of unsuitable material.',
       criteria: 'The TPRV is not connected properly.',
       severity: 'Life-Threatening',
       repairBy: '24Hrs',
@@ -2051,8 +2051,8 @@ export const WATER_HEATER_DEFICIENCIES: ItemDeficiencies = {
     },
     {
       id: 'wh_4',
-      name: 'Relief valve discharge piping termination.',
-      detail: 'Piping terminates >6 inches or <2 inches from waste receptor flood level.',
+      name: 'The relief valve discharge piping terminates greater than 6 inches or less than 2 inches from waste receptor flood level.',
+      detail: 'The relief valve discharge piping is missing (i.e., evidence of prior installation, but is now not present or is incomplete). OR The relief valve discharge piping terminates greater than 6 inches or less than 2 inches from waste receptor.',
       criteria: 'Not properly installed.',
       severity: 'Moderate',
       repairBy: '30 Day',
