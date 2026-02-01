@@ -10,6 +10,7 @@ import {
   Image,
   Alert,
   Modal,
+  Linking,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
@@ -33,12 +34,12 @@ interface Props {
 
 const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const { property, selectedUnits, buildingId, location, itemId, itemName } = route.params;
-  
+
   const [availableDeficiencies, setAvailableDeficiencies] = useState<DeficiencyOption[]>([]);
   const [selectedDeficiency, setSelectedDeficiency] = useState<DeficiencyOption | null>(null);
   const [showDeficiencyPicker, setShowDeficiencyPicker] = useState(false);
   const [showDetailPicker, setShowDetailPicker] = useState(false);
-  
+
   const [repairBy, setRepairBy] = useState('');
   const [deficiencyCriteria, setDeficiencyCriteria] = useState('');
   const [note, setNote] = useState('');
@@ -57,19 +58,39 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     setShowDeficiencyPicker(false);
   };
 
-  const requestPermissions = async () => {
-    const { status: cameraStatus } = await ImagePicker.requestCameraPermissionsAsync();
-    const { status: libraryStatus } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    
-    if (cameraStatus !== 'granted' || libraryStatus !== 'granted') {
-      Alert.alert('Permission Required', 'Camera and photo library permissions are required to add photos.');
-      return false;
+  const requestPermissions = async (useCamera: boolean) => {
+    if (useCamera) {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Camera Permission Required',
+          'Please enable camera access in your device Settings to take photos.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Open Settings', onPress: () => Linking.openSettings() }
+          ]
+        );
+        return false;
+      }
+    } else {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Photo Library Permission Required',
+          'Please enable photo library access in your device Settings to select photos.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Open Settings', onPress: () => Linking.openSettings() }
+          ]
+        );
+        return false;
+      }
     }
     return true;
   };
 
   const handleTakePhoto = async () => {
-    const hasPermission = await requestPermissions();
+    const hasPermission = await requestPermissions(true);
     if (!hasPermission) return;
 
     const result = await ImagePicker.launchCameraAsync({
@@ -85,7 +106,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   const handlePickImage = async () => {
-    const hasPermission = await requestPermissions();
+    const hasPermission = await requestPermissions(false);
     if (!hasPermission) return;
 
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -124,17 +145,17 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
       // Upload all images to Cloudinary and analyze with AI
       const analyzedDeficiencies = [];
-      
+
       for (let i = 0; i < images.length; i++) {
         const imageUri = images[i];
-        
+
         try {
           // Upload to Cloudinary
           const uploadResult = await cloudinaryService.uploadImage(imageUri, {
             folder: 'nspire-inspections',
             tags: ['inspection', buildingId, itemName],
           });
-          
+
           // Call AI analysis (Gemini service) - use LOCAL imageUri, not Cloudinary URL
           let aiAnalysis;
           try {
@@ -152,7 +173,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               recommendations: selectedDeficiency.detail,
             };
           }
-          
+
           // Create deficiency entry with AI analysis
           analyzedDeficiencies.push({
             deficiency: {
@@ -202,7 +223,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       // Show success message
       setTimeout(() => {
         Alert.alert(
-          'Success', 
+          'Success',
           `${analyzedDeficiencies.length} deficienc${analyzedDeficiencies.length === 1 ? 'y' : 'ies'} recorded and analyzed successfully!`
         );
       }, 500);
@@ -226,15 +247,15 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         <View style={styles.headerRight} />
       </View>
 
-      <ScrollView 
-        style={styles.scrollView} 
+      <ScrollView
+        style={styles.scrollView}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
         {/* Deficiency Selected */}
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>DEFICIENCY SELECTED</Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.dropdown}
             onPress={() => setShowDeficiencyPicker(true)}
           >
@@ -256,7 +277,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         {/* Deficiency Detail */}
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>DEFICIENCY DETAIL</Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.dropdown}
             onPress={() => setShowDetailPicker(true)}
             disabled={!selectedDeficiency}
@@ -325,7 +346,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         {/* PIC Section */}
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>PIC</Text>
-          
+
           {/* Image Grid */}
           {images.length > 0 && (
             <View style={styles.imageGrid}>
