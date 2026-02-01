@@ -305,7 +305,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         {/* Subcategory Selection - Only shown when item has subcategories (e.g., Door in Outside) */}
         {itemHasSubcategories && (
           <View style={styles.section}>
-            <Text style={styles.sectionLabel}>DEFICIENCY SELECTED</Text>
+            <Text style={styles.sectionLabel}>SELECT SUBCATEGORY</Text>
             <TouchableOpacity 
               style={[styles.dropdown, selectedSubcategory && styles.dropdownSelected]}
               onPress={() => setShowSubcategoryPicker(true)}
@@ -319,9 +319,9 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           </View>
         )}
 
-        {/* Deficiency Detail - Disabled until subcategory is selected (if applicable) */}
+        {/* Deficiency Selected - Disabled until subcategory is selected (if applicable) */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>DEFICIENCY DETAIL</Text>
+          <Text style={styles.sectionLabel}>DEFICIENCY SELECTED</Text>
           <TouchableOpacity 
             style={[
               styles.dropdown, 
@@ -330,7 +330,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             ]}
             onPress={() => {
               if (itemHasSubcategories && !selectedSubcategory) {
-                Alert.alert('Select Deficiency', 'Please select a deficiency first.');
+                Alert.alert('Select Subcategory', 'Please select a subcategory first.');
                 return;
               }
               setShowDeficiencyPicker(true);
@@ -350,22 +350,28 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           )}
         </View>
 
-        {/* Deficiency Criteria Side by Side Display */}
+        {/* Deficiency Detail & Criteria - Modern Side by Side Display */}
         <View style={styles.rowSection}>
           <View style={styles.halfSection}>
             <Text style={styles.sectionLabel}>DEFICIENCY DETAIL</Text>
-            <View style={[styles.detailBox, !selectedDeficiency && styles.detailBoxDisabled]}>
-              <Text style={[styles.detailBoxText, !selectedDeficiency && styles.placeholderText]} numberOfLines={4}>
+            <View style={[styles.detailDropdownBox, selectedDeficiency && styles.detailDropdownBoxActive]}>
+              <Text style={[styles.detailDropdownText, !selectedDeficiency && styles.placeholderText]} numberOfLines={4}>
                 {selectedDeficiency ? selectedDeficiency.detail : '--'}
               </Text>
+              <View style={styles.detailDropdownIcon}>
+                <Ionicons name="chevron-down" size={18} color={selectedDeficiency ? "#0E7490" : "#9CA3AF"} />
+              </View>
             </View>
           </View>
           <View style={styles.halfSection}>
             <Text style={styles.sectionLabel}>DEFICIENCY CRITERIA</Text>
-            <View style={[styles.detailBox, !selectedDeficiency && styles.detailBoxDisabled]}>
-              <Text style={[styles.detailBoxText, !selectedDeficiency && styles.placeholderText]} numberOfLines={4}>
+            <View style={[styles.detailDropdownBox, selectedDeficiency && styles.detailDropdownBoxActive]}>
+              <Text style={[styles.detailDropdownText, !selectedDeficiency && styles.placeholderText]} numberOfLines={4}>
                 {deficiencyCriteria || '--'}
               </Text>
+              <View style={styles.detailDropdownIcon}>
+                <Ionicons name="chevron-down" size={18} color={selectedDeficiency ? "#0E7490" : "#9CA3AF"} />
+              </View>
             </View>
           </View>
         </View>
@@ -463,7 +469,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         <View style={styles.pickerModalOverlay}>
           <View style={styles.pickerModalContent}>
             <View style={styles.pickerHeader}>
-              <Text style={styles.pickerTitle}>Select Deficiency</Text>
+              <Text style={styles.pickerTitle}>Select Subcategory</Text>
               <TouchableOpacity 
                 onPress={() => setShowSubcategoryPicker(false)}
                 style={styles.pickerCloseButton}
@@ -472,7 +478,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               </TouchableOpacity>
             </View>
             <Text style={styles.pickerSubtitle}>
-              {availableSubcategories.length} option{availableSubcategories.length !== 1 ? 's' : ''} available
+              {availableSubcategories.length} subcategor{availableSubcategories.length !== 1 ? 'ies' : 'y'} available
             </Text>
             <ScrollView style={styles.pickerList} showsVerticalScrollIndicator={true}>
               {availableSubcategories.map((subcategory) => (
@@ -691,6 +697,36 @@ const styles = StyleSheet.create({
     color: '#334155',
     fontWeight: '500',
     lineHeight: 18,
+  },
+  detailDropdownBox: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    minHeight: 90,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  detailDropdownBoxActive: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#0E7490',
+    shadowColor: '#0E7490',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  detailDropdownText: {
+    fontSize: 12,
+    color: '#334155',
+    fontWeight: '500',
+    lineHeight: 17,
+    flex: 1,
+    marginRight: 6,
+  },
+  detailDropdownIcon: {
+    paddingTop: 2,
   },
   detailText: {
     fontSize: 15,
