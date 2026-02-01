@@ -10,6 +10,7 @@ import {
   Image,
   Alert,
   Modal,
+  Linking,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
@@ -33,12 +34,12 @@ interface Props {
 
 const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const { property, selectedUnits, buildingId, location, itemId, itemName } = route.params;
-  
+
   const [availableDeficiencies, setAvailableDeficiencies] = useState<DeficiencyOption[]>([]);
   const [selectedDeficiency, setSelectedDeficiency] = useState<DeficiencyOption | null>(null);
   const [showDeficiencyPicker, setShowDeficiencyPicker] = useState(false);
   const [showDetailPicker, setShowDetailPicker] = useState(false);
-  
+
   const [repairBy, setRepairBy] = useState('');
   const [deficiencyCriteria, setDeficiencyCriteria] = useState('');
   const [note, setNote] = useState('');
@@ -68,19 +69,39 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     setDeficiencyCriteria('');
   };
 
-  const requestPermissions = async () => {
-    const { status: cameraStatus } = await ImagePicker.requestCameraPermissionsAsync();
-    const { status: libraryStatus } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    
-    if (cameraStatus !== 'granted' || libraryStatus !== 'granted') {
-      Alert.alert('Permission Required', 'Camera and photo library permissions are required to add photos.');
-      return false;
+  const requestPermissions = async (useCamera: boolean) => {
+    if (useCamera) {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Camera Permission Required',
+          'Please enable camera access in your device Settings to take photos.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Open Settings', onPress: () => Linking.openSettings() }
+          ]
+        );
+        return false;
+      }
+    } else {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Photo Library Permission Required',
+          'Please enable photo library access in your device Settings to select photos.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Open Settings', onPress: () => Linking.openSettings() }
+          ]
+        );
+        return false;
+      }
     }
     return true;
   };
 
   const handleTakePhoto = async () => {
-    const hasPermission = await requestPermissions();
+    const hasPermission = await requestPermissions(true);
     if (!hasPermission) return;
 
     const result = await ImagePicker.launchCameraAsync({
@@ -96,7 +117,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   const handlePickImage = async () => {
-    const hasPermission = await requestPermissions();
+    const hasPermission = await requestPermissions(false);
     if (!hasPermission) return;
 
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -135,17 +156,17 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
       // Upload all images to Cloudinary and analyze with AI
       const analyzedDeficiencies = [];
-      
+
       for (let i = 0; i < images.length; i++) {
         const imageUri = images[i];
-        
+
         try {
           // Upload to Cloudinary
           const uploadResult = await cloudinaryService.uploadImage(imageUri, {
             folder: 'nspire-inspections',
             tags: ['inspection', buildingId, itemName],
           });
-          
+
           // Call AI analysis (Gemini service) - use LOCAL imageUri, not Cloudinary URL
           let aiAnalysis;
           try {
@@ -163,7 +184,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               recommendations: selectedDeficiency.detail,
             };
           }
-          
+
           // Create deficiency entry with AI analysis
           analyzedDeficiencies.push({
             deficiency: {
@@ -213,7 +234,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       // Show success message
       setTimeout(() => {
         Alert.alert(
-          'Success', 
+          'Success',
           `${analyzedDeficiencies.length} deficienc${analyzedDeficiencies.length === 1 ? 'y' : 'ies'} recorded and analyzed successfully!`
         );
       }, 500);
@@ -237,16 +258,21 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         <View style={styles.headerRight} />
       </View>
 
-      <ScrollView 
-        style={styles.scrollView} 
+      <ScrollView
+        style={styles.scrollView}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
         {/* Deficiency Selected */}
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>DEFICIENCY SELECTED</Text>
+<<<<<<< HEAD
           <TouchableOpacity 
             style={[styles.dropdown, selectedDeficiency && styles.dropdownSelected]}
+=======
+          <TouchableOpacity
+            style={styles.dropdown}
+>>>>>>> 3aac976f54a9203e2cac3faffbe592ecb276d272
             onPress={() => setShowDeficiencyPicker(true)}
             activeOpacity={0.7}
           >
@@ -277,6 +303,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               <Ionicons name="chevron-down" size={16} color="#666666" />
             </TouchableOpacity>
           </View>
+<<<<<<< HEAD
           <View style={styles.halfSection}>
             <Text style={styles.sectionLabel}>DEFICIENCY CRITERIA</Text>
             <TouchableOpacity 
@@ -288,13 +315,83 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               </Text>
               <Ionicons name="chevron-down" size={16} color="#666666" />
             </TouchableOpacity>
+=======
+        </View>
+
+        {/* Deficiency Detail */}
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>DEFICIENCY DETAIL</Text>
+          <TouchableOpacity
+            style={styles.dropdown}
+            onPress={() => setShowDetailPicker(true)}
+            disabled={!selectedDeficiency}
+          >
+            <Text style={[styles.dropdownText, !selectedDeficiency && styles.placeholderText]}>
+              {selectedDeficiency ? selectedDeficiency.detail : '--Select--'}
+            </Text>
+            <Ionicons name="chevron-down" size={20} color="#666666" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Deficiency Criteria */}
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>DEFICIENCY CRITERIA</Text>
+          <View style={styles.textAreaContainer}>
+            <Text style={styles.textAreaValue}>
+              {deficiencyCriteria || 'For example, 20 feet distance.'}
+            </Text>
+          </View>
+        </View>
+
+        {/* Code and Local Compliance */}
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>CODE AND LOCAL COMPLIANCE</Text>
+          <View style={styles.textAreaContainer}>
+            <Text style={styles.textAreaPlaceholder}>
+              {CODE_COMPLIANCE}
+            </Text>
+          </View>
+        </View>
+
+        {/* Note */}
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>NOTE</Text>
+          <View style={styles.textAreaContainer}>
+            <TextInput
+              style={styles.textArea}
+              placeholder="Write your observation..."
+              value={note}
+              onChangeText={setNote}
+              multiline
+              numberOfLines={4}
+              placeholderTextColor="#999999"
+            />
+          </View>
+        </View>
+
+        {/* Location */}
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>LOCATION</Text>
+          <View style={styles.dropdown}>
+            <Text style={styles.dropdownText}>Building {buildingId}</Text>
+          </View>
+        </View>
+
+        {/* Health & Safety */}
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>HEALTH & SAFETY</Text>
+          <View style={styles.textAreaContainer}>
+            <Text style={styles.textAreaValue}>
+              {selectedDeficiency ? selectedDeficiency.severity : 'Moderate'}
+            </Text>
+>>>>>>> 3aac976f54a9203e2cac3faffbe592ecb276d272
           </View>
         </View>
 
         {/* PIC Section */}
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>PIC</Text>
-          
+
           {/* Image Grid */}
           {images.length > 0 && (
             <View style={styles.imageGrid}>

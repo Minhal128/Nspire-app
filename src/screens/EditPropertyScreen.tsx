@@ -23,24 +23,87 @@ const STATE_OPTIONS = [
   ...US_STATE_OPTIONS,
 ];
 
+// Helper function to get state label from code
+const getStateLabel = (stateCode: string): string => {
+  if (!stateCode) return 'Select State';
+  const stateOption = US_STATE_OPTIONS.find(
+    s => s.value.toLowerCase() === stateCode.toLowerCase() ||
+      s.label.toLowerCase() === stateCode.toLowerCase()
+  );
+  return stateOption ? stateOption.label : stateCode;
+};
+
 interface EditPropertyScreenProps {
   navigation: any;
   route: any;
 }
 
 export default function EditPropertyScreen({ navigation, route }: EditPropertyScreenProps) {
-  const { property } = route.params || {};
+  const { property, onUpdate } = route.params || {};
 
   const [loading, setLoading] = useState(false);
+  const [fetchingData, setFetchingData] = useState(true);
   const [deleting, setDeleting] = useState(false);
-  const [propertyId, setPropertyId] = useState(property?._id || property?.propertyId || '');
-  const [propertyName, setPropertyName] = useState(property?.name || '');
-  const [address, setAddress] = useState(property?.address || '');
-  const [state, setState] = useState(property?.state || '');
-  const [numberOfBuildings, setNumberOfBuildings] = useState(property?.buildings?.toString() || property?.totalBuildings?.toString() || '');
-  const [city, setCity] = useState(property?.city || '');
-  const [numberOfUnits, setNumberOfUnits] = useState(property?.units?.toString() || property?.totalUnits?.toString() || '');
-  const [zipCode, setZipCode] = useState(property?.zipCode || '');
+  const [propertyId, setPropertyId] = useState('');
+  const [propertyName, setPropertyName] = useState('');
+  const [address, setAddress] = useState('');
+  const [state, setState] = useState('');
+  const [numberOfBuildings, setNumberOfBuildings] = useState('');
+  const [city, setCity] = useState('');
+  const [numberOfUnits, setNumberOfUnits] = useState('');
+  const [zipCode, setZipCode] = useState('');
+
+  // Fetch full property data on mount
+  useEffect(() => {
+    const fetchPropertyData = async () => {
+      if (!property?._id && !property?.propertyId) {
+        setFetchingData(false);
+        return;
+      }
+
+      try {
+        const id = property._id || property.propertyId;
+        const response = await propertyService.getProperty(id);
+
+        if (response.success && response.property) {
+          const p = response.property;
+          setPropertyId(p._id || p.propertyId || '');
+          setPropertyName(p.name || '');
+          setAddress(p.address || '');
+          setState(p.state || '');
+          setNumberOfBuildings(p.buildings?.toString() || '');
+          setCity(p.city || '');
+          setNumberOfUnits(p.units?.toString() || '');
+          setZipCode(p.zipCode || '');
+        } else {
+          // Fallback to passed property data
+          setPropertyId(property._id || property.propertyId || '');
+          setPropertyName(property.name || '');
+          setAddress(property.address || '');
+          setState(property.state || '');
+          setNumberOfBuildings(property.buildings?.toString() || '');
+          setCity(property.city || '');
+          setNumberOfUnits(property.units?.toString() || '');
+          setZipCode(property.zipCode || '');
+        }
+      } catch (error) {
+        console.error('Error fetching property:', error);
+        // Fallback to passed property data
+        setPropertyId(property._id || property.propertyId || '');
+        setPropertyName(property.name || '');
+        setAddress(property.address || '');
+        setState(property.state || '');
+        setNumberOfBuildings(property.buildings?.toString() || '');
+        setCity(property.city || '');
+        setNumberOfUnits(property.units?.toString() || '');
+        setZipCode(property.zipCode || '');
+      } finally {
+        setFetchingData(false);
+      }
+    };
+
+    fetchPropertyData();
+  }, [property]);
 
   // iOS Picker Modal State
   const [statePickerVisible, setStatePickerVisible] = useState(false);
@@ -65,11 +128,17 @@ export default function EditPropertyScreen({ navigation, route }: EditPropertySc
         city: city.trim(),
         state: state,
         zipCode: zipCode.trim(),
-        totalBuildings: parseInt(numberOfBuildings) || 0,
-        totalUnits: parseInt(numberOfUnits) || 0,
+        buildings: parseInt(numberOfBuildings) || 0,
+        units: parseInt(numberOfUnits) || 0,
       };
 
-      await propertyService.updateProperty(propertyId, updateData);
+      const response = await propertyService.updateProperty(propertyId, updateData);
+
+      // Call the onUpdate callback if provided to refresh the list immediately
+      if (onUpdate && response.property) {
+        onUpdate(response.property);
+      }
+
       Alert.alert('Success', 'Property updated successfully', [
         { text: 'OK', onPress: () => navigation.goBack() }
       ]);
@@ -109,6 +178,12 @@ export default function EditPropertyScreen({ navigation, route }: EditPropertySc
 
   return (
     <SafeAreaView style={styles.container}>
+      {fetchingData ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#1B6B93" />
+          <Text style={styles.loadingText}>Loading property data...</Text>
+        </View>
+      ) : (
         <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
           <View style={styles.formContainer}>
             {/* Title */}
@@ -160,7 +235,7 @@ export default function EditPropertyScreen({ navigation, route }: EditPropertySc
                     onPress={() => setStatePickerVisible(true)}
                   >
                     <Text style={[styles.iosPickerText, !state && { color: '#6B7280' }]}>
-                      {state ? (state.charAt(0).toUpperCase() + state.slice(1)) : "Select State"}
+                      {getStateLabel(state)}
                     </Text>
                   </TouchableOpacity>
                 ) : (
@@ -169,10 +244,9 @@ export default function EditPropertyScreen({ navigation, route }: EditPropertySc
                     onValueChange={(itemValue: string) => setState(itemValue)}
                     style={styles.picker}
                   >
-                    <Picker.Item label="Select State" value="" />
-                    <Picker.Item label="Alaska" value="alaska" />
-                    <Picker.Item label="California" value="california" />
-                    <Picker.Item label="Texas" value="texas" />
+                    {STATE_OPTIONS.map((option) => (
+                      <Picker.Item key={option.value} label={option.label} value={option.value} />
+                    ))}
                   </Picker>
                 )}
                 <Ionicons
@@ -202,7 +276,7 @@ export default function EditPropertyScreen({ navigation, route }: EditPropertySc
               <Text style={styles.label}>City</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Enter Owner's Name"
+                placeholder="Enter City"
                 placeholderTextColor="#6B7280"
                 value={city}
                 onChangeText={setCity}
@@ -214,7 +288,7 @@ export default function EditPropertyScreen({ navigation, route }: EditPropertySc
               <Text style={styles.label}>Number Of Unit</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Enter Owner's Name"
+                placeholder="Enter Number of Units"
                 placeholderTextColor="#6B7280"
                 value={numberOfUnits}
                 onChangeText={setNumberOfUnits}
@@ -227,7 +301,7 @@ export default function EditPropertyScreen({ navigation, route }: EditPropertySc
               <Text style={styles.label}>Zip Code</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Enter Owner's Name"
+                placeholder="Enter Zip Code"
                 placeholderTextColor="#6B7280"
                 value={zipCode}
                 onChangeText={setZipCode}
@@ -262,17 +336,18 @@ export default function EditPropertyScreen({ navigation, route }: EditPropertySc
             </TouchableOpacity>
           </View>
         </ScrollView>
+      )}
 
-        {/* iOS State Picker Modal */}
-        <IOSPickerModal
-          visible={statePickerVisible}
-          title="Select State"
-          options={STATE_OPTIONS}
-          selectedValue={state}
-          onSelect={setState}
-          onClose={() => setStatePickerVisible(false)}
-        />
-      </SafeAreaView>
+      {/* iOS State Picker Modal */}
+      <IOSPickerModal
+        visible={statePickerVisible}
+        title="Select State"
+        options={STATE_OPTIONS}
+        selectedValue={state}
+        onSelect={setState}
+        onClose={() => setStatePickerVisible(false)}
+      />
+    </SafeAreaView>
   );
 }
 
@@ -280,6 +355,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#6B7280',
   },
   scrollView: {
     flex: 1,

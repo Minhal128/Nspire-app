@@ -23,8 +23,8 @@ import { Picker } from "@react-native-picker/picker";
 import { Country, State, City, IState } from 'country-state-city';
 import { DashboardScreenNavigationProp } from "../types/navigation";
 import Sidebar from "../components/Sidebar";
-import { 
-  propertyService, 
+import {
+  propertyService,
   authService,
   generateRandomUnitSample,
   isRandomSelectionAvailable
@@ -287,7 +287,7 @@ export default function DashboardScreen({
   const stopRotate = () => {
     try {
       animationRef.current?.stop();
-    } catch (e) {}
+    } catch (e) { }
     rotateAnim.setValue(0);
     setIconAnimating(false);
   };
@@ -353,7 +353,17 @@ export default function DashboardScreen({
 
   const handleEditProperty = () => {
     setActionModalVisible(false);
-    navigation.navigate("EditProperty", { property: selectedProperty });
+    navigation.navigate("EditProperty", {
+      property: selectedProperty,
+      onUpdate: (updatedProperty: Property) => {
+        // Update the property in the local state immediately
+        setProperties(prevProperties =>
+          prevProperties.map(p =>
+            p._id === updatedProperty._id ? { ...p, ...updatedProperty } : p
+          )
+        );
+      }
+    });
   };
 
   const handleReadyForInspection = async () => {

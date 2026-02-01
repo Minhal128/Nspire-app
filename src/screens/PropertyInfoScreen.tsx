@@ -46,8 +46,8 @@ const PropertyInfoScreen: React.FC<Props> = ({ navigation, route }) => {
         <View style={styles.headerRight} />
       </View>
 
-      <ScrollView 
-        style={styles.scrollView} 
+      <ScrollView
+        style={styles.scrollView}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
@@ -60,7 +60,7 @@ const PropertyInfoScreen: React.FC<Props> = ({ navigation, route }) => {
         {/* Property Details Card */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Property Information</Text>
-          
+
           <View style={styles.infoRow}>
             <View style={styles.infoItem}>
               <Text style={styles.infoLabel}>City</Text>
@@ -75,11 +75,11 @@ const PropertyInfoScreen: React.FC<Props> = ({ navigation, route }) => {
           <View style={styles.infoRow}>
             <View style={styles.infoItem}>
               <Text style={styles.infoLabel}>Zip Code</Text>
-              <Text style={styles.infoValue}>{property.zip || '75290'}</Text>
+              <Text style={styles.infoValue}>{property.zipCode || property.zip || 'N/A'}</Text>
             </View>
             <View style={styles.infoItem}>
               <Text style={styles.infoLabel}>Buildings</Text>
-              <Text style={styles.infoValue}>{property.buildings?.length || 2}</Text>
+              <Text style={styles.infoValue}>{property.buildings || property.totalBuildings || 0}</Text>
             </View>
           </View>
 
@@ -92,7 +92,7 @@ const PropertyInfoScreen: React.FC<Props> = ({ navigation, route }) => {
         {/* Building Card */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Building Information</Text>
-          
+
           <View style={styles.buildingInfoRow}>
             <View style={styles.buildingInfoItem}>
               <Text style={styles.buildingLabel}>Building ID</Text>
@@ -100,7 +100,7 @@ const PropertyInfoScreen: React.FC<Props> = ({ navigation, route }) => {
             </View>
             <View style={styles.buildingInfoItem}>
               <Text style={styles.buildingLabel}>Total Units</Text>
-              <Text style={styles.buildingValue}>10</Text>
+              <Text style={styles.buildingValue}>{property.units || property.totalUnits || 0}</Text>
             </View>
             <View style={styles.buildingInfoItem}>
               <Text style={styles.buildingLabel}>For Inspection</Text>
