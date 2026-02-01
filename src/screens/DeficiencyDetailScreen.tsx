@@ -45,16 +45,27 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const [images, setImages] = useState<string[]>([]);
 
   useEffect(() => {
-    // Load deficiencies for the selected item
-    const itemDeficiencies = getDeficienciesForItem(itemName);
+    // Load deficiencies for the selected item - NO autofill, user must select
+    // Pass location type to get Inside vs Outside specific deficiencies
+    const itemDeficiencies = getDeficienciesForItem(itemName, location);
     setAvailableDeficiencies(itemDeficiencies.deficiencies);
-  }, [itemName]);
+    // Reset selection when item changes - user must manually select from dropdown
+    setSelectedDeficiency(null);
+    setRepairBy('');
+    setDeficiencyCriteria('');
+  }, [itemName, location]);
 
   const handleSelectDeficiency = (deficiency: DeficiencyOption) => {
     setSelectedDeficiency(deficiency);
     setRepairBy(deficiency.repairBy);
     setDeficiencyCriteria(deficiency.criteria);
     setShowDeficiencyPicker(false);
+  };
+
+  const handleClearSelection = () => {
+    setSelectedDeficiency(null);
+    setRepairBy('');
+    setDeficiencyCriteria('');
   };
 
   const requestPermissions = async () => {
@@ -235,90 +246,48 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>DEFICIENCY SELECTED</Text>
           <TouchableOpacity 
-            style={styles.dropdown}
+            style={[styles.dropdown, selectedDeficiency && styles.dropdownSelected]}
             onPress={() => setShowDeficiencyPicker(true)}
+            activeOpacity={0.7}
           >
-            <Text style={[styles.dropdownText, !selectedDeficiency && styles.placeholderText]}>
-              {selectedDeficiency ? selectedDeficiency.name : '--Select--'}
+            <Text style={[styles.dropdownText, !selectedDeficiency && styles.placeholderText]} numberOfLines={2}>
+              {selectedDeficiency ? selectedDeficiency.name : '-- Select Deficiency --'}
             </Text>
-            <Ionicons name="chevron-down" size={20} color="#666666" />
+            <Ionicons name="chevron-down" size={20} color={selectedDeficiency ? "#0E7490" : "#666666"} />
           </TouchableOpacity>
+          {selectedDeficiency && (
+            <TouchableOpacity style={styles.clearButton} onPress={handleClearSelection}>
+              <Ionicons name="close-circle" size={16} color="#EF4444" />
+              <Text style={styles.clearButtonText}>Clear Selection</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
-        {/* Repair By */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>REPAIR BY</Text>
-          <View style={styles.input}>
-            <Text style={styles.inputText}>{repairBy || '--'}</Text>
+        {/* Deficiency Detail and Criteria - Side by Side */}
+        <View style={styles.rowSection}>
+          <View style={styles.halfSection}>
+            <Text style={styles.sectionLabel}>DEFICIENCY DETAIL</Text>
+            <TouchableOpacity 
+              style={[styles.compactDropdown, !selectedDeficiency && styles.detailBoxDisabled]}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.compactDropdownText, !selectedDeficiency && styles.placeholderText]} numberOfLines={3}>
+                {selectedDeficiency ? selectedDeficiency.detail : '--'}
+              </Text>
+              <Ionicons name="chevron-down" size={16} color="#666666" />
+            </TouchableOpacity>
           </View>
-        </View>
-
-        {/* Deficiency Detail */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>DEFICIENCY DETAIL</Text>
-          <TouchableOpacity 
-            style={styles.dropdown}
-            onPress={() => setShowDetailPicker(true)}
-            disabled={!selectedDeficiency}
-          >
-            <Text style={[styles.dropdownText, !selectedDeficiency && styles.placeholderText]}>
-              {selectedDeficiency ? selectedDeficiency.detail : '--Select--'}
-            </Text>
-            <Ionicons name="chevron-down" size={20} color="#666666" />
-          </TouchableOpacity>
-        </View>
-
-        {/* Deficiency Criteria */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>DEFICIENCY CRITERIA</Text>
-          <View style={styles.textAreaContainer}>
-            <Text style={styles.textAreaValue}>
-              {deficiencyCriteria || 'For example, 20 feet distance.'}
-            </Text>
-          </View>
-        </View>
-
-        {/* Code and Local Compliance */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>CODE AND LOCAL COMPLIANCE</Text>
-          <View style={styles.textAreaContainer}>
-            <Text style={styles.textAreaPlaceholder}>
-              {CODE_COMPLIANCE}
-            </Text>
-          </View>
-        </View>
-
-        {/* Note */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>NOTE</Text>
-          <View style={styles.textAreaContainer}>
-            <TextInput
-              style={styles.textArea}
-              placeholder="Write your observation..."
-              value={note}
-              onChangeText={setNote}
-              multiline
-              numberOfLines={4}
-              placeholderTextColor="#999999"
-            />
-          </View>
-        </View>
-
-        {/* Location */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>LOCATION</Text>
-          <View style={styles.dropdown}>
-            <Text style={styles.dropdownText}>Building {buildingId}</Text>
-          </View>
-        </View>
-
-        {/* Health & Safety */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>HEALTH & SAFETY</Text>
-          <View style={styles.textAreaContainer}>
-            <Text style={styles.textAreaValue}>
-              {selectedDeficiency ? selectedDeficiency.severity : 'Moderate'}
-            </Text>
+          <View style={styles.halfSection}>
+            <Text style={styles.sectionLabel}>DEFICIENCY CRITERIA</Text>
+            <TouchableOpacity 
+              style={[styles.compactDropdown, !selectedDeficiency && styles.detailBoxDisabled]}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.compactDropdownText, !selectedDeficiency && styles.placeholderText]} numberOfLines={3}>
+                {deficiencyCriteria || '--'}
+              </Text>
+              <Ionicons name="chevron-down" size={16} color="#666666" />
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -360,6 +329,49 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* Note */}
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>NOTE</Text>
+          <View style={styles.textAreaContainer}>
+            <TextInput
+              style={styles.textArea}
+              placeholder="Write your observation..."
+              value={note}
+              onChangeText={setNote}
+              multiline
+              numberOfLines={4}
+              placeholderTextColor="#999999"
+            />
+          </View>
+        </View>
+
+        {/* Location and Health & Safety - Side by Side */}
+        <View style={styles.rowSection}>
+          <View style={styles.halfSection}>
+            <Text style={styles.sectionLabel}>LOCATION</Text>
+            <View style={styles.compactDropdown}>
+              <Text style={styles.compactDropdownText}>Building {buildingId}</Text>
+            </View>
+          </View>
+          <View style={styles.halfSection}>
+            <Text style={styles.sectionLabel}>HEALTH & SAFETY</Text>
+            <View style={[
+              styles.compactDropdown,
+              selectedDeficiency?.severity === 'Life-Threatening' && styles.severityLifeThreateningBg,
+              selectedDeficiency?.severity === 'Severe' && styles.severitySevereBg,
+              selectedDeficiency?.severity === 'Moderate' && styles.severityModerateBg,
+              selectedDeficiency?.severity === 'Low' && styles.severityLowBg,
+            ]}>
+              <Text style={[
+                styles.compactDropdownText,
+                selectedDeficiency?.severity && styles.severityTextWhite
+              ]}>
+                {selectedDeficiency ? selectedDeficiency.severity : 'Low'}
+              </Text>
+            </View>
+          </View>
+        </View>
       </ScrollView>
 
       {/* Deficiency Picker Modal */}
@@ -373,19 +385,53 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           <View style={styles.pickerModalContent}>
             <View style={styles.pickerHeader}>
               <Text style={styles.pickerTitle}>Select Deficiency</Text>
-              <TouchableOpacity onPress={() => setShowDeficiencyPicker(false)}>
+              <TouchableOpacity 
+                onPress={() => setShowDeficiencyPicker(false)}
+                style={styles.pickerCloseButton}
+              >
                 <Ionicons name="close" size={24} color="#666666" />
               </TouchableOpacity>
             </View>
-            <ScrollView style={styles.pickerList}>
-              {availableDeficiencies.map((deficiency) => (
+            <Text style={styles.pickerSubtitle}>
+              {availableDeficiencies.length} option{availableDeficiencies.length !== 1 ? 's' : ''} available
+            </Text>
+            <ScrollView style={styles.pickerList} showsVerticalScrollIndicator={true}>
+              {availableDeficiencies.map((deficiency, index) => (
                 <TouchableOpacity
                   key={deficiency.id}
-                  style={styles.pickerItem}
+                  style={[
+                    styles.pickerItem,
+                    selectedDeficiency?.id === deficiency.id && styles.pickerItemSelected
+                  ]}
                   onPress={() => handleSelectDeficiency(deficiency)}
+                  activeOpacity={0.7}
                 >
-                  <Text style={styles.pickerItemText}>{deficiency.name}</Text>
-                  <Text style={styles.pickerItemSeverity}>{deficiency.severity}</Text>
+                  <View style={styles.pickerItemHeader}>
+                    <Text style={[
+                      styles.pickerItemText,
+                      selectedDeficiency?.id === deficiency.id && styles.pickerItemTextSelected
+                    ]}>
+                      {deficiency.name}
+                    </Text>
+                    {selectedDeficiency?.id === deficiency.id && (
+                      <Ionicons name="checkmark-circle" size={20} color="#0E7490" />
+                    )}
+                  </View>
+                  <Text style={styles.pickerItemDetail} numberOfLines={2}>
+                    {deficiency.detail}
+                  </Text>
+                  <View style={styles.pickerItemMeta}>
+                    <View style={[
+                      styles.severityBadge,
+                      deficiency.severity === 'Life-Threatening' && styles.severityLifeThreatening,
+                      deficiency.severity === 'Severe' && styles.severitySevere,
+                      deficiency.severity === 'Moderate' && styles.severityModerate,
+                      deficiency.severity === 'Low' && styles.severityLow,
+                    ]}>
+                      <Text style={styles.severityText}>{deficiency.severity}</Text>
+                    </View>
+                    <Text style={styles.repairByText}>Repair: {deficiency.repairBy}</Text>
+                  </View>
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -471,10 +517,45 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E5E5',
   },
+  dropdownSelected: {
+    borderColor: '#0E7490',
+    borderWidth: 2,
+  },
   dropdownText: {
     fontSize: 15,
     color: '#1A1A1A',
     fontWeight: '500',
+    flex: 1,
+    marginRight: 8,
+  },
+  clearButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    paddingVertical: 4,
+  },
+  clearButtonText: {
+    fontSize: 13,
+    color: '#EF4444',
+    marginLeft: 4,
+    fontWeight: '500',
+  },
+  detailBox: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+    minHeight: 80,
+  },
+  detailBoxDisabled: {
+    backgroundColor: '#F9FAFB',
+  },
+  detailText: {
+    fontSize: 15,
+    color: '#1A1A1A',
+    fontWeight: '500',
+    lineHeight: 22,
   },
   input: {
     backgroundColor: '#FFFFFF',
@@ -564,6 +645,48 @@ const styles = StyleSheet.create({
     color: '#666666',
     textAlign: 'center',
   },
+  rowSection: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 20,
+  },
+  halfSection: {
+    flex: 1,
+  },
+  compactDropdown: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    minHeight: 80,
+  },
+  compactDropdownText: {
+    fontSize: 13,
+    color: '#1A1A1A',
+    flex: 1,
+    marginRight: 8,
+    fontWeight: '500',
+  },
+  severityLifeThreateningBg: {
+    backgroundColor: '#DC2626',
+  },
+  severitySevereBg: {
+    backgroundColor: '#EA580C',
+  },
+  severityModerateBg: {
+    backgroundColor: '#CA8A04',
+  },
+  severityLowBg: {
+    backgroundColor: '#16A34A',
+  },
+  severityTextWhite: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
   footer: {
     flexDirection: 'row',
     backgroundColor: '#FFFFFF',
@@ -628,26 +751,94 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 20,
+    paddingBottom: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#E5E5E5',
+  },
+  pickerCloseButton: {
+    padding: 4,
   },
   pickerTitle: {
     fontSize: 18,
     fontWeight: '700',
     color: '#1A1A1A',
   },
+  pickerSubtitle: {
+    fontSize: 13,
+    color: '#666666',
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 4,
+  },
   pickerList: {
     padding: 16,
   },
   pickerItem: {
     padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F5F7FA',
+    borderRadius: 12,
+    backgroundColor: '#F9FAFB',
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+  },
+  pickerItemSelected: {
+    backgroundColor: '#E0F2FE',
+    borderColor: '#0E7490',
+    borderWidth: 2,
+  },
+  pickerItemHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 8,
   },
   pickerItemText: {
     fontSize: 15,
     color: '#1A1A1A',
-    marginBottom: 4,
+    fontWeight: '600',
+    flex: 1,
+    marginRight: 8,
+  },
+  pickerItemTextSelected: {
+    color: '#0E7490',
+  },
+  pickerItemDetail: {
+    fontSize: 13,
+    color: '#666666',
+    lineHeight: 18,
+    marginBottom: 8,
+  },
+  pickerItemMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  severityBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  severityLifeThreatening: {
+    backgroundColor: '#FEE2E2',
+  },
+  severitySevere: {
+    backgroundColor: '#FEF3C7',
+  },
+  severityModerate: {
+    backgroundColor: '#DBEAFE',
+  },
+  severityLow: {
+    backgroundColor: '#D1FAE5',
+  },
+  severityText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#1A1A1A',
+  },
+  repairByText: {
+    fontSize: 12,
+    color: '#0E7490',
+    fontWeight: '600',
   },
   pickerItemSeverity: {
     fontSize: 12,
