@@ -228,14 +228,14 @@ export const ELECTRICAL_PARENT_DEFICIENCIES: ItemDeficiencies = {
   deficiencies: []  // Empty - use subcategories
 };
 
-// 7a. Electrical - Conductor, Outlet, and Switch
+// 7a. Electrical - Conductor, Outlet, and Switch (6 deficiency details per Excel)
 export const ELECTRICAL_CONDUCTOR_OUTLET_SWITCH: ItemDeficiencies = {
   itemName: 'Electrical - Conductor, Outlet, and Switch',
   deficiencies: [
     {
       id: 'elec_cos_1',
       name: 'Exposed electrical conductor.',
-      detail: 'Electrical systems are deficient if conductors lack proper insulation or enclosure—such as exposed wiring, open ports, or missing covers—or if there\'s an opening or gap larger than 1/2 inch.',
+      detail: 'Exposed wiring, open ports, or missing covers present.',
       criteria: 'Electrical systems are deficient if conductors lack proper insulation or enclosure—such as exposed wiring, open ports, or missing covers—or if there\'s an opening or gap larger than 1/2 inch.',
       severity: 'Life-Threatening',
       repairBy: '24Hrs',
@@ -245,7 +245,7 @@ export const ELECTRICAL_CONDUCTOR_OUTLET_SWITCH: ItemDeficiencies = {
     {
       id: 'elec_cos_2',
       name: 'The AFCI outlet or AFCI breaker does not reset, and if damaged, it is considered as exposed conductor.',
-      detail: 'AFCI outlet or AFCI breaker does not have visible damage, and the test or reset button is inoperable (i.e., overall system or component thereof is not meeting function or purpose).',
+      detail: 'AFCI test or reset button is inoperable.',
       criteria: 'AFCI outlet or AFCI breaker does not have visible damage, and the test or reset button is inoperable (i.e., overall system or component thereof is not meeting function or purpose).',
       severity: 'Life-Threatening',
       repairBy: '24Hrs',
@@ -255,7 +255,7 @@ export const ELECTRICAL_CONDUCTOR_OUTLET_SWITCH: ItemDeficiencies = {
     {
       id: 'elec_cos_3',
       name: 'Electrical service panel is not reasonably accessible.',
-      detail: 'The electrical service panel is not reasonably accessible (i.e., it cannot be reached and opened without moving obstructions, dismantling, destructive measures, or actions that may pose a risk to persons or their personal property).',
+      detail: 'Panel cannot be reached without moving obstructions.',
       criteria: 'The electrical service panel is not reasonably accessible (i.e., it cannot be reached and opened without moving obstructions, dismantling, destructive measures, or actions that may pose a risk to persons or their personal property).',
       severity: 'Moderate',
       repairBy: '30 Day',
@@ -264,9 +264,9 @@ export const ELECTRICAL_CONDUCTOR_OUTLET_SWITCH: ItemDeficiencies = {
     },
     {
       id: 'elec_cos_4',
-      name: 'Unprotected outlet is present within six feet of a water source.',
-      detail: 'An unprotected outlet is present within six feet of a water source (i.e., sink, bathtub, shower, water faucet, toilet) that is located in the same room, and outlet is not GFCI protected.',
-      criteria: 'An outlet, not GFCI-protected, is present within six feet of a water source (i.e., sink, bathtub, shower, water faucet, toilet) located in the same room.',
+      name: 'The AFCI outlet or AFCI breaker does not reset, and if damaged, it is considered an exposed conductor.',
+      detail: 'AFCI test or reset button is inoperable (damaged).',
+      criteria: 'AFCI outlet or AFCI breaker does not have visible damage and the test or reset button is inoperable (i.e., overall system or component thereof is not meeting function or purpose).',
       severity: 'Life-Threatening',
       repairBy: '24Hrs',
       points: '30/n',
@@ -274,13 +274,23 @@ export const ELECTRICAL_CONDUCTOR_OUTLET_SWITCH: ItemDeficiencies = {
     },
     {
       id: 'elec_cos_5',
-      name: 'GFCI outlet or GFCI breaker does not have visible damage, and the test or reset button is inoperable.',
-      detail: 'GFCI outlet or GFCI breaker does not have visible damage and the test or reset button is inoperable (i.e., overall system or component thereof is not meeting function or purpose).',
-      criteria: 'GFCI outlet or GFCI breaker does not have visible damage and the test or reset button is inoperable (i.e., overall system or component thereof is not meeting function or purpose).',
+      name: 'Unprotected outlet is present within six feet of a water source, including a water heater or a laundry area when not in use.',
+      detail: 'Outlet near water source is not GFCI protected.',
+      criteria: 'An unprotected outlet is present within six feet of a water source (i.e., sink, bathtub, shower, water faucet, toilet) that is located in the same room, and outlet is not GFCI protected. An outlet designed for major appliances, when in use, is not evaluated under this category.',
       severity: 'Life-Threatening',
       repairBy: '24Hrs',
       points: '30/n',
       code: 'ELEC-COS-05'
+    },
+    {
+      id: 'elec_cos_6',
+      name: 'GFCI outlet or GFCI breaker does not have visible damage, and the test or reset button is inoperable.',
+      detail: 'GFCI test or reset button is inoperable.',
+      criteria: 'GFCI outlet or GFCI breaker does not have visible damage and the test or reset button is inoperable (i.e., overall system or component thereof is not meeting function or purpose).',
+      severity: 'Life-Threatening',
+      repairBy: '24Hrs',
+      points: '30/n',
+      code: 'ELEC-COS-06'
     }
   ]
 };
@@ -1178,15 +1188,21 @@ export const ELECTRICAL_SERVICE_PANEL_DEFICIENCIES: ItemDeficiencies = {
   ]
 };
 
-// 8. Fencing/Gate
+// 8. Fencing/Gate - Parent category with subcategories for OUTSIDE
 export const FENCE_GATE_DEFICIENCIES: ItemDeficiencies = {
   itemName: 'Fencing/Gate',
+  deficiencies: []  // Uses subcategories
+};
+
+// 8a. Fence and Gate subcategory
+export const FENCE_AND_GATE_OUTSIDE: ItemDeficiencies = {
+  itemName: 'Fence and Gate',
   deficiencies: [
     {
       id: 'fence_1',
       name: 'Fence components are missing.',
-      detail: 'A fence is deficient if missing components create a hole covering 10% or more of a single section\'s area.',
-      criteria: 'Hole covering 10% or more of a single section\'s area.',
+      detail: 'Fence missing components like pickets, posts, or panels.',
+      criteria: 'A fence is deficient if missing components—such as pickets, posts, or panels—create a hole covering 10% or more of a single section\'s area.',
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
@@ -1195,7 +1211,7 @@ export const FENCE_GATE_DEFICIENCIES: ItemDeficiencies = {
     {
       id: 'fence_2',
       name: 'Fence demonstrates signs of collapse.',
-      detail: 'Fence demonstrates signs of collapse.',
+      detail: 'Fence shows visible signs of structural failure.',
       criteria: 'Fence demonstrates signs of collapse.',
       severity: 'Severe',
       repairBy: '24 Hrs.',
@@ -1205,8 +1221,8 @@ export const FENCE_GATE_DEFICIENCIES: ItemDeficiencies = {
     {
       id: 'fence_3',
       name: 'The gate does not open, close, catch, or lock.',
-      detail: 'Gate will not open OR Gate will open when locked/latched OR Gate will not close.',
-      criteria: 'Gate failure (open/close/lock).',
+      detail: 'Gate mechanical failure.',
+      criteria: 'Gate will not open. OR Gate will open when locked or latched. OR Gate will not close.',
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
@@ -1214,6 +1230,11 @@ export const FENCE_GATE_DEFICIENCIES: ItemDeficiencies = {
     }
   ]
 };
+
+// Fencing/Gate Subcategories for Outside
+export const FENCING_SUBCATEGORIES_OUTSIDE = [
+  { id: 'fence_and_gate', name: 'Fence and Gate' }
+];
 
 // 9. Fire Safety
 export const FIRE_SAFETY_DEFICIENCIES: ItemDeficiencies = {
@@ -3234,6 +3255,7 @@ export const hasSubcategories = (itemName: string, locationType?: string): boole
     if (normalizedName === 'door') return true;
     if (normalizedName === 'drain') return true;
     if (normalizedName === 'electrical') return true;
+    if (normalizedName.includes('fencing') || normalizedName.includes('gate')) return true;
     if (normalizedName === 'fire safety') return true;
     if (normalizedName === 'hazard') return true;
     if (normalizedName === 'lighting') return true;
@@ -3254,6 +3276,7 @@ export const getSubcategoriesForItem = (itemName: string, locationType?: string)
     if (normalizedName === 'door') return DOOR_SUBCATEGORIES_OUTSIDE;
     if (normalizedName === 'drain') return DRAIN_SUBCATEGORIES_OUTSIDE;
     if (normalizedName === 'electrical') return ELECTRICAL_SUBCATEGORIES_OUTSIDE;
+    if (normalizedName.includes('fencing') || normalizedName.includes('gate')) return FENCING_SUBCATEGORIES_OUTSIDE;
     if (normalizedName === 'fire safety') return FIRE_SAFETY_SUBCATEGORIES_OUTSIDE;
     if (normalizedName === 'hazard') return HAZARD_SUBCATEGORIES_OUTSIDE;
     if (normalizedName === 'lighting') return LIGHTING_SUBCATEGORIES_OUTSIDE;
@@ -3307,6 +3330,11 @@ export const getDeficienciesForSubcategory = (subcategoryName: string): ItemDefi
   }
   if (normalizedName.includes('sprinkler')) {
     return SPRINKLER_ASSEMBLY_DEFICIENCIES;
+  }
+  
+  // Fencing/Gate subcategories
+  if (normalizedName === 'fence and gate' || normalizedName.includes('fence')) {
+    return FENCE_AND_GATE_OUTSIDE;
   }
   
   // Hazard subcategories
