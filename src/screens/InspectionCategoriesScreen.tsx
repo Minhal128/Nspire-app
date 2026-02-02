@@ -11,7 +11,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../types/navigation';
 import { Ionicons } from '@expo/vector-icons';
-import { OUTSIDE_ITEMS, INSIDE_ITEMS } from '../data/inspectionData';
+import { OUTSIDE_ITEMS, INSIDE_ITEMS, UNIT_LOCATIONS } from '../data/inspectionData';
 
 type InspectionCategoriesScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -169,7 +169,7 @@ const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
                   <View style={[styles.progressFill, { width: '0%' }]} />
                 </View>
                 <Text style={styles.progressText}>
-                  0/{selectedUnits.length} • 0% Complete
+                  0/{UNIT_LOCATIONS.length} Locations • 0% Complete
                 </Text>
               </View>
             </View>

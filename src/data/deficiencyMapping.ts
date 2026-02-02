@@ -228,7 +228,7 @@ export const ELECTRICAL_PARENT_DEFICIENCIES: ItemDeficiencies = {
   deficiencies: []  // Empty - use subcategories
 };
 
-// 7a. Electrical - Conductor, Outlet, and Switch (6 deficiency details per Excel)
+// 7a. Electrical - Conductor, Outlet, and Switch (3 deficiency details)
 export const ELECTRICAL_CONDUCTOR_OUTLET_SWITCH: ItemDeficiencies = {
   itemName: 'Electrical - Conductor, Outlet, and Switch',
   deficiencies: [
@@ -261,41 +261,62 @@ export const ELECTRICAL_CONDUCTOR_OUTLET_SWITCH: ItemDeficiencies = {
       repairBy: '30 Day',
       points: '5.5/n',
       code: 'ELEC-COS-03'
-    },
-    {
-      id: 'elec_cos_4',
-      name: 'The AFCI outlet or AFCI breaker does not reset, and if damaged, it is considered an exposed conductor.',
-      detail: 'AFCI test or reset button is inoperable (damaged).',
-      criteria: 'AFCI outlet or AFCI breaker does not have visible damage and the test or reset button is inoperable (i.e., overall system or component thereof is not meeting function or purpose).',
-      severity: 'Life-Threatening',
-      repairBy: '24Hrs',
-      points: '30/n',
-      code: 'ELEC-COS-04'
-    },
-    {
-      id: 'elec_cos_5',
-      name: 'Unprotected outlet is present within six feet of a water source, including a water heater or a laundry area when not in use.',
-      detail: 'Outlet near water source is not GFCI protected.',
-      criteria: 'An unprotected outlet is present within six feet of a water source (i.e., sink, bathtub, shower, water faucet, toilet) that is located in the same room, and outlet is not GFCI protected. An outlet designed for major appliances, when in use, is not evaluated under this category.',
-      severity: 'Life-Threatening',
-      repairBy: '24Hrs',
-      points: '30/n',
-      code: 'ELEC-COS-05'
-    },
-    {
-      id: 'elec_cos_6',
-      name: 'GFCI outlet or GFCI breaker does not have visible damage, and the test or reset button is inoperable.',
-      detail: 'GFCI test or reset button is inoperable.',
-      criteria: 'GFCI outlet or GFCI breaker does not have visible damage and the test or reset button is inoperable (i.e., overall system or component thereof is not meeting function or purpose).',
-      severity: 'Life-Threatening',
-      repairBy: '24Hrs',
-      points: '30/n',
-      code: 'ELEC-COS-06'
     }
   ]
 };
 
-// 7b. Electrical Service Panel
+// 7b. The AFCI outlet or AFCI breaker does not reset (1 deficiency detail)
+export const ELECTRICAL_AFCI_OUTLET: ItemDeficiencies = {
+  itemName: 'The AFCI outlet or AFCI breaker does not reset, and if damaged, it is considered an exposed conductor.',
+  deficiencies: [
+    {
+      id: 'elec_afci_1',
+      name: 'AFCI outlet or AFCI breaker does not have visible damage and the test or reset button is inoperable.',
+      detail: 'AFCI outlet or AFCI breaker does not have visible damage and the test or reset button is inoperable (i.e., overall system or component thereof is not meeting function or purpose).',
+      criteria: 'AFCI outlet or AFCI breaker does not have visible damage and the test or reset button is inoperable (i.e., overall system or component thereof is not meeting function or purpose).',
+      severity: 'Life-Threatening',
+      repairBy: '24Hrs',
+      points: '30/n',
+      code: 'ELEC-AFCI-01'
+    }
+  ]
+};
+
+// 7c. Unprotected outlet within six feet of water source (1 deficiency detail)
+export const ELECTRICAL_UNPROTECTED_OUTLET: ItemDeficiencies = {
+  itemName: 'Unprotected outlet is present within six feet of a water source, including a water heater or a laundry area when not in use.',
+  deficiencies: [
+    {
+      id: 'elec_unprotected_1',
+      name: 'An unprotected outlet is present within six feet of a water source.',
+      detail: 'An unprotected outlet is present within six feet of a water source (i.e., sink, bathtub, shower, water faucet, toilet) that is located in the same room, and outlet is not GFCI protected.',
+      criteria: 'An outlet, not GFCI-protected, is present within six feet of a water source (i.e., sink, bathtub, shower, water faucet, toilet) located in the same room. An outlet designed for major appliances, when in use, is not evaluated under this category.',
+      severity: 'Life-Threatening',
+      repairBy: '24Hrs',
+      points: '30/n',
+      code: 'ELEC-UNPROT-01'
+    }
+  ]
+};
+
+// 7d. GFCI outlet or GFCI breaker inoperable (1 deficiency detail)
+export const ELECTRICAL_GFCI_OUTLET: ItemDeficiencies = {
+  itemName: 'GFCI outlet or GFCI breaker does not have visible damage, and the test or reset button is inoperable.',
+  deficiencies: [
+    {
+      id: 'elec_gfci_1',
+      name: 'GFCI outlet or GFCI breaker does not have visible damage and the test or reset button is inoperable.',
+      detail: 'GFCI outlet or GFCI breaker does not have visible damage and the test or reset button is inoperable (i.e., overall system or component thereof is not meeting function or purpose).',
+      criteria: 'GFCI outlet or GFCI breaker does not have visible damage and the test or reset button is inoperable (i.e., overall system or component thereof is not meeting function or purpose).',
+      severity: 'Life-Threatening',
+      repairBy: '24Hrs',
+      points: '30/n',
+      code: 'ELEC-GFCI-01'
+    }
+  ]
+};
+
+// 7e. Electrical Service Panel (3 deficiency details)
 export const ELECTRICAL_SERVICE_PANEL_OUTSIDE: ItemDeficiencies = {
   itemName: 'Electrical Service Panel',
   deficiencies: [
@@ -334,6 +355,9 @@ export const ELECTRICAL_SERVICE_PANEL_OUTSIDE: ItemDeficiencies = {
 
 export const ELECTRICAL_SUBCATEGORIES_OUTSIDE = [
   { id: 'elec_conductor', name: 'Electrical - Conductor, Outlet, and Switch' },
+  { id: 'elec_afci', name: 'The AFCI outlet or AFCI breaker does not reset, and if damaged, it is considered an exposed conductor.' },
+  { id: 'elec_unprotected', name: 'Unprotected outlet is present within six feet of a water source, including a water heater or a laundry area when not in use.' },
+  { id: 'elec_gfci', name: 'GFCI outlet or GFCI breaker does not have visible damage, and the test or reset button is inoperable.' },
   { id: 'elec_service_panel', name: 'Electrical Service Panel' }
 ];
 
@@ -3298,8 +3322,17 @@ export const getDeficienciesForSubcategory = (subcategoryName: string): ItemDefi
   }
   
   // Electrical subcategories
-  if (normalizedName.includes('conductor') || normalizedName.includes('outlet') || normalizedName.includes('switch')) {
+  if (normalizedName === 'electrical - conductor, outlet, and switch' || normalizedName.includes('electrical - conductor')) {
     return ELECTRICAL_CONDUCTOR_OUTLET_SWITCH;
+  }
+  if (normalizedName.includes('afci outlet') || normalizedName.includes('afci breaker')) {
+    return ELECTRICAL_AFCI_OUTLET;
+  }
+  if (normalizedName.includes('unprotected outlet')) {
+    return ELECTRICAL_UNPROTECTED_OUTLET;
+  }
+  if (normalizedName.includes('gfci outlet') || normalizedName.includes('gfci breaker')) {
+    return ELECTRICAL_GFCI_OUTLET;
   }
   if (normalizedName === 'electrical service panel' || normalizedName.includes('service panel')) {
     return ELECTRICAL_SERVICE_PANEL_OUTSIDE;
@@ -3345,7 +3378,7 @@ export const getDeficienciesForSubcategory = (subcategoryName: string): ItemDefi
   if (normalizedName.includes('auxiliary')) {
     return LIGHTING_AUXILIARY_DEFICIENCIES;
   }
-  if (normalizedName.includes('exterior')) {
+  if (normalizedName === 'lighting - exterior' || normalizedName.includes('lighting - exterior')) {
     return LIGHTING_EXTERIOR_DEFICIENCIES;
   }
   

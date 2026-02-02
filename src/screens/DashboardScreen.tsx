@@ -67,6 +67,9 @@ interface Property {
   buildings: number;
   units: number;
   address: string;
+  city: string;
+  state: string;
+  zipCode: string;
 }
 
 export default function DashboardScreen({
@@ -245,7 +248,10 @@ export default function DashboardScreen({
           propertyId: p.propertyId,
           buildings: p.buildings || 0,
           units: p.units || 0,
-          address: `${p.address}, ${p.city}, ${p.state}, ${p.zipCode}`,
+          address: p.address,
+          city: p.city,
+          state: p.state,
+          zipCode: p.zipCode,
         }));
         setProperties(mappedProperties);
         return mappedProperties;
@@ -884,7 +890,9 @@ export default function DashboardScreen({
                     </Text>
                     <Text style={styles.propertyDetail}>
                       Address:{" "}
-                      <Text style={styles.addressLink}>{property.address}</Text>
+                      <Text style={styles.addressLink}>
+                        {[property.address, property.city, property.state, property.zipCode].filter(Boolean).join(', ')}
+                      </Text>
                     </Text>
                     <TouchableOpacity
                       style={styles.editButton}

@@ -25,6 +25,12 @@ import {
   DeficiencyOption, 
   CODE_COMPLIANCE 
 } from '../data/deficiencyMapping';
+import {
+  getDeficienciesForItemInside,
+  getDeficienciesForSubcategoryInside,
+  hasSubcategoriesInside,
+  getSubcategoriesForItemInside,
+} from '../data/deficiencyMappingInside';
 import { cloudinaryService } from '../services/cloudinaryService';
 import { geminiService } from '../services/openaiService';
 
@@ -70,20 +76,34 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const [isCustomEntry, setIsCustomEntry] = useState(false);
 
   useEffect(() => {
-    // Check if item has subcategories (e.g., Door in Outside section)
-    const hasSubcats = hasSubcategories(itemName, location);
+    const isInside = location?.toLowerCase() === 'inside';
+    
+    // Check if item has subcategories based on location type
+    const hasSubcats = isInside 
+      ? hasSubcategoriesInside(itemName)
+      : hasSubcategories(itemName, location);
     setItemHasSubcategories(hasSubcats);
     
     if (hasSubcats) {
-      // Get subcategories for this item
-      const subcats = getSubcategoriesForItem(itemName, location);
-      setAvailableSubcategories(subcats);
+      // Get subcategories for this item based on location type
+      if (isInside) {
+        const subcats = getSubcategoriesForItemInside(itemName);
+        setAvailableSubcategories(subcats.map((name, index) => ({ id: `subcat_${index}`, name })));
+      } else {
+        const subcats = getSubcategoriesForItem(itemName, location);
+        setAvailableSubcategories(subcats);
+      }
       setAvailableDeficiencies([]);  // Wait for subcategory selection
       setSelectedSubcategory(null);
     } else {
-      // Load deficiencies directly for the selected item
-      const itemDeficiencies = getDeficienciesForItem(itemName, location);
-      setAvailableDeficiencies(itemDeficiencies.deficiencies);
+      // Load deficiencies directly for the selected item based on location type
+      if (isInside) {
+        const itemDeficiencies = getDeficienciesForItemInside(itemName);
+        setAvailableDeficiencies(itemDeficiencies?.deficiencies || []);
+      } else {
+        const itemDeficiencies = getDeficienciesForItem(itemName, location);
+        setAvailableDeficiencies(itemDeficiencies.deficiencies);
+      }
       setAvailableSubcategories([]);
     }
     
@@ -96,9 +116,16 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   // Handle subcategory selection
   const handleSelectSubcategory = (subcategory: { id: string; name: string }) => {
     setSelectedSubcategory(subcategory);
-    // Load deficiencies for selected subcategory
-    const subDeficiencies = getDeficienciesForSubcategory(subcategory.name);
-    setAvailableDeficiencies(subDeficiencies.deficiencies);
+    const isInside = location?.toLowerCase() === 'inside';
+    
+    // Load deficiencies for selected subcategory based on location type
+    if (isInside) {
+      const subDeficiencies = getDeficienciesForSubcategoryInside(subcategory.name);
+      setAvailableDeficiencies(subDeficiencies?.deficiencies || []);
+    } else {
+      const subDeficiencies = getDeficienciesForSubcategory(subcategory.name);
+      setAvailableDeficiencies(subDeficiencies.deficiencies);
+    }
     setShowSubcategoryPicker(false);
     // Reset deficiency selection
     setSelectedDeficiency(null);
@@ -225,10 +252,10 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
         try {
           // Upload to Cloudinary
-          const uploadResult = await cloudinaryService.uploadImage(imageUri, {
-            folder: 'nspire-inspections',
-            tags: ['inspection', buildingId, itemName],
-          });
+          const uploadResult = await cloudinaryService.uploadImage(
+            imageUri,
+            'nspire-inspections'
+          );
 
           // Call AI analysis (Gemini service) - use LOCAL imageUri, not Cloudinary URL
           let aiAnalysis;
@@ -256,7 +283,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               aiSeverity: aiAnalysis.severity,
               aiRecommendations: aiAnalysis.recommendations,
             },
-            imageUrl: uploadResult.secure_url, // Cloudinary URL for storage
+            imageUrl: uploadResult.secureUrl, // Cloudinary URL for storage
             imageUri: imageUri, // Local URI for display
             note: note || aiAnalysis.analysis,
             location,
@@ -404,18 +431,12 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               onPress={() => handleShowExpandedText('Deficiency Detail', selectedDeficiency?.detail || customDeficiencyDetail || '')}
               activeOpacity={0.8}
             >
-              <TextInput
-                style={[styles.criteriaDropdownTextEditable, !selectedDeficiency && !customDeficiencyDetail && styles.placeholderText]}
-                placeholder="-- Select deficiency first or type here --"
-                placeholderTextColor="#9CA3AF"
-                value={customDeficiencyDetail || selectedDeficiency?.detail || ''}
-                onChangeText={(text) => {
-                  setCustomDeficiencyDetail(text);
-                  setIsCustomEntry(true);
-                }}
-                multiline
+              <Text
+                style={[styles.criteriaDropdownTextEditable, !selectedDeficiency && styles.placeholderText]}
                 numberOfLines={4}
-              />
+              >
+                {selectedDeficiency?.detail || '-- Select deficiency first --'}
+              </Text>
               <TouchableOpacity 
                 style={styles.expandButton}
                 onPress={() => handleShowExpandedText('Deficiency Detail', selectedDeficiency?.detail || customDeficiencyDetail || '')}
@@ -434,18 +455,12 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             onPress={() => handleShowExpandedText('Deficiency Criteria', deficiencyCriteria || customDeficiencyCriteria || '')}
             activeOpacity={0.8}
           >
-            <TextInput
-              style={[styles.criteriaDropdownTextEditable, !selectedDeficiency && !customDeficiencyCriteria && styles.placeholderText]}
-              placeholder="-- Select deficiency first or type here --"
-              placeholderTextColor="#9CA3AF"
-              value={customDeficiencyCriteria || deficiencyCriteria || ''}
-              onChangeText={(text) => {
-                setCustomDeficiencyCriteria(text);
-                setDeficiencyCriteria(text);
-              }}
-              multiline
+            <Text
+              style={[styles.criteriaDropdownTextEditable, !selectedDeficiency && styles.placeholderText]}
               numberOfLines={3}
-            />
+            >
+              {deficiencyCriteria || '-- Select deficiency first --'}
+            </Text>
             <TouchableOpacity 
               style={styles.expandButton}
               onPress={() => handleShowExpandedText('Deficiency Criteria', deficiencyCriteria || customDeficiencyCriteria || '')}

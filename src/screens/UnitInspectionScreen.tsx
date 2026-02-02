@@ -42,7 +42,8 @@ export default function UnitInspectionScreen({ navigation, route }: UnitInspecti
   const [user, setUser] = useState<any>(null);
   const [randomSample, setRandomSample] = useState<UnitSample | null>(null);
   const [showRandomSample, setShowRandomSample] = useState(false);
-  const { property } = route.params || {};
+  const { property: routeProperty } = route.params || {};
+  const [property, setProperty] = useState<any>(routeProperty);
 
   const loadUnits = useCallback(async () => {
     try {
@@ -52,6 +53,12 @@ export default function UnitInspectionScreen({ navigation, route }: UnitInspecti
       if (property?._id) {
         // Try to fetch property details with units from API
         const propertyData = await propertyService.getProperty(property._id);
+        
+        // Update property state with fetched data that includes zipCode
+        if (propertyData?.property) {
+          setProperty(propertyData.property);
+        }
+        
         const unitCount = propertyData?.property?.units || property?.units || 1;
         
         // Generate units based on unit count

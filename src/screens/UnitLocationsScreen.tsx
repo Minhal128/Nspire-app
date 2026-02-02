@@ -81,20 +81,28 @@ const UnitLocationsScreen: React.FC<Props> = ({ navigation, route }) => {
         {/* Locations Grid */}
         <Text style={styles.sectionTitle}>Select Location to Inspect</Text>
         <View style={styles.locationsGrid}>
-          {UNIT_LOCATIONS.map((location, index) => (
-            <TouchableOpacity
-              key={index}
-              style={styles.locationCard}
-              onPress={() => handleLocationPress(location)}
-              activeOpacity={0.7}
-            >
-              <View style={styles.locationIconContainer}>
-                <Ionicons name="location" size={24} color="#0E7490" />
-              </View>
-              <Text style={styles.locationText}>{location}</Text>
-              <Ionicons name="chevron-forward" size={20} color="#999999" />
-            </TouchableOpacity>
-          ))}
+          {UNIT_LOCATIONS.map((location, index) => {
+            const iconName = location.includes('Bathroom') ? 'water-outline' : 
+                            location.includes('Kitchen') ? 'restaurant-outline' :
+                            location.includes('Bedroom') ? 'bed-outline' :
+                            location.includes('Living') ? 'home-outline' :
+                            'location-outline';
+            
+            return (
+              <TouchableOpacity
+                key={index}
+                style={styles.locationCard}
+                onPress={() => handleLocationPress(location)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.locationIconContainer}>
+                  <Ionicons name={iconName as any} size={24} color="#0E7490" />
+                </View>
+                <Text style={styles.locationText}>{location}</Text>
+                <Ionicons name="chevron-forward" size={20} color="#999999" />
+              </TouchableOpacity>
+            );
+          })}
         </View>
       </ScrollView>
     </SafeAreaView>

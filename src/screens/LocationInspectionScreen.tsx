@@ -14,6 +14,7 @@ import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../types/navigation';
 import { Ionicons } from '@expo/vector-icons';
 import { OUTSIDE_ITEMS, INSIDE_ITEMS, InspectionResponse } from '../data/inspectionData';
+import { UNIT_DEFICIENCIES, getDeficienciesByCategory } from '../data/unitDeficiencies';
 
 type LocationInspectionScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -35,17 +36,48 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
   const { property, selectedUnits, buildingId, location } = route.params;
   const [responses, setResponses] = useState<{ [key: string]: ResponseType }>({});
   const [showDeficiencyModal, setShowDeficiencyModal] = useState(false);
-  const [selectedItem, setSelectedItem] = useState<{ id: string; name: string } | null>(null);
+  const [selectedItem, setSelectedItem] = useState<{ id: string; name: string; category?: string } | null>(null);
+  const [selectedDeficiency, setSelectedDeficiency] = useState<any>(null);
+
+  // Check if location is a unit location (for units inspection)
+  const isUnitLocation = !['Outside', 'Inside'].includes(location);
+  
+  // For unit locations, get ALL deficiencies from ALL 32 categories
+  const getAllUnitDeficiencies = () => {
+    const allDeficiencies: any[] = [];
+    UNIT_DEFICIENCIES.forEach(category => {
+      category.deficiencies.forEach(def => {
+        allDeficiencies.push(def);
+      });
+    });
+    return allDeficiencies;
+  };
+  
+  const unitDeficiencies = isUnitLocation ? getAllUnitDeficiencies() : [];
+  
+  // Convert unit deficiencies to inspection items format
+  const unitInspectionItems = unitDeficiencies.map((def) => ({
+    id: def.id,
+    name: def.deficiencySelected,
+    category: def.category,
+  }));
 
   // Use appropriate inspection items based on location
   const inspectionItems = location === 'Outside' ? OUTSIDE_ITEMS : 
                          location === 'Inside' ? INSIDE_ITEMS : 
-                         OUTSIDE_ITEMS; // Default to OUTSIDE_ITEMS for unit locations
+                         unitInspectionItems;
 
-  const handleResponse = (itemId: string, itemName: string, response: ResponseType) => {
+  const handleResponse = (itemId: string, itemName: string, category: string | undefined, response: ResponseType) => {
     if (response === 'OD') {
       // Show deficiency modal when OD is clicked
-      setSelectedItem({ id: itemId, name: itemName });
+      setSelectedItem({ id: itemId, name: itemName, category });
+      
+      // Find the deficiency details if it's a unit location
+      if (isUnitLocation) {
+        const deficiency = unitDeficiencies.find(d => d.id === itemId);
+        setSelectedDeficiency(deficiency);
+      }
+      
       setShowDeficiencyModal(true);
     } else {
       setResponses((prev) => ({
@@ -198,19 +230,19 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
             <View style={styles.responseButtons}>
               <TouchableOpacity
                 style={getButtonStyle(item.id, 'No OD')}
-                onPress={() => handleResponse(item.id, item.name, 'No OD')}
+                onPress={() => handleResponse(item.id, item.name, (item as any).category, 'No OD')}
               >
                 <Text style={getButtonTextStyle(item.id, 'No OD')}>No OD</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={getButtonStyle(item.id, 'OD')}
-                onPress={() => handleResponse(item.id, item.name, 'OD')}
+                onPress={() => handleResponse(item.id, item.name, (item as any).category, 'OD')}
               >
                 <Text style={getButtonTextStyle(item.id, 'OD')}>OD</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={getButtonStyle(item.id, 'N/A')}
-                onPress={() => handleResponse(item.id, item.name, 'N/A')}
+                onPress={() => handleResponse(item.id, item.name, (item as any).category, 'N/A')}
               >
                 <Text style={getButtonTextStyle(item.id, 'N/A')}>N/A</Text>
               </TouchableOpacity>
@@ -229,24 +261,45 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{selectedItem?.name}</Text>
+              <Text style={styles.modalTitle}>{selectedItem?.category || selectedItem?.name}</Text>
               <TouchableOpacity onPress={() => setShowDeficiencyModal(false)}>
                 <Ionicons name="close" size={24} color="#666666" />
               </TouchableOpacity>
             </View>
 
-            <View style={styles.emptyState}>
-              <Ionicons name="add-circle-outline" size={80} color="#E5E5E5" />
-              <Text style={styles.emptyStateText}>
-                No existing deficiency record for this item.
-              </Text>
-            </View>
+            {selectedDeficiency ? (
+              <ScrollView style={styles.deficiencyDetails} showsVerticalScrollIndicator={false}>
+                <View style={styles.deficiencySection}>
+                  <Text style={styles.deficiencyLabel}>Deficiency Selected:</Text>
+                  <Text style={styles.deficiencyText}>{selectedDeficiency.deficiencySelected}</Text>
+                </View>
+                
+                <View style={styles.deficiencySection}>
+                  <Text style={styles.deficiencyLabel}>Deficiency Detail:</Text>
+                  <Text style={styles.deficiencyText}>{selectedDeficiency.deficiencyDetail}</Text>
+                </View>
+                
+                <View style={styles.deficiencySection}>
+                  <Text style={styles.deficiencyLabel}>Deficiency Criteria:</Text>
+                  <Text style={styles.deficiencyText}>{selectedDeficiency.deficiencyCriteria}</Text>
+                </View>
+              </ScrollView>
+            ) : (
+              <View style={styles.emptyState}>
+                <Ionicons name="add-circle-outline" size={80} color="#E5E5E5" />
+                <Text style={styles.emptyStateText}>
+                  No existing deficiency record for this item.
+                </Text>
+              </View>
+            )}
 
             <TouchableOpacity
               style={styles.addNewButton}
               onPress={handleAddNewDeficiency}
             >
-              <Text style={styles.addNewButtonText}>ADD NEW</Text>
+              <Text style={styles.addNewButtonText}>
+                {selectedDeficiency ? 'RECORD THIS DEFICIENCY' : 'ADD NEW'}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -523,6 +576,31 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     letterSpacing: 0.5,
+  },
+  deficiencyDetails: {
+    maxHeight: 400,
+    marginVertical: 16,
+  },
+  deficiencySection: {
+    marginBottom: 20,
+  },
+  deficiencyLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0E7490',
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  deficiencyText: {
+    fontSize: 14,
+    color: '#1A1A1A',
+    lineHeight: 22,
+    backgroundColor: '#F5F7FA',
+    padding: 12,
+    borderRadius: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: '#0E7490',
   },
 });
 
