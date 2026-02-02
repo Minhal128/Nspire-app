@@ -17,22 +17,17 @@ import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../types/navigation';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { 
-  getDeficienciesForItem, 
-  getDeficienciesForSubcategory,
-  hasSubcategories, 
-  getSubcategoriesForItem,
-  DeficiencyOption, 
-  CODE_COMPLIANCE 
-} from '../data/deficiencyMapping';
 import {
-  getDeficienciesForItemInside,
-  getDeficienciesForSubcategoryInside,
-  hasSubcategoriesInside,
-  getSubcategoriesForItemInside,
-} from '../data/deficiencyMappingInside';
+  getDeficienciesForItem,
+  getDeficienciesForSubcategory,
+  hasSubcategories,
+  getSubcategoriesForItem,
+  DeficiencyOption,
+  CODE_COMPLIANCE
+} from '../data/deficiencyMapping';
 import { cloudinaryService } from '../services/cloudinaryService';
 import { geminiService } from '../services/openaiService';
+import { ScoringResult, calculateUnitScore, POSSIBLE_SCORE } from '../utils/scoringCalculations';
 
 type DeficiencyDetailScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -75,38 +70,43 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const [customDeficiencyCriteria, setCustomDeficiencyCriteria] = useState('');
   const [isCustomEntry, setIsCustomEntry] = useState(false);
 
+  // Scoring state - automatically calculated based on deficiency selection
+  const [scoringResult, setScoringResult] = useState<ScoringResult | null>(null);
+
+  // Get total samples from selectedUnits (default to 20 if not available)
+  const totalSamples = selectedUnits?.length || 20;
+
+  // Auto-count deficiencies: 1 if a deficiency is selected, 0 otherwise
+  const deficiencyCount = selectedDeficiency ? 1 : 0;
+
+  // Update scoring dynamically when deficiency is selected/changed
   useEffect(() => {
-    const isInside = location?.toLowerCase() === 'inside';
-    
-    // Check if item has subcategories based on location type
-    const hasSubcats = isInside 
-      ? hasSubcategoriesInside(itemName)
-      : hasSubcategories(itemName, location);
+    const result = calculateUnitScore({
+      totalSamples,
+      deficiencies: deficiencyCount,
+      severity: selectedDeficiency?.severity || 'Moderate',
+    });
+    setScoringResult(result);
+  }, [selectedDeficiency, deficiencyCount, totalSamples]);
+
+  useEffect(() => {
+    // Check if item has subcategories (e.g., Door in Outside section)
+    const hasSubcats = hasSubcategories(itemName, location);
     setItemHasSubcategories(hasSubcats);
-    
+
     if (hasSubcats) {
-      // Get subcategories for this item based on location type
-      if (isInside) {
-        const subcats = getSubcategoriesForItemInside(itemName);
-        setAvailableSubcategories(subcats.map((name, index) => ({ id: `subcat_${index}`, name })));
-      } else {
-        const subcats = getSubcategoriesForItem(itemName, location);
-        setAvailableSubcategories(subcats);
-      }
+      // Get subcategories for this item
+      const subcats = getSubcategoriesForItem(itemName, location);
+      setAvailableSubcategories(subcats);
       setAvailableDeficiencies([]);  // Wait for subcategory selection
       setSelectedSubcategory(null);
     } else {
-      // Load deficiencies directly for the selected item based on location type
-      if (isInside) {
-        const itemDeficiencies = getDeficienciesForItemInside(itemName);
-        setAvailableDeficiencies(itemDeficiencies?.deficiencies || []);
-      } else {
-        const itemDeficiencies = getDeficienciesForItem(itemName, location);
-        setAvailableDeficiencies(itemDeficiencies.deficiencies);
-      }
+      // Load deficiencies directly for the selected item
+      const itemDeficiencies = getDeficienciesForItem(itemName, location);
+      setAvailableDeficiencies(itemDeficiencies.deficiencies);
       setAvailableSubcategories([]);
     }
-    
+
     // Reset selection when item changes
     setSelectedDeficiency(null);
     setRepairBy('');
@@ -116,16 +116,9 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   // Handle subcategory selection
   const handleSelectSubcategory = (subcategory: { id: string; name: string }) => {
     setSelectedSubcategory(subcategory);
-    const isInside = location?.toLowerCase() === 'inside';
-    
-    // Load deficiencies for selected subcategory based on location type
-    if (isInside) {
-      const subDeficiencies = getDeficienciesForSubcategoryInside(subcategory.name);
-      setAvailableDeficiencies(subDeficiencies?.deficiencies || []);
-    } else {
-      const subDeficiencies = getDeficienciesForSubcategory(subcategory.name);
-      setAvailableDeficiencies(subDeficiencies.deficiencies);
-    }
+    // Load deficiencies for selected subcategory
+    const subDeficiencies = getDeficienciesForSubcategory(subcategory.name);
+    setAvailableDeficiencies(subDeficiencies.deficiencies);
     setShowSubcategoryPicker(false);
     // Reset deficiency selection
     setSelectedDeficiency(null);
@@ -252,10 +245,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
         try {
           // Upload to Cloudinary
-          const uploadResult = await cloudinaryService.uploadImage(
-            imageUri,
-            'nspire-inspections'
-          );
+          const uploadResult = await cloudinaryService.uploadImage(imageUri, 'nspire-inspections');
 
           // Call AI analysis (Gemini service) - use LOCAL imageUri, not Cloudinary URL
           let aiAnalysis;
@@ -283,7 +273,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               aiSeverity: aiAnalysis.severity,
               aiRecommendations: aiAnalysis.recommendations,
             },
-            imageUrl: uploadResult.secureUrl, // Cloudinary URL for storage
+            imageUrl: uploadResult.secure_url, // Cloudinary URL for storage
             imageUri: imageUri, // Local URI for display
             note: note || aiAnalysis.analysis,
             location,
@@ -318,6 +308,11 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           location,
           itemName,
           itemId,
+          scoringResult: scoringResult || calculateUnitScore({
+            totalSamples,
+            deficiencies: deficiencyCount,
+            severity: selectedDeficiency?.severity || 'Moderate',
+          }),
         },
       });
 
@@ -358,7 +353,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           <Text style={styles.sectionLabel}>DEFICIENCY SELECTED</Text>
           {itemHasSubcategories ? (
             // For items with subcategories: Pick subcategory first
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.dropdown, selectedSubcategory && styles.dropdownSelected]}
               onPress={() => setShowSubcategoryPicker(true)}
               activeOpacity={0.7}
@@ -371,7 +366,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           ) : (
             // For items without subcategories: Pick deficiency directly
             <>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.dropdown, selectedDeficiency && styles.dropdownSelected]}
                 onPress={() => setShowDeficiencyPicker(true)}
                 activeOpacity={0.7}
@@ -397,9 +392,9 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           {itemHasSubcategories ? (
             // For items with subcategories: Dropdown to pick deficiency within subcategory
             <>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[
-                  styles.dropdown, 
+                  styles.dropdown,
                   selectedDeficiency && styles.dropdownSelected,
                   !selectedSubcategory && styles.detailBoxDisabled
                 ]}
@@ -426,18 +421,24 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             </>
           ) : (
             // For items without subcategories: Editable detail with tap-to-expand
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.criteriaDropdownBox, selectedDeficiency && styles.criteriaDropdownBoxActive]}
               onPress={() => handleShowExpandedText('Deficiency Detail', selectedDeficiency?.detail || customDeficiencyDetail || '')}
               activeOpacity={0.8}
             >
-              <Text
-                style={[styles.criteriaDropdownTextEditable, !selectedDeficiency && styles.placeholderText]}
+              <TextInput
+                style={[styles.criteriaDropdownTextEditable, !selectedDeficiency && !customDeficiencyDetail && styles.placeholderText]}
+                placeholder="-- Select deficiency first or type here --"
+                placeholderTextColor="#9CA3AF"
+                value={customDeficiencyDetail || selectedDeficiency?.detail || ''}
+                onChangeText={(text) => {
+                  setCustomDeficiencyDetail(text);
+                  setIsCustomEntry(true);
+                }}
+                multiline
                 numberOfLines={4}
-              >
-                {selectedDeficiency?.detail || '-- Select deficiency first --'}
-              </Text>
-              <TouchableOpacity 
+              />
+              <TouchableOpacity
                 style={styles.expandButton}
                 onPress={() => handleShowExpandedText('Deficiency Detail', selectedDeficiency?.detail || customDeficiencyDetail || '')}
               >
@@ -450,18 +451,24 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         {/* Deficiency Criteria - Editable with tap-to-expand */}
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>DEFICIENCY CRITERIA</Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.criteriaDropdownBox, selectedDeficiency && styles.criteriaDropdownBoxActive]}
             onPress={() => handleShowExpandedText('Deficiency Criteria', deficiencyCriteria || customDeficiencyCriteria || '')}
             activeOpacity={0.8}
           >
-            <Text
-              style={[styles.criteriaDropdownTextEditable, !selectedDeficiency && styles.placeholderText]}
+            <TextInput
+              style={[styles.criteriaDropdownTextEditable, !selectedDeficiency && !customDeficiencyCriteria && styles.placeholderText]}
+              placeholder="-- Select deficiency first or type here --"
+              placeholderTextColor="#9CA3AF"
+              value={customDeficiencyCriteria || deficiencyCriteria || ''}
+              onChangeText={(text) => {
+                setCustomDeficiencyCriteria(text);
+                setDeficiencyCriteria(text);
+              }}
+              multiline
               numberOfLines={3}
-            >
-              {deficiencyCriteria || '-- Select deficiency first --'}
-            </Text>
-            <TouchableOpacity 
+            />
+            <TouchableOpacity
               style={styles.expandButton}
               onPress={() => handleShowExpandedText('Deficiency Criteria', deficiencyCriteria || customDeficiencyCriteria || '')}
             >
@@ -551,6 +558,65 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             </View>
           </View>
         </View>
+
+        {/* Scoring Section - Auto-calculated */}
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>INSPECTION SCORING</Text>
+
+          <View style={styles.scoringCard}>
+            {/* Row 1: All Sample and Pts Lost (Raw) */}
+            <View style={styles.scoringRow}>
+              <View style={styles.scoringField}>
+                <Text style={styles.scoringFieldLabel}>All Sample</Text>
+                <Text style={styles.scoringFieldValue}>{totalSamples}</Text>
+              </View>
+              <View style={styles.scoringField}>
+                <Text style={styles.scoringFieldLabel}>Pts Lost (Raw)</Text>
+                <Text style={styles.scoringFieldValue}>
+                  {scoringResult?.ptsLostRaw?.toFixed(2) || (5.5 / totalSamples).toFixed(2)}
+                </Text>
+              </View>
+            </View>
+
+            {/* Row 2: Pts Lost and Possible Score */}
+            <View style={styles.scoringRow}>
+              <View style={styles.scoringField}>
+                <Text style={styles.scoringFieldLabel}>Pts Lost</Text>
+                <Text style={styles.scoringFieldValue}>
+                  {scoringResult?.ptsLost?.toFixed(2) || '0.00'}
+                </Text>
+              </View>
+              <View style={styles.scoringField}>
+                <Text style={styles.scoringFieldLabel}>Possible Score</Text>
+                <Text style={styles.scoringFieldValue}>{POSSIBLE_SCORE}</Text>
+              </View>
+            </View>
+
+            {/* Row 3: Max Pts Lost and Score */}
+            <View style={styles.scoringRow}>
+              <View style={styles.scoringField}>
+                <Text style={styles.scoringFieldLabel}>Max Pts Lost</Text>
+                <Text style={styles.scoringFieldValue}>
+                  {scoringResult?.maxPtsLost?.toFixed(2) || '5.50'}
+                </Text>
+              </View>
+              <View style={styles.scoringField}>
+                <Text style={styles.scoringFieldLabel}>Score</Text>
+                <Text style={[styles.scoringFieldValue, styles.scoreHighlight]}>
+                  {scoringResult?.score?.toFixed(2) || POSSIBLE_SCORE.toFixed(2)}
+                </Text>
+              </View>
+            </View>
+
+            {/* Row 4: # of Deficiencies - Auto-detected */}
+            <View style={styles.scoringRow}>
+              <View style={styles.scoringFieldFull}>
+                <Text style={styles.scoringFieldLabel}># of Deficiencies</Text>
+                <Text style={styles.scoringFieldValue}>{deficiencyCount}</Text>
+              </View>
+            </View>
+          </View>
+        </View>
       </ScrollView>
 
       {/* Subcategory Picker Modal */}
@@ -564,7 +630,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           <View style={styles.pickerModalContent}>
             <View style={styles.pickerHeader}>
               <Text style={styles.pickerTitle}>Select Deficiency</Text>
-              <TouchableOpacity 
+              <TouchableOpacity
                 onPress={() => setShowSubcategoryPicker(false)}
                 style={styles.pickerCloseButton}
               >
@@ -616,7 +682,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               <Text style={styles.pickerTitle}>
                 {itemHasSubcategories ? 'Select Deficiency Detail' : 'Select Deficiency'}
               </Text>
-              <TouchableOpacity 
+              <TouchableOpacity
                 onPress={() => setShowDeficiencyPicker(false)}
                 style={styles.pickerCloseButton}
               >
@@ -681,7 +747,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           <View style={styles.expandedTextContent}>
             <View style={styles.expandedTextHeader}>
               <Text style={styles.expandedTextTitle}>{expandedTextTitle}</Text>
-              <TouchableOpacity 
+              <TouchableOpacity
                 onPress={() => setShowExpandedText(false)}
                 style={styles.expandedTextCloseButton}
               >
@@ -693,7 +759,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                 {expandedTextContent || 'No content available'}
               </Text>
             </ScrollView>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.expandedTextDoneButton}
               onPress={() => setShowExpandedText(false)}
             >
@@ -1255,6 +1321,53 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
+  },
+  // Scoring Section Styles
+  scoringCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+    marginTop: 8,
+  },
+  scoringRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 12,
+  },
+  scoringField: {
+    flex: 1,
+  },
+  scoringFieldFull: {
+    flex: 1,
+  },
+  scoringFieldLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#6B7280',
+    marginBottom: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  scoringFieldValue: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1F2937',
+    backgroundColor: '#F3F4F6',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
+  scoreHighlight: {
+    color: '#0E7490',
+    fontWeight: '700',
+    fontSize: 16,
   },
 });
 
