@@ -7,6 +7,7 @@
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
+import { INSPIRE_LOGO_BASE64 } from '../constants/inspireLogo';
 import {
   NSPIREInspectionReport,
   DeficiencyEntry,
@@ -333,24 +334,15 @@ function generateEnhancedStyles(options: PDFGenerationOptions): string {
 }
 
 /**
- * Generate enhanced header matching HUD format exactly
+ * Generate enhanced header matching INSPIRE format
  */
 function generateEnhancedHeader(metadata: InspectionMetadata, options: PDFGenerationOptions): string {
-  // HUD Logo as SVG data URL
-  const hudLogoSvg = `data:image/svg+xml;base64,${btoa(`
-    <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="40" cy="40" r="39" fill="#004488" stroke="#000000" stroke-width="2"/>
-      <text x="40" y="30" text-anchor="middle" fill="white" font-size="8" font-family="Arial" font-weight="bold">U.S. DEPARTMENT OF</text>
-      <text x="40" y="42" text-anchor="middle" fill="white" font-size="8" font-family="Arial" font-weight="bold">HOUSING AND</text>
-      <text x="40" y="54" text-anchor="middle" fill="white" font-size="8" font-family="Arial" font-weight="bold">URBAN DEVELOPMENT</text>
-    </svg>
-  `)}`;
-
   return `
     <div class="report-header">
-      <img src="${hudLogoSvg}" class="hud-logo" alt="US Department of Housing and Urban Development" />
+      <img src="${INSPIRE_LOGO_BASE64}" class="inspire-logo" alt="INSPIRE" style="width: 180px; height: auto; margin: 0 auto 10px; display: block;" />
+      <p style="font-size: 8pt; color: #666; margin-bottom: 15px; text-align: center;">NATIONAL STANDARDS FOR THE PHYSICAL INSPECTION OF REAL ESTATE</p>
       
-      <h1 class="header-title">NSPIRE - NATIONAL STANDARDS FOR THE PHYSICAL INSPECTION OF REAL ESTATE</h1>
+      <h1 class="header-title">INSPIRE INSPECTION REPORT</h1>
       
       <div class="header-metadata">
         <div class="header-left">
@@ -557,10 +549,10 @@ function generateEnhancedDeficiencyTable(deficiencies: DeficiencyEntry[], option
               </td>
               <td>
                 ${options.includeImages && def.imageUri
-                  ? `<img src="${def.imageUri}" alt="Deficiency Image" class="deficiency-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+      ? `<img src="${def.imageUri}" alt="Deficiency Image" class="deficiency-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
                      <div class="image-placeholder" style="display: none;">Image Failed</div>`
-                  : `<div class="image-placeholder">N/A</div>`
-                }
+      : `<div class="image-placeholder">N/A</div>`
+    }
               </td>
               <td>${def.deductionPts}.0</td>
               <td>${def.repeatIndicator ? 'Repeat' : 'Not Repeat'}</td>
@@ -672,12 +664,12 @@ export function generateEnhancedNSPIREReportHTML(
     ${generateEnhancedHeader(report.metadata, options)}
     
     ${options.includeSummaryPage ? generateEnhancedSummaryPage(
-      report.summary,
-      report.categoryBreakdown,
-      report.metadata,
-      report.inspectionData,
-      report.occupancyInfo
-    ) : ''}
+    report.summary,
+    report.categoryBreakdown,
+    report.metadata,
+    report.inspectionData,
+    report.occupancyInfo
+  ) : ''}
     
     ${options.includeDetailedDeficiencies ? generateEnhancedDeficiencyTable(report.deficiencies, options) : ''}
     
@@ -921,7 +913,7 @@ class EnhancedNSPIREPDFReportService {
       certification: {
         certifiedBy: data.inspectorName || data.inspector?.fullName || 'Inspector',
         certificationDate: now.toLocaleDateString(),
-        certificationStatement: 'I certify that this inspection was conducted in accordance with HUD NSPIRE protocols and that the findings documented in this report accurately reflect the conditions observed during the inspection.'
+        certificationStatement: 'I certify that this inspection was conducted in accordance with INSPIRE protocols and that the findings documented in this report accurately reflect the conditions observed during the inspection.'
       }
     };
   }
@@ -930,7 +922,7 @@ class EnhancedNSPIREPDFReportService {
   private mapCategoryToEnhancedNSPIRECode(category: string): string {
     const mapping: Record<string, string> = {
       'structural': 'BE-3',
-      'electrical': 'BS-2', 
+      'electrical': 'BS-2',
       'plumbing': 'BS-1',
       'safety': 'HS-12',
       'hvac': 'BS-5',

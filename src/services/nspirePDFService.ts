@@ -19,6 +19,7 @@ import {
   DEFAULT_PDF_OPTIONS,
   DeficiencySeverity,
 } from '../types/nspireReport';
+import { INSPIRE_LOGO_BASE64 } from '../constants/inspireLogo';
 
 const getImageExtension = (uri: string): string => {
   const cleanUri = uri.split('?')[0].split('#')[0];
@@ -835,10 +836,11 @@ const generateStyles = (options: PDFGenerationOptions): string => {
 const generateHeader = (metadata: InspectionMetadata, options: PDFGenerationOptions): string => {
   return `
     <div class="report-header">
-      ${options.headerLogo ? `<img src="${options.headerLogo}" alt="Logo" style="height: 50px; display: block; margin: 0 auto 10px;" />` : ''}
+      <img src="${INSPIRE_LOGO_BASE64}" alt="INSPIRE" style="width: 180px; height: auto; display: block; margin: 0 auto 10px;" />
+      <p style="font-size: 8pt; color: #666; margin-bottom: 10px; text-align: center;">NATIONAL STANDARDS FOR THE PHYSICAL INSPECTION OF REAL ESTATE</p>
       
       <h1 class="header-title">INSPIRE INSPECTION REPORT</h1>
-      <p class="header-subtitle">HUD National Standards for Physical Inspection of Real Estate</p>
+      <p class="header-subtitle">National Standards for Physical Inspection of Real Estate</p>
       
       <div class="header-grid">
         <div class="header-section">
@@ -1711,7 +1713,7 @@ class NSPIREPDFReportService {
       certification: {
         certifiedBy: 'Inspector Smith',
         certificationDate: now.toLocaleDateString(),
-        certificationStatement: 'I certify that this inspection was conducted in accordance with HUD NSPIRE protocols and that the findings documented in this report accurately reflect the conditions observed during the inspection.',
+        certificationStatement: 'I certify that this inspection was conducted in accordance with INSPIRE protocols and that the findings documented in this report accurately reflect the conditions observed during the inspection.',
       },
     };
   }

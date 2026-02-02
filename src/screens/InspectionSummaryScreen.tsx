@@ -35,27 +35,27 @@ const InspectionSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
 
   // Calculate actual deficiency counts from inspectionData
   const deficiencyCounts = {
-    lifeThreadening: inspectionData?.deficiencies?.filter((d: any) => 
+    lifeThreadening: inspectionData?.deficiencies?.filter((d: any) =>
       (d.deficiency.aiSeverity || d.deficiency.severity) === 'Life-Threatening'
     ).length || 0,
-    severe: inspectionData?.deficiencies?.filter((d: any) => 
+    severe: inspectionData?.deficiencies?.filter((d: any) =>
       (d.deficiency.aiSeverity || d.deficiency.severity) === 'Severe'
     ).length || 0,
-    moderate: inspectionData?.deficiencies?.filter((d: any) => 
+    moderate: inspectionData?.deficiencies?.filter((d: any) =>
       (d.deficiency.aiSeverity || d.deficiency.severity) === 'Moderate'
     ).length || 0,
-    low: inspectionData?.deficiencies?.filter((d: any) => 
+    low: inspectionData?.deficiencies?.filter((d: any) =>
       (d.deficiency.aiSeverity || d.deficiency.severity) === 'Low'
     ).length || 0,
   };
 
   // Calculate scores based on actual deficiencies
   const totalDeficiencies = inspectionData?.deficiencies?.length || 0;
-  const deductionPoints = (deficiencyCounts.lifeThreadening * 10) + 
-                          (deficiencyCounts.severe * 6) + 
-                          (deficiencyCounts.moderate * 3) + 
-                          (deficiencyCounts.low * 1);
-  
+  const deductionPoints = (deficiencyCounts.lifeThreadening * 10) +
+    (deficiencyCounts.severe * 6) +
+    (deficiencyCounts.moderate * 3) +
+    (deficiencyCounts.low * 1);
+
   const preliminaryScore = Math.max(0, 100 - deductionPoints);
   const calculatedScore = preliminaryScore;
   const finalScore = Math.max(0, preliminaryScore - 5); // Slight adjustment for final
@@ -66,16 +66,16 @@ const InspectionSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const handleExportPDF = async () => {
     setExportingPDF(true);
-    
+
     try {
       // Prepare deficiencies array - handle multiple deficiencies
       const deficienciesArray = [];
-      
+
       if (inspectionData?.deficiencies && Array.isArray(inspectionData.deficiencies)) {
         // Multiple deficiencies from AI analysis
         for (let i = 0; i < inspectionData.deficiencies.length; i++) {
           const defItem = inspectionData.deficiencies[i];
-          
+
           // Convert local image to base64 for PDF
           let imageBase64 = null;
           if (defItem.imageUri) {
@@ -92,7 +92,7 @@ const InspectionSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
               }
             }
           }
-          
+
           deficienciesArray.push({
             id: `${i + 1}`,
             building: buildingId,
@@ -182,7 +182,7 @@ const InspectionSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
         certification: {
           certifiedBy: 'Current User',
           certificationDate: inspectionDate,
-          certificationStatement: 'I certify this inspection was conducted per HUD NSPIRE standards.',
+          certificationStatement: 'I certify this inspection was conducted per INSPIRE standards.',
         },
       };
 
@@ -196,7 +196,7 @@ const InspectionSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
         pageSize: 'letter',
         orientation: 'portrait',
       });
-      
+
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(result.uri, {
           mimeType: 'application/pdf',
@@ -204,7 +204,7 @@ const InspectionSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
           UTI: 'com.adobe.pdf',
         });
       }
-      
+
       Alert.alert('PDF Downloaded', 'Report downloaded successfully!', [
         { text: 'Close', style: 'cancel' },
         { text: 'Continue Inspection', onPress: () => navigation.navigate('LocationInspection', { property, selectedUnits, buildingId, location: inspectionData?.location || 'Outside' }) },
@@ -221,11 +221,11 @@ const InspectionSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity 
+        <TouchableOpacity
           onPress={() => navigation.reset({
             index: 0,
             routes: [{ name: 'Dashboard' as never }],
-          })} 
+          })}
           style={styles.backButton}
         >
           <Ionicons name="arrow-back" size={24} color="#1A1A1A" />
@@ -234,21 +234,21 @@ const InspectionSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
         <View style={styles.headerRight} />
       </View>
 
-      <ScrollView 
-        style={styles.scrollView} 
+      <ScrollView
+        style={styles.scrollView}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
         {/* Report Header Card */}
         <View style={styles.reportCard}>
-          <Text style={styles.reportTitle}>HUD INSPIRE INSPECTION REPORT</Text>
+          <Text style={styles.reportTitle}>INSPIRE INSPECTION REPORT</Text>
           <Text style={styles.propertyName}>{property.name || 'Golden Town'}</Text>
           <Text style={styles.propertyAddress}>{property.address}</Text>
           <Text style={styles.inspectionInfo}>
             Inspection #{inspectionId} | {inspectionDate}
           </Text>
-          
-          <TouchableOpacity 
+
+          <TouchableOpacity
             style={styles.exportButton}
             onPress={handleExportPDF}
             disabled={exportingPDF}
@@ -270,16 +270,16 @@ const InspectionSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
             <Text style={styles.scoreLabel}>PRELIMINARY SCORE</Text>
             <Text style={styles.scoreValue}>{preliminaryScore}</Text>
           </View>
-          
+
           <View style={styles.scoreDivider} />
-          
+
           <View style={styles.scoreSection}>
             <Text style={styles.scoreLabel}>CALCULATED SCORE</Text>
             <Text style={styles.scoreValue}>{calculatedScore}</Text>
           </View>
-          
+
           <View style={styles.scoreDivider} />
-          
+
           <View style={styles.scoreSection}>
             <Text style={styles.scoreLabel}>FINAL SCORE</Text>
             <Text style={styles.scoreFinal}>{finalScore}</Text>
@@ -314,26 +314,26 @@ const InspectionSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
         {activeTab === 'summary' ? (
           <View style={styles.summaryCard}>
             <Text style={styles.summaryTitle}>DEFICIENCY SUMMARY</Text>
-            
+
             <View style={styles.deficiencyGrid}>
               <View style={styles.deficiencyItem}>
                 <View style={[styles.deficiencyBar, styles.lifeThreateningBar]} />
                 <Text style={styles.deficiencyCount}>{deficiencyCounts.lifeThreadening}</Text>
                 <Text style={styles.deficiencyLabel}>Life-Threatening</Text>
               </View>
-              
+
               <View style={styles.deficiencyItem}>
                 <View style={[styles.deficiencyBar, styles.severeBar]} />
                 <Text style={styles.deficiencyCount}>{deficiencyCounts.severe}</Text>
                 <Text style={styles.deficiencyLabel}>Severe</Text>
               </View>
-              
+
               <View style={styles.deficiencyItem}>
                 <View style={[styles.deficiencyBar, styles.moderateBar]} />
                 <Text style={styles.deficiencyCount}>{deficiencyCounts.moderate}</Text>
                 <Text style={styles.deficiencyLabel}>Moderate</Text>
               </View>
-              
+
               <View style={styles.deficiencyItem}>
                 <View style={[styles.deficiencyBar, styles.lowBar]} />
                 <Text style={styles.deficiencyCount}>{deficiencyCounts.low}</Text>
@@ -344,22 +344,22 @@ const InspectionSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
             {/* Inspection Details */}
             <View style={styles.detailsSection}>
               <Text style={styles.detailsTitle}>Inspection Details</Text>
-              
+
               <View style={styles.detailRow}>
                 <Text style={styles.detailLabel}>Building:</Text>
                 <Text style={styles.detailValue}>{buildingId}</Text>
               </View>
-              
+
               <View style={styles.detailRow}>
                 <Text style={styles.detailLabel}>Units Inspected:</Text>
                 <Text style={styles.detailValue}>{selectedUnits.length}</Text>
               </View>
-              
+
               <View style={styles.detailRow}>
                 <Text style={styles.detailLabel}>Inspector:</Text>
                 <Text style={styles.detailValue}>Current User</Text>
               </View>
-              
+
               <View style={styles.detailRow}>
                 <Text style={styles.detailLabel}>Date:</Text>
                 <Text style={styles.detailValue}>{inspectionDate}</Text>
@@ -369,7 +369,7 @@ const InspectionSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
         ) : (
           <View style={styles.deficienciesCard}>
             <Text style={styles.deficienciesTitle}>Recorded Deficiencies</Text>
-            
+
             {inspectionData?.deficiencies && inspectionData.deficiencies.length > 0 ? (
               inspectionData.deficiencies.map((defItem: any, index: number) => (
                 <View key={index} style={[styles.deficiencyDetailCard, index > 0 && { marginTop: 16 }]}>
@@ -385,17 +385,17 @@ const InspectionSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
                       <Text style={styles.severityText}>{defItem.deficiency.aiSeverity || defItem.deficiency.severity}</Text>
                     </View>
                   </View>
-                  
+
                   <Text style={styles.deficiencyName}>{defItem.deficiency.name}</Text>
                   <Text style={styles.deficiencyDescription}>{defItem.deficiency.detail}</Text>
-                  
+
                   {defItem.deficiency.aiAnalysis && (
                     <View style={styles.aiAnalysisSection}>
                       <Text style={styles.aiAnalysisLabel}>AI Analysis:</Text>
                       <Text style={styles.aiAnalysisText}>{defItem.deficiency.aiAnalysis}</Text>
                     </View>
                   )}
-                  
+
                   <View style={styles.deficiencyMeta}>
                     <View style={styles.metaItem}>
                       <Ionicons name="time-outline" size={16} color="#666666" />
@@ -406,7 +406,7 @@ const InspectionSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
                       <Text style={styles.metaText}>{defItem.location}</Text>
                     </View>
                   </View>
-                  
+
                   {defItem.imageUrl && (
                     <View style={styles.imagesInfo}>
                       <Ionicons name="images-outline" size={16} color="#0E7490" />
