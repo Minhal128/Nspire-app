@@ -1,0 +1,282 @@
+// Outside Inspection Module Scoring Calculations
+// Specialized scoring logic for NSPIRE Outside inspection categories
+// Handles category-based and deficiency-based severity/points lost mapping
+
+export interface OutsideSeverityConfig {
+  severity: 'Life-Threatening' | 'Severe' | 'Moderate' | 'Low';
+  pointsLostFormula: number; // The numerator in the formula Pts Lost = X / n
+}
+
+// Category-based severity mapping for Outside inspection
+// Maps category number to severity level and points lost numerator
+
+// Moderate: Categories 1, 4, 5, 8, 10, 11, 17, 18, 20, 21, 22, 24
+// Formula: Pts Lost = 4.5 / n
+const MODERATE_CATEGORIES = [1, 4, 5, 8, 10, 11, 17, 18, 20, 21, 22, 24];
+
+// Life-Threatening Set 1: Categories 6, 7, 9, 12, 13, 19, 23, 25
+// Formula: Pts Lost = 24.8 / n
+const LIFE_THREATENING_SET1_CATEGORIES = [6, 7, 9, 12, 13, 19, 23, 25];
+
+// Life-Threatening Set 2: Categories 2, 3
+// Formula: Pts Lost = 49.60 / n
+const LIFE_THREATENING_SET2_CATEGORIES = [2, 3];
+
+// Low: Category 15
+// Formula: Pts Lost = 2.00 / n
+const LOW_CATEGORIES = [15];
+
+// Severe: Categories 14, 16
+// Formula: Pts Lost = 12.20 / n
+const SEVERE_CATEGORIES = [14, 16];
+
+// Deficiency-based severity overrides (take precedence over category-based)
+// These are partial text matches for deficiency descriptions
+
+// Severe severity deficiencies: Pts Lost = 12.20 / n
+const SEVERE_DEFICIENCY_PATTERNS = [
+  // AFCI patterns
+  'afci outlet or afci breaker does not reset',
+  'afci outlet or afci breaker does not have visible damage',
+  'afci outlet or afci breaker does not have visible damage, and the test or reset button is inoperable',
+  'afci outlet or afci breaker does not have visible damage and the test or reset button is inoperable',
+  'test or reset button is inoperable',
+  // GFCI patterns
+  'unprotected outlet is present within six feet of a water source',
+  'outlet is not gfci protected',
+  'gfci outlet or gfci breaker does not have visible damage',
+  'gfci outlet or gfci breaker does not have visible damage and the test or reset button is inoperable',
+  'an outlet, not gfci-protected, is present within six feet of a water source',
+  'outlet deigned for major appliances',
+  // Overcurrent protection
+  'overcurrent protection device is contaminated',
+  'overcurrent protection device (i.e., fuse or breaker) is contaminated',
+  'contaminated by infestation, paint, or other foreign materials',
+  'contaminated (e.g., water, rust, corrosion)',
+  // Sharp edges
+  'sharp edge that can result in a cut or puncture hazard',
+  'sharp edge that can result in a cut or puncture hazard that is likely to require emergency care',
+  'shrp edge that can result in a cut or puncture hazard', // typo variant
+];
+
+// Low severity deficiencies: Pts Lost = 2.00 / n
+const LOW_DEFICIENCY_PATTERNS = [
+  // Prior installation
+  'evidence of prior installation, but is now not present or is incomplete',
+  // Airflow
+  'airflow component is damaged or incomplete',
+  'airflow component is dmaged or incomplete', // typo variant
+  // Site drainage / water runoff
+  'water runoff is unable to flow through the site drainage system',
+  'standing water is present at the entrance of the outflow pipe',
+  'drainage is blocked such that the inspector believes water is unable to drain',
+  'water is unable to drain in the event of precipitation',
+  // Litter
+  'litter is accumulated in an undesignated area',
+  'litter is considered deficient if 10 or more small items',
+  '10 or more small items or any large discarded items',
+  'found in a 10×10 ft area not designated for garbage disposal',
+  '10x10 ft area not designated for garbage disposal',
+];
+
+/**
+ * Get severity configuration based on category number
+ * @param categoryNumber The NSPIRE Outside category number (1-26)
+ * @returns Severity configuration with severity level and points lost formula numerator
+ */
+export function getSeverityByCategoryNumber(categoryNumber: number): OutsideSeverityConfig {
+  if (MODERATE_CATEGORIES.includes(categoryNumber)) {
+    return { severity: 'Moderate', pointsLostFormula: 4.5 };
+  }
+  if (LIFE_THREATENING_SET1_CATEGORIES.includes(categoryNumber)) {
+    return { severity: 'Life-Threatening', pointsLostFormula: 24.8 };
+  }
+  if (LIFE_THREATENING_SET2_CATEGORIES.includes(categoryNumber)) {
+    return { severity: 'Life-Threatening', pointsLostFormula: 49.60 };
+  }
+  if (LOW_CATEGORIES.includes(categoryNumber)) {
+    return { severity: 'Low', pointsLostFormula: 2.00 };
+  }
+  if (SEVERE_CATEGORIES.includes(categoryNumber)) {
+    return { severity: 'Severe', pointsLostFormula: 12.20 };
+  }
+  
+  // Default to Moderate if category not found
+  return { severity: 'Moderate', pointsLostFormula: 4.5 };
+}
+
+/**
+ * Check if deficiency description matches any severe deficiency patterns
+ * @param deficiencyDescription The deficiency description or detail text
+ * @returns True if matches severe pattern
+ */
+function matchesSevereDeficiencyPattern(deficiencyDescription: string): boolean {
+  const normalizedDesc = deficiencyDescription.toLowerCase();
+  return SEVERE_DEFICIENCY_PATTERNS.some(pattern => normalizedDesc.includes(pattern.toLowerCase()));
+}
+
+/**
+ * Check if deficiency description matches any low severity deficiency patterns
+ * @param deficiencyDescription The deficiency description or detail text
+ * @returns True if matches low severity pattern
+ */
+function matchesLowDeficiencyPattern(deficiencyDescription: string): boolean {
+  const normalizedDesc = deficiencyDescription.toLowerCase();
+  return LOW_DEFICIENCY_PATTERNS.some(pattern => normalizedDesc.includes(pattern.toLowerCase()));
+}
+
+/**
+ * Get severity configuration with deficiency-based override
+ * Deficiency-based rules take precedence over category-based rules
+ * 
+ * @param categoryNumber The NSPIRE Outside category number (1-26)
+ * @param deficiencyDescription Optional deficiency description for override checking
+ * @returns Severity configuration with severity level and points lost formula numerator
+ */
+export function getOutsideSeverityConfig(
+  categoryNumber: number,
+  deficiencyDescription?: string
+): OutsideSeverityConfig {
+  // Check deficiency-based overrides first (they take precedence)
+  if (deficiencyDescription) {
+    // Check for severe deficiency patterns
+    if (matchesSevereDeficiencyPattern(deficiencyDescription)) {
+      return { severity: 'Severe', pointsLostFormula: 12.20 };
+    }
+    
+    // Check for low severity deficiency patterns
+    if (matchesLowDeficiencyPattern(deficiencyDescription)) {
+      return { severity: 'Low', pointsLostFormula: 2.00 };
+    }
+  }
+  
+  // Fall back to category-based severity
+  return getSeverityByCategoryNumber(categoryNumber);
+}
+
+export interface OutsideScoringInput {
+  categoryNumber: number;       // NSPIRE Outside category number (1-26)
+  totalSamples: number;         // n - number of sample units
+  deficiencyDescription?: string; // Optional deficiency description for override checking
+  deficiencyCount?: number;     // Number of deficiencies (default: 1)
+}
+
+export interface OutsideScoringResult {
+  categoryNumber: number;       // Category number
+  totalSamples: number;         // n - total sample units
+  severity: string;             // Resolved severity level
+  pointsLostRaw: number;        // Pts Lost (Raw) = numerator / n (for 1 deficiency)
+  pointsLost: number;           // Total Pts Lost = (numerator / n) × deficiency count
+  deficiencyCount: number;      // Number of deficiencies
+  possibleScore: number;        // Fixed at 25
+  maxPtsLost: number;           // Max Pts Lost = Pts Lost (Raw) / n
+  score: number;                // Score = 25 - maxPtsLost
+  formulaNumerator: number;     // The numerator used in the formula
+  isDeficiencyOverride: boolean; // Whether deficiency-based override was applied
+}
+
+const POSSIBLE_SCORE = 25;
+
+/**
+ * Calculate scoring for Outside inspection
+ * 
+ * Formulas:
+ *   Points Lost (Raw) = formulaNumerator / n
+ *   Max Points Lost = Points Lost (Raw) / n
+ *   Score = Possible Score (25) − Max Points Lost
+ * 
+ * @param input Scoring input with category number, samples, and optional deficiency description
+ * @returns Complete scoring result
+ */
+export function calculateOutsideScore(input: OutsideScoringInput): OutsideScoringResult {
+  const { 
+    categoryNumber, 
+    totalSamples, 
+    deficiencyDescription,
+    deficiencyCount = 1 
+  } = input;
+
+  // Ensure we don't divide by zero - minimum 1 sample
+  const n = Math.max(totalSamples, 1);
+  const count = Math.max(deficiencyCount, 0);
+
+  // Get severity config (with deficiency override if applicable)
+  const severityConfig = getOutsideSeverityConfig(categoryNumber, deficiencyDescription);
+  
+  // Check if deficiency override was applied
+  const categoryOnlyConfig = getSeverityByCategoryNumber(categoryNumber);
+  const isDeficiencyOverride = deficiencyDescription !== undefined && 
+    (severityConfig.severity !== categoryOnlyConfig.severity || 
+     severityConfig.pointsLostFormula !== categoryOnlyConfig.pointsLostFormula);
+
+  // Calculate Points Lost (Raw) = numerator / n
+  const pointsLostRaw = severityConfig.pointsLostFormula / n;
+
+  // Pts Lost = the base formula numerator (4.5, 24.8, 49.60, 2.00, or 12.20)
+  // This is the fixed points lost value based on severity/category
+  const pointsLost = severityConfig.pointsLostFormula;
+
+  // Calculate Max Points Lost = Points Lost (Raw) / n
+  const maxPtsLost = pointsLostRaw / n;
+
+  // Calculate Score = Possible Score (25) - Max Points Lost
+  const score = POSSIBLE_SCORE - maxPtsLost;
+
+  return {
+    categoryNumber,
+    totalSamples: n,
+    severity: severityConfig.severity,
+    pointsLostRaw: parseFloat(pointsLostRaw.toFixed(4)),
+    pointsLost: parseFloat(pointsLost.toFixed(4)),
+    deficiencyCount: count,
+    possibleScore: POSSIBLE_SCORE,
+    maxPtsLost: parseFloat(maxPtsLost.toFixed(4)),
+    score: parseFloat(score.toFixed(2)),
+    formulaNumerator: severityConfig.pointsLostFormula,
+    isDeficiencyOverride,
+  };
+}
+
+/**
+ * Extract category number from item ID or name
+ * @param itemId The item ID (e.g., "1", "2", etc.)
+ * @param itemName Optional item name to extract number from prefix
+ * @returns The category number
+ */
+export function extractCategoryNumber(itemId?: string, itemName?: string): number {
+  // Try to get from itemId first
+  if (itemId) {
+    const num = parseInt(itemId, 10);
+    if (!isNaN(num) && num >= 1 && num <= 26) {
+      return num;
+    }
+  }
+  
+  // Try to extract from item name (e.g., "1. Address and Signage")
+  if (itemName) {
+    const match = itemName.match(/^(\d+)\./);
+    if (match) {
+      const num = parseInt(match[1], 10);
+      if (!isNaN(num) && num >= 1 && num <= 26) {
+        return num;
+      }
+    }
+  }
+  
+  // Default to category 1 if not found
+  return 1;
+}
+
+// Export category constants for external use
+export const OUTSIDE_SCORING_CATEGORIES = {
+  MODERATE: MODERATE_CATEGORIES,
+  LIFE_THREATENING_SET1: LIFE_THREATENING_SET1_CATEGORIES,
+  LIFE_THREATENING_SET2: LIFE_THREATENING_SET2_CATEGORIES,
+  LOW: LOW_CATEGORIES,
+  SEVERE: SEVERE_CATEGORIES,
+};
+
+export const DEFICIENCY_OVERRIDE_PATTERNS = {
+  SEVERE: SEVERE_DEFICIENCY_PATTERNS,
+  LOW: LOW_DEFICIENCY_PATTERNS,
+};

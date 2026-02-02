@@ -8,7 +8,10 @@ import {
   SafeAreaView,
   Alert,
   ActivityIndicator,
+  Modal,
+  Dimensions,
 } from 'react-native';
+import { WebView } from 'react-native-webview';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../types/navigation';
@@ -28,10 +31,14 @@ interface Props {
   route: InspectionSummaryScreenRouteProp;
 }
 
+const { width, height } = Dimensions.get('window');
+
 const InspectionSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
   const { property, selectedUnits, buildingId, inspectionData } = route.params;
   const [activeTab, setActiveTab] = useState<'summary' | 'deficiencies'>('summary');
   const [exportingPDF, setExportingPDF] = useState(false);
+  const [previewModalVisible, setPreviewModalVisible] = useState(false);
+  const [previewHtml, setPreviewHtml] = useState('');
 
   // Calculate actual deficiency counts from inspectionData
   const deficiencyCounts = {
@@ -63,6 +70,127 @@ const InspectionSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const inspectionId = `697e0d82e115b966d90cc009`;
   const inspectionDate = new Date().toLocaleDateString();
+
+  const handlePreviewReport = () => {
+    // Generate preview HTML
+    const html = generatePreviewHtml();
+    setPreviewHtml(html);
+    setPreviewModalVisible(true);
+  };
+
+  const generatePreviewHtml = (): string => {
+    const propertyName = property.name || 'Property';
+    const propertyAddress = property.address || '';
+    
+    // Generate deficiencies HTML
+    let deficienciesHtml = '';
+    if (inspectionData?.deficiencies && inspectionData.deficiencies.length > 0) {
+      deficienciesHtml = inspectionData.deficiencies.map((def: any, index: number) => {
+        const severity = def.deficiency?.aiSeverity || def.deficiency?.severity || 'Moderate';
+        const severityColor = 
+          severity === 'Life-Threatening' ? '#DC2626' :
+          severity === 'Severe' ? '#F97316' :
+          severity === 'Moderate' ? '#EAB308' : '#84CC16';
+        
+        return `
+          <div style="background: #f8f9fa; border-radius: 8px; padding: 16px; margin-bottom: 12px; border-left: 4px solid ${severityColor};">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <span style="font-weight: 600; color: #1a1a1a;">${def.deficiency?.name || 'Deficiency ' + (index + 1)}</span>
+              <span style="background: ${severityColor}; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px;">${severity}</span>
+            </div>
+            <p style="color: #666; margin: 0; font-size: 14px;">${def.deficiency?.detail || 'No details available'}</p>
+            ${def.location ? `<p style="color: #999; margin: 8px 0 0 0; font-size: 12px;">Location: ${def.location}</p>` : ''}
+          </div>
+        `;
+      }).join('');
+    } else {
+      deficienciesHtml = '<p style="color: #666; text-align: center; padding: 20px;">No deficiencies recorded</p>';
+    }
+
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 20px; background: #fff; }
+          .header { text-align: center; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 2px solid #0E7490; }
+          .title { color: #0E7490; font-size: 20px; font-weight: bold; margin-bottom: 8px; }
+          .property-name { font-size: 18px; font-weight: 600; color: #1a1a1a; }
+          .property-address { font-size: 14px; color: #666; margin-top: 4px; }
+          .inspection-info { font-size: 13px; color: #999; margin-top: 8px; }
+          .score-card { background: #0E7490; border-radius: 12px; padding: 20px; margin-bottom: 20px; color: white; }
+          .score-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.2); }
+          .score-row:last-child { border-bottom: none; }
+          .score-label { font-size: 12px; letter-spacing: 0.5px; opacity: 0.9; }
+          .score-value { font-size: 32px; font-weight: bold; }
+          .final-score { font-size: 40px; }
+          .passing-badge { background: rgba(255,255,255,0.2); padding: 4px 12px; border-radius: 12px; font-size: 14px; display: inline-block; margin-top: 8px; }
+          .section { margin-bottom: 20px; }
+          .section-title { font-size: 16px; font-weight: 700; color: #0E7490; margin-bottom: 12px; }
+          .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+          .summary-item { text-align: center; padding: 16px 8px; background: #f8f9fa; border-radius: 8px; }
+          .summary-count { font-size: 24px; font-weight: bold; color: #1a1a1a; }
+          .summary-label { font-size: 11px; color: #666; margin-top: 4px; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div class="title">INSPIRE INSPECTION REPORT</div>
+          <div class="property-name">${propertyName}</div>
+          <div class="property-address">${propertyAddress}</div>
+          <div class="inspection-info">Inspection #${inspectionId} | ${inspectionDate}</div>
+        </div>
+        
+        <div class="score-card">
+          <div class="score-row">
+            <span class="score-label">PRELIMINARY SCORE</span>
+            <span class="score-value">${preliminaryScore}</span>
+          </div>
+          <div class="score-row">
+            <span class="score-label">CALCULATED SCORE</span>
+            <span class="score-value">${calculatedScore}</span>
+          </div>
+          <div class="score-row">
+            <span class="score-label">FINAL SCORE</span>
+            <div>
+              <span class="score-value final-score">${finalScore}</span>
+              <div class="passing-badge">✓ ${isPassing ? 'Passing' : 'Failing'}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">DEFICIENCY SUMMARY</div>
+          <div class="summary-grid">
+            <div class="summary-item" style="border-top: 4px solid #DC2626;">
+              <div class="summary-count">${deficiencyCounts.lifeThreadening}</div>
+              <div class="summary-label">Life-Threatening</div>
+            </div>
+            <div class="summary-item" style="border-top: 4px solid #F97316;">
+              <div class="summary-count">${deficiencyCounts.severe}</div>
+              <div class="summary-label">Severe</div>
+            </div>
+            <div class="summary-item" style="border-top: 4px solid #EAB308;">
+              <div class="summary-count">${deficiencyCounts.moderate}</div>
+              <div class="summary-label">Moderate</div>
+            </div>
+            <div class="summary-item" style="border-top: 4px solid #84CC16;">
+              <div class="summary-count">${deficiencyCounts.low}</div>
+              <div class="summary-label">Low</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">DEFICIENCIES</div>
+          ${deficienciesHtml}
+        </div>
+      </body>
+      </html>
+    `;
+  };
 
   const handleExportPDF = async () => {
     setExportingPDF(true);
@@ -262,6 +390,14 @@ const InspectionSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
               </>
             )}
           </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.previewButton}
+            onPress={handlePreviewReport}
+          >
+            <Ionicons name="eye-outline" size={20} color="#0E7490" />
+            <Text style={styles.previewButtonText}>Preview Report</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Score Card */}
@@ -424,6 +560,79 @@ const InspectionSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
           </View>
         )}
       </ScrollView>
+
+      {/* Preview Report Modal */}
+      <Modal
+        visible={previewModalVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setPreviewModalVisible(false)}
+      >
+        <SafeAreaView style={styles.previewModalContainer}>
+          {/* Modal Header */}
+          <View style={styles.previewModalHeader}>
+            <View style={styles.previewModalTitleContainer}>
+              <Text style={styles.previewModalTitle}>Report Preview</Text>
+              <Text style={styles.previewModalSubtitle}>{property.name || 'Property'}</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.previewModalCloseButton}
+              onPress={() => setPreviewModalVisible(false)}
+            >
+              <Ionicons name="close" size={24} color="#374151" />
+            </TouchableOpacity>
+          </View>
+
+          {/* Modal Content */}
+          <View style={styles.previewModalContent}>
+            <WebView
+              source={{ html: previewHtml }}
+              style={styles.previewWebView}
+              scalesPageToFit={true}
+              showsVerticalScrollIndicator={true}
+              showsHorizontalScrollIndicator={false}
+              startInLoadingState={true}
+              renderLoading={() => (
+                <View style={styles.previewLoadingContainer}>
+                  <ActivityIndicator size="large" color="#0E7490" />
+                  <Text style={styles.previewLoadingText}>Loading preview...</Text>
+                </View>
+              )}
+              onError={(syntheticEvent) => {
+                const { nativeEvent } = syntheticEvent;
+                console.error('WebView error:', nativeEvent);
+              }}
+              javaScriptEnabled={false}
+              domStorageEnabled={false}
+              cacheEnabled={false}
+              originWhitelist={['*']}
+              scrollEnabled={true}
+              bounces={true}
+            />
+          </View>
+
+          {/* Modal Footer */}
+          <View style={styles.previewModalFooter}>
+            <TouchableOpacity
+              style={styles.previewModalSecondaryButton}
+              onPress={() => setPreviewModalVisible(false)}
+            >
+              <Ionicons name="close-outline" size={18} color="#374151" />
+              <Text style={styles.previewModalSecondaryButtonText}>Close</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.previewModalPrimaryButton}
+              onPress={() => {
+                setPreviewModalVisible(false);
+                handleExportPDF();
+              }}
+            >
+              <Ionicons name="download-outline" size={18} color="#FFFFFF" />
+              <Text style={styles.previewModalPrimaryButtonText}>Export PDF</Text>
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -789,6 +998,116 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666666',
     marginTop: 12,
+  },
+  previewButton: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    paddingVertical: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 12,
+    borderWidth: 2,
+    borderColor: '#0E7490',
+  },
+  previewButtonText: {
+    color: '#0E7490',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  // Preview Modal Styles
+  previewModalContainer: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  previewModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+    backgroundColor: '#F9FAFB',
+  },
+  previewModalTitleContainer: {
+    flex: 1,
+  },
+  previewModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  previewModalSubtitle: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  previewModalCloseButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: '#F3F4F6',
+  },
+  previewModalContent: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  previewWebView: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  previewLoadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  previewLoadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#6B7280',
+  },
+  previewModalFooter: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+    backgroundColor: '#F9FAFB',
+    gap: 12,
+  },
+  previewModalSecondaryButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 8,
+    gap: 8,
+  },
+  previewModalSecondaryButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  previewModalPrimaryButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: '#0E7490',
+    borderRadius: 8,
+    gap: 8,
+  },
+  previewModalPrimaryButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
 });
 

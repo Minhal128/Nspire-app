@@ -15,7 +15,7 @@ export const SEVERITY_LEVELS: { [key: string]: SeverityConfig } = {
     'Low': { name: 'Low', maxPointsLost: 2.40 },
 };
 
-export const POSSIBLE_SCORE = 50; // Fixed 50-point base score
+export const POSSIBLE_SCORE = 25; // Fixed 25-point base score
 
 export interface ScoringInput {
     totalSamples: number;      // n - total number of inspected units/samples
@@ -40,7 +40,8 @@ export interface ScoringResult {
  * Formula:
  *   Points Lost (Raw) = MaxPointsLost / n
  *   Total Points Lost = (MaxPointsLost / n) × v
- *   Section Score = 50 − TotalPointsLost
+ *   Max Pts Lost = Points Lost (Raw) / n
+ *   Section Score = 25 − Max Pts Lost
  * 
  * @param input Scoring input parameters
  * @returns Complete scoring result with all intermediate values
@@ -50,30 +51,32 @@ export function calculateUnitScore(input: ScoringInput): ScoringResult {
 
     // Get max points lost based on severity
     const severityConfig = SEVERITY_LEVELS[severity] || SEVERITY_LEVELS['Moderate'];
-    const maxPtsLost = severityConfig.maxPointsLost;
+    const maxPointsLostBase = severityConfig.maxPointsLost;
 
     // Ensure we don't divide by zero - minimum 1 sample
     const n = Math.max(totalSamples, 1);
     const v = Math.max(deficiencies, 0);
 
     // Calculate Points Lost (Raw) = MaxPointsLost / n
-    const ptsLostRaw = maxPtsLost / n;
+    const ptsLostRaw = maxPointsLostBase / n;
 
     // Calculate Total Points Lost = (MaxPointsLost / n) × v
     const ptsLost = ptsLostRaw * v;
 
-    // Calculate Section Score = 50 − TotalPointsLost
-    // Score can go negative if too many deficiencies
-    const score = POSSIBLE_SCORE - ptsLost;
+    // Calculate Max Pts Lost = Points Lost (Raw) / n
+    const maxPtsLost = ptsLostRaw / n;
+
+    // Calculate Section Score = 25 − Max Pts Lost
+    const score = POSSIBLE_SCORE - maxPtsLost;
 
     return {
         allSample: n,
         deficiencies: v,
         violations: v, // Backward compatibility alias
-        ptsLostRaw: parseFloat(ptsLostRaw.toFixed(2)),
-        ptsLost: parseFloat(ptsLost.toFixed(2)),
+        ptsLostRaw: parseFloat(ptsLostRaw.toFixed(4)),
+        ptsLost: parseFloat(ptsLost.toFixed(4)),
         possibleScore: POSSIBLE_SCORE,
-        maxPtsLost,
+        maxPtsLost: parseFloat(maxPtsLost.toFixed(4)),
         score: parseFloat(score.toFixed(2)),
         severity: severityConfig.name,
     };
@@ -245,3 +248,17 @@ export const DEFICIENCY_OPTIONS = Array.from({ length: 21 }, (_, i) => ({
 
 // Alias for backward compatibility
 export const VIOLATION_OPTIONS = DEFICIENCY_OPTIONS;
+
+// Re-export Outside-specific scoring utilities
+export { 
+    calculateOutsideScore,
+    getOutsideSeverityConfig,
+    extractCategoryNumber,
+    OUTSIDE_SCORING_CATEGORIES,
+    DEFICIENCY_OVERRIDE_PATTERNS,
+} from './outsideScoringCalculations';
+export type { 
+    OutsideSeverityConfig,
+    OutsideScoringInput,
+    OutsideScoringResult,
+} from './outsideScoringCalculations';

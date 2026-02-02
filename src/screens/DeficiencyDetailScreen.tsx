@@ -28,6 +28,32 @@ import {
 import { cloudinaryService } from '../services/cloudinaryService';
 import { geminiService } from '../services/openaiService';
 import { ScoringResult, calculateUnitScore, POSSIBLE_SCORE } from '../utils/scoringCalculations';
+import { 
+  calculateOutsideScore, 
+  extractCategoryNumber, 
+  OutsideScoringResult 
+} from '../utils/outsideScoringCalculations';
+
+// Outside inspection location options
+const OUTSIDE_LOCATION_OPTIONS = [
+  'Building Site N',
+  'Building Site S',
+  'Building Site W',
+  'Building Site E',
+  'Courtyard',
+  'Exterior E',
+  'Exterior N',
+  'Exterior S',
+  'Exterior W',
+  'Garage/Carport',
+  'Grounds',
+  'Other',
+  'Parking Lot/Driveway/Roads',
+  'Patio/Porch/Balcony',
+  'Playground',
+  'Roof (flat)',
+  'Sidewalks/Walkways/Stoops',
+];
 
 type DeficiencyDetailScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -72,6 +98,14 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
   // Scoring state - automatically calculated based on deficiency selection
   const [scoringResult, setScoringResult] = useState<ScoringResult | null>(null);
+  const [outsideScoringResult, setOutsideScoringResult] = useState<OutsideScoringResult | null>(null);
+
+  // Outside location picker state
+  const [selectedOutsideLocation, setSelectedOutsideLocation] = useState<string>(OUTSIDE_LOCATION_OPTIONS[0]);
+  const [showLocationPicker, setShowLocationPicker] = useState(false);
+
+  // Check if we're in the Outside inspection module
+  const isOutsideLocation = location?.toLowerCase() === 'outside';
 
   // Get total samples from selectedUnits (default to 20 if not available)
   const totalSamples = selectedUnits?.length || 20;
@@ -81,13 +115,50 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
   // Update scoring dynamically when deficiency is selected/changed
   useEffect(() => {
-    const result = calculateUnitScore({
-      totalSamples,
-      deficiencies: deficiencyCount,
-      severity: selectedDeficiency?.severity || 'Moderate',
-    });
-    setScoringResult(result);
-  }, [selectedDeficiency, deficiencyCount, totalSamples]);
+    if (isOutsideLocation) {
+      // Use Outside-specific scoring with category-based and deficiency-based rules
+      const categoryNumber = extractCategoryNumber(itemId, itemName);
+      // Include name, detail, AND criteria fields for pattern matching
+      const deficiencyDescription = [
+        selectedDeficiency?.name,
+        selectedDeficiency?.detail,
+        selectedDeficiency?.criteria,
+        customDeficiencyDetail,
+        customDeficiencyCriteria,
+      ].filter(Boolean).join(' ') || '';
+      
+      const outsideResult = calculateOutsideScore({
+        categoryNumber,
+        totalSamples,
+        deficiencyDescription,
+        deficiencyCount,
+      });
+      setOutsideScoringResult(outsideResult);
+      
+      // Also set the standard scoring result for compatibility
+      const result = calculateUnitScore({
+        totalSamples,
+        deficiencies: deficiencyCount,
+        severity: outsideResult.severity as 'Life-Threatening' | 'Severe' | 'Moderate' | 'Low',
+      });
+      // Override with Outside-specific values
+      result.ptsLostRaw = outsideResult.pointsLostRaw;
+      result.ptsLost = outsideResult.pointsLost;
+      result.maxPtsLost = outsideResult.maxPtsLost;
+      result.score = outsideResult.score;
+      result.severity = outsideResult.severity;
+      setScoringResult(result);
+    } else {
+      // Use standard scoring for non-Outside locations
+      const result = calculateUnitScore({
+        totalSamples,
+        deficiencies: deficiencyCount,
+        severity: selectedDeficiency?.severity || 'Moderate',
+      });
+      setScoringResult(result);
+      setOutsideScoringResult(null);
+    }
+  }, [selectedDeficiency, deficiencyCount, totalSamples, isOutsideLocation, itemId, itemName, customDeficiencyDetail, customDeficiencyCriteria]);
 
   useEffect(() => {
     // Check if item has subcategories (e.g., Door in Outside section)
@@ -269,14 +340,25 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           analyzedDeficiencies.push({
             deficiency: {
               ...selectedDeficiency,
+              // Override severity with Outside-specific scoring if applicable
+              severity: isOutsideLocation && outsideScoringResult 
+                ? outsideScoringResult.severity as 'Life-Threatening' | 'Severe' | 'Moderate' | 'Low'
+                : selectedDeficiency.severity,
               aiAnalysis: aiAnalysis.analysis,
               aiSeverity: aiAnalysis.severity,
               aiRecommendations: aiAnalysis.recommendations,
+              // Include Outside-specific scoring info
+              ...(isOutsideLocation && outsideScoringResult && {
+                categoryNumber: outsideScoringResult.categoryNumber,
+                pointsLostFormula: outsideScoringResult.formulaNumerator,
+                pointsLostRaw: outsideScoringResult.pointsLostRaw,
+                isDeficiencyOverride: outsideScoringResult.isDeficiencyOverride,
+              }),
             },
             imageUrl: uploadResult.secure_url, // Cloudinary URL for storage
             imageUri: imageUri, // Local URI for display
             note: note || aiAnalysis.analysis,
-            location,
+            location: isOutsideLocation ? selectedOutsideLocation : location,
             itemName,
             itemId,
             analyzedAt: new Date().toISOString(),
@@ -285,11 +367,24 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           console.error(`Error processing image ${i + 1}:`, error);
           // Still add the deficiency without AI analysis
           analyzedDeficiencies.push({
-            deficiency: selectedDeficiency,
+            deficiency: {
+              ...selectedDeficiency,
+              // Override severity with Outside-specific scoring if applicable
+              severity: isOutsideLocation && outsideScoringResult 
+                ? outsideScoringResult.severity as 'Life-Threatening' | 'Severe' | 'Moderate' | 'Low'
+                : selectedDeficiency.severity,
+              // Include Outside-specific scoring info
+              ...(isOutsideLocation && outsideScoringResult && {
+                categoryNumber: outsideScoringResult.categoryNumber,
+                pointsLostFormula: outsideScoringResult.formulaNumerator,
+                pointsLostRaw: outsideScoringResult.pointsLostRaw,
+                isDeficiencyOverride: outsideScoringResult.isDeficiencyOverride,
+              }),
+            },
             imageUrl: null,
             imageUri: imageUri,
             note,
-            location,
+            location: isOutsideLocation ? selectedOutsideLocation : location,
             itemName,
             itemId,
             analyzedAt: new Date().toISOString(),
@@ -305,14 +400,20 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         inspectionData: {
           deficiencies: analyzedDeficiencies, // Array of deficiencies
           totalImages: images.length,
-          location,
+          location: isOutsideLocation ? selectedOutsideLocation : location,
           itemName,
           itemId,
           scoringResult: scoringResult || calculateUnitScore({
             totalSamples,
             deficiencies: deficiencyCount,
-            severity: selectedDeficiency?.severity || 'Moderate',
+            severity: isOutsideLocation && outsideScoringResult 
+              ? outsideScoringResult.severity as 'Life-Threatening' | 'Severe' | 'Moderate' | 'Low'
+              : (selectedDeficiency?.severity || 'Moderate'),
           }),
+          // Include Outside-specific scoring information
+          outsideScoringResult: isOutsideLocation ? outsideScoringResult : undefined,
+          isOutsideInspection: isOutsideLocation,
+          outsideLocation: isOutsideLocation ? selectedOutsideLocation : undefined,
         },
       });
 
@@ -544,16 +645,19 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             <Text style={styles.sectionLabel}>HEALTH & SAFETY</Text>
             <View style={[
               styles.compactDropdown,
-              selectedDeficiency?.severity === 'Life-Threatening' && styles.severityLifeThreateningBg,
-              selectedDeficiency?.severity === 'Severe' && styles.severitySevereBg,
-              selectedDeficiency?.severity === 'Moderate' && styles.severityModerateBg,
-              selectedDeficiency?.severity === 'Low' && styles.severityLowBg,
+              // Use resolved severity from Outside scoring when applicable
+              (isOutsideLocation ? scoringResult?.severity : selectedDeficiency?.severity) === 'Life-Threatening' && styles.severityLifeThreateningBg,
+              (isOutsideLocation ? scoringResult?.severity : selectedDeficiency?.severity) === 'Severe' && styles.severitySevereBg,
+              (isOutsideLocation ? scoringResult?.severity : selectedDeficiency?.severity) === 'Moderate' && styles.severityModerateBg,
+              (isOutsideLocation ? scoringResult?.severity : selectedDeficiency?.severity) === 'Low' && styles.severityLowBg,
             ]}>
               <Text style={[
                 styles.compactDropdownText,
-                selectedDeficiency?.severity && styles.severityTextWhite
+                (isOutsideLocation ? scoringResult?.severity : selectedDeficiency?.severity) && styles.severityTextWhite
               ]}>
-                {selectedDeficiency ? selectedDeficiency.severity : 'Low'}
+                {isOutsideLocation 
+                  ? (scoringResult?.severity || 'Moderate')
+                  : (selectedDeficiency ? selectedDeficiency.severity : 'Low')}
               </Text>
             </View>
           </View>
@@ -564,7 +668,39 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           <Text style={styles.sectionLabel}>INSPECTION SCORING</Text>
 
           <View style={styles.scoringCard}>
-            {/* Row 1: All Sample and Pts Lost (Raw) */}
+            {/* Row 1: Location and Severity */}
+            <View style={styles.scoringRow}>
+              <View style={styles.scoringField}>
+                <Text style={styles.scoringFieldLabel}>Location</Text>
+                {isOutsideLocation ? (
+                  <TouchableOpacity
+                    style={styles.locationDropdown}
+                    onPress={() => setShowLocationPicker(true)}
+                  >
+                    <Text style={styles.locationDropdownText} numberOfLines={1}>
+                      {selectedOutsideLocation}
+                    </Text>
+                    <Ionicons name="chevron-down" size={16} color="#0E7490" />
+                  </TouchableOpacity>
+                ) : (
+                  <Text style={styles.scoringFieldValue}>Building {buildingId}</Text>
+                )}
+              </View>
+              <View style={styles.scoringField}>
+                <Text style={styles.scoringFieldLabel}>Severity</Text>
+                <Text style={[
+                  styles.scoringFieldValue,
+                  scoringResult?.severity === 'Life-Threatening' && { color: '#DC2626' },
+                  scoringResult?.severity === 'Severe' && { color: '#EA580C' },
+                  scoringResult?.severity === 'Moderate' && { color: '#CA8A04' },
+                  scoringResult?.severity === 'Low' && { color: '#16A34A' },
+                ]}>
+                  {scoringResult?.severity || 'Moderate'}
+                </Text>
+              </View>
+            </View>
+
+            {/* Row 2: All Sample and Pts Lost (Raw) */}
             <View style={styles.scoringRow}>
               <View style={styles.scoringField}>
                 <Text style={styles.scoringFieldLabel}>All Sample</Text>
@@ -573,12 +709,12 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               <View style={styles.scoringField}>
                 <Text style={styles.scoringFieldLabel}>Pts Lost (Raw)</Text>
                 <Text style={styles.scoringFieldValue}>
-                  {scoringResult?.ptsLostRaw?.toFixed(2) || (5.5 / totalSamples).toFixed(2)}
+                  {scoringResult?.ptsLostRaw?.toFixed(2) || (4.5 / totalSamples).toFixed(2)}
                 </Text>
               </View>
             </View>
 
-            {/* Row 2: Pts Lost and Possible Score */}
+            {/* Row 3: Pts Lost and Possible Score */}
             <View style={styles.scoringRow}>
               <View style={styles.scoringField}>
                 <Text style={styles.scoringFieldLabel}>Pts Lost</Text>
@@ -592,12 +728,12 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               </View>
             </View>
 
-            {/* Row 3: Max Pts Lost and Score */}
+            {/* Row 4: Max Pts Lost and Score */}
             <View style={styles.scoringRow}>
               <View style={styles.scoringField}>
                 <Text style={styles.scoringFieldLabel}>Max Pts Lost</Text>
                 <Text style={styles.scoringFieldValue}>
-                  {scoringResult?.maxPtsLost?.toFixed(2) || '5.50'}
+                  {scoringResult?.maxPtsLost?.toFixed(2) || '0.00'}
                 </Text>
               </View>
               <View style={styles.scoringField}>
@@ -608,13 +744,24 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               </View>
             </View>
 
-            {/* Row 4: # of Deficiencies - Auto-detected */}
+            {/* Row 5: # of Violations */}
             <View style={styles.scoringRow}>
               <View style={styles.scoringFieldFull}>
-                <Text style={styles.scoringFieldLabel}># of Deficiencies</Text>
+                <Text style={styles.scoringFieldLabel}># of Violations</Text>
                 <Text style={styles.scoringFieldValue}>{deficiencyCount}</Text>
               </View>
             </View>
+
+            {/* Show override indicator for Outside inspections */}
+            {isOutsideLocation && outsideScoringResult?.isDeficiencyOverride && (
+              <View style={styles.scoringRow}>
+                <View style={styles.scoringFieldFull}>
+                  <Text style={[styles.scoringFieldLabel, { color: '#0E7490', fontSize: 10 }]}>
+                    * Severity determined by deficiency description override
+                  </Text>
+                </View>
+              </View>
+            )}
           </View>
         </View>
       </ScrollView>
@@ -765,6 +912,59 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             >
               <Text style={styles.expandedTextDoneButtonText}>Done</Text>
             </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Outside Location Picker Modal */}
+      <Modal
+        visible={showLocationPicker}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowLocationPicker(false)}
+      >
+        <View style={styles.pickerModalOverlay}>
+          <View style={styles.pickerModalContent}>
+            <View style={styles.pickerHeader}>
+              <Text style={styles.pickerTitle}>Select Location</Text>
+              <TouchableOpacity
+                onPress={() => setShowLocationPicker(false)}
+                style={styles.pickerCloseButton}
+              >
+                <Ionicons name="close" size={24} color="#666666" />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.pickerSubtitle}>
+              {OUTSIDE_LOCATION_OPTIONS.length} locations available
+            </Text>
+            <ScrollView style={styles.pickerList} showsVerticalScrollIndicator={true}>
+              {OUTSIDE_LOCATION_OPTIONS.map((locationOption, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={[
+                    styles.pickerItem,
+                    selectedOutsideLocation === locationOption && styles.pickerItemSelected
+                  ]}
+                  onPress={() => {
+                    setSelectedOutsideLocation(locationOption);
+                    setShowLocationPicker(false);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.pickerItemHeader}>
+                    <Text style={[
+                      styles.pickerItemText,
+                      selectedOutsideLocation === locationOption && styles.pickerItemTextSelected
+                    ]}>
+                      {locationOption}
+                    </Text>
+                    {selectedOutsideLocation === locationOption && (
+                      <Ionicons name="checkmark-circle" size={20} color="#0E7490" />
+                    )}
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -1368,6 +1568,23 @@ const styles = StyleSheet.create({
     color: '#0E7490',
     fontWeight: '700',
     fontSize: 16,
+  },
+  locationDropdown: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F3F4F6',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#0E7490',
+  },
+  locationDropdownText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1F2937',
+    flex: 1,
   },
 });
 
