@@ -20,7 +20,7 @@ export interface InsideItemDeficiencies {
 
 // 1. Bathroom
 export const BATHROOM_DEFICIENCIES: InsideItemDeficiencies = {
-    itemName: '1. Bathroom',
+    itemName: 'Bathroom',
     subcategories: [
         {
             name: 'Bathtub and Shower',
@@ -294,7 +294,7 @@ export const BATHROOM_DEFICIENCIES: InsideItemDeficiencies = {
 
 // 2. Cabinets and Storage (Pantry/Laundry)
 export const CABINETS_STORAGE_DEFICIENCIES: InsideItemDeficiencies = {
-    itemName: '2. Cabinets and Storage (Pantry/Laundry)',
+    itemName: 'Cabinets and Storage (Pantry/Laundry)',
     deficiencies: [
         {
             id: 'cab_1',
@@ -317,7 +317,7 @@ export const CABINETS_STORAGE_DEFICIENCIES: InsideItemDeficiencies = {
 
 // 3. Call-for-Aid System
 export const CALL_FOR_AID_DEFICIENCIES: InsideItemDeficiencies = {
-    itemName: '3. Call-for-Aid System',
+    itemName: 'Call-for-Aid System',
     deficiencies: [
         {
             id: 'cfa_1',
@@ -340,7 +340,7 @@ export const CALL_FOR_AID_DEFICIENCIES: InsideItemDeficiencies = {
 
 // 4. Carbon Monoxide Alarm
 export const CARBON_MONOXIDE_DEFICIENCIES: InsideItemDeficiencies = {
-    itemName: '4. Carbon Monoxide Alarm',
+    itemName: 'Carbon Monoxide Alarm',
     deficiencies: [
         {
             id: 'co_1',
@@ -371,7 +371,7 @@ export const CARBON_MONOXIDE_DEFICIENCIES: InsideItemDeficiencies = {
 
 // 5. Ceiling
 export const CEILING_DEFICIENCIES: InsideItemDeficiencies = {
-    itemName: '5. Ceiling',
+    itemName: 'Ceiling',
     deficiencies: [
         {
             id: 'ceil_1',
@@ -402,7 +402,7 @@ export const CEILING_DEFICIENCIES: InsideItemDeficiencies = {
 
 // 6. Chimney
 export const CHIMNEY_INSIDE_DEFICIENCIES: InsideItemDeficiencies = {
-    itemName: '6. Chimney',
+    itemName: 'Chimney',
     deficiencies: [
         {
             id: 'chim_in_1',
@@ -417,7 +417,7 @@ export const CHIMNEY_INSIDE_DEFICIENCIES: InsideItemDeficiencies = {
 
 // 7. Clothes Dryer Exhaust Ventilation
 export const DRYER_VENT_INSIDE_DEFICIENCIES: InsideItemDeficiencies = {
-    itemName: '7. Clothes Dryer Exhaust Ventilation',
+    itemName: 'Clothes Dryer Exhaust Ventilation',
     deficiencies: [
         {
             id: 'dryer_in_1',
@@ -464,7 +464,7 @@ export const DRYER_VENT_INSIDE_DEFICIENCIES: InsideItemDeficiencies = {
 
 // 8. Doors
 export const DOORS_DEFICIENCIES: InsideItemDeficiencies = {
-    itemName: '8. Doors',
+    itemName: 'Doors',
     subcategories: [
         {
             name: 'Door - Entry',
@@ -667,7 +667,7 @@ export const DOORS_DEFICIENCIES: InsideItemDeficiencies = {
 
 // 9. Drainage (floor drain)
 export const DRAINAGE_DEFICIENCIES: InsideItemDeficiencies = {
-    itemName: '9. Drainage (floor drain)',
+    itemName: 'Drainage (floor drain)',
     deficiencies: [
         {
             id: 'drain_1',
@@ -682,7 +682,7 @@ export const DRAINAGE_DEFICIENCIES: InsideItemDeficiencies = {
 
 // 10. Egress
 export const EGRESS_DEFICIENCIES: InsideItemDeficiencies = {
-    itemName: '10. Egress',
+    itemName: 'Egress',
     deficiencies: [
         {
             id: 'egress_1',
@@ -713,7 +713,7 @@ export const EGRESS_DEFICIENCIES: InsideItemDeficiencies = {
 
 // 11. Electrical
 export const ELECTRICAL_DEFICIENCIES: InsideItemDeficiencies = {
-    itemName: '11. Electrical',
+    itemName: 'Electrical',
     subcategories: [
         {
             name: 'Conductor - Outlet and Switch',
@@ -836,7 +836,7 @@ export const ELECTRICAL_DEFICIENCIES: InsideItemDeficiencies = {
 
 // 12. Fire Safety
 export const FIRE_SAFETY_DEFICIENCIES: InsideItemDeficiencies = {
-    itemName: '12. Fire Safety',
+    itemName: 'Fire Safety',
     subcategories: [
         {
             name: 'Fire Extinguisher',
@@ -959,7 +959,7 @@ export const FIRE_SAFETY_DEFICIENCIES: InsideItemDeficiencies = {
 
 // 13. Floor
 export const FLOOR_DEFICIENCIES: InsideItemDeficiencies = {
-    itemName: '13. Floor',
+    itemName: 'Floor',
     deficiencies: [
         {
             id: 'floor_1',
@@ -982,7 +982,7 @@ export const FLOOR_DEFICIENCIES: InsideItemDeficiencies = {
 
 // 14. Foundation
 export const FOUNDATION_DEFICIENCIES: InsideItemDeficiencies = {
-    itemName: '14. Foundation',
+    itemName: 'Foundation',
     deficiencies: [
         {
             id: 'found_1',
@@ -1029,7 +1029,7 @@ export const FOUNDATION_DEFICIENCIES: InsideItemDeficiencies = {
 
 // 15. Hazard
 export const HAZARD_DEFICIENCIES: InsideItemDeficiencies = {
-    itemName: '15. Hazard',
+    itemName: 'Hazard',
     subcategories: [
         {
             name: 'Infestation',
@@ -1139,7 +1139,7 @@ export const HAZARD_DEFICIENCIES: InsideItemDeficiencies = {
 
 // 16. Heating, Ventilation, and Air Conditioning
 export const HVAC_DEFICIENCIES: InsideItemDeficiencies = {
-    itemName: '16. Heating, Ventilation, and Air Conditioning',
+    itemName: 'Heating, Ventilation, and Air Conditioning',
     deficiencies: [
         {
             id: 'hvac_1',
@@ -1210,7 +1210,7 @@ export const HVAC_DEFICIENCIES: InsideItemDeficiencies = {
 
 // 17. Kitchen
 export const KITCHEN_DEFICIENCIES: InsideItemDeficiencies = {
-    itemName: '17. Kitchen',
+    itemName: 'Kitchen',
     subcategories: [
         {
             name: 'Cabinet and Storage',
@@ -1460,7 +1460,7 @@ export const KITCHEN_DEFICIENCIES: InsideItemDeficiencies = {
 
 // 18. Leak – Gas or Oil
 export const LEAK_GAS_OIL_DEFICIENCIES: InsideItemDeficiencies = {
-    itemName: '18. Leak – Gas or Oil',
+    itemName: 'Leak – Gas or Oil',
     deficiencies: [
         {
             id: 'leak_gas_1',
@@ -1475,7 +1475,7 @@ export const LEAK_GAS_OIL_DEFICIENCIES: InsideItemDeficiencies = {
 
 // 19. Leak - Sewage System
 export const LEAK_SEWAGE_DEFICIENCIES: InsideItemDeficiencies = {
-    itemName: '19. Leak - Sewage System',
+    itemName: 'Leak - Sewage System',
     deficiencies: [
         {
             id: 'leak_sew_1',
@@ -1514,7 +1514,7 @@ export const LEAK_SEWAGE_DEFICIENCIES: InsideItemDeficiencies = {
 
 // 20. Leak - Water
 export const LEAK_WATER_DEFICIENCIES: InsideItemDeficiencies = {
-    itemName: '20. Leak - Water',
+    itemName: 'Leak - Water',
     deficiencies: [
         {
             id: 'leak_wat_1',
@@ -1545,7 +1545,7 @@ export const LEAK_WATER_DEFICIENCIES: InsideItemDeficiencies = {
 
 // 21. Lighting
 export const LIGHTING_DEFICIENCIES: InsideItemDeficiencies = {
-    itemName: '21. Lighting',
+    itemName: 'Lighting',
     subcategories: [
         {
             name: 'Lighting - Interior',
@@ -1594,7 +1594,7 @@ export const LIGHTING_DEFICIENCIES: InsideItemDeficiencies = {
 
 // 22. Mold
 export const MOLD_DEFICIENCIES: InsideItemDeficiencies = {
-    itemName: '22. Mold',
+    itemName: 'Mold',
     deficiencies: [
         {
             id: 'mold_1',
@@ -1633,7 +1633,7 @@ export const MOLD_DEFICIENCIES: InsideItemDeficiencies = {
 
 // 23. Paint - Lead-Based Paint
 export const PAINT_LEAD_DEFICIENCIES: InsideItemDeficiencies = {
-    itemName: '23. Paint - Lead-Based Paint',
+    itemName: 'Paint - Lead-Based Paint',
     deficiencies: [
         {
             id: 'paint_1',
@@ -1656,7 +1656,7 @@ export const PAINT_LEAD_DEFICIENCIES: InsideItemDeficiencies = {
 
 // 24. Railings
 export const RAILINGS_DEFICIENCIES: InsideItemDeficiencies = {
-    itemName: '24. Railings',
+    itemName: 'Railings',
     subcategories: [
         {
             name: 'Guardrail',
@@ -1721,7 +1721,7 @@ export const RAILINGS_DEFICIENCIES: InsideItemDeficiencies = {
 
 // 25. Sink (Laundry, Garage, or Patio)
 export const SINK_OTHER_DEFICIENCIES: InsideItemDeficiencies = {
-    itemName: '25. Sink (Laundry, Garage, or Patio)',
+    itemName: 'Sink (Laundry, Garage, or Patio)',
     deficiencies: [
         {
             id: 'sink_oth_1',
@@ -1784,7 +1784,7 @@ export const SINK_OTHER_DEFICIENCIES: InsideItemDeficiencies = {
 
 // 26. Steps and Stairs
 export const STEPS_STAIRS_DEFICIENCIES: InsideItemDeficiencies = {
-    itemName: '26. Steps and Stairs',
+    itemName: 'Steps and Stairs',
     deficiencies: [
         {
             id: 'steps_1',
@@ -1807,7 +1807,7 @@ export const STEPS_STAIRS_DEFICIENCIES: InsideItemDeficiencies = {
 
 // 27. Structural System
 export const STRUCTURAL_DEFICIENCIES: InsideItemDeficiencies = {
-    itemName: '27. Structural System',
+    itemName: 'Structural System',
     deficiencies: [
         {
             id: 'struct_1',
@@ -1822,7 +1822,7 @@ export const STRUCTURAL_DEFICIENCIES: InsideItemDeficiencies = {
 
 // 28. Ventilation (Other)
 export const VENTILATION_OTHER_DEFICIENCIES: InsideItemDeficiencies = {
-    itemName: '28. Ventilation (Other)',
+    itemName: 'Ventilation (Other)',
     deficiencies: [
         {
             id: 'vent_oth_1',
@@ -1861,7 +1861,7 @@ export const VENTILATION_OTHER_DEFICIENCIES: InsideItemDeficiencies = {
 
 // 29. Wall
 export const WALL_DEFICIENCIES: InsideItemDeficiencies = {
-    itemName: '29. Wall',
+    itemName: 'Wall',
     deficiencies: [
         {
             id: 'wall_1',
@@ -1892,7 +1892,7 @@ export const WALL_DEFICIENCIES: InsideItemDeficiencies = {
 
 // 30. Water Heater
 export const WATER_HEATER_DEFICIENCIES: InsideItemDeficiencies = {
-    itemName: '30. Water Heater',
+    itemName: 'Water Heater',
     deficiencies: [
         {
             id: 'wh_1',
@@ -1939,7 +1939,7 @@ export const WATER_HEATER_DEFICIENCIES: InsideItemDeficiencies = {
 
 // 31. Window
 export const WINDOW_DEFICIENCIES: InsideItemDeficiencies = {
-    itemName: '31. Window',
+    itemName: 'Window',
     deficiencies: [
         {
             id: 'window_1',
@@ -1978,7 +1978,7 @@ export const WINDOW_DEFICIENCIES: InsideItemDeficiencies = {
 
 // 32. General Comment
 export const GENERAL_COMMENT_DEFICIENCIES: InsideItemDeficiencies = {
-    itemName: '32. General Comment',
+    itemName: 'General Comment',
     deficiencies: [
         {
             id: 'gen_1',
@@ -1993,38 +1993,38 @@ export const GENERAL_COMMENT_DEFICIENCIES: InsideItemDeficiencies = {
 
 // Map all inside deficiencies for easy lookup
 export const INSIDE_DEFICIENCY_MAP: { [key: string]: InsideItemDeficiencies } = {
-    '1. Bathroom': BATHROOM_DEFICIENCIES,
-    '2. Cabinets and Storage (Pantry/Laundry)': CABINETS_STORAGE_DEFICIENCIES,
-    '3. Call-for-Aid System': CALL_FOR_AID_DEFICIENCIES,
-    '4. Carbon Monoxide Alarm': CARBON_MONOXIDE_DEFICIENCIES,
-    '5. Ceiling': CEILING_DEFICIENCIES,
-    '6. Chimney': CHIMNEY_INSIDE_DEFICIENCIES,
-    '7. Clothes Dryer Exhaust Ventilation': DRYER_VENT_INSIDE_DEFICIENCIES,
-    '8. Doors': DOORS_DEFICIENCIES,
-    '9. Drainage (floor drain)': DRAINAGE_DEFICIENCIES,
-    '10. Egress': EGRESS_DEFICIENCIES,
-    '11. Electrical': ELECTRICAL_DEFICIENCIES,
-    '12. Fire Safety': FIRE_SAFETY_DEFICIENCIES,
-    '13. Floor': FLOOR_DEFICIENCIES,
-    '14. Foundation': FOUNDATION_DEFICIENCIES,
-    '15. Hazard': HAZARD_DEFICIENCIES,
-    '16. Heating, Ventilation, and Air Conditioning': HVAC_DEFICIENCIES,
-    '17. Kitchen': KITCHEN_DEFICIENCIES,
-    '18. Leak – Gas or Oil': LEAK_GAS_OIL_DEFICIENCIES,
-    '19. Leak - Sewage System': LEAK_SEWAGE_DEFICIENCIES,
-    '20. Leak - Water': LEAK_WATER_DEFICIENCIES,
-    '21. Lighting': LIGHTING_DEFICIENCIES,
-    '22. Mold': MOLD_DEFICIENCIES,
-    '23. Paint - Lead-Based Paint': PAINT_LEAD_DEFICIENCIES,
-    '24. Railings': RAILINGS_DEFICIENCIES,
-    '25. Sink (Laundry, Garage, or Patio)': SINK_OTHER_DEFICIENCIES,
-    '26. Steps and Stairs': STEPS_STAIRS_DEFICIENCIES,
-    '27. Structural System': STRUCTURAL_DEFICIENCIES,
-    '28. Ventilation (Other)': VENTILATION_OTHER_DEFICIENCIES,
-    '29. Wall': WALL_DEFICIENCIES,
-    '30. Water Heater': WATER_HEATER_DEFICIENCIES,
-    '31. Window': WINDOW_DEFICIENCIES,
-    '32. General Comment': GENERAL_COMMENT_DEFICIENCIES,
+    'Bathroom': BATHROOM_DEFICIENCIES,
+    'Cabinets and Storage (Pantry/Laundry)': CABINETS_STORAGE_DEFICIENCIES,
+    'Call-for-Aid System': CALL_FOR_AID_DEFICIENCIES,
+    'Carbon Monoxide Alarm': CARBON_MONOXIDE_DEFICIENCIES,
+    'Ceiling': CEILING_DEFICIENCIES,
+    'Chimney': CHIMNEY_INSIDE_DEFICIENCIES,
+    'Clothes Dryer Exhaust Ventilation': DRYER_VENT_INSIDE_DEFICIENCIES,
+    'Doors': DOORS_DEFICIENCIES,
+    'Drainage (floor drain)': DRAINAGE_DEFICIENCIES,
+    'Egress': EGRESS_DEFICIENCIES,
+    'Electrical': ELECTRICAL_DEFICIENCIES,
+    'Fire Safety': FIRE_SAFETY_DEFICIENCIES,
+    'Floor': FLOOR_DEFICIENCIES,
+    'Foundation': FOUNDATION_DEFICIENCIES,
+    'Hazard': HAZARD_DEFICIENCIES,
+    'Heating, Ventilation, and Air Conditioning': HVAC_DEFICIENCIES,
+    'Kitchen': KITCHEN_DEFICIENCIES,
+    'Leak – Gas or Oil': LEAK_GAS_OIL_DEFICIENCIES,
+    'Leak - Sewage System': LEAK_SEWAGE_DEFICIENCIES,
+    'Leak - Water': LEAK_WATER_DEFICIENCIES,
+    'Lighting': LIGHTING_DEFICIENCIES,
+    'Mold': MOLD_DEFICIENCIES,
+    'Paint - Lead-Based Paint': PAINT_LEAD_DEFICIENCIES,
+    'Railings': RAILINGS_DEFICIENCIES,
+    'Sink (Laundry, Garage, or Patio)': SINK_OTHER_DEFICIENCIES,
+    'Steps and Stairs': STEPS_STAIRS_DEFICIENCIES,
+    'Structural System': STRUCTURAL_DEFICIENCIES,
+    'Ventilation (Other)': VENTILATION_OTHER_DEFICIENCIES,
+    'Wall': WALL_DEFICIENCIES,
+    'Water Heater': WATER_HEATER_DEFICIENCIES,
+    'Window': WINDOW_DEFICIENCIES,
+    'General Comment': GENERAL_COMMENT_DEFICIENCIES,
 };
 
 // Helper function to get deficiencies for an inside item
@@ -2034,9 +2034,10 @@ export function getInsideDeficienciesForItem(itemName: string): InsideItemDefici
         return INSIDE_DEFICIENCY_MAP[itemName];
     }
 
-    // Try partial match
+    // Try partial match (case-insensitive)
+    const lowerItemName = itemName.toLowerCase();
     for (const key of Object.keys(INSIDE_DEFICIENCY_MAP)) {
-        if (itemName.includes(key.replace(/^\d+\.\s*/, '')) || key.includes(itemName)) {
+        if (key.toLowerCase().includes(lowerItemName) || lowerItemName.includes(key.toLowerCase())) {
             return INSIDE_DEFICIENCY_MAP[key];
         }
     }

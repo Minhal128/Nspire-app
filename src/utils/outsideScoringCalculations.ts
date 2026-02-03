@@ -165,11 +165,11 @@ export interface OutsideScoringResult {
   categoryNumber: number;       // Category number
   totalSamples: number;         // n - total sample units
   severity: string;             // Resolved severity level
-  pointsLostRaw: number;        // Pts Lost (Raw) = numerator / n (for 1 deficiency)
-  pointsLost: number;           // Total Pts Lost = (numerator / n) × deficiency count
+  pointsLostRaw: number;        // Pts Lost (Raw) = base formula numerator (4.5, 24.8, 49.60, 2.00, or 12.20)
+  pointsLost: number;           // Pts Lost = numerator / n (calculated points lost)
   deficiencyCount: number;      // Number of deficiencies
   possibleScore: number;        // Fixed at 25
-  maxPtsLost: number;           // Max Pts Lost = Pts Lost (Raw) / n
+  maxPtsLost: number;           // Max Pts Lost = Pts Lost / n
   score: number;                // Score = 25 - maxPtsLost
   formulaNumerator: number;     // The numerator used in the formula
   isDeficiencyOverride: boolean; // Whether deficiency-based override was applied
@@ -181,8 +181,9 @@ const POSSIBLE_SCORE = 25;
  * Calculate scoring for Outside inspection
  * 
  * Formulas:
- *   Points Lost (Raw) = formulaNumerator / n
- *   Max Points Lost = Points Lost (Raw) / n
+ *   Points Lost (Raw) = formulaNumerator (base value)
+ *   Points Lost = formulaNumerator / n
+ *   Max Points Lost = Points Lost / n
  *   Score = Possible Score (25) − Max Points Lost
  * 
  * @param input Scoring input with category number, samples, and optional deficiency description
@@ -209,15 +210,15 @@ export function calculateOutsideScore(input: OutsideScoringInput): OutsideScorin
     (severityConfig.severity !== categoryOnlyConfig.severity || 
      severityConfig.pointsLostFormula !== categoryOnlyConfig.pointsLostFormula);
 
-  // Calculate Points Lost (Raw) = numerator / n
-  const pointsLostRaw = severityConfig.pointsLostFormula / n;
+  // Pts Lost (Raw) = the base formula numerator (4.5, 24.8, 49.60, 2.00, or 12.20)
+  // This is the raw base points lost value based on severity/category
+  const pointsLostRaw = severityConfig.pointsLostFormula;
 
-  // Pts Lost = the base formula numerator (4.5, 24.8, 49.60, 2.00, or 12.20)
-  // This is the fixed points lost value based on severity/category
-  const pointsLost = severityConfig.pointsLostFormula;
+  // Pts Lost = numerator / n (calculated points lost)
+  const pointsLost = severityConfig.pointsLostFormula / n;
 
-  // Calculate Max Points Lost = Points Lost (Raw) / n
-  const maxPtsLost = pointsLostRaw / n;
+  // Calculate Max Points Lost = Points Lost / n
+  const maxPtsLost = pointsLost / n;
 
   // Calculate Score = Possible Score (25) - Max Points Lost
   const score = POSSIBLE_SCORE - maxPtsLost;

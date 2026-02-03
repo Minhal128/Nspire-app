@@ -33,6 +33,11 @@ import {
   extractCategoryNumber, 
   OutsideScoringResult 
 } from '../utils/outsideScoringCalculations';
+import {
+  calculateInsideScore,
+  extractInsideCategoryNumber,
+  InsideScoringResult
+} from '../utils/insideScoringCalculations';
 
 // Outside inspection location options
 const OUTSIDE_LOCATION_OPTIONS = [
@@ -53,6 +58,34 @@ const OUTSIDE_LOCATION_OPTIONS = [
   'Playground',
   'Roof (flat)',
   'Sidewalks/Walkways/Stoops',
+];
+
+// Inside inspection location options
+const INSIDE_LOCATION_OPTIONS = [
+  'Basement',
+  'Business Space',
+  'Classroom',
+  'Closet/Utility',
+  'Day Care',
+  'Halls/Corridors/Stairs',
+  'Kitchen',
+  'Laundry Room',
+  'Leased Commercial',
+  'Library',
+  'Lobby',
+  'Maintenance Shop',
+  'Mechanical Room',
+  'Office',
+  'Other Community Space',
+  'Parking Garage',
+  'Patio/Porch/Balcony',
+  'Recreational Room',
+  'Recreation Room',
+  'Refuse/Compactor Room',
+  'Restrooms',
+  'Salon',
+  'Store',
+  'Workout Room',
 ];
 
 type DeficiencyDetailScreenNavigationProp = NativeStackNavigationProp<
@@ -99,10 +132,15 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   // Scoring state - automatically calculated based on deficiency selection
   const [scoringResult, setScoringResult] = useState<ScoringResult | null>(null);
   const [outsideScoringResult, setOutsideScoringResult] = useState<OutsideScoringResult | null>(null);
+  const [insideScoringResult, setInsideScoringResult] = useState<InsideScoringResult | null>(null);
 
   // Outside location picker state
   const [selectedOutsideLocation, setSelectedOutsideLocation] = useState<string>(OUTSIDE_LOCATION_OPTIONS[0]);
   const [showLocationPicker, setShowLocationPicker] = useState(false);
+
+  // Inside location picker state
+  const [selectedInsideLocation, setSelectedInsideLocation] = useState<string>(INSIDE_LOCATION_OPTIONS[0]);
+  const [showInsideLocationPicker, setShowInsideLocationPicker] = useState(false);
 
   // Check if we're in the Outside inspection module
   const isOutsideLocation = location?.toLowerCase() === 'outside';
@@ -149,12 +187,38 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       result.severity = outsideResult.severity;
       setScoringResult(result);
     } else {
-      // Use standard scoring for non-Outside locations
+      // Use Inside-specific scoring with category-based and deficiency-based rules
+      const categoryNumber = extractInsideCategoryNumber(itemId, itemName);
+      // Include name, detail, AND criteria fields for pattern matching
+      const deficiencyDescription = [
+        selectedDeficiency?.name,
+        selectedDeficiency?.detail,
+        selectedDeficiency?.criteria,
+        customDeficiencyDetail,
+        customDeficiencyCriteria,
+      ].filter(Boolean).join(' ') || '';
+      
+      const insideResult = calculateInsideScore({
+        categoryNumber,
+        totalSamples,
+        deficiencyDescription,
+        deficiencyCount,
+        severity: selectedDeficiency?.severity as 'Life-Threatening' | 'Severe' | 'Moderate' | 'Low' | undefined,
+      });
+      setInsideScoringResult(insideResult);
+      
+      // Also set the standard scoring result for compatibility
       const result = calculateUnitScore({
         totalSamples,
         deficiencies: deficiencyCount,
-        severity: selectedDeficiency?.severity || 'Moderate',
+        severity: insideResult.severity as 'Life-Threatening' | 'Severe' | 'Moderate' | 'Low',
       });
+      // Override with Inside-specific values
+      result.ptsLostRaw = insideResult.pointsLostRaw;
+      result.ptsLost = insideResult.pointsLost;
+      result.maxPtsLost = insideResult.maxPtsLost;
+      result.score = insideResult.score;
+      result.severity = insideResult.severity;
       setScoringResult(result);
       setOutsideScoringResult(null);
     }
@@ -683,7 +747,15 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                     <Ionicons name="chevron-down" size={16} color="#0E7490" />
                   </TouchableOpacity>
                 ) : (
-                  <Text style={styles.scoringFieldValue}>Building {buildingId}</Text>
+                  <TouchableOpacity
+                    style={styles.locationDropdown}
+                    onPress={() => setShowInsideLocationPicker(true)}
+                  >
+                    <Text style={styles.locationDropdownText} numberOfLines={1}>
+                      {selectedInsideLocation}
+                    </Text>
+                    <Ionicons name="chevron-down" size={16} color="#0E7490" />
+                  </TouchableOpacity>
                 )}
               </View>
               <View style={styles.scoringField}>
@@ -959,6 +1031,59 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                       {locationOption}
                     </Text>
                     {selectedOutsideLocation === locationOption && (
+                      <Ionicons name="checkmark-circle" size={20} color="#0E7490" />
+                    )}
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Inside Location Picker Modal */}
+      <Modal
+        visible={showInsideLocationPicker}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowInsideLocationPicker(false)}
+      >
+        <View style={styles.pickerModalOverlay}>
+          <View style={styles.pickerModalContent}>
+            <View style={styles.pickerHeader}>
+              <Text style={styles.pickerTitle}>Select Location</Text>
+              <TouchableOpacity
+                onPress={() => setShowInsideLocationPicker(false)}
+                style={styles.pickerCloseButton}
+              >
+                <Ionicons name="close" size={24} color="#666666" />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.pickerSubtitle}>
+              {INSIDE_LOCATION_OPTIONS.length} locations available
+            </Text>
+            <ScrollView style={styles.pickerList} showsVerticalScrollIndicator={true}>
+              {INSIDE_LOCATION_OPTIONS.map((locationOption, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={[
+                    styles.pickerItem,
+                    selectedInsideLocation === locationOption && styles.pickerItemSelected
+                  ]}
+                  onPress={() => {
+                    setSelectedInsideLocation(locationOption);
+                    setShowInsideLocationPicker(false);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.pickerItemHeader}>
+                    <Text style={[
+                      styles.pickerItemText,
+                      selectedInsideLocation === locationOption && styles.pickerItemTextSelected
+                    ]}>
+                      {locationOption}
+                    </Text>
+                    {selectedInsideLocation === locationOption && (
                       <Ionicons name="checkmark-circle" size={20} color="#0E7490" />
                     )}
                   </View>
