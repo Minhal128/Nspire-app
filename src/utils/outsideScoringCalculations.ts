@@ -100,7 +100,7 @@ export function getSeverityByCategoryNumber(categoryNumber: number): OutsideSeve
   if (SEVERE_CATEGORIES.includes(categoryNumber)) {
     return { severity: 'Severe', pointsLostFormula: 12.20 };
   }
-  
+
   // Default to Moderate if category not found
   return { severity: 'Moderate', pointsLostFormula: 4.5 };
 }
@@ -143,13 +143,13 @@ export function getOutsideSeverityConfig(
     if (matchesSevereDeficiencyPattern(deficiencyDescription)) {
       return { severity: 'Severe', pointsLostFormula: 12.20 };
     }
-    
+
     // Check for low severity deficiency patterns
     if (matchesLowDeficiencyPattern(deficiencyDescription)) {
       return { severity: 'Low', pointsLostFormula: 2.00 };
     }
   }
-  
+
   // Fall back to category-based severity
   return getSeverityByCategoryNumber(categoryNumber);
 }
@@ -190,11 +190,11 @@ const POSSIBLE_SCORE = 25;
  * @returns Complete scoring result
  */
 export function calculateOutsideScore(input: OutsideScoringInput): OutsideScoringResult {
-  const { 
-    categoryNumber, 
-    totalSamples, 
+  const {
+    categoryNumber,
+    totalSamples,
     deficiencyDescription,
-    deficiencyCount = 1 
+    deficiencyCount = 1
   } = input;
 
   // Ensure we don't divide by zero - minimum 1 sample
@@ -203,22 +203,22 @@ export function calculateOutsideScore(input: OutsideScoringInput): OutsideScorin
 
   // Get severity config (with deficiency override if applicable)
   const severityConfig = getOutsideSeverityConfig(categoryNumber, deficiencyDescription);
-  
+
   // Check if deficiency override was applied
   const categoryOnlyConfig = getSeverityByCategoryNumber(categoryNumber);
-  const isDeficiencyOverride = deficiencyDescription !== undefined && 
-    (severityConfig.severity !== categoryOnlyConfig.severity || 
-     severityConfig.pointsLostFormula !== categoryOnlyConfig.pointsLostFormula);
+  const isDeficiencyOverride = deficiencyDescription !== undefined &&
+    (severityConfig.severity !== categoryOnlyConfig.severity ||
+      severityConfig.pointsLostFormula !== categoryOnlyConfig.pointsLostFormula);
 
   // Pts Lost (Raw) = the base formula numerator (4.5, 24.8, 49.60, 2.00, or 12.20)
   // This is the raw base points lost value based on severity/category
   const pointsLostRaw = severityConfig.pointsLostFormula;
 
-  // Pts Lost = numerator / n (calculated points lost)
-  const pointsLost = severityConfig.pointsLostFormula / n;
+  // Calculate Max Points Lost = formula / n
+  const maxPtsLost = severityConfig.pointsLostFormula / n;
 
-  // Calculate Max Points Lost = Points Lost / n
-  const maxPtsLost = pointsLost / n;
+  // Pts Lost = Max Pts Lost (they are the same)
+  const pointsLost = maxPtsLost;
 
   // Calculate Score = Possible Score (25) - Max Points Lost
   const score = POSSIBLE_SCORE - maxPtsLost;
@@ -252,7 +252,7 @@ export function extractCategoryNumber(itemId?: string, itemName?: string): numbe
       return num;
     }
   }
-  
+
   // Try to extract from item name (e.g., "1. Address and Signage")
   if (itemName) {
     const match = itemName.match(/^(\d+)\./);
@@ -263,7 +263,7 @@ export function extractCategoryNumber(itemId?: string, itemName?: string): numbe
       }
     }
   }
-  
+
   // Default to category 1 if not found
   return 1;
 }

@@ -57,14 +57,14 @@ export function calculateUnitScore(input: ScoringInput): ScoringResult {
     const n = Math.max(totalSamples, 1);
     const v = Math.max(deficiencies, 0);
 
-    // Calculate Points Lost (Raw) = MaxPointsLost / n
-    const ptsLostRaw = maxPointsLostBase / n;
+    // Calculate Points Lost (Raw) = MaxPointsLost (base value)
+    const ptsLostRaw = maxPointsLostBase;
 
-    // Calculate Total Points Lost = (MaxPointsLost / n) × v
-    const ptsLost = ptsLostRaw * v;
+    // Calculate Max Pts Lost = MaxPointsLost / n
+    const maxPtsLost = maxPointsLostBase / n;
 
-    // Calculate Max Pts Lost = Points Lost (Raw) / n
-    const maxPtsLost = ptsLostRaw / n;
+    // Pts Lost = Max Pts Lost (they are the same)
+    const ptsLost = maxPtsLost;
 
     // Calculate Section Score = 25 − Max Pts Lost
     const score = POSSIBLE_SCORE - maxPtsLost;
@@ -250,14 +250,14 @@ export const DEFICIENCY_OPTIONS = Array.from({ length: 21 }, (_, i) => ({
 export const VIOLATION_OPTIONS = DEFICIENCY_OPTIONS;
 
 // Re-export Outside-specific scoring utilities
-export { 
+export {
     calculateOutsideScore,
     getOutsideSeverityConfig,
     extractCategoryNumber,
     OUTSIDE_SCORING_CATEGORIES,
     DEFICIENCY_OVERRIDE_PATTERNS,
 } from './outsideScoringCalculations';
-export type { 
+export type {
     OutsideSeverityConfig,
     OutsideScoringInput,
     OutsideScoringResult,

@@ -616,38 +616,38 @@ export function getUnitsSeverityConfig(
     if (matchesLifeThreatening60_50nPattern(deficiencyDescription)) {
       return { severity: 'Life-Threatening', pointsLostFormula: 60.0, specialFormula: 'divide_50n' };
     }
-    
+
     // Check for Severe 14.8/(50*n) patterns - pull cord (special formula)
     if (matchesSevere14_8_50nPattern(deficiencyDescription)) {
       return { severity: 'Severe', pointsLostFormula: 14.8, specialFormula: 'divide_50n' };
     }
-    
+
     // Check for Life-Threatening 60/n patterns
     if (matchesLifeThreatening60Pattern(deficiencyDescription)) {
       return { severity: 'Life-Threatening', pointsLostFormula: 60.0 };
     }
-    
+
     // Check for Life-Threatening 30/n patterns
     if (matchesLifeThreatening30Pattern(deficiencyDescription)) {
       return { severity: 'Life-Threatening', pointsLostFormula: 30.0 };
     }
-    
+
     // Check for Severe 14.8/n patterns
     if (matchesSeverePattern(deficiencyDescription)) {
       return { severity: 'Severe', pointsLostFormula: 14.8 };
     }
-    
+
     // Check for Low 2.40/n patterns (check before moderate for specificity)
     if (matchesLowPattern(deficiencyDescription)) {
       return { severity: 'Low', pointsLostFormula: 2.40 };
     }
-    
+
     // Check for Moderate 5.5/n patterns
     if (matchesModeratePattern(deficiencyDescription)) {
       return { severity: 'Moderate', pointsLostFormula: 5.5 };
     }
   }
-  
+
   // If no pattern matched but we have a selected severity, use it with appropriate formula
   if (selectedSeverity) {
     switch (selectedSeverity) {
@@ -662,7 +662,7 @@ export function getUnitsSeverityConfig(
         return { severity: 'Moderate', pointsLostFormula: 5.5 };
     }
   }
-  
+
   // Fall back to default configuration
   return getDefaultUnitsSeverityConfig(categoryNumber);
 }
@@ -707,9 +707,9 @@ export interface UnitsScoringResult {
  * @returns Complete scoring result
  */
 export function calculateUnitsScore(input: UnitsScoringInput): UnitsScoringResult {
-  const { 
-    categoryNumber, 
-    totalSamples, 
+  const {
+    categoryNumber,
+    totalSamples,
     deficiencyDescription,
     deficiencyCount = 1,
     severity: selectedSeverity
@@ -721,28 +721,21 @@ export function calculateUnitsScore(input: UnitsScoringInput): UnitsScoringResul
 
   // Get severity config (with deficiency override if applicable, or use selected severity)
   const severityConfig = getUnitsSeverityConfig(categoryNumber, deficiencyDescription, selectedSeverity);
-  
+
   // Check if deficiency override was applied
   const categoryOnlyConfig = getDefaultUnitsSeverityConfig(categoryNumber);
-  const isDeficiencyOverride = deficiencyDescription !== undefined && 
-    (severityConfig.severity !== categoryOnlyConfig.severity || 
-     severityConfig.pointsLostFormula !== categoryOnlyConfig.pointsLostFormula);
+  const isDeficiencyOverride = deficiencyDescription !== undefined &&
+    (severityConfig.severity !== categoryOnlyConfig.severity ||
+      severityConfig.pointsLostFormula !== categoryOnlyConfig.pointsLostFormula);
 
   // Pts Lost (Raw) = the base formula numerator
   const pointsLostRaw = severityConfig.pointsLostFormula;
 
-  // Calculate Pts Lost based on formula type
-  let pointsLost: number;
-  if (severityConfig.specialFormula === 'divide_50n') {
-    // Special formula: X / (50 * n)
-    pointsLost = severityConfig.pointsLostFormula / (50 * n);
-  } else {
-    // Standard formula: numerator / n
-    pointsLost = severityConfig.pointsLostFormula / n;
-  }
+  // Calculate Max Points Lost = formula / n
+  const maxPtsLost = severityConfig.pointsLostFormula / n;
 
-  // Calculate Max Points Lost = Points Lost / n
-  const maxPtsLost = pointsLost / n;
+  // Pts Lost = Max Pts Lost (they are the same)
+  const pointsLost = maxPtsLost;
 
   // Calculate Score = Possible Score (25) - Max Points Lost
   const score = POSSIBLE_SCORE - maxPtsLost;
@@ -780,7 +773,7 @@ export function extractUnitsCategoryNumber(itemId?: string, itemName?: string): 
       return num;
     }
   }
-  
+
   // Try to extract from item name (e.g., "1. Bathroom")
   if (itemName) {
     const match = itemName.match(/^(\d+)\./);
@@ -791,7 +784,7 @@ export function extractUnitsCategoryNumber(itemId?: string, itemName?: string): 
       }
     }
   }
-  
+
   // Default to category 1 if not found
   return 1;
 }

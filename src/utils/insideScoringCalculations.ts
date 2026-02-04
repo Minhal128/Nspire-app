@@ -898,33 +898,33 @@ export function getInsideSeverityConfig(
     if (matchesGasLeakPattern(deficiencyDescription)) {
       return { severity: 'Life-Threatening', pointsLostFormula: 54.50 };
     }
-    
+
     // Check for special formula patterns (Call-for-Aid annunciator) - Life-Threatening with 27.25/(50*n)
     if (matchesSpecialFormulaPattern(deficiencyDescription)) {
       return { severity: 'Life-Threatening', pointsLostFormula: 27.25, specialFormula: 'divide_50n' };
     }
-    
+
     // Check for Severe deficiency patterns (Call-for-Aid pull cord) - 13.40/n
     if (matchesSevereDeficiencyPattern(deficiencyDescription)) {
       return { severity: 'Severe', pointsLostFormula: 13.40 };
     }
-    
+
     // Check for Life-Threatening patterns - 27.25/n
     if (matchesLifeThreateningDeficiencyPattern(deficiencyDescription)) {
       return { severity: 'Life-Threatening', pointsLostFormula: 27.25 };
     }
-    
+
     // Check for Moderate patterns - 5.0/n
     if (matchesModerateDeficiencyPattern(deficiencyDescription)) {
       return { severity: 'Moderate', pointsLostFormula: 5.0 };
     }
-    
+
     // Check for Low severity patterns - 2.20/n
     if (matchesLowDeficiencyPattern(deficiencyDescription)) {
       return { severity: 'Low', pointsLostFormula: 2.20 };
     }
   }
-  
+
   // If no pattern matched but we have a selected severity, use it with appropriate formula
   if (selectedSeverity) {
     switch (selectedSeverity) {
@@ -939,7 +939,7 @@ export function getInsideSeverityConfig(
         return { severity: 'Moderate', pointsLostFormula: 5.0 };
     }
   }
-  
+
   // Fall back to default configuration
   return getDefaultInsideSeverityConfig(categoryNumber);
 }
@@ -984,9 +984,9 @@ export interface InsideScoringResult {
  * @returns Complete scoring result
  */
 export function calculateInsideScore(input: InsideScoringInput): InsideScoringResult {
-  const { 
-    categoryNumber, 
-    totalSamples, 
+  const {
+    categoryNumber,
+    totalSamples,
     deficiencyDescription,
     deficiencyCount = 1,
     severity: selectedSeverity
@@ -998,28 +998,21 @@ export function calculateInsideScore(input: InsideScoringInput): InsideScoringRe
 
   // Get severity config (with deficiency override if applicable, or use selected severity)
   const severityConfig = getInsideSeverityConfig(categoryNumber, deficiencyDescription, selectedSeverity);
-  
+
   // Check if deficiency override was applied
   const categoryOnlyConfig = getDefaultInsideSeverityConfig(categoryNumber);
-  const isDeficiencyOverride = deficiencyDescription !== undefined && 
-    (severityConfig.severity !== categoryOnlyConfig.severity || 
-     severityConfig.pointsLostFormula !== categoryOnlyConfig.pointsLostFormula);
+  const isDeficiencyOverride = deficiencyDescription !== undefined &&
+    (severityConfig.severity !== categoryOnlyConfig.severity ||
+      severityConfig.pointsLostFormula !== categoryOnlyConfig.pointsLostFormula);
 
   // Pts Lost (Raw) = the base formula numerator
   const pointsLostRaw = severityConfig.pointsLostFormula;
 
-  // Calculate Pts Lost based on formula type
-  let pointsLost: number;
-  if (severityConfig.specialFormula === 'divide_50n') {
-    // Special formula for item 2: 27.25 / (50 * n)
-    pointsLost = severityConfig.pointsLostFormula / (50 * n);
-  } else {
-    // Standard formula: numerator / n
-    pointsLost = severityConfig.pointsLostFormula / n;
-  }
+  // Calculate Max Points Lost = formula / n
+  const maxPtsLost = severityConfig.pointsLostFormula / n;
 
-  // Calculate Max Points Lost = Points Lost / n
-  const maxPtsLost = pointsLost / n;
+  // Pts Lost = Max Pts Lost (they are the same)
+  const pointsLost = maxPtsLost;
 
   // Calculate Score = Possible Score (25) - Max Points Lost
   const score = POSSIBLE_SCORE - maxPtsLost;
@@ -1057,7 +1050,7 @@ export function extractInsideCategoryNumber(itemId?: string, itemName?: string):
       return num;
     }
   }
-  
+
   // Try to extract from item name (e.g., "1. Call for Aid")
   if (itemName) {
     const match = itemName.match(/^(\d+)\./);
@@ -1068,7 +1061,7 @@ export function extractInsideCategoryNumber(itemId?: string, itemName?: string):
       }
     }
   }
-  
+
   // Default to category 1 if not found
   return 1;
 }

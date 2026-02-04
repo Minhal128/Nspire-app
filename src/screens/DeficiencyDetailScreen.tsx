@@ -163,8 +163,8 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   // Get total samples from selectedUnits (default to 20 if not available)
   const totalSamples = selectedUnits?.length || 20;
 
-  // Auto-count deficiencies: 1 if a deficiency is selected, 0 otherwise
-  const deficiencyCount = selectedDeficiency ? 1 : 0;
+  // Auto-count deficiencies: only count as 1 if deficiency is selected AND photos are added
+  const deficiencyCount = (selectedDeficiency && images.length > 0) ? 1 : 0;
 
   // Update scoring dynamically when deficiency is selected/changed
   // Only calculate scoring when a deficiency is explicitly selected
@@ -246,7 +246,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       setScoringResult(result);
       setOutsideScoringResult(null);
     }
-  }, [selectedDeficiency, deficiencyCount, totalSamples, isOutsideLocation, itemId, itemName, customDeficiencyDetail, customDeficiencyCriteria, isCustomEntry]);
+  }, [selectedDeficiency, deficiencyCount, totalSamples, isOutsideLocation, itemId, itemName, customDeficiencyDetail, customDeficiencyCriteria, isCustomEntry, images.length]);
 
   useEffect(() => {
     // Check if item has subcategories (e.g., Door in Outside section)
