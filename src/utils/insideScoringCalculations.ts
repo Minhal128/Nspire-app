@@ -1415,6 +1415,7 @@ export interface InsideScoringInput {
   deficiencyDescription?: string; // Optional deficiency description for override checking
   deficiencyCount?: number;     // Number of deficiencies (default: 1)
   severity?: 'Life-Threatening' | 'Severe' | 'Moderate' | 'Low'; // Optional severity from deficiency selection
+  deficiencyPointsFormula?: string; // Direct points formula from deficiency (e.g., "5.0/n", "13.40/n")
 }
 
 export interface InsideScoringResult {
@@ -1454,36 +1455,64 @@ export function calculateInsideScore(input: InsideScoringInput): InsideScoringRe
     totalSamples, 
     deficiencyDescription,
     deficiencyCount = 1,
-    severity: selectedSeverity
+    severity: selectedSeverity,
+    deficiencyPointsFormula,
   } = input;
 
   // Ensure we don't divide by zero - minimum 1 sample
   const n = Math.max(totalSamples, 1);
   const count = Math.max(deficiencyCount, 0);
 
-  // Get severity config (with deficiency override if applicable, or use selected severity)
-  const severityConfig = getInsideSeverityConfig(categoryNumber, deficiencyDescription, selectedSeverity);
-  
-  // Check if deficiency override was applied
-  const categoryOnlyConfig = getDefaultInsideSeverityConfig(categoryNumber);
-  const isDeficiencyOverride = deficiencyDescription !== undefined && 
-    (severityConfig.severity !== categoryOnlyConfig.severity || 
-     severityConfig.pointsLostFormula !== categoryOnlyConfig.pointsLostFormula);
+  // PRIORITY 1: Use direct deficiency points formula if provided (from deficiency data)
+  let pointsLostRaw: number;
+  let severity: 'Life-Threatening' | 'Severe' | 'Moderate' | 'Low';
+  let isDeficiencyOverride = false;
+  let specialFormula: 'divide_50n' | 'zero' | undefined;
 
-  // Pts Lost (Raw) = the base formula numerator
-  const pointsLostRaw = severityConfig.pointsLostFormula;
+  if (deficiencyPointsFormula) {
+    // Parse formula like "5.0/n", "13.40/n", "27.25/(50*n)", "0.000", etc.
+    const match = deficiencyPointsFormula.match(/^([\d.]+)/);
+    if (match) {
+      pointsLostRaw = parseFloat(match[1]);
+      severity = selectedSeverity || 'Moderate';
+      isDeficiencyOverride = true;
+      // Check for special formula types
+      if (deficiencyPointsFormula.includes('50')) {
+        specialFormula = 'divide_50n';
+      } else if (pointsLostRaw === 0 || deficiencyPointsFormula.includes('0.000')) {
+        specialFormula = 'zero';
+      }
+    } else {
+      // Fallback to category-based if parsing fails
+      const severityConfig = getInsideSeverityConfig(categoryNumber, deficiencyDescription, selectedSeverity);
+      pointsLostRaw = severityConfig.pointsLostFormula;
+      severity = severityConfig.severity;
+      specialFormula = severityConfig.specialFormula;
+    }
+  } else {
+    // PRIORITY 2: Use category-based and deficiency description pattern matching
+    const severityConfig = getInsideSeverityConfig(categoryNumber, deficiencyDescription, selectedSeverity);
+    const categoryOnlyConfig = getDefaultInsideSeverityConfig(categoryNumber);
+    
+    pointsLostRaw = severityConfig.pointsLostFormula;
+    severity = severityConfig.severity;
+    specialFormula = severityConfig.specialFormula;
+    isDeficiencyOverride = deficiencyDescription !== undefined && 
+      (severityConfig.severity !== categoryOnlyConfig.severity || 
+       severityConfig.pointsLostFormula !== categoryOnlyConfig.pointsLostFormula);
+  }
 
   // Calculate Pts Lost based on formula type
   let pointsLost: number;
-  if (severityConfig.specialFormula === 'zero') {
+  if (specialFormula === 'zero') {
     // Zero formula for smoke alarm and CO alarm: 0.000
     pointsLost = 0;
-  } else if (severityConfig.specialFormula === 'divide_50n') {
+  } else if (specialFormula === 'divide_50n') {
     // Special formula: numerator / (50 * n)
-    pointsLost = severityConfig.pointsLostFormula / (50 * n);
+    pointsLost = pointsLostRaw / (50 * n);
   } else {
     // Standard formula: numerator / n
-    pointsLost = severityConfig.pointsLostFormula / n;
+    pointsLost = pointsLostRaw / n;
   }
 
   // Calculate Max Points Lost = Points Lost / n
@@ -1496,7 +1525,7 @@ export function calculateInsideScore(input: InsideScoringInput): InsideScoringRe
     categoryNumber,
     totalSamples: n,
     allSample: n,
-    severity: severityConfig.severity,
+    severity,
     pointsLostRaw: parseFloat(pointsLostRaw.toFixed(4)),
     ptsLostRaw: parseFloat(pointsLostRaw.toFixed(4)),
     pointsLost: parseFloat(pointsLost.toFixed(4)),
@@ -1505,9 +1534,9 @@ export function calculateInsideScore(input: InsideScoringInput): InsideScoringRe
     possibleScore: POSSIBLE_SCORE,
     maxPtsLost: parseFloat(maxPtsLost.toFixed(4)),
     score: parseFloat(score.toFixed(2)),
-    formulaNumerator: severityConfig.pointsLostFormula,
+    formulaNumerator: pointsLostRaw,
     isDeficiencyOverride,
-    specialFormula: severityConfig.specialFormula,
+    specialFormula,
   };
 }
 

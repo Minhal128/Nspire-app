@@ -159,6 +159,8 @@ export interface OutsideScoringInput {
   totalSamples: number;         // n - number of sample units
   deficiencyDescription?: string; // Optional deficiency description for override checking
   deficiencyCount?: number;     // Number of deficiencies (default: 1)
+  deficiencyPointsFormula?: string; // Direct points formula from deficiency (e.g., "4.5/n", "12.20/n")
+  deficiencySeverity?: 'Life-Threatening' | 'Severe' | 'Moderate' | 'Low'; // Direct severity from deficiency
 }
 
 export interface OutsideScoringResult {
@@ -194,28 +196,47 @@ export function calculateOutsideScore(input: OutsideScoringInput): OutsideScorin
     categoryNumber, 
     totalSamples, 
     deficiencyDescription,
-    deficiencyCount = 1 
+    deficiencyCount = 1,
+    deficiencyPointsFormula,
+    deficiencySeverity,
   } = input;
 
   // Ensure we don't divide by zero - minimum 1 sample
   const n = Math.max(totalSamples, 1);
   const count = Math.max(deficiencyCount, 0);
 
-  // Get severity config (with deficiency override if applicable)
-  const severityConfig = getOutsideSeverityConfig(categoryNumber, deficiencyDescription);
-  
-  // Check if deficiency override was applied
-  const categoryOnlyConfig = getSeverityByCategoryNumber(categoryNumber);
-  const isDeficiencyOverride = deficiencyDescription !== undefined && 
-    (severityConfig.severity !== categoryOnlyConfig.severity || 
-     severityConfig.pointsLostFormula !== categoryOnlyConfig.pointsLostFormula);
+  // PRIORITY 1: Use direct deficiency points formula if provided (from deficiency data)
+  let pointsLostRaw: number;
+  let severity: 'Life-Threatening' | 'Severe' | 'Moderate' | 'Low';
+  let isDeficiencyOverride = false;
 
-  // Pts Lost (Raw) = the base formula numerator (4.5, 24.8, 49.60, 2.00, or 12.20)
-  // This is the raw base points lost value based on severity/category
-  const pointsLostRaw = severityConfig.pointsLostFormula;
+  if (deficiencyPointsFormula) {
+    // Parse formula like "4.5/n", "12.20/n", "49.60/n", "24.8/n", "2.00/n"
+    const match = deficiencyPointsFormula.match(/^([\d.]+)/);
+    if (match) {
+      pointsLostRaw = parseFloat(match[1]);
+      severity = deficiencySeverity || 'Moderate';
+      isDeficiencyOverride = true;
+    } else {
+      // Fallback to category-based if parsing fails
+      const severityConfig = getOutsideSeverityConfig(categoryNumber, deficiencyDescription);
+      pointsLostRaw = severityConfig.pointsLostFormula;
+      severity = severityConfig.severity;
+    }
+  } else {
+    // PRIORITY 2: Use category-based and deficiency description pattern matching
+    const severityConfig = getOutsideSeverityConfig(categoryNumber, deficiencyDescription);
+    const categoryOnlyConfig = getSeverityByCategoryNumber(categoryNumber);
+    
+    pointsLostRaw = severityConfig.pointsLostFormula;
+    severity = severityConfig.severity;
+    isDeficiencyOverride = deficiencyDescription !== undefined && 
+      (severityConfig.severity !== categoryOnlyConfig.severity || 
+       severityConfig.pointsLostFormula !== categoryOnlyConfig.pointsLostFormula);
+  }
 
   // Pts Lost = numerator / n (calculated points lost)
-  const pointsLost = severityConfig.pointsLostFormula / n;
+  const pointsLost = pointsLostRaw / n;
 
   // Calculate Max Points Lost = Points Lost / n
   const maxPtsLost = pointsLost / n;
@@ -226,14 +247,14 @@ export function calculateOutsideScore(input: OutsideScoringInput): OutsideScorin
   return {
     categoryNumber,
     totalSamples: n,
-    severity: severityConfig.severity,
+    severity,
     pointsLostRaw: parseFloat(pointsLostRaw.toFixed(4)),
     pointsLost: parseFloat(pointsLost.toFixed(4)),
     deficiencyCount: count,
     possibleScore: POSSIBLE_SCORE,
     maxPtsLost: parseFloat(maxPtsLost.toFixed(4)),
     score: parseFloat(score.toFixed(2)),
-    formulaNumerator: severityConfig.pointsLostFormula,
+    formulaNumerator: pointsLostRaw,
     isDeficiencyOverride,
   };
 }

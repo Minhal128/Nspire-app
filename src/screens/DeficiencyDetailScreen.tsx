@@ -163,8 +163,33 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   // Get total samples from selectedUnits (default to 20 if not available)
   const totalSamples = selectedUnits?.length || 20;
 
-  // Auto-count deficiencies: 1 if a deficiency is selected, 0 otherwise
-  const deficiencyCount = selectedDeficiency ? 1 : 0;
+  // Auto-count deficiencies: count is based on images uploaded (0 until image is uploaded)
+  const deficiencyCount = images.length > 0 ? images.length : 0;
+
+  // Get the raw points formula from the selected deficiency (e.g., "2.20/n", "27.25/n")
+  const getPointsFormula = (): number => {
+    if (!selectedDeficiency?.points) return 0;
+    const pointsStr = selectedDeficiency.points;
+    // Parse the formula like "2.20/n" or "27.25/50xn" to get the base value
+    const match = pointsStr.match(/^([\d.]+)/);
+    if (match) {
+      return parseFloat(match[1]);
+    }
+    return 0;
+  };
+
+  // Calculate PTS LOST from formula: formula_value / n (where n = totalSamples)
+  const calculatePtsLost = (): number => {
+    const rawPoints = getPointsFormula();
+    if (rawPoints === 0 || totalSamples === 0) return 0;
+    return rawPoints / totalSamples;
+  };
+
+  // Calculate SCORE: 25 - PTS LOST
+  const calculateScore = (): number => {
+    const ptsLost = calculatePtsLost();
+    return POSSIBLE_SCORE - ptsLost;
+  };
 
   // Update scoring dynamically when deficiency is selected/changed
   // Only calculate scoring when a deficiency is explicitly selected
@@ -194,6 +219,9 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         totalSamples,
         deficiencyDescription,
         deficiencyCount,
+        // Pass the deficiency's actual points formula if available
+        deficiencyPointsFormula: selectedDeficiency?.points,
+        deficiencySeverity: selectedDeficiency?.severity,
       });
       setOutsideScoringResult(outsideResult);
 
@@ -228,6 +256,8 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         deficiencyDescription,
         deficiencyCount,
         severity: selectedDeficiency?.severity as 'Life-Threatening' | 'Severe' | 'Moderate' | 'Low' | undefined,
+        // Pass the deficiency's actual points formula if available
+        deficiencyPointsFormula: selectedDeficiency?.points,
       });
       setInsideScoringResult(insideResult);
 
@@ -246,7 +276,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       setScoringResult(result);
       setOutsideScoringResult(null);
     }
-  }, [selectedDeficiency, deficiencyCount, totalSamples, isOutsideLocation, itemId, itemName, customDeficiencyDetail, customDeficiencyCriteria, isCustomEntry]);
+  }, [selectedDeficiency, deficiencyCount, totalSamples, isOutsideLocation, itemId, itemName, customDeficiencyDetail, customDeficiencyCriteria, isCustomEntry, images.length]);
 
   useEffect(() => {
     // Check if item has subcategories (e.g., Door in Outside section)
@@ -785,7 +815,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               </View>
             </View>
 
-            {/* Row 2: All Sample and Pts Lost (Raw) */}
+            {/* Row 2: All Sample and Pts Lost (Raw) - Shows general formula from points field */}
             <View style={styles.scoringRow}>
               <View style={styles.scoringField}>
                 <Text style={styles.scoringFieldLabel}>All Sample</Text>
@@ -793,18 +823,18 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               </View>
               <View style={styles.scoringField}>
                 <Text style={styles.scoringFieldLabel}>Pts Lost (Raw)</Text>
-                <Text style={[styles.scoringFieldValue, !scoringResult && { color: '#9CA3AF' }]}>
-                  {scoringResult?.ptsLostRaw?.toFixed(2) || '--'}
+                <Text style={[styles.scoringFieldValue, !selectedDeficiency && { color: '#9CA3AF' }]}>
+                  {selectedDeficiency ? getPointsFormula().toFixed(2) : '--'}
                 </Text>
               </View>
             </View>
 
-            {/* Row 3: Pts Lost and Possible Score */}
+            {/* Row 3: Pts Lost and Possible Score - PTS LOST calculated from formula */}
             <View style={styles.scoringRow}>
               <View style={styles.scoringField}>
                 <Text style={styles.scoringFieldLabel}>Pts Lost</Text>
-                <Text style={[styles.scoringFieldValue, !scoringResult && { color: '#9CA3AF' }]}>
-                  {scoringResult?.ptsLost?.toFixed(2) || '--'}
+                <Text style={[styles.scoringFieldValue, !selectedDeficiency && { color: '#9CA3AF' }]}>
+                  {selectedDeficiency ? calculatePtsLost().toFixed(2) : '--'}
                 </Text>
               </View>
               <View style={styles.scoringField}>
@@ -813,18 +843,18 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               </View>
             </View>
 
-            {/* Row 4: Max Pts Lost and Score */}
+            {/* Row 4: Max Pts Lost and Score - calculated from formula */}
             <View style={styles.scoringRow}>
               <View style={styles.scoringField}>
                 <Text style={styles.scoringFieldLabel}>Max Pts Lost</Text>
-                <Text style={[styles.scoringFieldValue, !scoringResult && { color: '#9CA3AF' }]}>
-                  {scoringResult?.maxPtsLost?.toFixed(2) || '--'}
+                <Text style={[styles.scoringFieldValue, !selectedDeficiency && { color: '#9CA3AF' }]}>
+                  {selectedDeficiency ? calculatePtsLost().toFixed(2) : '--'}
                 </Text>
               </View>
               <View style={styles.scoringField}>
                 <Text style={styles.scoringFieldLabel}>Score</Text>
-                <Text style={[styles.scoringFieldValue, scoringResult ? styles.scoreHighlight : { color: '#9CA3AF' }]}>
-                  {scoringResult?.score?.toFixed(2) || '--'}
+                <Text style={[styles.scoringFieldValue, selectedDeficiency ? styles.scoreHighlight : { color: '#9CA3AF' }]}>
+                  {selectedDeficiency ? calculateScore().toFixed(2) : '--'}
                 </Text>
               </View>
             </View>
