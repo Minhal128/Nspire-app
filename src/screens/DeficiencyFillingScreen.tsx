@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,11 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { DEFICIENCY_DATA, DeficiencyItem } from '../data/deficiencyData';
+import { 
+  calculateInsideScore, 
+  extractInsideCategoryNumber,
+  InsideScoringResult 
+} from '../utils/insideScoringCalculations';
 
 interface DeficiencyFillingScreenProps {
   navigation: any;
@@ -25,6 +30,24 @@ export default function DeficiencyFillingScreen({ navigation, route }: Deficienc
   const [selectedDeficiency, setSelectedDeficiency] = useState<DeficiencyItem | null>(null);
   const [capturedImages, setCapturedImages] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+
+  // Calculate NSPIRE scoring based on selected deficiency
+  const scoringResult: InsideScoringResult | null = useMemo(() => {
+    if (!selectedDeficiency || category !== 'inside') return null;
+    
+    const categoryNumber = extractInsideCategoryNumber(
+      selectedDeficiency.id,
+      selectedDeficiency.category
+    );
+    const totalSamples = selectedUnits?.length || 1;
+    
+    return calculateInsideScore({
+      categoryNumber,
+      totalSamples,
+      deficiencyDescription: selectedDeficiency.deficiencyDetail || selectedDeficiency.deficiencySelected,
+      deficiencyCount: 1,
+    });
+  }, [selectedDeficiency, category, selectedUnits]);
 
   // Auto-select first deficiency for the category/module
   useEffect(() => {
@@ -99,6 +122,7 @@ export default function DeficiencyFillingScreen({ navigation, route }: Deficienc
       selectedModule,
       selectedDeficiency,
       capturedImages,
+      scoringResult, // Include NSPIRE scoring data
     });
   };
 
@@ -172,6 +196,52 @@ export default function DeficiencyFillingScreen({ navigation, route }: Deficienc
           <Text style={styles.sectionTitle}>Code Compliance</Text>
           <Text style={styles.codeCompliance}>{selectedDeficiency.codeCompliance}</Text>
         </View>
+
+        {/* NSPIRE Scoring Card - Inside inspections only */}
+        {scoringResult && (
+          <View style={styles.scoringCard}>
+            <View style={styles.scoringHeader}>
+              <Ionicons name="calculator" size={20} color="#0E7490" />
+              <Text style={styles.scoringTitle}>NSPIRE Scoring</Text>
+            </View>
+            
+            <View style={styles.scoringGrid}>
+              <View style={styles.scoringItem}>
+                <Text style={styles.scoringLabel}>Severity</Text>
+                <View style={[
+                  styles.severityBadge,
+                  scoringResult.severity === 'Life-Threatening' && styles.severityLifeThreatening,
+                  scoringResult.severity === 'Severe' && styles.severitySevere,
+                  scoringResult.severity === 'Moderate' && styles.severityModerate,
+                  scoringResult.severity === 'Low' && styles.severityLow,
+                ]}>
+                  <Text style={styles.severityText}>{scoringResult.severity}</Text>
+                </View>
+              </View>
+              
+              <View style={styles.scoringItem}>
+                <Text style={styles.scoringLabel}>Points Lost</Text>
+                <Text style={styles.scoringValue}>{scoringResult.pointsLost.toFixed(2)}</Text>
+              </View>
+              
+              <View style={styles.scoringItem}>
+                <Text style={styles.scoringLabel}>Max Pts Lost</Text>
+                <Text style={styles.scoringValue}>{scoringResult.maxPtsLost.toFixed(4)}</Text>
+              </View>
+              
+              <View style={styles.scoringItem}>
+                <Text style={styles.scoringLabel}>Score</Text>
+                <Text style={[styles.scoringValue, styles.scoreHighlight]}>{scoringResult.score.toFixed(2)}</Text>
+              </View>
+            </View>
+            
+            <View style={styles.scoringFooter}>
+              <Text style={styles.scoringFooterText}>
+                Category {scoringResult.categoryNumber} • {scoringResult.totalSamples} samples • Possible: {scoringResult.possibleScore}
+              </Text>
+            </View>
+          </View>
+        )}
 
         {/* Image Capture Section */}
         <View style={styles.imageSection}>
@@ -508,5 +578,88 @@ const styles = StyleSheet.create({
   },
   proceedButtonTextDisabled: {
     color: '#9CA3AF',
+  },
+  // NSPIRE Scoring Styles
+  scoringCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    borderLeftWidth: 4,
+    borderLeftColor: '#0E7490',
+  },
+  scoringHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 16,
+  },
+  scoringTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  scoringGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  scoringItem: {
+    flex: 1,
+    minWidth: '45%',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 8,
+    padding: 12,
+  },
+  scoringLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginBottom: 4,
+  },
+  scoringValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  scoreHighlight: {
+    color: '#059669',
+  },
+  severityBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+  },
+  severityLifeThreatening: {
+    backgroundColor: '#DC2626',
+  },
+  severitySevere: {
+    backgroundColor: '#EA580C',
+  },
+  severityModerate: {
+    backgroundColor: '#F59E0B',
+  },
+  severityLow: {
+    backgroundColor: '#10B981',
+  },
+  severityText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  scoringFooter: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+  },
+  scoringFooterText: {
+    fontSize: 12,
+    color: '#6B7280',
+    textAlign: 'center',
   },
 });

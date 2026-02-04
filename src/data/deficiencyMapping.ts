@@ -1478,84 +1478,84 @@ export const HVAC_OUTSIDE_DEFICIENCIES: ItemDeficiencies = {
   ]
 };
 
-// 12. HVAC - INSIDE (comprehensive deficiencies)
+// 12. HVAC - INSIDE (comprehensive deficiencies) - EXACT NSPIRE TABLE MAPPING
 export const HVAC_DEFICIENCIES: ItemDeficiencies = {
-  itemName: 'HVAC',
+  itemName: 'Heating, Ventilation, and Air Conditioning',
   deficiencies: [
     {
       id: 'hvac_1',
       name: 'Air conditioning system or device is not operational.',
       detail: 'The system or device does not turn on. OR System or device only produces hot or room temperature air.',
-      criteria: 'System failure.',
-      severity: 'Moderate',
-      repairBy: '30 Day',
-      points: '5.5/n',
+      criteria: '(e.g., a window unit or central air system)',
+      severity: 'Low',
+      repairBy: '60 Day',
+      points: '2.20/n',
       code: 'HVAC-01'
     },
     {
       id: 'hvac_2',
-      name: 'Combustion chamber cover or gas shutoff valve missing.',
-      detail: 'Missing (evidence of prior installation) from combustion-fueled heating appliance.',
-      criteria: 'Previously installed and now not present.',
+      name: 'Combustion chamber cover or gas shutoff valve is missing from a combustion-fueled heating appliance. Heating system in tropical islands are excluded.',
+      detail: 'Combustion chamber cover or gas shutoff valve is missing (i.e., evidence of prior installation, but is now not present or is incomplete) from a combustion-fueled heating appliance.',
+      criteria: 'a combustion chamber cover or gas shutoff valve was previously installed and is now not present or is incomplete.',
       severity: 'Life-Threatening',
       repairBy: '24Hrs',
-      points: '30/n',
+      points: '27.25/n',
       code: 'HVAC-02'
     },
     {
       id: 'hvac_3',
-      name: 'Fuel-burning exhaust vent misaligned/blocked/damaged/missing.',
-      detail: 'Exhaust vent improperly connected, damaged, or missing.',
-      criteria: 'Metal tape is not a substitute for improperly connected flue vent.',
+      name: 'Fuel-burning heating system or device exhaust vent is misaligned, blocked, disconnected, improperly connected, damaged or missing. Heating system in tropical islands are excluded.',
+      detail: 'A fuel-burning heating system or device is present. And exhaust vent is misaligned, blocked, disconnected, or improperly connected through to the ceiling or wall. Or Exhaust vent is damaged (i.e., visibly defective; impacts functionality). OR Exhaust vent is missing (i.e., evidence of prior installation, but now not present or is incomplete).',
+      criteria: 'Not properly connected through to the ceiling or wall. Metal tape of any kind is not a substitute for improperly connected flue vent.',
       severity: 'Life-Threatening',
       repairBy: '24Hrs',
-      points: '30/n',
+      points: '27.25/n',
       code: 'HVAC-03'
     },
     {
       id: 'hvac_4',
       name: 'Heating system or device safety shield is damaged or missing.',
-      detail: 'Safety shield is damaged or missing (evidence of prior installation).',
-      criteria: 'Safety shield was previously installed and is now not present.',
-      severity: 'Life-Threatening',
-      repairBy: '24Hrs',
-      points: '30/n',
+      detail: 'Heating system or device safety shield is damaged (i.e., visibly defective; impacts functionality) or missing (i.e., evidence of prior installation, but is now not present or is incomplete).',
+      criteria: 'Safety shield was previously installed and is now not present or is incomplete. Heating systems in tropical islands are excluded.',
+      severity: 'Severe',
+      repairBy: '24 Hrs.',
+      points: '13.40/n',
       code: 'HVAC-04'
     },
     {
       id: 'hvac_5',
-      name: 'Heating source damaged/inoperable/missing (Apr 1 - Sep 30).',
-      detail: 'Permanently installed heating source damaged, inoperable, missing, or not installed.',
-      criteria: 'Outside temp below 68 F and heating source issue.',
+      name: 'The inspection date is on or between April 1 and September 30, and a heating source is damaged, inoperable, missing, or not installed.',
+      detail: 'A permanently installed heating source is damaged. OR a permanently installed heating source is inoperable, not meeting function or purpose, with or without visible damage. OR a permanently installed heating source is missing (i.e., evidence of prior installation but is now not present or is incomplete). OR A permanently installed heating source is not installed. And The outside temperature is below 68 degrees Fahrenheit',
+      criteria: 'Permanently is affixed within the unit or building, safely connected to the unit or building electrical system, thermostatically controlled by the unit or building, and appropriate for the size of the unit or building. The energy source for a permanently heating system can be electric, gas, or oil (Boiler Chiller system). The heating systems in tropical islands are excluded.',
       severity: 'Moderate',
       repairBy: '30 Day',
-      points: '5.5/n',
+      points: '13.40/n',
       code: 'HVAC-05'
     },
     {
       id: 'hvac_6',
-      name: 'Heating source not working (Oct 1 - Mar 31).',
-      detail: 'Permanently installed heating source not working OR working but interior temp < 64 F.',
-      criteria: 'Source not working to create heat.',
+      name: 'The inspection date is on or between October 1 and March 31 and the permanently installed heating source is not working or the permanently installed heating source is working and the interior temperature is below 64 degrees Fahrenheit.',
+      detail: 'The inspection date is on or between October 1 and March 31. AND the permanently installed heating source is not working. OR the permanently installed heating source is working and the interior temperature is below 64 degrees Fahrenheit.',
+      criteria: 'The permanently installed heating source is not working to create heat. Heating systems in tropical islands are excluded.',
       severity: 'Life-Threatening',
       repairBy: '24Hrs',
-      points: '30/n',
+      points: '27.25/n',
       code: 'HVAC-06'
     },
     {
       id: 'hvac_7',
       name: 'Unvented space heater is present.',
-      detail: 'Unvented space heater that burns gas, oil, or kerosene is present.',
-      criteria: 'Includes common areas.',
+      detail: 'Unvented space heater that burns gas, oil, or kerosene is present',
+      criteria: 'Inside, include any and all common areas.',
       severity: 'Life-Threatening',
       repairBy: '24Hrs',
-      points: '30/n',
+      points: '27.25/n',
       code: 'HVAC-07'
     }
   ]
 };
 
-// 13. Leak – Gas or Oil
+// 13. Leak – Gas or Oil - EXACT NSPIRE TABLE MAPPING
 export const LEAK_GAS_OIL_DEFICIENCIES: ItemDeficiencies = {
   itemName: 'Leak – Gas or Oil',
   deficiencies: [
@@ -1563,16 +1563,16 @@ export const LEAK_GAS_OIL_DEFICIENCIES: ItemDeficiencies = {
       id: 'leak_gas_1',
       name: 'Natural gas, propane, or oil leak.',
       detail: 'There is evidence of a gas, propane, or oil leak, or there is an uncapped gas or fuel supply line.',
-      criteria: 'Natural gas, propane, or oil leak.',
+      criteria: 'Inside, includes to any garage, common area, hallway, patio, or balcony.',
       severity: 'Life-Threatening',
       repairBy: '24Hrs',
-      points: '30/n',
+      points: '54.50/n',
       code: 'LEAK-GAS-01'
     }
   ]
 };
 
-// 14. Leak - sewage system
+// 14. Leak - sewage system - EXACT NSPIRE TABLE MAPPING
 export const LEAK_SEWAGE_DEFICIENCIES: ItemDeficiencies = {
   itemName: 'Leak - sewage system',
   deficiencies: [
@@ -1580,30 +1580,30 @@ export const LEAK_SEWAGE_DEFICIENCIES: ItemDeficiencies = {
       id: 'leak_sew_1',
       name: 'Blocked sewage system.',
       detail: 'Wastewater is unable to drain resulting in sewer backup.',
-      criteria: 'Blocked sewage system.',
+      criteria: 'Unable to drain.',
       severity: 'Life-Threatening',
       repairBy: '24Hrs',
-      points: '30/n',
+      points: '27.25/n',
       code: 'LEAK-SEW-01'
     },
     {
       id: 'leak_sew_2',
       name: 'Cap to the cleanout or pump cover is detached or missing.',
-      detail: 'Cap to the cleanout or pump cover is detached or missing (i.e., evidence of prior installation, but now not present or is incomplete).',
+      detail: 'Cap to the cleanout or pump cover is detached. OR Cap to the cleanout or pump cover is missing (i.e., evidence of prior installation, but is now not present or is incomplete).',
       criteria: 'Cap to the cleanout or pump cover is detached or missing.',
       severity: 'Moderate',
       repairBy: '30 Day',
-      points: '5.5/n',
+      points: '5.0/n',
       code: 'LEAK-SEW-02'
     },
     {
       id: 'leak_sew_3',
       name: 'Cleanout cap or riser is damaged.',
-      detail: 'Cap to the cleanout or pump cover is detached or missing (i.e., visibly defective, impacts functionality).',
+      detail: 'Cap to the cleanout or pump cover is damaged (i.e., visibly defective, impacts functionality).',
       criteria: 'Cleanout cap or riser is damaged.',
       severity: 'Moderate',
       repairBy: '30 Day',
-      points: '5.5/n',
+      points: '5.0/n',
       code: 'LEAK-SEW-03'
     },
     {
@@ -1613,13 +1613,13 @@ export const LEAK_SEWAGE_DEFICIENCIES: ItemDeficiencies = {
       criteria: 'Leak in sewage system.',
       severity: 'Life-Threatening',
       repairBy: '24Hrs',
-      points: '30/n',
+      points: '27.25/n',
       code: 'LEAK-SEW-04'
     }
   ]
 };
 
-// 15. Leak - water
+// 15. Leak - water - EXACT NSPIRE TABLE MAPPING
 export const LEAK_WATER_DEFICIENCIES: ItemDeficiencies = {
   itemName: 'Leak - water',
   deficiencies: [
@@ -1630,64 +1630,64 @@ export const LEAK_WATER_DEFICIENCIES: ItemDeficiencies = {
       criteria: 'Fluid is leaking from the sprinkler assembly.',
       severity: 'Severe',
       repairBy: '24 Hrs.',
-      points: '14.8/n',
+      points: '13.40/n',
       code: 'LEAK-WATER-01'
     },
     {
       id: 'leak_water_2',
       name: 'Plumbing leak',
       detail: 'Failure of a plumbing system that allows for water intrusion in unintended areas.',
-      criteria: 'Plumbing leak.',
+      criteria: 'Inside, includes any and all common areas and unit(s).',
       severity: 'Severe',
       repairBy: '24 Hrs.',
-      points: '14.8/n',
+      points: '13.40/n',
       code: 'LEAK-WATER-02'
     }
   ]
 };
 
-// 16. Lighting
+// 16. Lighting - EXACT NSPIRE TABLE MAPPING
 export const LIGHTING_DEFICIENCIES: ItemDeficiencies = {
   itemName: 'Lighting',
   deficiencies: [
     {
       id: 'light_1',
-      name: 'Auxiliary lighting damaged/missing.',
-      detail: 'Auxiliary lighting is damaged, missing or fail to illuminate when tested.',
-      criteria: 'Not present or inoperable.',
+      name: 'Auxiliary lighting is damaged, inoperable, or missing.',
+      detail: 'Auxiliary lighting is damaged (i.e., visibly defective; impacts functionality). OR Auxiliary lighting is inoperable, not meeting function or purpose, with or without visible damage. OR Auxiliary lighting is missing (i.e., evidence of prior installation, but is now not present or is incomplete).',
+      criteria: 'Permanently installed auxiliary emergency lighting is not present in any common area hallway leading to emergency or exit stairwell.',
       severity: 'Moderate',
       repairBy: '30 Day',
-      points: '5.5/n',
+      points: '5.0/n',
       code: 'LIGHT-01'
     },
     {
       id: 'light_2',
-      name: 'Interior lighting inoperable.',
-      detail: 'A permanently installed light fixture is inoperable.',
-      criteria: 'Not meeting function.',
+      name: 'Interior lighting is inoperable.',
+      detail: 'A permanently installed light fixture is inoperable, not meeting function or purpose, with or without visible damage. There must be at least one permanently installed light fixture in the kitchen. There must be at least one permanently installed light fixture in the bathroom. There must be at least one permanently installed or tenant-added light fixture in at least one of the following rooms: Living Room, Dining Room, Common, or Individual Sleeping Room, or Bedroom/Sleeping room.',
+      criteria: 'At least one permanently installed or tenant-added light fixture is not meeting function of purpose.',
       severity: 'Moderate',
       repairBy: '30 Day',
-      points: '5.5/n',
+      points: '5.0/n',
       code: 'LIGHT-02'
     },
     {
       id: 'light_3',
-      name: 'Interior lighting not secure.',
-      detail: 'A permanently installed light fixture is not secure.',
-      criteria: 'Attachment not stable.',
+      name: 'Interior lighting is not secure.',
+      detail: 'A permanently installed light fixture is not secure (i.e., unstable attachment). There must be at least one permanently installed light fixture in the kitchen. There must be at least one permanently installed light fixture in the bathroom. There must be at least one permanently installed or tenant-added light fixture in at least one of the following rooms: Living Room, Dining Room, Common, or Individual Sleeping Room, or Bedroom/Sleeping room.',
+      criteria: 'A permanently installed light fixture attachment is not stable.',
       severity: 'Moderate',
       repairBy: '30 Day',
-      points: '5.5/n',
+      points: '5.0/n',
       code: 'LIGHT-03'
     },
     {
       id: 'light_4',
-      name: 'Interior lighting missing (Kitchen/Restroom).',
-      detail: 'At least one permanently installed light fixture is not present in kitchen or restroom.',
-      criteria: 'Missing or not functioning.',
+      name: 'Interior lighting is missing.',
+      detail: 'A permanently installed light fixture is missing (i.e., evidence of prior installation, but is now not present or is incomplete). There must be at least one permanently installed light fixture in the kitchen. There must be at least one permanently installed light fixture in the bathroom.',
+      criteria: 'Permanently installed light fixture is not present in bathroom or kitchen.',
       severity: 'Moderate',
       repairBy: '30 Day',
-      points: '5.5/n',
+      points: '5.0/n',
       code: 'LIGHT-04'
     }
   ]
@@ -1742,93 +1742,93 @@ export const PARKING_DEFICIENCIES: ItemDeficiencies = {
 
 // 18. Paint - Lead-Based Paint
 export const PAINT_DEFICIENCIES: ItemDeficiencies = {
-  itemName: 'Paint - Lead-Based Paint',
+  itemName: 'Paint - Lead-Based',
   deficiencies: [
     {
       id: 'paint_1',
       name: 'Less than 2 SF - Paint in a Unit or inside the target property is deteriorated, below the level required for lead-safe work practices by a lead-certified firm or for passing clearance.',
-      detail: 'Paint is deteriorated (e.g., peeling, chipping, chalking, cracking, or detached from the substrate). For large surface areas in the Unit, deteriorated paint is less than or equal to 2 square feet, per room; for small surface areas, less than or equal to 10% per component ("de minimis").',
-      criteria: 'Less than 2 square feet per room deteriorated paint, damage to the surface such as holes that expose paint layers, and friction on painted surfaces.',
+      detail: 'Paint is deteriorated. (e.g., peeling, chipping, chalking, cracking, or detached from the substrate). For large surface areas in the Unit, deteriorated paint is less than or equal to 2 square feet, per room; for small surface areas, less than or equal to 10% per component ("de minimis")',
+      criteria: 'Less than 2 square feet per room deteriorated paint, damage to the surface such as holes that expose paint layers, and friction on painted surfaces. Target housing 1978 or prior.',
       severity: 'Moderate',
       repairBy: '30 Day',
-      points: '5.5/n',
+      points: '5.0/n',
       code: 'PAINT-01'
     },
     {
       id: 'paint_2',
       name: 'More than 2 SF - Paint in a Unit or Inside the target property is deteriorated – above the level required for lead-safe work practices by a lead certified firm and passing clearance.',
-      detail: 'Paint is deteriorated (e.g., peeling, chipping, chalking, cracking, or detached from the substrate). For large surface areas in the Unit, deteriorated paint is more than 2 square feet, per room; for small surface areas, greater than 10% per component ("significant").',
-      criteria: 'More than 2 square feet per room deteriorated paint, damage to the surface such as holes that expose paint layers, and friction on painted surfaces.',
+      detail: 'Paint is deteriorated. (e.g., peeling, chipping, chalking, cracking, or detached from the substrate). For large surface areas in the Unit, deteriorated paint is more than 2 square feet, per room; for small surface areas, greater than 10% per component ("significant")',
+      criteria: 'More than 2 square feet per room deteriorated paint, damage to the surface such as holes that expose paint layers, and friction on painted surfaces. Target housing 1978 or prior.',
       severity: 'Severe',
       repairBy: '24 Hrs.',
-      points: '14.8/n',
+      points: '13.40/n',
       code: 'PAINT-02'
     }
   ]
 };
 
-// 19. Railings
+// 19. Railings - EXACT NSPIRE TABLE MAPPING
 export const RAILINGS_DEFICIENCIES: ItemDeficiencies = {
   itemName: 'Railings',
   deficiencies: [
     {
       id: 'rail_1',
-      name: 'Guardrail Missing',
-      detail: 'The guardrail is missing or not installed, limiting its safe use.',
-      criteria: 'Missing along a walking surface over 30 inches above the floor or grade.',
+      name: 'The guardrail is missing or not installed, limiting its safe use.',
+      detail: 'Guardrail is missing (i.e., evidence of prior installation, but is now not present or is incomplete). OR Guardrail is not installed; guardrail should be installed to prevent people from falling from a walking surface over 30 inches above the floor or the grade.',
+      criteria: 'Guardrail missing along a walking surface over 30 inches above the floor or grade.',
       severity: 'Life-Threatening',
       repairBy: '24Hrs',
-      points: '30/n',
+      points: '27.25/n',
       code: 'RAIL-01'
     },
     {
       id: 'rail_2',
-      name: 'Guardrail Damaged',
-      detail: 'Guardrail component is missing or damaged.',
-      criteria: 'Missing critical components, visibly damaged, under 30 inches, or not securely attached.',
+      name: 'The guardrail is not functionally adequate.',
+      detail: 'Guardrail is missing critical components (the top rail that extends between supports); OR Guardrail structure is visibly damaged. (i.e., visibly defective; impacts functionality); AND/OR Guardrail (top of rail) is under 30 inches high or guardrail is not securely attached.',
+      criteria: 'Guardrail is not functionally adequate.',
       severity: 'Moderate',
       repairBy: '30 Day',
-      points: '5.5/n',
+      points: '5.0/n',
       code: 'RAIL-02'
     },
     {
       id: 'rail_3',
-      name: 'Handrail Missing',
-      detail: 'Handrail is missing (evidence of prior installation).',
+      name: 'Handrail is missing.',
+      detail: 'Handrail is missing (i.e., evidence of prior installation, but is now not present or is incomplete)',
       criteria: 'Handrail is missing.',
       severity: 'Severe',
       repairBy: '24 Hrs.',
-      points: '14.8/n',
+      points: '13.40/n',
       code: 'RAIL-03'
     },
     {
       id: 'rail_4',
-      name: 'Handrail Not Functionally Adequate',
-      detail: 'Handrail cannot reasonably be grasped, is not continuous, or is not between 28-42 inches high.',
+      name: 'Handrail is not functionally adequate.',
+      detail: 'Handrail cannot be reasonably grasped; OR handrail is not continuous (i.e., breaks, gaps); OR handrail is not between 28 and 42 inches high (measured from stair nosing).',
       criteria: 'Handrail is not functionally adequate.',
       severity: 'Moderate',
       repairBy: '30 Day',
-      points: '5.5/n',
+      points: '5.0/n',
       code: 'RAIL-04'
     },
     {
       id: 'rail_5',
-      name: 'Handrail Not Installed Where Required',
-      detail: '4 or more stair risers are present OR ramp has rise >6 inches/projection >72 inches.',
+      name: 'Handrail not installed where required.',
+      detail: '4 or more stair risers are present. OR Ramp has a rise greater than 6 inches or a horizontal projection greater than 72 inches.',
       criteria: 'Handrail not installed where required.',
       severity: 'Severe',
       repairBy: '24 Hrs.',
-      points: '14.8/n',
+      points: '13.40/n',
       code: 'RAIL-05'
     },
     {
       id: 'rail_6',
-      name: 'Handrail Not Secured',
-      detail: 'There is movement in the anchors of the handrail.',
+      name: 'Handrail is not secured.',
+      detail: 'There is movement in the anchors of the handrail (i.e., anchors are not flush with the wall; or anchors are not firmly affixed to the wall).',
       criteria: 'Handrail is not secured.',
       severity: 'Moderate',
       repairBy: '30 Day',
-      points: '5.5/n',
+      points: '5.0/n',
       code: 'RAIL-06'
     }
   ]
@@ -1918,55 +1918,55 @@ export const SIDEWALK_DEFICIENCIES: ItemDeficiencies = {
   ]
 };
 
-// 22. Step and Stairs
+// 22. Step and Stairs - EXACT NSPIRE TABLE MAPPING
 export const STAIRS_DEFICIENCIES: ItemDeficiencies = {
-  itemName: 'Step and Stairs',
+  itemName: 'Steps and Stairs',
   deficiencies: [
     {
       id: 'stair_1',
       name: 'Step or stair is not functionally adequate.',
-      detail: 'Step or stair is not functionally adequate (i.e., may not allow for personal traffic from one level to the next).',
-      criteria: 'Damaged or deterioration, unintentional dimensional changes that may interrupt a person\'s walking pattern or movement, or unstable material.',
+      detail: 'Step (single riser/tread) or stair (set of more than one step) is not functionally adequate (i.e., may not allow for pedestrian traffic from one level to the next).',
+      criteria: 'Damage or deterioration, unintentional dimensional changes that may interrupt a person\'s walking pattern or movement, or unstable material.',
       severity: 'Moderate',
       repairBy: '30 Day',
-      points: '5.5/n',
+      points: '5.0/n',
       code: 'STAIR-01'
     },
     {
       id: 'stair_2',
-      name: 'Stringer damaged.',
+      name: 'Stringer is damaged.',
       detail: 'Stringer is damaged (i.e., visibly defective; impacts functionality).',
       criteria: 'Stringer is visible and deficiency is observed.',
       severity: 'Severe',
       repairBy: '24 Hrs.',
-      points: '14.8/n',
+      points: '13.40/n',
       code: 'STAIR-02'
     },
     {
       id: 'stair_3',
       name: 'Tread is missing or damaged.',
-      detail: 'Tread on a set of stairs is missing Or tread on a set of stairs is loose or unlevel. Or a portion of the tread nosing that is greater than 1 inch in depth or 4 inches wide is damaged or broken.',
-      criteria: 'Accessory treads are present and verified to be functional.',
+      detail: 'Tread on a set of stairs is missing (i.e., evidence of prior installation, but is now not present or is incomplete). OR Tread on a set of stairs is loose or unlevel. OR A portion of the tread nosing that is greater than 1 inch in depth or 4 inches wide is damaged or broken.',
+      criteria: 'Accessory treads (including stair tread nosing, an individual piece of material positioned on the tread surface of each step) are present and verified to be functional.',
       severity: 'Severe',
       repairBy: '24 Hrs.',
-      points: '14.8/n',
+      points: '13.40/n',
       code: 'STAIR-03'
     }
   ]
 };
 
-// 23. Structural
+// 23. Structural - EXACT NSPIRE TABLE MAPPING
 export const STRUCTURAL_DEFICIENCIES: ItemDeficiencies = {
-  itemName: 'Structural',
+  itemName: 'Structural System',
   deficiencies: [
     {
       id: 'struct_1',
-      name: 'Structural system exhibits signs of serious failure.',
-      detail: 'Structural system exhibits signs of serious failure and may threaten the resident\'s safety.',
-      criteria: 'Structural elements include the ceiling, chimney, floor, foundation, roof assembly, wall exterior, and wall interior.',
+      name: 'The structural system exhibits one or more signs of serious failure that may threaten residents\' safety.',
+      detail: 'Physical evidence that may threaten residents\' safety; a significant break or fracture in structural components or a significant deformity in structural framing from the normal structural design. A structural element\'s framing members are leaning (i.e., not plumb) or structural element\'s surface is in a bowed or sagging position (i.e., not level). Bulging or bowing is observed in a structural element. ',
+      criteria: 'Structural elements include the ceiling, chimney, floor, foundation, roof assembly, wall exterior, and wall interior. Also applicable to an adjoining structure that threatens the integrity of this structure.',
       severity: 'Life-Threatening',
       repairBy: '24Hrs',
-      points: '30/n',
+      points: '27.25/n',
       code: 'STRUCT-01'
     }
   ]
@@ -2036,47 +2036,84 @@ export const WATER_HEATER_DEFICIENCIES: ItemDeficiencies = {
     {
       id: 'wh_1',
       name: 'Chimney or flue piping is blocked, misaligned, or missing.',
-      detail: 'Chimney or flue piping is blocked, misaligned, or missing (i.e., evidence of prior installation, but now not present or is incomplete).',
+      detail: 'Chimney or flue piping is blocked, misaligned, or missing (i.e., evidence of prior installation, but is now not present or is incomplete).',
       criteria: 'The vent is damaged, misaligned, or not connected properly.',
       severity: 'Life-Threatening',
       repairBy: '24Hrs',
-      points: '30/n',
+      points: '27.25/n',
       code: 'WH-01'
     },
     {
       id: 'wh_2',
-      name: 'Gas shutoff valve is damaged, missing or not installed',
+      name: 'Gas shutoff valve is damaged, missing, or not installed.',
       detail: 'Gas shutoff valve is damaged (i.e., visibly defective; impacts functionality). OR Gas shutoff valve is missing (i.e., evidence of prior installation, but is now not present or is incomplete). OR Gas shutoff valve is not installed (i.e., never installed, but should have been).',
       criteria: 'Unable to shut off gas in case of an emergency.',
       severity: 'Life-Threatening',
       repairBy: '24Hrs',
-      points: '30/n',
+      points: '27.25/n',
       code: 'WH-02'
     },
     {
       id: 'wh_3',
-      name: 'TPRV has an active leak. Or TPRV is obstructed such that the TPRV is unable to be fully actuated. OR Relief valve discharge piping is damaged d (i.e., visibly defective; impacts functionality), capped, has an upward slope, or is constructed of unsuitable material.',
-      detail: 'TPRV is obstructed such that the TPRV is unable to be fully actuated. OR, relief valve discharge piping is damaged (i.e., visibly defective; impacts functionality), is capped, has an upward slope, or is constructed of unsuitable material.',
+      name: 'TPRV has an active leak, OR TPRV is obstructed such that the TPRV is unable to be fully actuated, OR relief valve discharge piping is damaged, capped, has an upward slope, or is constructed of unsuitable material.',
+      detail: 'TPRV has an active leak. OR TPRV is obstructed such that the TPRV is unable to be fully actuated. OR Relief valve discharge piping is damaged (i.e., visibly defective; impacts functionality), is capped, has an upward slope, or is constructed of unsuitable material.',
       criteria: 'The TPRV is not connected properly.',
       severity: 'Life-Threatening',
       repairBy: '24Hrs',
-      points: '30/n',
+      points: '27.25/n',
       code: 'WH-03'
     },
     {
       id: 'wh_4',
-      name: 'The relief valve discharge piping terminates greater than 6 inches or less than 2 inches from waste receptor flood level.',
-      detail: 'The relief valve discharge piping is missing (i.e., evidence of prior installation, but is now not present or is incomplete). OR The relief valve discharge piping terminates greater than 6 inches or less than 2 inches from waste receptor.',
+      name: 'The relief valve discharge piping is missing, or terminates greater than 6 inches or less than 2 inches from waste receptor flood level.',
+      detail: 'The relief valve discharge piping is missing (i.e., evidence of prior installation, but is now not present or is incomplete). OR The relief valve discharge piping terminates greater than 6 inches or less than 2 inches from waste receptor flood level.',
       criteria: 'Not properly installed.',
       severity: 'Moderate',
       repairBy: '30 Day',
-      points: '5.5/n',
+      points: '5.0/n',
       code: 'WH-04'
+    },
+    {
+      id: 'wh_5',
+      name: 'Water heater does not produce adequate hot water.',
+      detail: 'Water heater does not produce adequate hot water in utility rooms or other non-kitchen, non-bathroom areas.',
+      criteria: 'Insufficient hot water output.',
+      severity: 'Low',
+      repairBy: '60 Day',
+      points: '2.20/n',
+      code: 'WH-05'
     }
   ]
 };
 
-// 26. General Comment
+// Trash Chute - EXACT NSPIRE TABLE MAPPING
+export const TRASH_CHUTE_DEFICIENCIES: ItemDeficiencies = {
+  itemName: 'Trash Chute',
+  deficiencies: [
+    {
+      id: 'trash_1',
+      name: 'The chute door does not open, self-close, or latch.',
+      detail: 'The chute door does not open. OR The chute door does not self-close. OR The chute door does not latch.',
+      criteria: 'Door does not open, self-close, or latch.',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.0/n',
+      code: 'TRASH-01'
+    },
+    {
+      id: 'trash_2',
+      name: 'Chute is clogged.',
+      detail: 'Trash chute is clogged and trash cannot be deposited.',
+      criteria: 'Chute is blocked.',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.0/n',
+      code: 'TRASH-02'
+    }
+  ]
+};
+
+// 26. General Comment - EXACT NSPIRE TABLE MAPPING
 export const GENERAL_COMMENT_DEFICIENCIES: ItemDeficiencies = {
   itemName: 'General Comment',
   deficiencies: [
@@ -2084,10 +2121,10 @@ export const GENERAL_COMMENT_DEFICIENCIES: ItemDeficiencies = {
       id: 'gen_1',
       name: 'General observation or comment',
       detail: 'General observation or comment about the property condition.',
-      criteria: 'General comment.',
+      criteria: 'General comment - for informational purposes only.',
       severity: 'Low',
       repairBy: '60 Day',
-      points: '2.40/n',
+      points: '0.00/n',
       code: 'GEN-01'
     }
   ]
@@ -2099,65 +2136,65 @@ export const GENERAL_COMMENT_DEFICIENCIES: ItemDeficiencies = {
 
 // Inside 1. Cabinet and Storage (Pantry, Laundry)
 
-// Inside 2. Call-for-Aid System
+// Inside 2. Call-for-Aid System - EXACT NSPIRE TABLE MAPPING
 export const CALL_FOR_AID_DEFICIENCIES: ItemDeficiencies = {
   itemName: 'Call-for-Aid System',
   deficiencies: [
     {
       id: 'cfa_1',
-      name: 'System does not function properly',
-      detail: 'Call-for-aid system does not emit sound, light, or send signal to annunciator.',
-      criteria: 'Annunciator does not indicate the correct corresponding room.',
-      severity: 'Severe',
-      repairBy: '24 Hrs.',
-      points: '14.8/n',
+      name: 'System does not function properly.',
+      detail: 'A call-for-Aid system does not emit sound or light or send signal to annunciator.',
+      criteria: 'The annunciator does not indicate the correct corresponding room.',
+      severity: 'Life-Threatening',
+      repairBy: '24Hrs',
+      points: '27.25/50xn',
       code: 'CFA-01'
     },
     {
       id: 'cfa_2',
-      name: 'System blocked or pull cord too high',
-      detail: 'System blocked OR pull cord end is higher than 6 inches off the floor.',
-      criteria: 'Pull cord positioned more than 6 inches above floor.',
-      severity: 'Moderate',
-      repairBy: '30 Day',
-      points: '5.5/n',
+      name: 'The system is blocked, or the pull cord is higher than 6 inches off the floor.',
+      detail: 'Call-for-aid system is blocked. OR The pull cord end is higher than 6 inches off the floor.',
+      criteria: 'The pull cord end is positioned more than 6 inches above the floor.',
+      severity: 'Severe',
+      repairBy: '24 Hrs.',
+      points: '13.40/50xn',
       code: 'CFA-02'
     }
   ]
 };
 
-// Inside 3. Carbon Monoxide Alarm
+// Inside 3. Carbon Monoxide Alarm - EXACT NSPIRE TABLE MAPPING
 export const CARBON_MONOXIDE_DEFICIENCIES: ItemDeficiencies = {
   itemName: 'Carbon Monoxide Alarm',
   deficiencies: [
     {
       id: 'co_1',
-      name: 'Alarm inoperable',
-      detail: 'Does not produce audio or visual alarm when tested.',
-      criteria: 'With or without battery, including low volume.',
+      name: 'Carbon monoxide alarm does not produce audio or visual alarm when tested.',
+      detail: 'Carbon monoxide alarm, inoperable.',
+      criteria: 'With or without a battery, including low-volume.',
       severity: 'Life-Threatening',
       repairBy: '24Hrs',
-      points: '30/n',
+      points: '0.000',
       code: 'CO-01'
     },
     {
       id: 'co_2',
-      name: 'Alarm missing or improperly installed',
-      detail: 'Fuel-burning appliance present and CO alarm missing.',
-      criteria: 'Sleeping area within one story of attached garage without ventilation.',
+      name: 'Carbon monoxide alarm is missing, not installed, or not installed in the proper location.',
+      detail: 'The building contains a fuel-burning appliance or fuel-burning system, carbon monoxide alarm is missing (i.e., evidence of prior installation but is now not present or is incomplete).',
+      criteria: 'Unit or sleeping area is located one (1) story or less above or below an attached private garage that does not have natural ventilation or is enclosed and does not have a ventilation system for vehicle exhaust.',
       severity: 'Life-Threatening',
       repairBy: '24Hrs',
-      points: '30/n',
+      points: '0.000',
       code: 'CO-02'
     },
     {
       id: 'co_3',
-      name: 'Alarm obstructed',
-      detail: 'Alarm is obstructed.',
-      criteria: 'Covered by foreign objects such as plastic, tape, paint, or stickers.',
-      severity: 'Moderate',
-      repairBy: '30 Day',
-      points: '5.5/n',
+      name: 'Carbon monoxide alarm is obstructed.',
+      detail: 'Carbon monoxide alarm is obstructed.',
+      criteria: 'The carbon monoxide alarm is covered by a foreign object (e.g., plastic bag, shower cap, zip tie, paint, tape, decorative stickers).',
+      severity: 'Life-Threatening',
+      repairBy: '24Hrs',
+      points: '0.000',
       code: 'CO-03'
     }
   ]
@@ -2165,454 +2202,1097 @@ export const CARBON_MONOXIDE_DEFICIENCIES: ItemDeficiencies = {
 
 // Inside 4. Ceiling
 
-// Inside 5. Chimney (Inside)
+// Inside 5. Chimney (Inside) - EXACT NSPIRE TABLE MAPPING
 export const CHIMNEY_INSIDE_DEFICIENCIES: ItemDeficiencies = {
   itemName: 'Chimney',
   deficiencies: [
     {
       id: 'chim_in_1',
-      name: 'Chimney incomplete or damaged',
-      detail: 'Chimney or flue cannot safely vent combustion gases.',
-      criteria: 'Fireplace or appliance is not decommissioned.',
+      name: 'Visually accessible and observed.',
+      detail: 'A chimney, flue, or firebox connected to a fireplace or wood-burning appliance is incomplete or damaged such that it may not safely contain the fire and convey smoke and combustion gases to the exterior.',
+      criteria: 'Fireplace or fire burning appliance is not intentionally decommissioned.',
       severity: 'Life-Threatening',
       repairBy: '24Hrs',
-      points: '30/n',
+      points: '27.25/n',
       code: 'CHIM-IN-01'
     }
   ]
 };
 
-// Inside 6. Clothes Dryer Exhaust Ventilation (Inside)
+// Inside 6. Clothes Dryer Exhaust Ventilation (Inside) - EXACT NSPIRE TABLE MAPPING
 export const DRYER_VENT_INSIDE_DEFICIENCIES: ItemDeficiencies = {
   itemName: 'Clothes Dryer Exhaust Ventilation',
   deficiencies: [
     {
       id: 'dryer_in_1',
-      name: 'Unsuitable transition duct',
-      detail: 'Duct not constructed of approved metal material.',
-      criteria: 'Dryer used indoors.',
-      severity: 'Moderate',
-      repairBy: '30 Day',
-      points: '5.5/n',
+      name: 'Dryer transition duct is constructed of unsuitable material.',
+      detail: 'Dryer transition duct is not constructed of metal or an approved material.',
+      criteria: 'Dryer is being used indoor.',
+      severity: 'Life-Threatening',
+      repairBy: '24Hrs',
+      points: '27.25/n',
       code: 'DRYER-IN-01'
     },
     {
       id: 'dryer_in_2',
-      name: 'Restricted airflow',
-      detail: 'Ventilation system blocked or damaged.',
-      criteria: 'Airflow restricted.',
-      severity: 'Moderate',
-      repairBy: '30 Day',
-      points: '5.5/n',
+      name: 'Electrical dryer exhaust ventilation has restricted airflow.',
+      detail: 'Electric dryer exhaust ventilation system is blocked or damaged such that airflow may be restricted.',
+      criteria: 'Airflow may be restricted.',
+      severity: 'Life-Threatening',
+      repairBy: '24Hrs',
+      points: '27.25/n',
       code: 'DRYER-IN-02'
     },
     {
       id: 'dryer_in_3',
-      name: 'Transition duct detached or missing',
-      detail: 'Evidence of prior installation but now missing.',
-      criteria: 'Duct not securely attached.',
-      severity: 'Moderate',
-      repairBy: '30 Day',
-      points: '5.5/n',
+      name: 'Electric dryer transition duct is detached or missing.',
+      detail: 'Electric dryer transition duct is detached or missing (i.e., evidence of prior installation but is now not present or is incomplete).',
+      criteria: 'Dryer transition duct is not securely attached.',
+      severity: 'Life-Threatening',
+      repairBy: '24Hrs',
+      points: '27.25/n',
       code: 'DRYER-IN-03'
+    },
+    {
+      id: 'dryer_in_4',
+      name: 'Gas dryer exhaust ventilation system has restricted airflow.',
+      detail: 'Gas dryer exhaust ventilation system is blocked or damaged such that airflow may be restricted.',
+      criteria: 'Airflow may be restricted.',
+      severity: 'Life-Threatening',
+      repairBy: '24Hrs',
+      points: '27.25/n',
+      code: 'DRYER-IN-04'
+    },
+    {
+      id: 'dryer_in_5',
+      name: 'Gas dryer transition duct is detached or missing',
+      detail: 'Gas dryer transition duct is detached or missing (i.e., evidence of prior installation but is now not present or is incomplete).',
+      criteria: 'Dryer transition duct is not securely attached.',
+      severity: 'Life-Threatening',
+      repairBy: '24Hrs',
+      points: '27.25/n',
+      code: 'DRYER-IN-05'
     }
   ]
 };
 
-// Inside 7. Door (Inside)
+// Inside 7. Door (Inside) - EXACT NSPIRE TABLE MAPPING - ALL DOOR TYPES
 export const DOOR_INSIDE_DEFICIENCIES: ItemDeficiencies = {
   itemName: 'Door',
   deficiencies: [
+    // Door - Entry
     {
       id: 'door_in_1',
-      name: 'Entry door cannot be secured',
-      detail: 'Lock cannot be engaged from both sides.',
-      criteria: 'Access not controlled.',
-      severity: 'Life-Threatening',
-      repairBy: '24Hrs',
-      points: '30/n',
+      name: 'Entry door cannot be secured.',
+      detail: 'Entry door cannot be secured (i.e., access controlled) by at least one installed lock.',
+      criteria: 'Installed locks can not be engaged from both sides.',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '13.40/n',
       code: 'DOOR-IN-01'
     },
     {
       id: 'door_in_2',
-      name: 'Entry door damaged or missing',
-      detail: 'Door cannot provide privacy or protection.',
-      criteria: 'Hole or crack ≥ 1/4 inch or missing glass.',
-      severity: 'Moderate',
-      repairBy: '30 Day',
-      points: '5.5/n',
+      name: 'Entry door component is damage inoperable or missing and it does not limit the door\'s ability to provide privacy or protection from weather or infestation.',
+      detail: 'Entry door component is inoperable, missing, and it does not limit the door\'s ability to provide privacy or protection from weather or infestation.',
+      criteria: 'A hole ¼ inch or greater in diameter or a split or crack ¼ inch or greater in width that penetrates through the door. Or a hole or a crack with separation is present, or the glass is missing within the door, side lights, or transom.',
+      severity: 'Low',
+      repairBy: '60 Day',
+      points: '2.20/n',
       code: 'DOOR-IN-02'
     },
     {
       id: 'door_in_3',
-      name: 'Fire-labeled door defective',
-      detail: 'Door cannot self-close or latch.',
-      criteria: 'Fire integrity compromised.',
+      name: 'The entry door frame, threshold, or trim is damaged.',
+      detail: 'The entry door frame, threshold, or trim is damaged or missing (i.e. visibly defective; impacts functionality).',
+      criteria: 'Observed evidence of prior installation, now missing.',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.0/n',
+      code: 'DOOR-IN-03'
+    },
+    {
+      id: 'door_in_4',
+      name: 'Entry door is missing',
+      detail: 'Evidence of prior installation',
+      criteria: 'Not present or is incomplete.',
+      severity: 'Severe',
+      repairBy: '24 Hrs.',
+      points: '13.40/n',
+      code: 'DOOR-IN-04'
+    },
+    {
+      id: 'door_in_5',
+      name: 'Door - Entry',
+      detail: 'Entry door seal, gasket, or stripping is damaged, inoperable or missing.',
+      criteria: 'Seal, gasket, or stripping is damaged, inoperable, or missing, and there is either a gap of ¼ inch or more that allows light through or evidence of water penetration such as damage or dry rot around or under the door.',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.0/n',
+      code: 'DOOR-IN-05'
+    },
+    {
+      id: 'door_in_6',
+      name: 'Self-closing mechanism is damaged, inoperable or damaged.',
+      detail: 'Self-closing mechanism is damaged, inoperable or damaged.',
+      criteria: 'The self-closing mechanism is damaged. Or the self-closing mechanism does not pull the door closed and engage the latch. Or The self-closing mechanism is missing.',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.0/n',
+      code: 'DOOR-IN-06'
+    },
+    {
+      id: 'door_in_7',
+      name: 'Entry door surface is delaminated or separated.',
+      detail: 'Entry door surface is delaminated or separated.',
+      criteria: 'There is delamination or separation of the door surface 2 inches wide or greater. Or There is delamination or separation that affects the integrity of the door.',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.0/n',
+      code: 'DOOR-IN-07'
+    },
+    {
+      id: 'door_in_8',
+      name: 'Entry door will not close.',
+      detail: 'Entry door will not close.',
+      criteria: 'Entry door does not close (i.e., door seats in frame).',
+      severity: 'Severe',
+      repairBy: '24 Hrs.',
+      points: '13.40/n',
+      code: 'DOOR-IN-08'
+    },
+    {
+      id: 'door_in_9',
+      name: 'Entry door will not open.',
+      detail: 'Entry door will not open.',
+      criteria: 'Entry door does not open.',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.0/n',
+      code: 'DOOR-IN-09'
+    },
+    {
+      id: 'door_in_10',
+      name: 'Hole, split, or crack that penetrates completely through the entry door.',
+      detail: 'Hole, split, or crack that penetrates completely through the entry door.',
+      criteria: 'Crack, split, separation, or hole1/4 inch or greater in diameter penetrating through the door or door sides.',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.0/n',
+      code: 'DOOR-IN-10'
+    },
+    // Door – Fire Labeled
+    {
+      id: 'door_fire_in_1',
+      name: 'Door – Fire Labeled',
+      detail: 'An object is present that may prevent the fire-labeled door from closing and latching or self-closing and latching.',
+      criteria: 'An object is present that may prevent the fire-labeled door from closing and latching. Or An object is present that may prevent the fire-labeled door from self-closing and latching.',
+      severity: 'Severe',
+      repairBy: '24 Hrs.',
+      points: '13.40/n',
+      code: 'DOOR-FIRE-IN-01'
+    },
+    {
+      id: 'door_fire_in_2',
+      name: 'Fire-labeled door assembly has a hole of any size.',
+      detail: 'Fire-labeled door assembly has a hole of any size.',
+      criteria: 'A fire-labeled door assembly has a hole of any size. Or A fire-labeled door assembly is damaged (i.e., visibly defective; impacts functionality) such that its integrity may be compromised.',
+      severity: 'Severe',
+      repairBy: '24 Hrs.',
+      points: '13.40/n',
+      code: 'DOOR-FIRE-IN-02'
+    },
+    {
+      id: 'door_fire_in_3',
+      name: 'Fire - labeled door cannot be secured.',
+      detail: 'Fire - labeled door cannot be secured.',
+      criteria: 'Fire-labeled door that serves as an entry door (i.e., a door that provides a means of access to the unit from the inside or outside) cannot be secured (i.e., access controlled) by at least one installed lock.',
+      severity: 'Severe',
+      repairBy: '24 Hrs.',
+      points: '13.40/n',
+      code: 'DOOR-FIRE-IN-03'
+    },
+    {
+      id: 'door_fire_in_4',
+      name: 'Fire - labeled door does not close and latch. OR is damaged or missing such that the door does not self-close and latch.',
+      detail: 'Fire - labeled door does not close and latch. OR is damaged or missing such that the door does not self-close and latch.',
+      criteria: 'Fire - labeled door does not close and latch. OR fire - labeled door self-closing hardware is damaged or missing such that the door does not self-close and latch.',
+      severity: 'Severe',
+      repairBy: '24 Hrs.',
+      points: '13.40/n',
+      code: 'DOOR-FIRE-IN-04'
+    },
+    {
+      id: 'door_fire_in_5',
+      name: 'Fire-labeled door does not open.',
+      detail: 'Fire-labeled door does not open.',
+      criteria: 'Fire-labeled door does not open, which that it may limit access between spaces.',
+      severity: 'Severe',
+      repairBy: '24 Hrs.',
+      points: '13.40/n',
+      code: 'DOOR-FIRE-IN-05'
+    },
+    {
+      id: 'door_fire_in_6',
+      name: 'Fire-labeled door is missing.',
+      detail: 'Fire-labeled door is missing.',
+      criteria: '(i.e., Evidence of prior installation, but now not present or is incomplete).',
       severity: 'Life-Threatening',
       repairBy: '24Hrs',
-      points: '30/n',
-      code: 'DOOR-IN-03'
+      points: '27.25/n',
+      code: 'DOOR-FIRE-IN-06'
+    },
+    {
+      id: 'door_fire_in_7',
+      name: 'Fire-labeled door seal or gasket is damaged.',
+      detail: 'Fire-labeled door seal or gasket is damaged.',
+      criteria: 'Fire - labeled door seal or gasket is damaged, impacts functionality. Or fire labeled door seal or gasket is missing (i.e. evidence of prior installation, but now not present or is incomplete).',
+      severity: 'Severe',
+      repairBy: '24 Hrs.',
+      points: '13.40/n',
+      code: 'DOOR-FIRE-IN-07'
+    },
+    // Door-General (Passage Door)
+    {
+      id: 'door_gen_in_1',
+      name: 'Door-General',
+      detail: 'Passage door component is damaged, inoperable, or missing, and the door is not functionally adequate.',
+      criteria: 'A passage door is deficient if a component is damaged, inoperable, or missing, and the door cannot adequately provide privacy, room separation, or control the physical atmosphere.',
+      severity: 'Low',
+      repairBy: '60 Day',
+      points: '2.20/n',
+      code: 'DOOR-GEN-IN-01'
+    },
+    {
+      id: 'door_gen_in_2',
+      name: 'A passage door (door into utility room, storage or closet room, or laundry room) does not open.',
+      detail: 'A passage door (door into utility room, storage or closet room, or laundry room) does not open.',
+      criteria: 'A passage door does not open such that it may limit access when needed.',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.0/n',
+      code: 'DOOR-GEN-IN-02'
+    },
+    {
+      id: 'door_gen_in_3',
+      name: 'A passage door, which is not intended to permit access between rooms, has a damaged component, inoperable or missing, or damaged components.',
+      detail: 'A passage door, which is not intended to permit access between rooms, has a damaged component, inoperable or missing, or damaged components.',
+      criteria: 'A non-access passage door is damaged, inoperable, or missing a component—affecting its intended function.',
+      severity: 'Low',
+      repairBy: '60 Day',
+      points: '2.20/n',
+      code: 'DOOR-GEN-IN-03'
+    },
+    // Garage Door
+    {
+      id: 'garage_in_1',
+      name: 'Garage Door',
+      detail: 'Garage door does not open, close, or remains closed.',
+      criteria: 'Door will not open and remain open, does not function adequately.',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.0/n',
+      code: 'GARAGE-IN-01'
+    },
+    {
+      id: 'garage_in_2',
+      name: 'The garage door has a hole (broken panel or window).',
+      detail: 'The garage door has a hole (broken panel or window).',
+      criteria: 'Garage door has a hole of any size that penetrates through to the interior.',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.0/n',
+      code: 'GARAGE-IN-02'
     }
   ]
 };
 
-// Inside 8. Drainage (Inside)
+// Inside 8. Drainage (Inside) - EXACT NSPIRE TABLE MAPPING
 export const DRAINAGE_INSIDE_DEFICIENCIES: ItemDeficiencies = {
   itemName: 'Drainage',
   deficiencies: [
     {
       id: 'drain_in_1',
-      name: 'Drain fully blocked',
-      detail: 'Drainage problem present.',
-      criteria: 'Water unable to drain.',
+      name: 'Drain/Floor drain',
+      detail: 'The drain is fully blocked.',
+      criteria: 'There is a problem with the drainage.',
       severity: 'Moderate',
       repairBy: '30 Day',
-      points: '5.5/n',
+      points: '5.0/n',
       code: 'DRAIN-IN-01'
     }
   ]
 };
 
-// Inside 9. Egress (Inside)
+// Inside 9. Egress (Inside) - EXACT NSPIRE TABLE MAPPING
 export const EGRESS_INSIDE_DEFICIENCIES: ItemDeficiencies = {
   itemName: 'Egress',
   deficiencies: [
     {
       id: 'egress_in_1',
       name: 'Obstructed means of egress',
-      detail: 'Exit access or exit obstructed.',
-      criteria: 'Furniture, bars, or locks block escape route.',
+      detail: 'The exit access or exit is obstructed. 1. Exit access - path from any interior location to an exit. 2. Exit doors to the outside and enclosed exit stairways.',
+      criteria: 'Double-key Cylinder deadbolt locks or security features requiring a key, tool, or special effort from the stress side are not allowed on exit doors, exit access doors, or egress windows. Fixed or movable security bars must not block designated egress points, and no furniture or items may obstruct the means of egress.',
       severity: 'Life-Threatening',
       repairBy: '24Hrs',
-      points: '30/n',
+      points: '27.25/n',
       code: 'EGRESS-IN-01'
     }
   ]
 };
 
-// Inside 10. Electrical (Inside)
+// Inside 10. Electrical (Inside) - EXACT NSPIRE TABLE MAPPING
 export const ELECTRICAL_INSIDE_DEFICIENCIES: ItemDeficiencies = {
   itemName: 'Electrical',
   deficiencies: [
+    // Conductor-Outlet, and Switch
     {
       id: 'elec_in_1',
-      name: 'Exposed or unprotected conductors',
-      detail: 'Wiring not enclosed or insulated.',
-      criteria: 'Open ports, missing covers, gaps over 1/2 inch.',
+      name: 'Conductor-Outlet, and Switch',
+      detail: 'The electrical conductor is not enclosed or properly insulated (e.g., damaged or missing sheathing that exposes the insulated wiring or conductor, an open port, a missing knockout, a missing outlet or switch cover, or a missing breaker or fuse). OR An opening or gap is present and measures greater than 1/2".',
+      criteria: 'Electrical conductors must be enclosed and insulated, with no exposed wiring, open ports, missing covers, or gaps over 1/2"; missing light bulbs are evaluated under interior or exterior lighting.',
       severity: 'Life-Threatening',
       repairBy: '24Hrs',
-      points: '30/n',
+      points: '27.25/n',
       code: 'ELEC-IN-01'
     },
     {
       id: 'elec_in_2',
-      name: 'Outlet not energized',
-      detail: 'Accessible outlet does not provide power.',
-      criteria: 'Testing indicates outlet is dead.',
-      severity: 'Moderate',
-      repairBy: '30 Day',
-      points: '5.5/n',
+      name: 'The outlet does not have visible damage, and testing indicates that it is not energized.',
+      detail: 'The outlet does not have visible damage, and testing indicates that it is not energized.',
+      criteria: 'An outlet that is reasonably accessible (i.e., can be reached without moving obstructions, dismantling, destructive measures, or actions that may pose a risk to persons or property) does not have visible damage and testing indicates that it is not energized.',
+      severity: 'Severe',
+      repairBy: '24 Hrs.',
+      points: '13.40/n',
       code: 'ELEC-IN-02'
     },
     {
       id: 'elec_in_3',
-      name: 'Outlet or switch damaged',
-      detail: 'Visible damage affecting functionality.',
-      criteria: 'Cannot safely carry electrical current.',
+      name: 'The outlet or switch is damaged.',
+      detail: 'The outlet or switch is damaged.',
+      criteria: 'Any portion of a visually accessible (i.e., can be reasonably accessed and observed) outlet or switch is damaged (i.e., visibly defective; impacts functionality) such that it may not safely carry or control electrical current at the outlet or switch.',
+      severity: 'Life-Threatening',
+      repairBy: '24Hrs',
+      points: '27.25/n',
+      code: 'ELEC-IN-03'
+    },
+    {
+      id: 'elec_in_4',
+      name: 'Testing of a three-pronged outlet indicates that it is not wired correctly or grounded.',
+      detail: 'Testing of a three-pronged outlet indicates that it is not wired correctly or grounded.',
+      criteria: 'Testing of a three-pronged outlet that is reasonably accessible (i.e., can be reached without moving obstructions, dismantling, destructive measures, or actions that may pose a risk to persons or property) indicates that it is not properly wired or grounded.',
       severity: 'Severe',
       repairBy: '24 Hrs.',
-      points: '14.8/n',
-      code: 'ELEC-IN-03'
+      points: '13.40/n',
+      code: 'ELEC-IN-04'
+    },
+    {
+      id: 'elec_in_5',
+      name: 'Water is currently in contact with an electrical conductor.',
+      detail: 'Water is currently in contact with an electrical conductor.',
+      criteria: 'Water is currently in contact with an electrical conductor. Check for the source (water infiltration from the ceiling or inside of the wall).',
+      severity: 'Life-Threatening',
+      repairBy: '24Hrs',
+      points: '27.25/n',
+      code: 'ELEC-IN-05'
+    },
+    // Electrical-(GFCI) Or (AFCI)-Outlet or Breaker
+    {
+      id: 'elec_in_6',
+      name: 'Electrical-(GFCI) Or (AFCI)-Outlet or Breaker',
+      detail: 'AFCI outlet or AFCI breaker does not have visible damage and the test or reset button is inoperable.',
+      criteria: 'AFCI outlet or AFCI breaker does not have visible damage and the test or reset button is inoperable (i.e., overall system or component thereof is not meeting function or purpose).',
+      severity: 'Severe',
+      repairBy: '24 Hrs.',
+      points: '13.40/n',
+      code: 'ELEC-IN-06'
+    },
+    {
+      id: 'elec_in_7',
+      name: 'Unprotected outlet is present within six feet of a water source.',
+      detail: 'Unprotected outlet is present within six feet of a water source.',
+      criteria: 'An outlet, not GFCI-protected, is present within six feet of a water source (i.e., sink, bathtub, shower, water faucet, toilet) located in the same room. An outlet deigned for major appliances, when in use, is not evaluated under this category.',
+      severity: 'Severe',
+      repairBy: '24 Hrs.',
+      points: '13.40/n',
+      code: 'ELEC-IN-07'
+    },
+    {
+      id: 'elec_in_8',
+      name: 'GFCI outlet or GFCI breaker does not have visible damage and the test or reset button is inoperable',
+      detail: 'GFCI outlet or GFCI breaker does not have visible damage and the test or reset button is inoperable',
+      criteria: 'GFCI outlet or GFCI breaker does not have visible damage and the test or reset button is inoperable (i.e., overall system or component thereof is not meeting function or purpose).',
+      severity: 'Severe',
+      repairBy: '24 Hrs.',
+      points: '13.40/n',
+      code: 'ELEC-IN-08'
+    },
+    // Electrical Service Panel
+    {
+      id: 'elec_in_9',
+      name: 'Electrical Service Panel',
+      detail: 'Electrical service panel is not reasonably accessible.',
+      criteria: 'The electrical service panel is not reasonably accessible (i.e., it cannot be reached and opened without moving obstructions, dismantling, destructive measures, or actions that may pose a risk to persons or their personal property). Or it is looked or in locked location, no key to access.',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.0/n',
+      code: 'ELEC-IN-09'
+    },
+    {
+      id: 'elec_in_10',
+      name: 'The overcurrent protection device is contaminated.',
+      detail: 'The overcurrent protection device is contaminated.',
+      criteria: 'The overcurrent protection device (i.e., fuse or breaker) is contaminated (e.g., water, rust, corrosion, infestation, or foreign materials).',
+      severity: 'Severe',
+      repairBy: '24 Hrs.',
+      points: '13.40/n',
+      code: 'ELEC-IN-10'
+    },
+    {
+      id: 'elec_in_11',
+      name: 'The overcurrent protection device is damaged.',
+      detail: 'The overcurrent protection device is damaged.',
+      criteria: 'The overcurrent protection device (i.e., fuse or breaker) is damaged (i.e., visibly defective; impacts functionality) such that it may not interrupt the circuit during an over current condition (i.e., paint, or other foreign materials).',
+      severity: 'Life-Threatening',
+      repairBy: '24Hrs',
+      points: '27.25/n',
+      code: 'ELEC-IN-11'
     }
   ]
 };
 
-// Inside 11. Elevator
+// Inside 11. Elevator - EXACT NSPIRE TABLE MAPPING
 export const ELEVATOR_DEFICIENCIES: ItemDeficiencies = {
   itemName: 'Elevator',
   deficiencies: [
     {
       id: 'elev_1',
-      name: 'Cab not level',
-      detail: 'Difference greater than 3/4 inch.',
-      criteria: 'Trip hazard present.',
+      name: 'Elevator Cab is not level with the floor.',
+      detail: 'Poses tripping hazards.',
+      criteria: 'There is more than 3/4 inch difference in level between the elevator cab and the building floor.',
       severity: 'Moderate',
       repairBy: '30 Day',
-      points: '5.5/n',
+      points: '5.0/n',
       code: 'ELEV-01'
     },
     {
       id: 'elev_2',
-      name: 'Door does not open or close',
-      detail: 'Door fails to operate fully.',
-      criteria: 'Elevator not in working condition.',
-      severity: 'Severe',
-      repairBy: '24 Hrs.',
-      points: '14.8/n',
+      name: 'The elevator door does not fully open or close.',
+      detail: 'The elevator door does not fully open (at least 36 inches) and does not close.',
+      criteria: 'All elevators must be in working condition.',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.0/n',
       code: 'ELEV-02'
     },
     {
       id: 'elev_3',
-      name: 'Elevator inoperable',
-      detail: 'System not meeting functional purpose.',
-      criteria: 'Overall system failure.',
-      severity: 'Life-Threatening',
-      repairBy: '24Hrs',
-      points: '30/n',
+      name: 'Elevator is inoperable.',
+      detail: 'Elevator is inoperable (i.e. overall system or component thereof not meeting function or purpose; with or without visible damage).',
+      criteria: 'Elevator system or component thereof not meeting function or purpose.',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.0/n',
       code: 'ELEV-03'
+    },
+    {
+      id: 'elev_4',
+      name: 'Safety edge device has malfunctioned or is inoperable.',
+      detail: 'The safety edge device hasd has malfunctioned or is not functionally adequate.',
+      criteria: 'Overall, the system or a component thereof is not meeting its function or purpose.',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.0/n',
+      code: 'ELEV-04'
     }
   ]
 };
 
-// Inside 12. Fire Safety (Inside)
+// Inside 12. Fire Safety (Inside) - EXACT NSPIRE TABLE MAPPING
 export const FIRE_SAFETY_INSIDE_DEFICIENCIES: ItemDeficiencies = {
   itemName: 'Fire Safety',
   deficiencies: [
+    // Exit Sign
     {
       id: 'fire_in_1',
-      name: 'Exit sign damaged or missing',
-      detail: 'Exit sign not illuminated or obstructed.',
-      criteria: 'EXIT not clearly visible.',
+      name: 'Exit Sign',
+      detail: 'The exit sign is damaged, missing, obstructed, or not adequately illuminated.',
+      criteria: 'An exit sign is deficient if it\'s damaged, missing, obstructed so "EXIT" isn\'t clearly visible, or not adequately illuminated.',
       severity: 'Life-Threatening',
       repairBy: '24Hrs',
-      points: '30/n',
+      points: '27.25/n',
       code: 'FIRE-IN-01'
     },
+    // Fire Extinguisher
     {
       id: 'fire_in_2',
-      name: 'Fire extinguisher missing or damaged',
-      detail: 'Evidence of prior installation but missing.',
-      criteria: 'Not available for use.',
-      severity: 'Severe',
-      repairBy: '24 Hrs.',
-      points: '14.8/n',
+      name: 'Fire Extinguisher',
+      detail: 'A fire extinguisher is damaged or missing.',
+      criteria: 'A fire extinguisher is damaged or missing (i.e., evidence of prior installation, but now not present or is incomplete).',
+      severity: 'Life-Threatening',
+      repairBy: '24Hrs',
+      points: '27.25/n',
       code: 'FIRE-IN-02'
     },
     {
       id: 'fire_in_3',
-      name: 'Smoke alarm inoperable',
-      detail: 'Does not emit alarm when tested.',
-      criteria: 'Fails required alarm function.',
+      name: 'The fire extinguisher pressure gauge reads over or undercharged.',
+      detail: 'The fire extinguisher pressure gauge reads over or undercharged.',
+      criteria: 'Pressure gauge indicates that the fire extinguisher is over or under charged.',
       severity: 'Life-Threatening',
       repairBy: '24Hrs',
-      points: '30/n',
+      points: '27.25/n',
       code: 'FIRE-IN-03'
+    },
+    {
+      id: 'fire_in_4',
+      name: 'The fire extinguisher tag is missing or illegible or expired.',
+      detail: 'The fire extinguisher tag is missing or illegible or expired.',
+      criteria: 'The date on the service tag of any fire extinguisher has exceeded one year. OR The fire extinguisher tag is missing or illegible. OR A non-chargeable or disposable fire extinguisher is more than 12 years old (based on manufacture date).',
+      severity: 'Life-Threatening',
+      repairBy: '24Hrs',
+      points: '27.25/n',
+      code: 'FIRE-IN-04'
+    },
+    // Flammable and Combustible Item
+    {
+      id: 'fire_in_5',
+      name: 'Flammable and Combustible Item',
+      detail: 'The flammable or combustible material is on or within 3 feet of an appliance that provides heat for thermal comfort or fuel-burning water heater. Or improperly stored chemical.',
+      criteria: 'Excluding heating oil in a heating oil tank, propane, gasoline, kerosene should never be stored in the Unit. Combustible item in its original container and stored in a safe place (e.g. under a kitchen sink cabinet, in a hall closet,etc.) is not a deficiency.',
+      severity: 'Life-Threatening',
+      repairBy: '24Hrs',
+      points: '27.25/n',
+      code: 'FIRE-IN-05'
+    },
+    // Smoke Alarm
+    {
+      id: 'fire_in_6',
+      name: 'Smoke Alarm',
+      detail: 'A required smoke alarm does not produce an audio or visual alarm when tested.',
+      criteria: 'A required smoke alarm does not emit visual or audio alarm or the alarm does not cease after testing.',
+      severity: 'Life-Threatening',
+      repairBy: '24Hrs',
+      points: '0.000',
+      code: 'FIRE-IN-06'
+    },
+    {
+      id: 'fire_in_7',
+      name: 'Smoke alarm not installed where required.',
+      detail: 'Smoke alarm not installed where required.',
+      criteria: 'Smoke alarm not installed within a hallway in the vicinity of multiple units or classrooms on each level.',
+      severity: 'Life-Threatening',
+      repairBy: '24Hrs',
+      points: '0.000',
+      code: 'FIRE-IN-07'
+    },
+    {
+      id: 'fire_in_8',
+      name: 'Smoke alarm is obstructed',
+      detail: 'Smoke alarm is obstructed',
+      criteria: 'Smoke alarm is covered by a foreign object (e.g., plastic bag, shower cap, zip tie, paint, tape, decorative stickers).',
+      severity: 'Life-Threatening',
+      repairBy: '24Hrs',
+      points: '0.000',
+      code: 'FIRE-IN-08'
+    },
+    {
+      id: 'fire_in_9',
+      name: 'A required smoke alarm is not hardwired or a 10-year non-rechargeable, sealed, tamper-resistant, battery-powered smoke alarm device.',
+      detail: 'A required smoke alarm is not hardwired or a 10-year non-rechargeable, sealed, tamper-resistant, battery-powered smoke alarm device.',
+      criteria: 'If unable to determine if a required smoke alarm meets the requirement of this standard, consider the condition a deficiency.',
+      severity: 'Life-Threatening',
+      repairBy: '24Hrs',
+      points: '0.000',
+      code: 'FIRE-IN-09'
+    },
+    // Sprinkler Assembly
+    {
+      id: 'fire_in_10',
+      name: 'Sprinkler Assembly',
+      detail: 'The sprinkler assembly component is damaged, inoperable, or missing, and it is detrimental to performance.',
+      criteria: 'The sprinkler assembly component is damaged, inoperable or missing.',
+      severity: 'Life-Threatening',
+      repairBy: '24Hrs',
+      points: '27.25/n',
+      code: 'FIRE-IN-10'
+    },
+    {
+      id: 'fire_in_11',
+      name: 'Sprinkler head assembly has evidence of corrosion.',
+      detail: 'Sprinkler head assembly has evidence of corrosion.',
+      criteria: 'Sprinkler head assembly has evidence of corrosion.',
+      severity: 'Life-Threatening',
+      repairBy: '24Hrs',
+      points: '27.25/n',
+      code: 'FIRE-IN-11'
+    },
+    {
+      id: 'fire_in_12',
+      name: 'Sprinkler assembly has evidence of debris, paint, or foreign material detrimental to performance.',
+      detail: 'Sprinkler assembly has evidence of debris, paint, or foreign material detrimental to performance.',
+      criteria: 'Foreign material covers 50% or more of the sprinkler assembly or 50% or more of the glass bulb on the sprinkler assembly.',
+      severity: 'Life-Threatening',
+      repairBy: '24Hrs',
+      points: '27.25/n',
+      code: 'FIRE-IN-12'
+    },
+    {
+      id: 'fire_in_13',
+      name: 'Sprinkler head assembly is obstructed by an item, object, or encasement within 18 inches of the sprinkler head.',
+      detail: 'Sprinkler head assembly is obstructed by an item, object, or encasement within 18 inches of the sprinkler head.',
+      criteria: '18 inches clearance is not due to feature within built (e.g. closet, utility closet).',
+      severity: 'Life-Threatening',
+      repairBy: '24Hrs',
+      points: '27.25/n',
+      code: 'FIRE-IN-13'
     }
   ]
 };
 
-// Inside 13. Floor
+// Inside 13. Floor - EXACT NSPIRE TABLE MAPPING
 export const FLOOR_INSIDE_DEFICIENCIES: ItemDeficiencies = {
   itemName: 'Floor',
   deficiencies: [
     {
       id: 'floor_1',
-      name: 'Floor not functionally adequate',
-      detail: 'Cannot safely support walking.',
-      criteria: 'Sloping, deflection, or rot present.',
-      severity: 'Severe',
-      repairBy: '24 Hrs.',
-      points: '14.8/n',
+      name: 'Floor component(s) is not functionally adequate.',
+      detail: 'Floor component(s) is not functionally adequate (i.e., does not allow floor to separate levels or to be walked on), functionality (e.g., wood rot, sloping,defelection).',
+      criteria: 'Surface abnormalities may indicate the presence of deficiency t(i.e. lifting iles,tilers, hardwood cupping, linoleum bubbling, etc.).',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.0/n',
       code: 'FLOOR-01'
     },
     {
       id: 'floor_2',
-      name: 'Floor substrate exposed',
-      detail: '10% or more substrate exposed.',
-      criteria: 'Repair required.',
+      name: 'Floor substrate is exposed',
+      detail: '10% or more of the floor substrate area is exposed in any room.',
+      criteria: 'Repair is needed.',
       severity: 'Moderate',
       repairBy: '30 Day',
-      points: '5.5/n',
+      points: '5.0/n',
       code: 'FLOOR-02'
     }
   ]
 };
 
-// Inside 14. Foundation (Inside)
+// Inside 14. Foundation (Inside) - EXACT NSPIRE TABLE MAPPING
 export const FOUNDATION_INSIDE_DEFICIENCIES: ItemDeficiencies = {
   itemName: 'Foundation',
   deficiencies: [
     {
       id: 'found_in_1',
-      name: 'Foundation cracked',
-      detail: 'Crack ≥ 1/4 inch wide and 12 inches long.',
-      criteria: 'Signs of foundation failure.',
-      severity: 'Severe',
-      repairBy: '24 Hrs.',
-      points: '14.8/n',
+      name: 'Foundation exposed rebar or foundation is spalling, flaking, or chipping.',
+      detail: 'The affected area is 12x12 inches or greater goes into the foundation at a depth of ¾ inch or greater.',
+      criteria: 'Foundation exhibits a sign of failure, and it is not structural.',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.0/n',
       code: 'FOUND-IN-01'
     },
     {
       id: 'found_in_2',
-      name: 'Water infiltration',
-      detail: 'Evidence of water intrusion.',
-      criteria: 'Dampness, stains, mineral deposits.',
+      name: 'Foundation is cracked.',
+      detail: 'Crack is present with a width of ¼ inch or greater and a length of 12 inches or greater.',
+      criteria: 'Foundation cracks (e.g., cracks in walls, no functioning doors, unlevel floors or windows).',
       severity: 'Moderate',
       repairBy: '30 Day',
-      points: '5.5/n',
+      points: '5.0/n',
       code: 'FOUND-IN-02'
+    },
+    {
+      id: 'found_in_3',
+      name: 'Foundation infiltrated by water.',
+      detail: 'Evidence of water infiltration through the foundation through visual evaluation.',
+      criteria: '(e.g., Excessive dampness, collected water, stains, or mineral deposits).',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.0/n',
+      code: 'FOUND-IN-03'
+    },
+    {
+      id: 'found_in_4',
+      name: 'Foundation support post, column, or girder area is damaged.',
+      detail: 'Any support post, column, or girder area is damaged (i.e., visibly defective; impacts functionality).',
+      criteria: 'Foundation damage (e.g., rot) on support posts, columns, or girders.',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.0/n',
+      code: 'FOUND-IN-04'
     }
   ]
 };
 
-// Inside 15. Grab Bar
+// Inside 15. Grab Bar - EXACT NSPIRE TABLE MAPPING
 export const GRAB_BAR_DEFICIENCIES: ItemDeficiencies = {
   itemName: 'Grab Bar',
   deficiencies: [
     {
       id: 'grab_1',
-      name: 'Grab bar not secured',
-      detail: 'Any movement detected.',
-      criteria: 'Loose or missing grab bar.',
+      name: 'The grab bar is not secured.',
+      detail: 'Any movement whatsoever is detected in the grab bar.',
+      criteria: 'Damaged, loose, or missing.',
       severity: 'Moderate',
       repairBy: '30 Day',
-      points: '5.5/n',
+      points: '5.0/n',
       code: 'GRAB-01'
     }
   ]
 };
 
-// Inside 16. Hazard (Inside)
+// Inside 16. Hazard (Inside) - EXACT NSPIRE TABLE MAPPING
 export const HAZARD_INSIDE_DEFICIENCIES: ItemDeficiencies = {
   itemName: 'Hazard',
   deficiencies: [
+    // Infestation
     {
       id: 'haz_in_1',
       name: 'Infestation',
-      detail: 'Evidence of pests.',
-      criteria: 'Bedbugs, cockroaches, rats, mice.',
-      severity: 'Severe',
-      repairBy: '24 Hrs.',
-      points: '14.8/n',
+      detail: 'Evidence of bedbugs.',
+      criteria: 'Evidence of bedbugs is found (i.e., live or dead bedbugs, feces, eggs, or blood trail).',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.0/n',
       code: 'HAZ-IN-01'
     },
     {
       id: 'haz_in_2',
-      name: 'Trip hazard',
-      detail: 'Abrupt elevation change.',
-      criteria: 'Vertical ≥ 3/4 inch or horizontal ≥ 2 inches.',
-      severity: 'Life-Threatening',
-      repairBy: '24Hrs',
-      points: '30/n',
+      name: 'Evidence of cockroaches(dead).',
+      detail: 'Evidence of cockroaches(dead).',
+      criteria: 'Evidence of cockroaches is found (i.e., dead or live cockroaches, shed skins, droppings (tiny black specks or smears), and egg cases).',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.0/n',
       code: 'HAZ-IN-02'
+    },
+    {
+      id: 'haz_in_3',
+      name: 'Evidence of mice.',
+      detail: 'Evidence of mice.',
+      criteria: 'Evidence of mice is found (i.e., a live or dead mouse or mice, droppings, chewed holes, or urine trails).',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.0/n',
+      code: 'HAZ-IN-03'
+    },
+    {
+      id: 'haz_in_4',
+      name: 'Evidence of other pests.',
+      detail: 'Evidence of other pests.',
+      criteria: 'Evidence is present of other pest infestations, including but not limited to a trail of ants, wasps/beehives, squirrels, birds, and bats in an interior area. Pests are animals with potential impacts on residents health and safety.',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.0/n',
+      code: 'HAZ-IN-04'
+    },
+    {
+      id: 'haz_in_5',
+      name: 'Evidence of rats.',
+      detail: 'Evidence of rats.',
+      criteria: 'Evidence of rats is found (i.e., a live or dead rat or droppings, chewed holes).',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.0/n',
+      code: 'HAZ-IN-05'
+    },
+    {
+      id: 'haz_in_6',
+      name: 'Extensive bedbugs infestation.',
+      detail: 'Extensive bedbugs infestation.',
+      criteria: 'Sighting of at least one live bedbug in two or more units or two rooms of the same unit during the daytime through visual assessment.',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.0/n',
+      code: 'HAZ-IN-06'
+    },
+    {
+      id: 'haz_in_7',
+      name: 'Extensive cockroach infestation (live).',
+      detail: 'Extensive cockroach infestation (live).',
+      criteria: 'Sighting of one or more live cockroaches in two or more area observed simultaneously during visual assessment on the inspection day.',
+      severity: 'Severe',
+      repairBy: '24 Hrs.',
+      points: '13.40/n',
+      code: 'HAZ-IN-07'
+    },
+    {
+      id: 'haz_in_8',
+      name: 'Extensive mouse infestation.',
+      detail: 'Extensive mouse infestation.',
+      criteria: 'Sighting of at least one live mouse in two or more, units or two rooms of the same unit during the daytime surface visual assessment.',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.0/n',
+      code: 'HAZ-IN-08'
+    },
+    {
+      id: 'haz_in_9',
+      name: 'Extensive rat infestation.',
+      detail: 'Extensive rat infestation.',
+      criteria: 'A live rat is seen in the unit.',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.0/n',
+      code: 'HAZ-IN-09'
+    },
+    // LITTER
+    {
+      id: 'haz_in_10',
+      name: 'LITTER',
+      detail: 'Litter is accumulated in an unassigned area.',
+      criteria: 'Litter is considered deficient if 10 or more small items or any large discarded items are found in a 10×10 ft area not designated for garbage.',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.0/n',
+      code: 'HAZ-IN-10'
+    },
+    // Sharp edges
+    {
+      id: 'haz_in_11',
+      name: 'Sharp edges',
+      detail: 'A sharp edge that can result in a cut or puncture hazard is present, in the inside area include, but not limited to, broken glass, damaged tile with exposed edges, or a damaged handrail.',
+      criteria: 'A sharp edge that can result in a cut or puncture hazard that is likely to require emergency care (e.g., stitches) is present within the built environment (i.e., human-made structures, features, and facilities).',
+      severity: 'Severe',
+      repairBy: '24 Hrs.',
+      points: '13.40/n',
+      code: 'HAZ-IN-11'
+    },
+    // Trip hazard
+    {
+      id: 'haz_in_12',
+      name: 'Trip hazard',
+      detail: 'Trip hazard on walking surface.',
+      criteria: 'There is an abrupt change in vertical elevation or horizontal separation on any walking surface along the normal path of travel, consisting of the following criteria: - An unintended ¾ inch or greater vertical difference',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.0/n',
+      code: 'HAZ-IN-12'
+    },
+    {
+      id: 'haz_in_13',
+      name: 'Trip hazard - horizontal separation',
+      detail: 'Trip hazard on walking surface.',
+      criteria: 'horizontal separation on any walking surface along the normal path of travel, consisting of the following criteria: -An unintended 2-inch horizontal separation perpendicular to the path of travel.',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.0/n',
+      code: 'HAZ-IN-13'
     }
   ]
 };
 
 // Additional deficiencies for common items
 export const BATHROOM_DEFICIENCIES: ItemDeficiencies = {
-  itemName: 'Bathroom',
+  itemName: 'Restroom',
   deficiencies: [
+    // Bathtub/Shower
     {
       id: 'bath_1',
-      name: 'Bathtub or shower is inoperable or does not drain',
-      detail: 'Bathtub or shower is inoperable or does not drain, and at least one bathtub or shower is present elsewhere that is operational.',
+      name: 'Bathtub/shower - A bathtub or shower is inoperable or does not drain.',
+      detail: 'A bathtub or shower is inoperable (i.e., not meeting function or purpose, water does not come out of shower or faucet). (At least one bathtub or shower is present elsewhere in the Unit that is operational.) OR A bathtub or shower does not drain and standing water is present (At least one bathtub or shower is present elsewhere in the Unit that is operational).',
       criteria: 'A bathtub or shower is inoperable, or standing water is present.',
       severity: 'Moderate',
       repairBy: '30 Day',
-      points: '5.5/n',
+      points: '5.0/n',
       code: 'BATH-01'
     },
     {
       id: 'bath_2',
-      name: 'Bathtub or shower component is damaged, inoperable, or missing',
-      detail: 'Component is inoperable or missing—whether due to system failure, incomplete installation, or absence of non-mechanical parts.',
+      name: 'Bathtub/shower - Bathtub or shower component is damaged, inoperable, or missing.',
+      detail: 'Bathtub or shower component is damaged (i.e., visibly defective): but may continue to function as intended. OR Bathtub or shower component is inoperable, not meeting function or purpose, with or without visible damage. OR Bathtub or shower component is missing (i.e., evidence of prior installation, but is now not present or is incomplete).',
       criteria: 'Component is damaged, inoperable or missing.',
       severity: 'Low',
       repairBy: '60 Day',
-      points: '2.40/n',
+      points: '2.20/n',
       code: 'BATH-02'
     },
     {
       id: 'bath_3',
-      name: 'Only one bathtub or shower is present, and it is inoperable',
-      detail: 'Only one bathtub or shower is present within the unit and it is inoperable.',
+      name: 'Bathtub/shower - Only one bathtub or one shower is present within the Unit, and it is inoperable.',
+      detail: 'Only one bathtub or one shower is present within the Unit, and it is inoperable, not meeting function or purpose, with or without visible damage.',
       criteria: 'Only one bathtub or shower is present, and it is inoperable.',
       severity: 'Severe',
       repairBy: '24Hrs',
-      points: '14.8/n',
+      points: '13.40/n',
       code: 'BATH-03'
+    },
+    // Cabinet and Storage
+    {
+      id: 'bath_4',
+      name: 'Cabinet and Storage - Cabinet and storage component(s) is damaged or missing.',
+      detail: 'Some cabinet doors, drawers, or shelves are missing (i.e., evidence of prior installation, but is now not present or is incomplete). OR Some cabinet doors, drawers, or shelves are damaged (i.e., visibly defective; impacts functionality).',
+      criteria: 'Impacts functionality.',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.0/n',
+      code: 'BATH-04'
+    },
+    // Grab Bar
+    {
+      id: 'bath_5',
+      name: 'Grab bar - Grab bar is damaged, inoperable, or missing.',
+      detail: 'A grab bar is damaged (i.e., visibly defective; impacts functionality). OR A grab bar is inoperable, not meeting function or purpose, with or without visible damage. OR A grab bar is missing (i.e., evidence of prior installation, but is now not present or is incomplete).',
+      criteria: 'An accessible grab bar is damaged, inoperable, or missing.',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.0/n',
+      code: 'BATH-05'
+    },
+    // Mold (Restroom)
+    {
+      id: 'bath_6',
+      name: 'MOLD - Elevated moisture or peeling and cracking paint.',
+      detail: 'Elevated moisture level is visibly present (e.g., peeling paint, warped surfaces, water-stained surfaces).',
+      criteria: 'Evidence of moisture.',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.0/n',
+      code: 'BATH-06'
+    },
+    {
+      id: 'bath_7',
+      name: 'MOLD - Mold-like substance is present (cumulative area = or > 9 square feet).',
+      detail: 'A mold-like substance is present at extremely high levels. (Cumulative area equal to or greater than 9 square feet).',
+      criteria: 'Cumulative area = or > 9 sq ft.',
+      severity: 'Life-Threatening',
+      repairBy: '24Hrs',
+      points: '27.25/n',
+      code: 'BATH-07'
+    },
+    {
+      id: 'bath_8',
+      name: 'MOLD - Mold-like substance is present (cumulative area > 1 square foot and < 9 square feet).',
+      detail: 'A mold-like substance is present at high levels. (Cumulative area greater than 1 square foot AND less than 9 square feet).',
+      criteria: 'Cumulative area > 1 sq ft and < 9 sq ft.',
+      severity: 'Severe',
+      repairBy: '24 Hrs.',
+      points: '13.40/n',
+      code: 'BATH-08'
+    },
+    {
+      id: 'bath_9',
+      name: 'MOLD - Mold-like substance is present (cumulative area = or > 4 square inches and = or <1 square foot).',
+      detail: 'A mold-like substance is present at moderate levels. (Cumulative area equal to or greater than 4 square inches AND equal to or less than 1 square foot).',
+      criteria: 'Cumulative area = or > 4 sq in and = or < 1 sq ft.',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.0/n',
+      code: 'BATH-09'
+    },
+    // Ventilation (Restroom)
+    {
+      id: 'bath_10',
+      name: 'Ventilation - Restroom does not have ventilation present and operable.',
+      detail: 'Restroom does not have some form of ventilation (exhaust fan or window that opens) present and operable.',
+      criteria: 'Not present and operable.',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.0/n',
+      code: 'BATH-10'
+    },
+    {
+      id: 'bath_11',
+      name: 'Ventilation - Exhaust system component is damaged or missing.',
+      detail: 'Exhaust system component is damaged (i.e., visibly defective) or missing (i.e., evidence of prior installation, but is now not present or is incomplete).',
+      criteria: 'Visibly defective or missing.',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.0/n',
+      code: 'BATH-11'
+    },
+    {
+      id: 'bath_12',
+      name: 'Ventilation - Exhaust system does not respond to the control switch.',
+      detail: 'Exhaust system does not respond to the control switch.',
+      criteria: 'Inoperable.',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.0/n',
+      code: 'BATH-12'
     }
   ]
 };
 
+// Toilet - EXACT NSPIRE TABLE MAPPING
 export const TOILET_DEFICIENCIES: ItemDeficiencies = {
   itemName: 'Toilet',
   deficiencies: [
     {
       id: 'toilet_1',
-      name: 'A toilet is damaged or inoperable, and at least one operational toilet is elsewhere',
-      detail: 'A toilet is damaged or inoperable, but another functional toilet exists within the unit.',
+      name: 'A toilet is damaged or inoperable and at least one operational toilet is installed elsewhere in the Unit.',
+      detail: 'A toilet is damaged (i.e., visibly defective; impacts functionality). OR A toilet is inoperable, not meeting function or purpose, with or without visible damage. AND At least one operational toilet is installed elsewhere in the Unit.',
       criteria: 'A toilet is damaged or inoperable, and at least one operational toilet is installed elsewhere.',
       severity: 'Moderate',
       repairBy: '30 Day',
-      points: '5.5/n',
+      points: '5.0/n',
       code: 'TOILET-01'
     },
     {
       id: 'toilet_2',
-      name: 'Only one toilet was installed, and it is damaged or inoperable',
-      detail: 'Only one toilet is present, and it is either damaged or inoperable.',
+      name: 'Only one toilet was installed in the Unit, and it is damaged or inoperable.',
+      detail: 'Only one toilet was installed in the Unit, and it is damaged (i.e., visibly defective; impacts functionality). OR Only one toilet was installed in the Unit, and it is inoperable, not meeting function or purpose, with or without visible damage.',
       criteria: 'Only one toilet was installed, and it is damaged or inoperable.',
       severity: 'Severe',
       repairBy: '24 Hrs.',
-      points: '14.8/n',
+      points: '13.40/n',
       code: 'TOILET-02'
     },
     {
       id: 'toilet_3',
-      name: 'Only one toilet was installed, and it is missing',
-      detail: 'Only one toilet was installed, and it is now missing.',
+      name: 'Only one toilet was installed in the Unit, and it is missing.',
+      detail: 'Only one toilet was installed in the Unit, and it is missing (i.e., evidence of prior installation, but is now not present or is incomplete).',
       criteria: 'Only one toilet was installed, and it is missing.',
       severity: 'Life-Threatening',
       repairBy: '24Hrs',
-      points: '30/n',
+      points: '27.25/n',
       code: 'TOILET-03'
     },
     {
       id: 'toilet_4',
-      name: 'Toilet is not secured at the base',
+      name: 'Toilet is not secured at the base.',
       detail: 'Toilet is not secured at the base.',
       criteria: 'Toilet is not secured at the base.',
       severity: 'Moderate',
       repairBy: '30 Day',
-      points: '5.5/n',
+      points: '5.0/n',
       code: 'TOILET-04'
     }
   ]
 };
 
+// Sink (Laundry, Garage, or patio) - EXACT NSPIRE TABLE MAPPING
 export const SINK_DEFICIENCIES: ItemDeficiencies = {
   itemName: 'Sink (Laundry, Garage, or patio)',
   deficiencies: [
     {
       id: 'sink_1',
-      name: 'Hot and cold water cannot be activated or deactivated',
-      detail: 'Control knobs do not activate or deactivate hot and cold water.',
+      name: 'The faucet control handles do not activate or deactivate hot and/or cold water.',
+      detail: 'The faucet control handles, used to activate or deactivate water flow, do not function properly.',
       criteria: 'Hot and cold water cannot be activated or deactivated.',
       severity: 'Moderate',
       repairBy: '30 Day',
-      points: '5.5/n',
+      points: '5.0/n',
       code: 'SINK-01'
     },
     {
       id: 'sink_2',
-      name: 'Sink component is damaged or missing, and sink is not functionally adequate',
-      detail: 'Sink component is missing (evidence of prior installation, but now not present or is incomplete).',
-      criteria: 'Sink component is damaged or missing.',
+      name: 'Sink component(s) is damaged or missing. (The sink is NOT functionally adequate.)',
+      detail: 'Sink component(s) is damaged (i.e., visibly defective; impacts functionality). OR Sink component(s) is missing (i.e., evidence of prior installation, but is now not present or is incomplete). AND The sink is NOT functionally adequate.',
+      criteria: 'Sink component is damaged or missing, sink not adequate.',
       severity: 'Moderate',
       repairBy: '30 Day',
-      points: '5.5/n',
+      points: '5.0/n',
       code: 'SINK-02'
     },
     {
       id: 'sink_3',
-      name: 'Sink is not draining',
-      detail: 'Water is not draining from the basin of the sink.',
+      name: 'The sink is not draining, not functioning adequately.',
+      detail: 'The sink is not draining; the water drains very slow or sink is clogged.',
       criteria: 'Sink is not draining.',
       severity: 'Moderate',
       repairBy: '30 Day',
-      points: '5.5/n',
+      points: '5.0/n',
       code: 'SINK-03'
     },
     {
@@ -2633,79 +3313,90 @@ export const MOLD_DEFICIENCIES: ItemDeficiencies = {
   deficiencies: [
     {
       id: 'mold_1',
-      name: 'Peeling paint/Elevated moisture.',
-      detail: 'Elevated moisture level (peeling paint, warped/stained surfaces).',
-      criteria: 'Evidence of moisture.',
+      name: 'Elevated moisture or peeling and cracking paint.',
+      detail: 'Elevated moisture level is visibly present (e.g., peeling paint, warped surfaces, water-stained surfaces).',
+      criteria: 'Elevated moisture level.',
       severity: 'Moderate',
       repairBy: '30 Day',
-      points: '5.5/n',
+      points: '5.0/n',
       code: 'MOLD-01'
     },
     {
       id: 'mold_2',
-      name: 'Mold (> 9 SF).',
-      detail: 'Presence of mold-like substance at extremely high levels.',
-      criteria: 'Cumulative area > 9 sq ft.',
+      name: 'Mold-like substance is present (cumulative area = or > 9 square feet).',
+      detail: 'A mold-like substance is present at extremely high levels. (Cumulative area equal to or greater than 9 square feet).',
+      criteria: 'Mold-like cumulative area = or > 9 square feet.',
       severity: 'Life-Threatening',
       repairBy: '24Hrs',
-      points: '30/n',
+      points: '27.25/n',
       code: 'MOLD-02'
     },
     {
       id: 'mold_3',
-      name: 'Mold (1-9 SF).',
-      detail: 'Presence of mold-like substance at high levels.',
-      criteria: 'Cumulative area 1 - 9 sq ft.',
+      name: 'Mold-like substance is present (cumulative area > 1 square foot and < 9 square feet).',
+      detail: 'A mold-like substance is present at high levels. (Cumulative area greater than 1 square foot AND less than 9 square feet).',
+      criteria: 'Mold-like substance cumulative area greater than 1 square foot AND less than 9 square feet.',
       severity: 'Severe',
       repairBy: '24 Hrs.',
-      points: '14.8/n',
+      points: '13.40/n',
       code: 'MOLD-03'
     },
     {
       id: 'mold_4',
-      name: 'Mold (Moderate).',
-      detail: 'Presence of mold-like substance at moderate level.',
-      criteria: 'Cumulative area 4 sq in - 1 sq ft.',
+      name: 'Mold-like substance is present (cumulative area = or > 4 square inches and = or <1 square foot).',
+      detail: 'A mold-like substance is present at moderate levels. (Cumulative area equal to or greater than 4 square inches AND equal to or less than 1 square foot).',
+      criteria: 'Mold-like substance cumulative area = or > 4 square inches AND = or <1 square foot.',
       severity: 'Moderate',
       repairBy: '30 Day',
-      points: '5.5/n',
+      points: '5.0/n',
       code: 'MOLD-04'
     }
   ]
 };
 
+// Window - EXACT NSPIRE TABLE MAPPING
 export const WINDOW_DEFICIENCIES: ItemDeficiencies = {
   itemName: 'Window',
   deficiencies: [
     {
       id: 'window_1',
-      name: 'Window component is damaged, inoperable, or missing',
-      detail: 'Window component is damaged, inoperable, or missing and affects functionality.',
+      name: 'Window component is damaged, inoperable, or missing.',
+      detail: 'A window component necessary for function is damaged (i.e., visibly defective; impacts functionality) OR A window component necessary for function is inoperable, not meeting function or purpose, with or without visible damage. OR A window component necessary for function is missing (i.e., evidence of prior installation, but is now not present or is incomplete).',
       criteria: 'Window component is damaged, inoperable, or missing.',
       severity: 'Moderate',
       repairBy: '30 Day',
-      points: '5.5/n',
+      points: '5.0/n',
       code: 'WINDOW-01'
     },
     {
       id: 'window_2',
-      name: 'Window is broken or missing',
-      detail: 'Window glass is broken, cracked, or missing entirely.',
+      name: 'Window is broken or missing.',
+      detail: 'Window glass is broken (cracked or shattered in such a way that compromises use, security, or causes injury). OR Window glass is missing (i.e., evidence of prior installation, but is now not present or is incomplete).',
       criteria: 'Window is broken or missing.',
       severity: 'Severe',
       repairBy: '24 Hrs.',
-      points: '14.8/n',
+      points: '13.40/n',
       code: 'WINDOW-02'
     },
     {
       id: 'window_3',
-      name: 'Window will not open or close properly',
-      detail: 'Window cannot be opened or closed as designed.',
-      criteria: 'Window will not open or close properly.',
+      name: 'Window does not latch.',
+      detail: 'Window does not latch.',
+      criteria: 'Window does not latch.',
       severity: 'Low',
       repairBy: '60 Day',
-      points: '2.40/n',
+      points: '2.20/n',
       code: 'WINDOW-03'
+    },
+    {
+      id: 'window_4',
+      name: 'The operable window does not open and close due to damage.',
+      detail: 'An operable window will not open and close as designed, due to damage.',
+      criteria: 'Window does not open and close as designed.',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.0/n',
+      code: 'WINDOW-04'
     }
   ]
 };
@@ -2747,53 +3438,74 @@ export const FLOOR_DEFICIENCIES: ItemDeficiencies = {
 };
 
 export const WALL_DEFICIENCIES: ItemDeficiencies = {
-  itemName: 'Wall',
+  itemName: 'Wall-Interior',
   deficiencies: [
     {
       id: 'wall_1',
-      name: 'Wall component is damaged or missing',
-      detail: 'Wall has holes, cracks, or missing sections.',
-      criteria: 'Wall component is damaged or missing.',
+      name: 'Wall has a hole.',
+      detail: 'An unintentional hole of any size is found in the wall surface.',
+      criteria: 'Unintentional hole is observed.',
       severity: 'Moderate',
       repairBy: '30 Day',
-      points: '5.5/n',
+      points: '5.0/n',
       code: 'WALL-01'
     },
     {
       id: 'wall_2',
-      name: 'Wall has significant structural damage',
-      detail: 'Wall shows signs of structural failure or major deterioration.',
-      criteria: 'Wall has significant structural damage.',
+      name: 'The wall component(s) is not functionally adequate.',
+      detail: 'Wall component(s) is not functionally adequate (i.e., does not meet the function or purpose of a finished wall surface intended to be aesthetically pleasing, to protect the dwelling structure, or to provide a safe barrier).',
+      criteria: 'Visible damage or deterioration that impacts functionality.',
       severity: 'Severe',
       repairBy: '24 Hrs.',
-      points: '14.8/n',
+      points: '13.40/n',
       code: 'WALL-02'
+    },
+    {
+      id: 'wall_3',
+      name: 'The wall has an unstable surface (bulging, buckling).',
+      detail: 'Bulging or buckling is observed in any portion of the wall.',
+      criteria: 'Unstable surface.',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.0/n',
+      code: 'WALL-03'
     }
   ]
 };
 
+// Ceiling - EXACT NSPIRE TABLE MAPPING
 export const CEILING_DEFICIENCIES: ItemDeficiencies = {
   itemName: 'Ceiling',
   deficiencies: [
     {
       id: 'ceiling_1',
-      name: 'Ceiling component is damaged or missing',
-      detail: 'Ceiling has holes, cracks, water stains, or missing sections.',
-      criteria: 'Ceiling component is damaged or missing.',
-      severity: 'Moderate',
-      repairBy: '30 Day',
-      points: '5.5/n',
+      name: 'The ceiling component(s) is not functionally adequate.',
+      detail: 'Ceiling component(s) is not functionally adequate (i.e., does not meet the function or purpose of a finished ceiling surface intended to be aesthetically pleasing, to protect the dwelling structure, or to provide a safe barrier).',
+      criteria: 'Visible damage or deterioration that impacts functionality.',
+      severity: 'Severe',
+      repairBy: '24 Hrs.',
+      points: '13.40/n',
       code: 'CEILING-01'
     },
     {
       id: 'ceiling_2',
-      name: 'Ceiling is sagging or has structural damage',
-      detail: 'Ceiling shows signs of sagging, buckling, or structural failure.',
-      criteria: 'Ceiling is sagging or has structural damage.',
-      severity: 'Severe',
-      repairBy: '24 Hrs.',
-      points: '14.8/n',
+      name: 'Ceiling has a hole.',
+      detail: 'An unintentional hole of any size is found in the ceiling surface.',
+      criteria: 'Unintentional hole is observed.',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.0/n',
       code: 'CEILING-02'
+    },
+    {
+      id: 'ceiling_3',
+      name: 'The ceiling has an unstable surface (bulging, buckling).',
+      detail: 'Bulging or buckling is observed in any portion of the ceiling.',
+      criteria: 'Unstable surface.',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.0/n',
+      code: 'CEILING-03'
     }
   ]
 };
@@ -2801,214 +3513,221 @@ export const CEILING_DEFICIENCIES: ItemDeficiencies = {
 export const KITCHEN_DEFICIENCIES: ItemDeficiencies = {
   itemName: 'Kitchen',
   deficiencies: [
+    // Cabinet and Storage
     {
       id: 'kitchen_1',
-      name: 'Cabinet and Storage damaged/missing.',
-      detail: 'Some cabinet doors, drawers, or shelves missing or visibly defective.',
+      name: 'Cabinet and Storage - Cabinet and storage component(s) is damaged or missing.',
+      detail: 'Some cabinet doors, drawers, or shelves are missing (i.e., evidence of prior installation, but is now not present or is incomplete). OR Some cabinet doors, drawers, or shelves are damaged (i.e., visibly defective; impacts functionality).',
       criteria: 'Impacts functionality.',
       severity: 'Moderate',
       repairBy: '30 Day',
-      points: '5.5/n',
+      points: '5.0/n',
       code: 'KITCHEN-01'
     },
+    // Cooking Appliance
     {
       id: 'kitchen_2',
-      name: 'Cooking Appliance - Burner.',
-      detail: 'A burner does not produce heat, but at least one other burner is present and works.',
-      criteria: 'Partial burner failure.',
+      name: 'Cooking Appliance - A burner does not produce heat.',
+      detail: 'A burner on a cooking appliance does not produce heat. (At least one other burner is present and works.)',
+      criteria: 'Burner (usually four) does not produce heat. At least one burner is present and works.',
       severity: 'Moderate',
       repairBy: '30 Day',
-      points: '5.5/n',
+      points: '5.0/n',
       code: 'KITCHEN-02'
     },
     {
       id: 'kitchen_3',
-      name: 'Cooking Appliance - Unsafe.',
-      detail: 'Component (including seal) damaged or missing, making device unsafe.',
+      name: 'Cooking Appliance - A component (including seal) is damaged or missing, making the cooking device unsafe for use.',
+      detail: 'Cooking appliance component is damaged (i.e., visibly defective; impacts functionality). OR Cooking appliance component is missing (i.e., evidence of prior installation, but is now not present or is incomplete) making the cooking device unsafe.',
       criteria: 'Device unsafe for use.',
       severity: 'Life-Threatening',
       repairBy: '24Hrs',
-      points: '30/n',
+      points: '27.25/n',
       code: 'KITCHEN-03'
     },
     {
       id: 'kitchen_4',
-      name: 'Cooking Appliance - No Heat.',
-      detail: 'No burner produces heat OR oven does not produce heat.',
-      criteria: 'Total failure to produce heat.',
+      name: 'Cooking Appliance - No burner produces heat.',
+      detail: 'No burner produces heat; OR Oven does not produce heat.',
+      criteria: 'Total failure to produce heat (no burner works, or oven does not work).',
       severity: 'Severe',
       repairBy: '24 Hrs.',
-      points: '14.8/n',
+      points: '13.40/n',
       code: 'KITCHEN-04'
     },
+    // Food Preparation
     {
       id: 'kitchen_5',
-      name: 'Food preparation area damaged/inadequate.',
-      detail: '10% or more of surface is exposed substrate or space does not support food prep.',
+      name: 'Food Preparation - The food preparation area is damaged, or is not functionally adequate for food preparation.',
+      detail: '10 percent or more of the food preparation surface is exposed substrate. OR There is inadequate space to support food preparation.',
       criteria: 'Damaged or inadequate.',
       severity: 'Moderate',
       repairBy: '30 Day',
-      points: '5.5/n',
+      points: '5.0/n',
       code: 'KITCHEN-05'
     },
     {
       id: 'kitchen_6',
-      name: 'Food preparation area is not present.',
-      detail: 'Countertop is missing (evidence of prior installation).',
+      name: 'Food Preparation - Food preparation area is not present.',
+      detail: 'Countertop is missing (i.e., evidence of prior installation, but is now not present or is incomplete).',
       criteria: 'Countertop missing.',
       severity: 'Severe',
       repairBy: '24 Hrs.',
-      points: '14.8/n',
+      points: '13.40/n',
       code: 'KITCHEN-06'
     },
+    // Mold
     {
       id: 'kitchen_7',
-      name: 'MOLD-LIKE SUBSTANCE (Peeling Paint).',
-      detail: 'Elevated moisture level (peeling paint, warped/stained wall/ceiling).',
+      name: 'MOLD - Mold-like substance is present (Elevated moisture or peeling and cracking paint).',
+      detail: 'Elevated moisture level is visibly present (e.g., peeling paint, warped surfaces, water-stained surfaces).',
       criteria: 'Evidence of moisture.',
       severity: 'Moderate',
       repairBy: '30 Day',
-      points: '5.5/n',
+      points: '5.0/n',
       code: 'KITCHEN-07'
     },
     {
       id: 'kitchen_8',
-      name: 'MOLD-LIKE SUBSTANCE (> 9 SF).',
-      detail: 'Presence of mold-like substance at extremely high levels.',
-      criteria: 'Cumulative area > 9 sq ft.',
+      name: 'MOLD - Mold-like substance is present (cumulative area = or > 9 square feet).',
+      detail: 'A mold-like substance is present at extremely high levels. (Cumulative area equal to or greater than 9 square feet).',
+      criteria: 'Cumulative area = or > 9 sq ft.',
       severity: 'Life-Threatening',
       repairBy: '24Hrs',
-      points: '30/n',
+      points: '27.25/n',
       code: 'KITCHEN-08'
     },
     {
       id: 'kitchen_9',
-      name: 'MOLD-LIKE SUBSTANCE (1-9 SF).',
-      detail: 'Presence of mold-like substance at high levels.',
-      criteria: 'Cumulative area 1 - 9 sq ft.',
+      name: 'MOLD - Mold-like substance is present (cumulative area > 1 square foot and < 9 square feet).',
+      detail: 'A mold-like substance is present at high levels. (Cumulative area greater than 1 square foot AND less than 9 square feet).',
+      criteria: 'Cumulative area > 1 sq ft and < 9 sq ft.',
       severity: 'Severe',
       repairBy: '24 Hrs.',
-      points: '14.8/n',
+      points: '13.40/n',
       code: 'KITCHEN-09'
     },
     {
       id: 'kitchen_10',
-      name: 'MOLD-LIKE SUBSTANCE (Moderate).',
-      detail: 'Presence of mold-like substance at moderate level.',
-      criteria: 'Cumulative area 4 sq in - 1 sq ft.',
+      name: 'MOLD - Mold-like substance is present (cumulative area = or > 4 square inches and = or <1 square foot).',
+      detail: 'A mold-like substance is present at moderate levels. (Cumulative area equal to or greater than 4 square inches AND equal to or less than 1 square foot).',
+      criteria: 'Cumulative area = or > 4 sq in and = or < 1 sq ft.',
       severity: 'Moderate',
       repairBy: '30 Day',
-      points: '5.5/n',
+      points: '5.0/n',
       code: 'KITCHEN-10'
     },
+    // Refrigerator
     {
       id: 'kitchen_11',
-      name: 'Refrigerator component damaged.',
-      detail: 'Refrigerator component is damaged (visibly defective) such that it impacts functionality.',
+      name: 'Refrigerator - Refrigerator component is damaged.',
+      detail: 'Refrigerator component is damaged (i.e., visibly defective) such that it impacts functionality.',
       criteria: 'Impacts functionality.',
       severity: 'Moderate',
       repairBy: '30 Day',
-      points: '5.5/n',
+      points: '5.0/n',
       code: 'KITCHEN-11'
     },
     {
       id: 'kitchen_12',
-      name: 'Refrigerator inoperable.',
-      detail: 'Refrigerator is inoperable such that it may be unable to safely store food.',
-      criteria: 'System not meeting function.',
+      name: 'Refrigerator - Refrigerator is inoperable.',
+      detail: 'Refrigerator is inoperable, not meeting function or purpose, with or without visible damage, such that it may be unable to safely store food.',
+      criteria: 'System not meeting function to safely store food.',
       severity: 'Severe',
       repairBy: '24 Hrs.',
-      points: '14.8/n',
+      points: '13.40/n',
       code: 'KITCHEN-12'
     },
+    // Sink
     {
       id: 'kitchen_13',
-      name: 'Sink - Faucet Control.',
-      detail: 'Control knobs do not activate or deactivate hot and cold water.',
-      criteria: 'Cannot activate/deactivate.',
+      name: 'Sink - The faucet control handles do not activate or deactivate hot and/or cold water.',
+      detail: 'The faucet control handles, used to activate or deactivate water flow, do not function properly.',
+      criteria: 'Cannot activate/deactivate water.',
       severity: 'Moderate',
       repairBy: '30 Day',
-      points: '5.5/n',
+      points: '5.0/n',
       code: 'KITCHEN-13'
     },
     {
       id: 'kitchen_14',
-      name: 'Sink - Component damaged (Not Adequate).',
-      detail: 'Sink component is missing or damaged, and sink is not functionally adequate.',
+      name: 'Sink - Sink component(s) is damaged or missing. (The sink is NOT functionally adequate.)',
+      detail: 'Sink component(s) is damaged (i.e., visibly defective; impacts functionality). OR Sink component(s) is missing (i.e., evidence of prior installation, but is now not present or is incomplete). AND The sink is NOT functionally adequate.',
       criteria: 'Not functionally adequate.',
       severity: 'Moderate',
       repairBy: '30 Day',
-      points: '5.5/n',
+      points: '5.0/n',
       code: 'KITCHEN-14'
     },
     {
       id: 'kitchen_15',
-      name: 'Sink - Improper Installation.',
-      detail: 'Sink improperly installed, pulling away from wall, leaning, gaps.',
+      name: 'Sink - Sink is improperly installed.',
+      detail: 'Sink improperly installed. (e.g., Sink pulling away from wall. Sink leaning. Visible gaps between sink and counter. Separation at seams.)',
       criteria: 'Separation at seams.',
       severity: 'Moderate',
       repairBy: '30 Day',
-      points: '5.5/n',
+      points: '5.0/n',
       code: 'KITCHEN-15'
     },
     {
       id: 'kitchen_16',
-      name: 'Sink - Drainage.',
-      detail: 'The sink is not draining, not functioning adequately.',
+      name: 'Sink - The sink is not draining, not functioning adequately.',
+      detail: 'The sink is not draining; the water drains very slow or sink is clogged.',
       criteria: 'Water not draining; slow or clogged.',
       severity: 'Moderate',
       repairBy: '30 Day',
-      points: '5.5/n',
+      points: '5.0/n',
       code: 'KITCHEN-16'
     },
     {
       id: 'kitchen_17',
-      name: 'Sink - Component damaged (Adequate).',
-      detail: 'Sink component damaged/missing but sink IS functionally adequate.',
+      name: 'Sink - Sink component(s) is damaged or missing. (The sink IS functionally adequate.)',
+      detail: 'Sink component(s) is damaged (i.e., visibly defective) or missing (i.e., evidence of prior installation, but is now not present or is incomplete). BUT The sink IS functionally adequate.',
       criteria: 'Functionally adequate despite damage.',
       severity: 'Low',
       repairBy: '60 Day',
-      points: '2.40/n',
+      points: '2.20/n',
       code: 'KITCHEN-17'
     },
     {
       id: 'kitchen_18',
-      name: 'Sink - Water pressure/direction.',
-      detail: 'Water pressure, direction is not adequately functional.',
+      name: 'Sink - The water pressure, direction, or flow is not adequately functional.',
+      detail: 'The water pressure, direction, or flow is not adequately functional.',
       criteria: 'Functional issue.',
       severity: 'Low',
       repairBy: '60 Day',
-      points: '2.40/n',
+      points: '2.20/n',
       code: 'KITCHEN-18'
     },
+    // Ventilation
     {
       id: 'kitchen_19',
-      name: 'Ventilation missing.',
-      detail: 'The kitchen does not have ventilation (exhaust fan/window) present and operable.',
+      name: 'Ventilation - The kitchen does not have ventilation present and operable.',
+      detail: 'The kitchen does not have some form of ventilation (exhaust fan or window that opens) present and operable.',
       criteria: 'Not present and operable.',
       severity: 'Moderate',
       repairBy: '30 Day',
-      points: '5.5/n',
+      points: '5.0/n',
       code: 'KITCHEN-19'
     },
     {
       id: 'kitchen_20',
-      name: 'Exhaust system component damaged/missing.',
-      detail: 'Exhaust system component damaged or missing.',
+      name: 'Ventilation - Exhaust system component is damaged or missing.',
+      detail: 'Exhaust system component is damaged (i.e., visibly defective) or missing (i.e., evidence of prior installation, but is now not present or is incomplete).',
       criteria: 'Visibly defective or missing.',
       severity: 'Moderate',
       repairBy: '30 Day',
-      points: '5.5/n',
+      points: '5.0/n',
       code: 'KITCHEN-20'
     },
     {
       id: 'kitchen_21',
-      name: 'Exhaust system control failure.',
+      name: 'Ventilation - Exhaust system does not respond to the control switch.',
       detail: 'Exhaust system does not respond to the control switch.',
       criteria: 'Inoperable.',
       severity: 'Moderate',
       repairBy: '30 Day',
-      points: '5.5/n',
+      points: '5.0/n',
       code: 'KITCHEN-21'
     },
     {
@@ -3055,23 +3774,13 @@ export const VENTILATION_DEFICIENCIES: ItemDeficiencies = {
   deficiencies: [
     {
       id: 'vent_1',
-      name: 'Ventilation system is inoperable',
-      detail: 'Ventilation system does not function properly.',
-      criteria: 'Ventilation system is inoperable.',
+      name: 'Ventilation is damaged, inoperable, or missing.',
+      detail: 'Ventilation is damaged (i.e., visibly defective; impacts functionality). OR Ventilation is inoperable, not meeting function or purpose, with or without visible damage. OR Ventilation is missing (i.e., evidence of prior installation, but is now not present or is incomplete).',
+      criteria: 'All units must have ventilation capability in at least one of the rooms -- living room, dining room, bedroom, or sleeping room.',
       severity: 'Moderate',
       repairBy: '30 Day',
-      points: '5.5/n',
+      points: '5.0/n',
       code: 'VENT-01'
-    },
-    {
-      id: 'vent_2',
-      name: 'Ventilation component is damaged or missing',
-      detail: 'Ventilation component is damaged, deteriorated, or missing.',
-      criteria: 'Ventilation component is damaged or missing.',
-      severity: 'Moderate',
-      repairBy: '30 Day',
-      points: '5.5/n',
-      code: 'VENT-02'
     }
   ]
 };
@@ -3081,12 +3790,12 @@ export const CABINET_STORAGE_DEFICIENCIES: ItemDeficiencies = {
   deficiencies: [
     {
       id: 'cab_1',
-      name: 'Cabinet or storage component is damaged or missing',
-      detail: 'Cabinet or storage component is damaged, deteriorated, or missing.',
-      criteria: 'Cabinet or storage is not functional.',
+      name: 'Pantry, Food storage space is not present',
+      detail: 'Food, sanitation, and household supplies, evidence of previously installed, damaged or missing components.',
+      criteria: 'Stowed items, including food, sanitation, and household supplies.',
       severity: 'Low',
       repairBy: '60 Day',
-      points: '2.40/n',
+      points: '2.20/n',
       code: 'CAB-01'
     }
   ]
@@ -3198,7 +3907,10 @@ export const getDeficienciesForItem = (itemName: string, locationType?: string):
   if (normalizedName.includes('water heater')) {
     return WATER_HEATER_DEFICIENCIES;
   }
-  if (normalizedName.includes('bathroom') || normalizedName.includes('bathtub') || normalizedName.includes('shower')) {
+  if (normalizedName.includes('trash chute') || normalizedName.includes('trash') || normalizedName.includes('chute')) {
+    return TRASH_CHUTE_DEFICIENCIES;
+  }
+  if (normalizedName.includes('bathroom') || normalizedName.includes('bathtub') || normalizedName.includes('shower') || normalizedName.includes('restroom')) {
     return BATHROOM_DEFICIENCIES;
   }
   if (normalizedName.includes('toilet')) {
