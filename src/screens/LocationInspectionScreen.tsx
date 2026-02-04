@@ -42,6 +42,16 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
   const inspectionItems = location === 'Outside' ? OUTSIDE_ITEMS : INSIDE_ITEMS;
 
   const handleResponse = (itemId: string, itemName: string, response: ResponseType) => {
+    // If clicking the same response again, unselect it
+    if (responses[itemId] === response) {
+      setResponses((prev) => {
+        const newResponses = { ...prev };
+        delete newResponses[itemId];
+        return newResponses;
+      });
+      return;
+    }
+
     if (response === 'OD') {
       // Show deficiency modal when OD is clicked
       setSelectedItem({ id: itemId, name: itemName });
@@ -99,11 +109,20 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   const handleSelectAll = (response: ResponseType) => {
-    const newResponses: { [key: string]: ResponseType } = {};
-    inspectionItems.forEach((item) => {
-      newResponses[item.id] = response;
-    });
-    setResponses(newResponses);
+    // Check if all items already have this response selected
+    const allSelected = inspectionItems.every((item) => responses[item.id] === response);
+
+    if (allSelected) {
+      // Unselect all - clear responses
+      setResponses({});
+    } else {
+      // Select all with this response
+      const newResponses: { [key: string]: ResponseType } = {};
+      inspectionItems.forEach((item) => {
+        newResponses[item.id] = response;
+      });
+      setResponses(newResponses);
+    }
   };
 
   const getButtonStyle = (itemId: string, buttonType: ResponseType) => {

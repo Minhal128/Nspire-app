@@ -29,10 +29,10 @@ import {
 import { cloudinaryService } from '../services/cloudinaryService';
 import { geminiService } from '../services/openaiService';
 import { ScoringResult, calculateUnitScore, POSSIBLE_SCORE } from '../utils/scoringCalculations';
-import { 
-  calculateOutsideScore, 
-  extractCategoryNumber, 
-  OutsideScoringResult 
+import {
+  calculateOutsideScore,
+  extractCategoryNumber,
+  OutsideScoringResult
 } from '../utils/outsideScoringCalculations';
 import {
   calculateInsideScore,
@@ -188,7 +188,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         customDeficiencyDetail,
         customDeficiencyCriteria,
       ].filter(Boolean).join(' ') || '';
-      
+
       const outsideResult = calculateOutsideScore({
         categoryNumber,
         totalSamples,
@@ -196,7 +196,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         deficiencyCount,
       });
       setOutsideScoringResult(outsideResult);
-      
+
       // Also set the standard scoring result for compatibility
       const result = calculateUnitScore({
         totalSamples,
@@ -221,7 +221,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         customDeficiencyDetail,
         customDeficiencyCriteria,
       ].filter(Boolean).join(' ') || '';
-      
+
       const insideResult = calculateInsideScore({
         categoryNumber,
         totalSamples,
@@ -230,7 +230,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         severity: selectedDeficiency?.severity as 'Life-Threatening' | 'Severe' | 'Moderate' | 'Low' | undefined,
       });
       setInsideScoringResult(insideResult);
-      
+
       // Also set the standard scoring result for compatibility
       const result = calculateUnitScore({
         totalSamples,
@@ -393,19 +393,14 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     }
 
     try {
-      // Show processing modal with 3-second auto-dismiss timer
+      // Show processing modal - will be dismissed when processing completes
       setProcessingMessage(`Analyzing ${images.length} image(s) with AI...`);
       setShowProcessingModal(true);
-      
+
       // Clear any existing timer
       if (processingTimerRef.current) {
         clearTimeout(processingTimerRef.current);
       }
-      
-      // Set 3-second auto-dismiss timer
-      processingTimerRef.current = setTimeout(() => {
-        setShowProcessingModal(false);
-      }, 3000);
 
       // Upload all images to Cloudinary and analyze with AI
       const analyzedDeficiencies = [];
@@ -440,7 +435,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             deficiency: {
               ...selectedDeficiency,
               // Override severity with Outside-specific scoring if applicable
-              severity: isOutsideLocation && outsideScoringResult 
+              severity: isOutsideLocation && outsideScoringResult
                 ? outsideScoringResult.severity as 'Life-Threatening' | 'Severe' | 'Moderate' | 'Low'
                 : selectedDeficiency.severity,
               aiAnalysis: aiAnalysis.analysis,
@@ -469,7 +464,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             deficiency: {
               ...selectedDeficiency,
               // Override severity with Outside-specific scoring if applicable
-              severity: isOutsideLocation && outsideScoringResult 
+              severity: isOutsideLocation && outsideScoringResult
                 ? outsideScoringResult.severity as 'Life-Threatening' | 'Severe' | 'Moderate' | 'Low'
                 : selectedDeficiency.severity,
               // Include Outside-specific scoring info
@@ -491,6 +486,12 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         }
       }
 
+      // Hide processing modal before navigation
+      if (processingTimerRef.current) {
+        clearTimeout(processingTimerRef.current);
+      }
+      setShowProcessingModal(false);
+
       // Navigate to summary with all analyzed deficiencies
       navigation.navigate('InspectionSummary', {
         property,
@@ -505,7 +506,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           scoringResult: scoringResult || calculateUnitScore({
             totalSamples,
             deficiencies: deficiencyCount,
-            severity: isOutsideLocation && outsideScoringResult 
+            severity: isOutsideLocation && outsideScoringResult
               ? outsideScoringResult.severity as 'Life-Threatening' | 'Severe' | 'Moderate' | 'Low'
               : (selectedDeficiency?.severity || 'Moderate'),
           }),
@@ -524,6 +525,12 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         );
       }, 500);
     } catch (error) {
+      // Hide processing modal on error
+      if (processingTimerRef.current) {
+        clearTimeout(processingTimerRef.current);
+      }
+      setShowProcessingModal(false);
+
       console.error('Error in handleProceed:', error);
       Alert.alert('Error', 'Failed to process images. Please try again.');
     }
