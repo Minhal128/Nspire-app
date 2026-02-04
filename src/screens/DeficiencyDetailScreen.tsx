@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   Alert,
   Modal,
   Linking,
+  ActivityIndicator,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
@@ -142,6 +143,20 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const [selectedInsideLocation, setSelectedInsideLocation] = useState<string>(INSIDE_LOCATION_OPTIONS[0]);
   const [showInsideLocationPicker, setShowInsideLocationPicker] = useState(false);
 
+  // Processing modal state
+  const [showProcessingModal, setShowProcessingModal] = useState(false);
+  const [processingMessage, setProcessingMessage] = useState('');
+  const processingTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (processingTimerRef.current) {
+        clearTimeout(processingTimerRef.current);
+      }
+    };
+  }, []);
+
   // Check if we're in the Outside inspection module
   const isOutsideLocation = location?.toLowerCase() === 'outside';
 
@@ -152,7 +167,16 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const deficiencyCount = selectedDeficiency ? 1 : 0;
 
   // Update scoring dynamically when deficiency is selected/changed
+  // Only calculate scoring when a deficiency is explicitly selected
   useEffect(() => {
+    // Don't calculate scoring if no deficiency is selected
+    if (!selectedDeficiency && !isCustomEntry) {
+      setScoringResult(null);
+      setOutsideScoringResult(null);
+      setInsideScoringResult(null);
+      return;
+    }
+
     if (isOutsideLocation) {
       // Use Outside-specific scoring with category-based and deficiency-based rules
       const categoryNumber = extractCategoryNumber(itemId, itemName);
@@ -222,7 +246,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       setScoringResult(result);
       setOutsideScoringResult(null);
     }
-  }, [selectedDeficiency, deficiencyCount, totalSamples, isOutsideLocation, itemId, itemName, customDeficiencyDetail, customDeficiencyCriteria]);
+  }, [selectedDeficiency, deficiencyCount, totalSamples, isOutsideLocation, itemId, itemName, customDeficiencyDetail, customDeficiencyCriteria, isCustomEntry]);
 
   useEffect(() => {
     // Check if item has subcategories (e.g., Door in Outside section)
@@ -369,8 +393,19 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     }
 
     try {
-      // Show loading alert
-      Alert.alert('Processing', `Analyzing ${images.length} image(s) with AI...`, [{ text: 'Please wait' }]);
+      // Show processing modal with 3-second auto-dismiss timer
+      setProcessingMessage(`Analyzing ${images.length} image(s) with AI...`);
+      setShowProcessingModal(true);
+      
+      // Clear any existing timer
+      if (processingTimerRef.current) {
+        clearTimeout(processingTimerRef.current);
+      }
+      
+      // Set 3-second auto-dismiss timer
+      processingTimerRef.current = setTimeout(() => {
+        setShowProcessingModal(false);
+      }, 3000);
 
       // Upload all images to Cloudinary and analyze with AI
       const analyzedDeficiencies = [];
@@ -697,37 +732,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           </View>
         </View>
 
-        {/* Location and Health & Safety - Side by Side */}
-        <View style={styles.rowSection}>
-          <View style={styles.halfSection}>
-            <Text style={styles.sectionLabel}>LOCATION</Text>
-            <View style={styles.compactDropdown}>
-              <Text style={styles.compactDropdownText}>Building {buildingId}</Text>
-            </View>
-          </View>
-          <View style={styles.halfSection}>
-            <Text style={styles.sectionLabel}>HEALTH & SAFETY</Text>
-            <View style={[
-              styles.compactDropdown,
-              // Use resolved severity from Outside scoring when applicable
-              (isOutsideLocation ? scoringResult?.severity : selectedDeficiency?.severity) === 'Life-Threatening' && styles.severityLifeThreateningBg,
-              (isOutsideLocation ? scoringResult?.severity : selectedDeficiency?.severity) === 'Severe' && styles.severitySevereBg,
-              (isOutsideLocation ? scoringResult?.severity : selectedDeficiency?.severity) === 'Moderate' && styles.severityModerateBg,
-              (isOutsideLocation ? scoringResult?.severity : selectedDeficiency?.severity) === 'Low' && styles.severityLowBg,
-            ]}>
-              <Text style={[
-                styles.compactDropdownText,
-                (isOutsideLocation ? scoringResult?.severity : selectedDeficiency?.severity) && styles.severityTextWhite
-              ]}>
-                {isOutsideLocation 
-                  ? (scoringResult?.severity || 'Moderate')
-                  : (selectedDeficiency ? selectedDeficiency.severity : 'Low')}
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Scoring Section - Auto-calculated */}
+        {/* Scoring Section - Shows placeholder values until deficiency is selected */}
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>INSPECTION SCORING</Text>
 
@@ -766,8 +771,9 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                   scoringResult?.severity === 'Severe' && { color: '#EA580C' },
                   scoringResult?.severity === 'Moderate' && { color: '#CA8A04' },
                   scoringResult?.severity === 'Low' && { color: '#16A34A' },
+                  !scoringResult && { color: '#9CA3AF' },
                 ]}>
-                  {scoringResult?.severity || 'Moderate'}
+                  {scoringResult?.severity || '--'}
                 </Text>
               </View>
             </View>
@@ -780,8 +786,8 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               </View>
               <View style={styles.scoringField}>
                 <Text style={styles.scoringFieldLabel}>Pts Lost (Raw)</Text>
-                <Text style={styles.scoringFieldValue}>
-                  {scoringResult?.ptsLostRaw?.toFixed(2) || (4.5 / totalSamples).toFixed(2)}
+                <Text style={[styles.scoringFieldValue, !scoringResult && { color: '#9CA3AF' }]}>
+                  {scoringResult?.ptsLostRaw?.toFixed(2) || '--'}
                 </Text>
               </View>
             </View>
@@ -790,8 +796,8 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             <View style={styles.scoringRow}>
               <View style={styles.scoringField}>
                 <Text style={styles.scoringFieldLabel}>Pts Lost</Text>
-                <Text style={styles.scoringFieldValue}>
-                  {scoringResult?.ptsLost?.toFixed(2) || '0.00'}
+                <Text style={[styles.scoringFieldValue, !scoringResult && { color: '#9CA3AF' }]}>
+                  {scoringResult?.ptsLost?.toFixed(2) || '--'}
                 </Text>
               </View>
               <View style={styles.scoringField}>
@@ -804,14 +810,14 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             <View style={styles.scoringRow}>
               <View style={styles.scoringField}>
                 <Text style={styles.scoringFieldLabel}>Max Pts Lost</Text>
-                <Text style={styles.scoringFieldValue}>
-                  {scoringResult?.maxPtsLost?.toFixed(2) || '0.00'}
+                <Text style={[styles.scoringFieldValue, !scoringResult && { color: '#9CA3AF' }]}>
+                  {scoringResult?.maxPtsLost?.toFixed(2) || '--'}
                 </Text>
               </View>
               <View style={styles.scoringField}>
                 <Text style={styles.scoringFieldLabel}>Score</Text>
-                <Text style={[styles.scoringFieldValue, styles.scoreHighlight]}>
-                  {scoringResult?.score?.toFixed(2) || POSSIBLE_SCORE.toFixed(2)}
+                <Text style={[styles.scoringFieldValue, scoringResult ? styles.scoreHighlight : { color: '#9CA3AF' }]}>
+                  {scoringResult?.score?.toFixed(2) || '--'}
                 </Text>
               </View>
             </View>
@@ -1090,6 +1096,28 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                 </TouchableOpacity>
               ))}
             </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Processing Modal with 3-second auto-dismiss */}
+      <Modal
+        visible={showProcessingModal}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setShowProcessingModal(false)}
+      >
+        <View style={styles.processingModalOverlay}>
+          <View style={styles.processingModalContent}>
+            <Text style={styles.processingModalTitle}>Processing</Text>
+            <Text style={styles.processingModalMessage}>{processingMessage}</Text>
+            <ActivityIndicator size="large" color="#0E7490" style={{ marginTop: 16 }} />
+            <TouchableOpacity
+              style={styles.processingModalButton}
+              onPress={() => setShowProcessingModal(false)}
+            >
+              <Text style={styles.processingModalButtonText}>Please wait</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -1710,6 +1738,45 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#1F2937',
     flex: 1,
+  },
+  processingModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  processingModalContent: {
+    backgroundColor: '#1F2937',
+    borderRadius: 16,
+    padding: 24,
+    width: '80%',
+    maxWidth: 320,
+    alignItems: 'center',
+  },
+  processingModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 8,
+  },
+  processingModalMessage: {
+    fontSize: 14,
+    color: '#D1D5DB',
+    textAlign: 'center',
+  },
+  processingModalButton: {
+    backgroundColor: '#374151',
+    paddingVertical: 12,
+    paddingHorizontal: 32,
+    borderRadius: 24,
+    marginTop: 20,
+    width: '100%',
+  },
+  processingModalButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#9CA3AF',
+    textAlign: 'center',
   },
 });
 

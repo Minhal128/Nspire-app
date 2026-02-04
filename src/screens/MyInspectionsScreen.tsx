@@ -359,7 +359,7 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
     } else if (coverage === '50') {
       unitsToInspect = Math.ceil(totalUnits / 2);
     } else if (coverage === 'random') {
-      // Use NSPIRE hardcoded sampling for properties with 1-32 units
+      // Use NSPIRE sampling for all property sizes
       if (isRandomSelectionAvailable(totalUnits)) {
         try {
           const propertyId = property._id || property.id || `property_${Date.now()}`;
@@ -375,7 +375,7 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
           unitsToInspect = Math.min(unitsToInspect, totalUnits);
         }
       } else {
-        // For properties with more than 32 units, use fallback method
+        // Fallback for invalid unit counts
         unitsToInspect = Math.max(5, Math.ceil(Math.sqrt(totalUnits)));
         unitsToInspect = Math.min(unitsToInspect, totalUnits);
       }

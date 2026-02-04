@@ -1,8 +1,8 @@
 /**
  * Unit Sampling Service Tests
  * 
- * Tests for the hardcoded unit sampling logic to ensure consistency
- * and correctness of the NSPIRE sampling implementation (1-32 units).
+ * Tests for the unit sampling logic to ensure consistency
+ * and correctness of the NSPIRE sampling implementation (all property sizes).
  */
 
 import {
@@ -27,7 +27,7 @@ describe('Unit Sampling Service', () => {
       expect(getUnitsToInspect(10)).toBe(9); // 10 units = inspect 9 (n-1)
     });
 
-    it('should return correct sample sizes for 11-32 units (NSPIRE factors)', () => {
+    it('should return correct sample sizes for 11-35 units (NSPIRE factors)', () => {
       expect(getUnitsToInspect(11)).toBe(9);  // 11-12 units = n=9
       expect(getUnitsToInspect(12)).toBe(9);  // 11-12 units = n=9
       expect(getUnitsToInspect(13)).toBe(10); // 13-14 units = n=10
@@ -48,28 +48,52 @@ describe('Unit Sampling Service', () => {
       expect(getUnitsToInspect(28)).toBe(16); // 28-30 units = n=16
       expect(getUnitsToInspect(29)).toBe(16); // 28-30 units = n=16
       expect(getUnitsToInspect(30)).toBe(16); // 28-30 units = n=16
-      expect(getUnitsToInspect(31)).toBe(17); // 31-32 units = n=17
-      expect(getUnitsToInspect(32)).toBe(17); // 31-32 units = n=17
+      expect(getUnitsToInspect(31)).toBe(17); // 31-35 units = n=17
+      expect(getUnitsToInspect(32)).toBe(17); // 31-35 units = n=17
+      expect(getUnitsToInspect(35)).toBe(17); // 31-35 units = n=17
     });
 
-    it('should throw error for units outside 1-32 range', () => {
+    it('should return correct sample sizes for larger properties (36-921+ units)', () => {
+      expect(getUnitsToInspect(36)).toBe(18);  // 36-39 units = n=18
+      expect(getUnitsToInspect(39)).toBe(18);  // 36-39 units = n=18
+      expect(getUnitsToInspect(40)).toBe(19);  // 40-45 units = n=19
+      expect(getUnitsToInspect(45)).toBe(19);  // 40-45 units = n=19
+      expect(getUnitsToInspect(46)).toBe(20);  // 46-51 units = n=20
+      expect(getUnitsToInspect(50)).toBe(20);  // 46-51 units = n=20
+      expect(getUnitsToInspect(51)).toBe(20);  // 46-51 units = n=20
+      expect(getUnitsToInspect(52)).toBe(21);  // 52-59 units = n=21
+      expect(getUnitsToInspect(60)).toBe(22);  // 60-67 units = n=22
+      expect(getUnitsToInspect(68)).toBe(23);  // 68-78 units = n=23
+      expect(getUnitsToInspect(79)).toBe(24);  // 79-92 units = n=24
+      expect(getUnitsToInspect(93)).toBe(25);  // 93-110 units = n=25
+      expect(getUnitsToInspect(111)).toBe(26); // 111-120 units = n=26
+      expect(getUnitsToInspect(121)).toBe(27); // 121-166 units = n=27
+      expect(getUnitsToInspect(167)).toBe(28); // 167-214 units = n=28
+      expect(getUnitsToInspect(215)).toBe(29); // 215-295 units = n=29
+      expect(getUnitsToInspect(296)).toBe(30); // 296-455 units = n=30
+      expect(getUnitsToInspect(456)).toBe(31); // 456-920 units = n=31
+      expect(getUnitsToInspect(921)).toBe(32); // 921+ units = n=32
+      expect(getUnitsToInspect(1000)).toBe(32); // 921+ units = n=32
+    });
+
+    it('should throw error for units less than 1', () => {
       expect(() => getUnitsToInspect(0)).toThrow();
-      expect(() => getUnitsToInspect(33)).toThrow();
-      expect(() => getUnitsToInspect(50)).toThrow();
+      expect(() => getUnitsToInspect(-1)).toThrow();
     });
   });
 
   describe('isRandomSelectionAvailable', () => {
-    it('should return true for 1-32 units', () => {
-      for (let i = 1; i <= 32; i++) {
-        expect(isRandomSelectionAvailable(i)).toBe(true);
-      }
+    it('should return true for any property with 1 or more units', () => {
+      expect(isRandomSelectionAvailable(1)).toBe(true);
+      expect(isRandomSelectionAvailable(32)).toBe(true);
+      expect(isRandomSelectionAvailable(50)).toBe(true);
+      expect(isRandomSelectionAvailable(100)).toBe(true);
+      expect(isRandomSelectionAvailable(1000)).toBe(true);
     });
 
-    it('should return false for units outside 1-32 range', () => {
+    it('should return false for 0 or negative units', () => {
       expect(isRandomSelectionAvailable(0)).toBe(false);
-      expect(isRandomSelectionAvailable(33)).toBe(false);
-      expect(isRandomSelectionAvailable(50)).toBe(false);
+      expect(isRandomSelectionAvailable(-1)).toBe(false);
     });
   });
 
@@ -135,9 +159,26 @@ describe('Unit Sampling Service', () => {
       expect(sample32.selectedUnits).toHaveLength(17);
     });
 
+    it('should handle large properties (50+ units)', () => {
+      const sample50 = generateRandomUnitSample(50, 'property-50');
+      expect(sample50.totalUnits).toBe(50);
+      expect(sample50.unitsToInspect).toBe(20); // 46-51 units = n=20
+      expect(sample50.selectedUnits).toHaveLength(20);
+
+      const sample35 = generateRandomUnitSample(35, 'property-35');
+      expect(sample35.totalUnits).toBe(35);
+      expect(sample35.unitsToInspect).toBe(17); // 31-35 units = n=17
+      expect(sample35.selectedUnits).toHaveLength(17);
+
+      const sample1000 = generateRandomUnitSample(1000, 'property-1000');
+      expect(sample1000.totalUnits).toBe(1000);
+      expect(sample1000.unitsToInspect).toBe(32); // 921+ units = n=32
+      expect(sample1000.selectedUnits).toHaveLength(32);
+    });
+
     it('should throw error for invalid inputs', () => {
       expect(() => generateRandomUnitSample(0, 'test')).toThrow();
-      expect(() => generateRandomUnitSample(33, 'test')).toThrow();
+      expect(() => generateRandomUnitSample(-1, 'test')).toThrow();
       expect(() => generateRandomUnitSample(5, '')).toThrow();
       expect(() => generateRandomUnitSample(5, '   ')).toThrow();
     });
@@ -162,11 +203,19 @@ describe('Unit Sampling Service', () => {
       expect(explanation32).toContain('17 units will be randomly selected');
     });
 
-    it('should return error message for unsupported unit counts', () => {
-      const explanation = getSamplingExplanation(50);
+    it('should return explanation for larger properties', () => {
+      const explanation50 = getSamplingExplanation(50);
+      expect(explanation50).toContain('50 units');
+      expect(explanation50).toContain('20 units will be randomly selected');
+
+      const explanation1000 = getSamplingExplanation(1000);
+      expect(explanation1000).toContain('1000 units');
+      expect(explanation1000).toContain('32 units will be randomly selected');
+    });
+
+    it('should return error message for invalid unit counts', () => {
+      const explanation = getSamplingExplanation(0);
       expect(explanation).toContain('not available');
-      expect(explanation).toContain('50 units');
-      expect(explanation).toContain('1-32 units');
     });
   });
 
@@ -191,7 +240,10 @@ describe('Unit Sampling Service', () => {
     });
 
     it('should select the correct number of units without duplicates', () => {
-      for (let totalUnits = 1; totalUnits <= 32; totalUnits++) {
+      // Test a representative sample of unit counts across all ranges
+      const testCases = [1, 5, 10, 15, 25, 32, 35, 50, 100, 200, 500, 1000];
+      
+      for (const totalUnits of testCases) {
         const sample = generateRandomUnitSample(totalUnits, `test-${totalUnits}`);
         const expectedUnitsToInspect = getUnitsToInspect(totalUnits);
         

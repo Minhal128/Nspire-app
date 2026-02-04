@@ -3,7 +3,7 @@
     "name": "Inspire",
     "slug": "inspire-app",
     "version": "1.0.0",
-    "orientation": "portrait",
+    "orientation": "default",
     "icon": "./logo.png",
     "userInterfaceStyle": "automatic",
     "runtimeVersion": "1.0.0",
@@ -19,6 +19,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.inspire.app",
+      "requiresFullScreen": false,
       "associatedDomains": [
         "applinks:inspire.app", 
         "applinks:*.inspire.app",

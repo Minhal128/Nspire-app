@@ -173,7 +173,7 @@ export default function UnitInspectionScreen({ navigation, route }: UnitInspecti
       if (!isRandomSelectionAvailable(totalUnits)) {
         Alert.alert(
           'Random Selection Not Available',
-          `Random unit selection is only available for properties with 1-32 units. This property has ${totalUnits} units.`,
+          `Random unit selection requires at least 1 unit. This property has ${totalUnits} units.`,
           [{ text: 'OK' }]
         );
         return;
