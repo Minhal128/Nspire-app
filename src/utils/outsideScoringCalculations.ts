@@ -100,7 +100,7 @@ export function getSeverityByCategoryNumber(categoryNumber: number): OutsideSeve
   if (SEVERE_CATEGORIES.includes(categoryNumber)) {
     return { severity: 'Severe', pointsLostFormula: 12.20 };
   }
-  
+
   // Default to Moderate if category not found
   return { severity: 'Moderate', pointsLostFormula: 4.5 };
 }
@@ -143,13 +143,13 @@ export function getOutsideSeverityConfig(
     if (matchesSevereDeficiencyPattern(deficiencyDescription)) {
       return { severity: 'Severe', pointsLostFormula: 12.20 };
     }
-    
+
     // Check for low severity deficiency patterns
     if (matchesLowDeficiencyPattern(deficiencyDescription)) {
       return { severity: 'Low', pointsLostFormula: 2.00 };
     }
   }
-  
+
   // Fall back to category-based severity
   return getSeverityByCategoryNumber(categoryNumber);
 }
@@ -192,9 +192,9 @@ const POSSIBLE_SCORE = 25;
  * @returns Complete scoring result
  */
 export function calculateOutsideScore(input: OutsideScoringInput): OutsideScoringResult {
-  const { 
-    categoryNumber, 
-    totalSamples, 
+  const {
+    categoryNumber,
+    totalSamples,
     deficiencyDescription,
     deficiencyCount = 1,
     deficiencyPointsFormula,
@@ -273,7 +273,7 @@ export function extractCategoryNumber(itemId?: string, itemName?: string): numbe
       return num;
     }
   }
-  
+
   // Try to extract from item name (e.g., "1. Address and Signage")
   if (itemName) {
     const match = itemName.match(/^(\d+)\./);
@@ -284,7 +284,7 @@ export function extractCategoryNumber(itemId?: string, itemName?: string): numbe
       }
     }
   }
-  
+
   // Default to category 1 if not found
   return 1;
 }
