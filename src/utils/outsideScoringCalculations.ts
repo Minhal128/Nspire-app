@@ -79,6 +79,22 @@ const LOW_DEFICIENCY_PATTERNS = [
   '10x10 ft area not designated for garbage disposal',
 ];
 
+// Moderate severity deficiencies: Pts Lost = 4.5 / n
+// These override category-based severity (e.g., category 14 default is Severe but some deficiencies are Moderate)
+const MODERATE_DEFICIENCY_PATTERNS = [
+  // Leak - Sewage System (Category 14) - Moderate deficiencies
+  'cleanout cap or riser is damaged',
+  'cap to the cleanout or pump cover is detached or missing',
+  'cap to the cleanout or pump cover is detached',
+  'pump cover is detached or missing',
+  'visibly defective, impacts functionality',
+  // Electrical Service Panel (Category 7) - Moderate deficiencies
+  'electrical service panel is not reasonably accessible',
+  'panel is not reasonably accessible',
+  'cannot be reached and opened without moving obstructions',
+  'cannot be reached without moving obstructions',
+];
+
 /**
  * Get severity configuration based on category number
  * @param categoryNumber The NSPIRE Outside category number (1-26)
@@ -126,6 +142,16 @@ function matchesLowDeficiencyPattern(deficiencyDescription: string): boolean {
 }
 
 /**
+ * Check if deficiency description matches any moderate severity deficiency patterns
+ * @param deficiencyDescription The deficiency description or detail text
+ * @returns True if matches moderate severity pattern
+ */
+function matchesModerateDeficiencyPattern(deficiencyDescription: string): boolean {
+  const normalizedDesc = deficiencyDescription.toLowerCase();
+  return MODERATE_DEFICIENCY_PATTERNS.some(pattern => normalizedDesc.includes(pattern.toLowerCase()));
+}
+
+/**
  * Get severity configuration with deficiency-based override
  * Deficiency-based rules take precedence over category-based rules
  * 
@@ -142,6 +168,11 @@ export function getOutsideSeverityConfig(
     // Check for severe deficiency patterns
     if (matchesSevereDeficiencyPattern(deficiencyDescription)) {
       return { severity: 'Severe', pointsLostFormula: 12.20 };
+    }
+
+    // Check for moderate deficiency patterns (overrides category defaults like Severe or Life-Threatening)
+    if (matchesModerateDeficiencyPattern(deficiencyDescription)) {
+      return { severity: 'Moderate', pointsLostFormula: 4.5 };
     }
 
     // Check for low severity deficiency patterns
