@@ -47,8 +47,8 @@ export const CABINET_STORAGE_DEFICIENCIES = {
 // 2. CALL-FOR-AID SYSTEM
 // ==========================================
 
-export const CALL_FOR_AID_SYSTEM: UnitItemDeficiencies = {
-    itemName: 'Call-for-Aid System',
+export const CALL_FOR_AID_NOT_FUNCTION: UnitItemDeficiencies = {
+    itemName: 'System does not function properly.',
     deficiencies: [
         {
             id: 'call_aid_1',
@@ -59,7 +59,13 @@ export const CALL_FOR_AID_SYSTEM: UnitItemDeficiencies = {
             repairBy: '24Hrs',
             points: '27.25/50xn',
             code: 'CALL-AID-01'
-        },
+        }
+    ]
+};
+
+export const CALL_FOR_AID_BLOCKED: UnitItemDeficiencies = {
+    itemName: 'The system is blocked, or the pull cord is higher than 6 inches off the floor.',
+    deficiencies: [
         {
             id: 'call_aid_2',
             name: 'The system is blocked, or the pull cord is higher than 6 inches off the floor.',
@@ -75,15 +81,15 @@ export const CALL_FOR_AID_SYSTEM: UnitItemDeficiencies = {
 
 export const CALL_FOR_AID_DEFICIENCIES = {
     category: '2. Call-for-Aid System',
-    items: [CALL_FOR_AID_SYSTEM]
+    items: [CALL_FOR_AID_NOT_FUNCTION, CALL_FOR_AID_BLOCKED]
 };
 
 // ==========================================
 // 3. CARBON MONOXIDE ALARM
 // ==========================================
 
-export const CARBON_MONOXIDE_ALARM: UnitItemDeficiencies = {
-    itemName: 'Carbon Monoxide Alarm',
+export const CO_ALARM_NO_ALARM: UnitItemDeficiencies = {
+    itemName: 'Carbon monoxide alarm does not produce audio or visual alarm when tested.',
     deficiencies: [
         {
             id: 'co_alarm_1',
@@ -94,7 +100,13 @@ export const CARBON_MONOXIDE_ALARM: UnitItemDeficiencies = {
             repairBy: '24Hrs',
             points: '0.000',
             code: 'CO-ALARM-01'
-        },
+        }
+    ]
+};
+
+export const CO_ALARM_MISSING: UnitItemDeficiencies = {
+    itemName: 'Carbon monoxide alarm is missing, not installed, or not installed in the proper location.',
+    deficiencies: [
         {
             id: 'co_alarm_2',
             name: 'Carbon monoxide alarm is missing, not installed, or not installed in the proper location.',
@@ -104,7 +116,13 @@ export const CARBON_MONOXIDE_ALARM: UnitItemDeficiencies = {
             repairBy: '24Hrs',
             points: '0.000',
             code: 'CO-ALARM-02'
-        },
+        }
+    ]
+};
+
+export const CO_ALARM_OBSTRUCTED: UnitItemDeficiencies = {
+    itemName: 'Carbon monoxide alarm is obstructed.',
+    deficiencies: [
         {
             id: 'co_alarm_3',
             name: 'Carbon monoxide alarm is obstructed.',
@@ -120,15 +138,15 @@ export const CARBON_MONOXIDE_ALARM: UnitItemDeficiencies = {
 
 export const CARBON_MONOXIDE_DEFICIENCIES = {
     category: '3. Carbon Monoxide Alarm',
-    items: [CARBON_MONOXIDE_ALARM]
+    items: [CO_ALARM_NO_ALARM, CO_ALARM_MISSING, CO_ALARM_OBSTRUCTED]
 };
 
 // ==========================================
 // 4. CEILING
 // ==========================================
 
-export const CEILING_UNIT: UnitItemDeficiencies = {
-    itemName: 'Ceiling',
+export const CEILING_NOT_ADEQUATE: UnitItemDeficiencies = {
+    itemName: 'The ceiling component(s) is not functionally adequate.',
     deficiencies: [
         {
             id: 'ceiling_1',
@@ -139,7 +157,13 @@ export const CEILING_UNIT: UnitItemDeficiencies = {
             repairBy: '24 Hrs.',
             points: '13.40/n',
             code: 'CEILING-01'
-        },
+        }
+    ]
+};
+
+export const CEILING_HOLE: UnitItemDeficiencies = {
+    itemName: 'Ceiling has a hole.',
+    deficiencies: [
         {
             id: 'ceiling_2',
             name: 'Ceiling has a hole.',
@@ -149,7 +173,13 @@ export const CEILING_UNIT: UnitItemDeficiencies = {
             repairBy: '30 Day',
             points: '5.0/n',
             code: 'CEILING-02'
-        },
+        }
+    ]
+};
+
+export const CEILING_UNSTABLE: UnitItemDeficiencies = {
+    itemName: 'The ceiling has an unstable surface (bulging, buckling).',
+    deficiencies: [
         {
             id: 'ceiling_3',
             name: 'The ceiling has an unstable surface (bulging, buckling).',
@@ -165,7 +195,7 @@ export const CEILING_UNIT: UnitItemDeficiencies = {
 
 export const CEILING_DEFICIENCIES = {
     category: '4. Ceiling',
-    items: [CEILING_UNIT]
+    items: [CEILING_NOT_ADEQUATE, CEILING_HOLE, CEILING_UNSTABLE]
 };
 
 // ==========================================
@@ -197,8 +227,8 @@ export const CHIMNEY_DEFICIENCIES = {
 // 6. CLOTHES DRYER EXHAUST VENTILATION
 // ==========================================
 
-export const CLOTHES_DRYER_EXHAUST: UnitItemDeficiencies = {
-    itemName: 'Clothes Dryer Exhaust Ventilation',
+export const DRYER_UNSUITABLE_MATERIAL: UnitItemDeficiencies = {
+    itemName: 'Dryer transition duct is constructed of unsuitable material.',
     deficiencies: [
         {
             id: 'dryer_1',
@@ -209,7 +239,13 @@ export const CLOTHES_DRYER_EXHAUST: UnitItemDeficiencies = {
             repairBy: '24Hrs',
             points: '27.25/n',
             code: 'DRYER-01'
-        },
+        }
+    ]
+};
+
+export const DRYER_ELECTRIC_RESTRICTED: UnitItemDeficiencies = {
+    itemName: 'Electrical dryer exhaust ventilation has restricted airflow.',
+    deficiencies: [
         {
             id: 'dryer_2',
             name: 'Electrical dryer exhaust ventilation has restricted airflow.',
@@ -219,7 +255,13 @@ export const CLOTHES_DRYER_EXHAUST: UnitItemDeficiencies = {
             repairBy: '24Hrs',
             points: '27.25/n',
             code: 'DRYER-02'
-        },
+        }
+    ]
+};
+
+export const DRYER_ELECTRIC_DETACHED: UnitItemDeficiencies = {
+    itemName: 'Electric dryer transition duct is detached or missing.',
+    deficiencies: [
         {
             id: 'dryer_3',
             name: 'Electric dryer transition duct is detached or missing.',
@@ -229,7 +271,13 @@ export const CLOTHES_DRYER_EXHAUST: UnitItemDeficiencies = {
             repairBy: '24Hrs',
             points: '27.25/n',
             code: 'DRYER-03'
-        },
+        }
+    ]
+};
+
+export const DRYER_GAS_RESTRICTED: UnitItemDeficiencies = {
+    itemName: 'Gas dryer exhaust ventilation system has restricted airflow.',
+    deficiencies: [
         {
             id: 'dryer_4',
             name: 'Gas dryer exhaust ventilation system has restricted airflow.',
@@ -239,7 +287,13 @@ export const CLOTHES_DRYER_EXHAUST: UnitItemDeficiencies = {
             repairBy: '24Hrs',
             points: '27.25/n',
             code: 'DRYER-04'
-        },
+        }
+    ]
+};
+
+export const DRYER_GAS_DETACHED: UnitItemDeficiencies = {
+    itemName: 'Gas dryer transition duct is detached or missing',
+    deficiencies: [
         {
             id: 'dryer_5',
             name: 'Gas dryer transition duct is detached or missing',
@@ -255,15 +309,15 @@ export const CLOTHES_DRYER_EXHAUST: UnitItemDeficiencies = {
 
 export const CLOTHES_DRYER_DEFICIENCIES = {
     category: '6. Clothes Dryer Exhaust Ventilation',
-    items: [CLOTHES_DRYER_EXHAUST]
+    items: [DRYER_UNSUITABLE_MATERIAL, DRYER_ELECTRIC_RESTRICTED, DRYER_ELECTRIC_DETACHED, DRYER_GAS_RESTRICTED, DRYER_GAS_DETACHED]
 };
 
 // ==========================================
 // 7. DOOR
 // ==========================================
 
-export const DOOR_ENTRY: UnitItemDeficiencies = {
-    itemName: 'Door - Entry',
+export const DOOR_CANNOT_BE_SECURED: UnitItemDeficiencies = {
+    itemName: 'Entry door cannot be secured.',
     deficiencies: [
         {
             id: 'door_entry_1',
@@ -274,7 +328,13 @@ export const DOOR_ENTRY: UnitItemDeficiencies = {
             repairBy: '30 Day',
             points: '13.40/n',
             code: 'DOOR-ENTRY-01'
-        },
+        }
+    ]
+};
+
+export const DOOR_COMPONENT_DAMAGED: UnitItemDeficiencies = {
+    itemName: 'Entry door component is damage inoperable or missing and it does not limit the door\'s ability to provide privacy or protection from weather or infestation.',
+    deficiencies: [
         {
             id: 'door_entry_2',
             name: 'Entry door component is damage inoperable or missing and it does not limit the door\'s ability to provide privacy or protection from weather or infestation.',
@@ -284,7 +344,13 @@ export const DOOR_ENTRY: UnitItemDeficiencies = {
             repairBy: '60 Day',
             points: '2.20/n',
             code: 'DOOR-ENTRY-02'
-        },
+        }
+    ]
+};
+
+export const DOOR_FRAME_DAMAGED: UnitItemDeficiencies = {
+    itemName: 'The entry door frame, threshold, or trim is damaged.',
+    deficiencies: [
         {
             id: 'door_entry_3',
             name: 'The entry door frame, threshold, or trim is damaged.',
@@ -294,7 +360,13 @@ export const DOOR_ENTRY: UnitItemDeficiencies = {
             repairBy: '30 Day',
             points: '5.0/n',
             code: 'DOOR-ENTRY-03'
-        },
+        }
+    ]
+};
+
+export const DOOR_ENTRY_MISSING: UnitItemDeficiencies = {
+    itemName: 'Entry door is missing',
+    deficiencies: [
         {
             id: 'door_entry_4',
             name: 'Entry door is missing',
@@ -304,7 +376,13 @@ export const DOOR_ENTRY: UnitItemDeficiencies = {
             repairBy: '24 Hrs.',
             points: '13.40/n',
             code: 'DOOR-ENTRY-04'
-        },
+        }
+    ]
+};
+
+export const DOOR_ENTRY: UnitItemDeficiencies = {
+    itemName: 'Door - Entry',
+    deficiencies: [
         {
             id: 'door_entry_5',
             name: 'Entry door seal, gasket, or stripping is damaged, inoperable or missing.',
@@ -508,7 +586,7 @@ export const DOOR_GARAGE: UnitItemDeficiencies = {
 
 export const DOOR_DEFICIENCIES = {
     category: '7. Door',
-    items: [DOOR_ENTRY, DOOR_FIRE_LABELED, DOOR_GENERAL, DOOR_GARAGE]
+    items: [DOOR_CANNOT_BE_SECURED, DOOR_COMPONENT_DAMAGED, DOOR_FRAME_DAMAGED, DOOR_ENTRY_MISSING, DOOR_ENTRY, DOOR_FIRE_LABELED, DOOR_GENERAL, DOOR_GARAGE]
 };
 
 // ==========================================
@@ -702,19 +780,25 @@ export const ELECTRICAL_DEFICIENCIES = {
 // 11. ELEVATOR
 // ==========================================
 
-export const ELEVATOR_UNIT: UnitItemDeficiencies = {
-    itemName: 'Elevator',
+export const ELEVATOR_NOT_LEVEL: UnitItemDeficiencies = {
+    itemName: 'Elevator Cab is not level with the floor.',
     deficiencies: [
         {
             id: 'elevator_1',
             name: 'Elevator Cab is not level with the floor.',
-            detail: 'Elevator Cab is not level with the floor.',
+            detail: 'Poses tripping hazards.',
             criteria: 'There is more than 3/4 inch difference in level between the elevator cab and the building floor.',
             severity: 'Moderate',
             repairBy: '30 Day',
             points: '5.0/n',
             code: 'ELEVATOR-01'
-        },
+        }
+    ]
+};
+
+export const ELEVATOR_DOOR: UnitItemDeficiencies = {
+    itemName: 'The elevator door does not fully open or close.',
+    deficiencies: [
         {
             id: 'elevator_2',
             name: 'The elevator door does not fully open or close.',
@@ -724,7 +808,13 @@ export const ELEVATOR_UNIT: UnitItemDeficiencies = {
             repairBy: '30 Day',
             points: '5.0/n',
             code: 'ELEVATOR-02'
-        },
+        }
+    ]
+};
+
+export const ELEVATOR_INOPERABLE: UnitItemDeficiencies = {
+    itemName: 'Elevator is inoperable.',
+    deficiencies: [
         {
             id: 'elevator_3',
             name: 'Elevator is inoperable.',
@@ -734,7 +824,13 @@ export const ELEVATOR_UNIT: UnitItemDeficiencies = {
             repairBy: '30 Day',
             points: '5.0/n',
             code: 'ELEVATOR-03'
-        },
+        }
+    ]
+};
+
+export const ELEVATOR_SAFETY_DEVICE: UnitItemDeficiencies = {
+    itemName: 'Safety edge device has malfunctioned or is inoperable.',
+    deficiencies: [
         {
             id: 'elevator_4',
             name: 'Safety edge device has malfunctioned or is inoperable.',
@@ -750,7 +846,7 @@ export const ELEVATOR_UNIT: UnitItemDeficiencies = {
 
 export const ELEVATOR_DEFICIENCIES = {
     category: '11. Elevator',
-    items: [ELEVATOR_UNIT]
+    items: [ELEVATOR_NOT_LEVEL, ELEVATOR_DOOR, ELEVATOR_INOPERABLE, ELEVATOR_SAFETY_DEVICE]
 };
 
 // ==========================================
@@ -926,8 +1022,8 @@ export const FIRE_SAFETY_DEFICIENCIES = {
 // 13. FLOOR
 // ==========================================
 
-export const FLOOR_UNIT: UnitItemDeficiencies = {
-    itemName: 'Floor',
+export const FLOOR_NOT_ADEQUATE: UnitItemDeficiencies = {
+    itemName: 'Floor component(s) is not functionally adequate.',
     deficiencies: [
         {
             id: 'floor_1',
@@ -938,12 +1034,18 @@ export const FLOOR_UNIT: UnitItemDeficiencies = {
             repairBy: '30 Day',
             points: '5.0/n',
             code: 'FLOOR-01'
-        },
+        }
+    ]
+};
+
+export const FLOOR_SUBSTRATE_EXPOSED: UnitItemDeficiencies = {
+    itemName: 'Floor substrate is exposed',
+    deficiencies: [
         {
             id: 'floor_2',
             name: 'Floor substrate is exposed',
-            detail: 'Floor substrate is exposed',
-            criteria: '10% or more of the floor substrate area is exposed in any room.',
+            detail: '10% or more of the floor substrate area is exposed in any room.',
+            criteria: 'Repair is needed.',
             severity: 'Moderate',
             repairBy: '30 Day',
             points: '5.0/n',
@@ -954,51 +1056,69 @@ export const FLOOR_UNIT: UnitItemDeficiencies = {
 
 export const FLOOR_DEFICIENCIES = {
     category: '13. Floor',
-    items: [FLOOR_UNIT]
+    items: [FLOOR_NOT_ADEQUATE, FLOOR_SUBSTRATE_EXPOSED]
 };
 
 // ==========================================
 // 14. FOUNDATION
 // ==========================================
 
-export const FOUNDATION_UNIT: UnitItemDeficiencies = {
-    itemName: 'Foundation',
+export const FOUNDATION_REBAR_SPALLING: UnitItemDeficiencies = {
+    itemName: 'Foundation exposed rebar or foundation is spalling, flaking, or chipping.',
     deficiencies: [
         {
             id: 'foundation_1',
             name: 'Foundation exposed rebar or foundation is spalling, flaking, or chipping.',
-            detail: 'Foundation exposed rebar or foundation is spalling, flaking, or chipping.',
-            criteria: 'The affected area is 12x12 inches or greater goes into the foundation at a depth of ¾ inch or greater.',
+            detail: 'The affected area is 12x12 inches or greater goes into the foundation at a depth of ¾ inch or greater.',
+            criteria: 'Foundation exhibits a sign of failure, and it is not structural.',
             severity: 'Moderate',
             repairBy: '30 Day',
             points: '5.0/n',
             code: 'FOUNDATION-01'
-        },
+        }
+    ]
+};
+
+export const FOUNDATION_CRACKED: UnitItemDeficiencies = {
+    itemName: 'Foundation is cracked.',
+    deficiencies: [
         {
             id: 'foundation_2',
             name: 'Foundation is cracked.',
-            detail: 'Foundation is cracked.',
-            criteria: 'Crack is present with a width of ¼ inch or greater and a length of 12 inches or greater.',
+            detail: 'Crack is present with a width of ¼ inch or greater and a length of 12 inches or greater.',
+            criteria: 'Foundation cracks (e.g., cracks in walls, no functioning doors, unlevel floors or windows).',
             severity: 'Moderate',
             repairBy: '30 Day',
             points: '5.0/n',
             code: 'FOUNDATION-02'
-        },
+        }
+    ]
+};
+
+export const FOUNDATION_WATER: UnitItemDeficiencies = {
+    itemName: 'Foundation infiltrated by water.',
+    deficiencies: [
         {
             id: 'foundation_3',
             name: 'Foundation infiltrated by water.',
-            detail: 'Foundation infiltrated by water.',
-            criteria: 'Evidence of water infiltration through the foundation through visual evaluation.',
+            detail: 'Evidence of water infiltration through the foundation through visual evaluation.',
+            criteria: '(e.g., Excessive dampness, collected water, stains, or mineral deposits).',
             severity: 'Moderate',
             repairBy: '30 Day',
             points: '5.0/n',
             code: 'FOUNDATION-03'
-        },
+        }
+    ]
+};
+
+export const FOUNDATION_SUPPORT_DAMAGED: UnitItemDeficiencies = {
+    itemName: 'Foundation support post, column, or girder area is damaged.',
+    deficiencies: [
         {
             id: 'foundation_4',
             name: 'Foundation support post, column, or girder area is damaged.',
-            detail: 'Foundation support post, column, or girder area is damaged.',
-            criteria: 'Any support post, column, or girder area is damaged (i.e., visibly defective; impacts functionality).',
+            detail: 'Any support post, column, or girder area is damaged (i.e., visibly defective; impacts functionality).',
+            criteria: 'Foundation damage (e.g., rot) on support posts, columns, or girders.',
             severity: 'Moderate',
             repairBy: '30 Day',
             points: '5.0/n',
@@ -1009,7 +1129,7 @@ export const FOUNDATION_UNIT: UnitItemDeficiencies = {
 
 export const FOUNDATION_DEFICIENCIES = {
     category: '14. Foundation',
-    items: [FOUNDATION_UNIT]
+    items: [FOUNDATION_REBAR_SPALLING, FOUNDATION_CRACKED, FOUNDATION_WATER, FOUNDATION_SUPPORT_DAMAGED]
 };
 
 // ==========================================
@@ -1204,29 +1324,41 @@ export const HAZARD_DEFICIENCIES = {
 // 17. HEATING, VENTILATION, AND AIR CONDITIONING
 // ==========================================
 
-export const HVAC_UNIT: UnitItemDeficiencies = {
-    itemName: 'Heating, Ventilation, and Air Conditioning',
+export const HVAC_AC_NOT_OPERATIONAL: UnitItemDeficiencies = {
+    itemName: 'Air conditioning system or device is not operational.',
     deficiencies: [
         {
             id: 'hvac_1',
             name: 'Air conditioning system or device is not operational.',
-            detail: 'Air conditioning system or device is not operational.',
-            criteria: 'The system or device does not turn on. OR System or device only produces hot or room temperature air.',
+            detail: 'The system or device does not turn on. OR System or device only produces hot or room temperature air.',
+            criteria: '(e.g., a window unit or central air system)',
             severity: 'Low',
             repairBy: '60 Day',
             points: '2.20/n',
             code: 'HVAC-01'
-        },
+        }
+    ]
+};
+
+export const HVAC_COMBUSTION_CHAMBER: UnitItemDeficiencies = {
+    itemName: 'Combustion chamber cover or gas shutoff valve is missing from a combustion-fueled heating appliance. Heating system in tropical islands are excluded.',
+    deficiencies: [
         {
             id: 'hvac_2',
             name: 'Combustion chamber cover or gas shutoff valve is missing from a combustion-fueled heating appliance. Heating system in tropical islands are excluded.',
-            detail: 'Combustion chamber cover or gas shutoff valve is missing from a combustion-fueled heating appliance. Heating system in tropical islands are excluded.',
-            criteria: 'Combustion chamber cover or gas shutoff valve is missing (i.e., evidence of prior installation, but is now not present or is incomplete) from a combustion-fueled heating appliance.',
+            detail: 'Combustion chamber cover or gas shutoff valve is missing (i.e., evidence of prior installation, but is now not present or is incomplete) from a combustion-fueled heating appliance.',
+            criteria: 'a combustion chamber cover or gas shutoff valve was previously installed and is now not present or is incomplete.',
             severity: 'Life-Threatening',
             repairBy: '24Hrs',
             points: '27.25/n',
             code: 'HVAC-02'
-        },
+        }
+    ]
+};
+
+export const HVAC_EXHAUST_VENT: UnitItemDeficiencies = {
+    itemName: 'Fuel-burning heating system or device exhaust vent is misaligned, blocked, disconnected, improperly connected, damaged or missing. Heating system in tropical islands are excluded.',
+    deficiencies: [
         {
             id: 'hvac_3',
             name: 'Fuel-burning heating system or device exhaust vent is misaligned, blocked, disconnected, improperly connected, damaged or missing. Heating system in tropical islands are excluded.',
@@ -1236,17 +1368,29 @@ export const HVAC_UNIT: UnitItemDeficiencies = {
             repairBy: '24Hrs',
             points: '27.25/n',
             code: 'HVAC-03'
-        },
+        }
+    ]
+};
+
+export const HVAC_SAFETY_SHIELD: UnitItemDeficiencies = {
+    itemName: 'Heating system or device safety shield is damaged or missing.',
+    deficiencies: [
         {
             id: 'hvac_4',
             name: 'Heating system or device safety shield is damaged or missing.',
-            detail: 'Heating system or device safety shield is damaged or missing.',
-            criteria: 'Heating system or device safety shield is damaged (i.e., visibly defective; impacts functionality) or missing (i.e., evidence of prior installation, but is now not present or is incomplete).',
+            detail: 'Heating system or device safety shield is damaged (i.e., visibly defective; impacts functionality) or missing (i.e., evidence of prior installation, but is now not present or is incomplete).',
+            criteria: 'Safety shield was previously installed and is now not present or is incomplete. Heating systems in tropical islands are excluded.',
             severity: 'Severe',
             repairBy: '24 Hrs.',
             points: '13.40/n',
             code: 'HVAC-04'
-        },
+        }
+    ]
+};
+
+export const HVAC_APRIL_SEPT: UnitItemDeficiencies = {
+    itemName: 'The inspection date is on or between April 1 and September 30, and a heating source is damaged, inoperable, missing, or not installed.',
+    deficiencies: [
         {
             id: 'hvac_5',
             name: 'The inspection date is on or between April 1 and September 30, and a heating source is damaged, inoperable, missing, or not installed.',
@@ -1256,7 +1400,13 @@ export const HVAC_UNIT: UnitItemDeficiencies = {
             repairBy: '30 Day',
             points: '13.40/n',
             code: 'HVAC-05'
-        },
+        }
+    ]
+};
+
+export const HVAC_OCT_MARCH: UnitItemDeficiencies = {
+    itemName: 'The inspection date is on or between October 1 and March 31 and the permanently installed heating source is not working or the permanently installed heating source is working and the interior temperature is below 64 degrees Fahrenheit.',
+    deficiencies: [
         {
             id: 'hvac_6',
             name: 'The inspection date is on or between October 1 and March 31 and the permanently installed heating source is not working or the permanently installed heating source is working and the interior temperature is below 64 degrees Fahrenheit.',
@@ -1266,7 +1416,13 @@ export const HVAC_UNIT: UnitItemDeficiencies = {
             repairBy: '24Hrs',
             points: '27.25/n',
             code: 'HVAC-06'
-        },
+        }
+    ]
+};
+
+export const HVAC_UNVENTED_HEATER: UnitItemDeficiencies = {
+    itemName: 'Unvented space heater is present.',
+    deficiencies: [
         {
             id: 'hvac_7',
             name: 'Unvented space heater is present.',
@@ -1282,7 +1438,7 @@ export const HVAC_UNIT: UnitItemDeficiencies = {
 
 export const HVAC_DEFICIENCIES = {
     category: '17. Heating, Ventilation, and Air Conditioning',
-    items: [HVAC_UNIT]
+    items: [HVAC_AC_NOT_OPERATIONAL, HVAC_COMBUSTION_CHAMBER, HVAC_EXHAUST_VENT, HVAC_SAFETY_SHIELD, HVAC_APRIL_SEPT, HVAC_OCT_MARCH, HVAC_UNVENTED_HEATER]
 };
 
 // ==========================================
@@ -1585,44 +1741,62 @@ export const LEAK_GAS_OIL_DEFICIENCIES = {
 // 20. LEAK-SEWAGE SYSTEM (CLOGGED DRAIN)(MISSING DRAIN CAP)
 // ==========================================
 
-export const LEAK_SEWAGE_UNIT: UnitItemDeficiencies = {
-    itemName: 'Leak-sewage system (Clogged drain)(Missing drain cap)',
+export const LEAK_SEWAGE_BLOCKED: UnitItemDeficiencies = {
+    itemName: 'Blocked sewage system.',
     deficiencies: [
         {
             id: 'leak_sewage_1',
             name: 'Blocked sewage system.',
-            detail: 'Blocked sewage system.',
-            criteria: 'Wastewater is unable to drain resulting in sewer backup.',
+            detail: 'Wastewater is unable to drain resulting in sewer backup.',
+            criteria: 'Blocked sewage system.',
             severity: 'Severe',
             repairBy: '24 Hrs.',
             points: '13.40/n',
             code: 'LEAK-SEWAGE-01'
-        },
+        }
+    ]
+};
+
+export const LEAK_SEWAGE_CAP_MISSING: UnitItemDeficiencies = {
+    itemName: 'The protective cap to drain. Or cleanout or pump cover is detached or missing.',
+    deficiencies: [
         {
             id: 'leak_sewage_2',
             name: 'The protective cap to drain. Or cleanout or pump cover is detached or missing.',
-            detail: 'The protective cap to drain. Or cleanout or pump cover is detached or missing.',
-            criteria: 'The cap to the cleanout or pump cover is detached or missing (i.e., evidence of prior installation, but now not present or is incomplete).',
+            detail: 'The cap to the cleanout or pump cover is detached or missing (i.e., evidence of prior installation, but now not present or is incomplete).',
+            criteria: 'Cap to the cleanout or pump cover is detached or missing.',
             severity: 'Moderate',
             repairBy: '30 Day',
             points: '5.0/n',
             code: 'LEAK-SEWAGE-02'
-        },
+        }
+    ]
+};
+
+export const LEAK_SEWAGE_CAP_DAMAGED: UnitItemDeficiencies = {
+    itemName: 'Cleanout cap or riser is damaged.',
+    deficiencies: [
         {
             id: 'leak_sewage_3',
             name: 'Cleanout cap or riser is damaged.',
-            detail: 'Cleanout cap or riser is damaged.',
-            criteria: 'Cap to the cleanout or pump cover is detached or missing (i.e., visibly defective, impacts functionality).',
+            detail: 'Cap to the cleanout or pump cover is detached or missing (i.e., visibly defective, impacts functionality).',
+            criteria: 'Protective cap or riser is damaged.',
             severity: 'Moderate',
             repairBy: '30 Day',
             points: '5.0/n',
             code: 'LEAK-SEWAGE-03'
-        },
+        }
+    ]
+};
+
+export const LEAK_SEWAGE_LEAK: UnitItemDeficiencies = {
+    itemName: 'Leak in sewage system.',
+    deficiencies: [
         {
             id: 'leak_sewage_4',
             name: 'Leak in sewage system.',
-            detail: 'Leak in sewage system.',
-            criteria: 'There is evidence of a sewer line or fitting leaking.',
+            detail: 'There is evidence of a sewer line or fitting leaking.',
+            criteria: 'Leak in sewage system.',
             severity: 'Severe',
             repairBy: '24 Hrs.',
             points: '13.40/n',
@@ -1633,26 +1807,32 @@ export const LEAK_SEWAGE_UNIT: UnitItemDeficiencies = {
 
 export const LEAK_SEWAGE_DEFICIENCIES = {
     category: '20. Leak-sewage system (Clogged drain)(Missing drain cap)',
-    items: [LEAK_SEWAGE_UNIT]
+    items: [LEAK_SEWAGE_BLOCKED, LEAK_SEWAGE_CAP_MISSING, LEAK_SEWAGE_CAP_DAMAGED, LEAK_SEWAGE_LEAK]
 };
 
 // ==========================================
 // 21. LEAK- WATER
 // ==========================================
 
-export const LEAK_WATER_UNIT: UnitItemDeficiencies = {
-    itemName: 'Leak- water',
+export const LEAK_WATER_ENV_INTRUSION: UnitItemDeficiencies = {
+    itemName: 'Environmental water intrusion',
     deficiencies: [
         {
             id: 'leak_water_1',
             name: 'Environmental water intrusion',
-            detail: 'Environmental water intrusion',
-            criteria: 'Water from the exterior environment is leaking into the interior.',
+            detail: 'Water from the exterior environment is leaking into the interior.',
+            criteria: 'Environmental water intrusion.',
             severity: 'Moderate',
             repairBy: '30 Day',
             points: '5.0/n',
             code: 'LEAK-WATER-01'
-        },
+        }
+    ]
+};
+
+export const LEAK_WATER_SPRINKLER: UnitItemDeficiencies = {
+    itemName: 'Fluid is leaking from the sprinkler assembly.',
+    deficiencies: [
         {
             id: 'leak_water_2',
             name: 'Fluid is leaking from the sprinkler assembly.',
@@ -1662,15 +1842,21 @@ export const LEAK_WATER_UNIT: UnitItemDeficiencies = {
             repairBy: '30 Day',
             points: '5.0/n',
             code: 'LEAK-WATER-02'
-        },
+        }
+    ]
+};
+
+export const LEAK_WATER_PLUMBING: UnitItemDeficiencies = {
+    itemName: 'Plumbing leak',
+    deficiencies: [
         {
             id: 'leak_water_3',
             name: 'Plumbing leak',
-            detail: 'Plumbing leak',
-            criteria: 'Failure of a plumbing system that allows for water intrusion in unintended areas.',
+            detail: 'Failure of a plumbing system that allows for water intrusion in unintended areas.',
+            criteria: 'Plumbing leak.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n=',
+            points: '5.0/n',
             code: 'LEAK-WATER-03'
         }
     ]
@@ -1678,7 +1864,7 @@ export const LEAK_WATER_UNIT: UnitItemDeficiencies = {
 
 export const LEAK_WATER_DEFICIENCIES = {
     category: '21. Leak- water',
-    items: [LEAK_WATER_UNIT]
+    items: [LEAK_WATER_ENV_INTRUSION, LEAK_WATER_SPRINKLER, LEAK_WATER_PLUMBING]
 };
 
 // ==========================================
@@ -1801,24 +1987,30 @@ export const MOLD_DEFICIENCIES = {
 // 24. PAINT - POTENTIAL LEAD-BASED PAINT HAZARDS – VISUAL ASSESSMENT
 // ==========================================
 
-export const PAINT_LEAD_UNIT: UnitItemDeficiencies = {
-    itemName: 'Paint - Potential Lead-Based Paint Hazards – Visual Assessment',
+export const PAINT_LESS_2SF: UnitItemDeficiencies = {
+    itemName: 'Less than 2\'SF -Paint in a Unit or Inside the target property is deteriorated – below the level required for lead-safe work practices by a lead certified firm or for passing clearance.',
     deficiencies: [
         {
             id: 'paint_1',
             name: 'Less than 2\'SF -Paint in a Unit or Inside the target property is deteriorated – below the level required for lead-safe work practices by a lead certified firm or for passing clearance.',
-            detail: 'Less than 2\'SF -Paint in a Unit or Inside the target property is deteriorated – below the level required for lead-safe work practices by a lead certified firm or for passing clearance.',
-            criteria: 'Paint is deteriorated (e.g., peeling, chipping, chalking, cracking, or detached from the substrate). For large surface areas in the Unit, deteriorated paint is less than or equal to 2 square feet, per room; for small surface areas, less than or equal to 10% per component ("de minimis").',
+            detail: 'Paint is deteriorated (e.g., peeling, chipping, chalking, cracking, or detached from the substrate). For large surface areas in the Unit, deteriorated paint is less than or equal to 2 square feet, per room; for small surface areas, less than or equal to 10% per component ("de minimis").',
+            criteria: 'Less than 2 square feet per room deteriorated paint, damage to the surface such as holes that expose paint layers, and friction on painted surfaces.',
             severity: 'Moderate',
             repairBy: '30 Day',
             points: '5.0/n',
             code: 'PAINT-01'
-        },
+        }
+    ]
+};
+
+export const PAINT_MORE_2SF: UnitItemDeficiencies = {
+    itemName: 'More than 2\' SF-Paint in a Unit or Inside the target property is deteriorated – above the level required for lead-safe work practices by a lead certified firm and passing clearance.',
+    deficiencies: [
         {
             id: 'paint_2',
             name: 'More than 2\' SF-Paint in a Unit or Inside the target property is deteriorated – above the level required for lead-safe work practices by a lead certified firm and passing clearance.',
-            detail: 'More than 2\' SF-Paint in a Unit or Inside the target property is deteriorated – above the level required for lead-safe work practices by a lead certified firm and passing clearance.',
-            criteria: 'Paint is deteriorated (e.g., peeling, chipping, chalking, cracking, or detached from the substrate). For large surface areas in the Unit, deteriorated paint is more than 2 square feet, per room; for small surface areas, greater than 10% per component ("significant").',
+            detail: 'Paint is deteriorated (e.g., peeling, chipping, chalking, cracking, or detached from the substrate). For large surface areas in the Unit, deteriorated paint is more than 2 square feet, per room; for small surface areas, greater than 10% per component ("significant").',
+            criteria: 'More than 2 square feet per room deteriorated paint, damage to the surface such as holes that expose paint layers, and friction on painted surfaces.',
             severity: 'Severe',
             repairBy: '24 Hrs.',
             points: '13.40/n',
@@ -1829,7 +2021,7 @@ export const PAINT_LEAD_UNIT: UnitItemDeficiencies = {
 
 export const PAINT_DEFICIENCIES = {
     category: '24. Paint - Potential Lead-Based Paint Hazards – Visual Assessment',
-    items: [PAINT_LEAD_UNIT]
+    items: [PAINT_LESS_2SF, PAINT_MORE_2SF]
 };
 
 // ==========================================
@@ -2248,8 +2440,8 @@ export const RESTROOM_DEFICIENCIES = {
 // 27. SINK (LAUNDRY, GARAGE, OR PATIO)
 // ==========================================
 
-export const SINK_LAUNDRY_GARAGE_PATIO: UnitItemDeficiencies = {
-    itemName: 'Sink (Laundry, Garage, or patio)',
+export const SINK_LAUNDRY_CONTROL_KNOBS: UnitItemDeficiencies = {
+    itemName: 'Control Knobs.',
     deficiencies: [
         {
             id: 'sink_laundry_1',
@@ -2260,7 +2452,13 @@ export const SINK_LAUNDRY_GARAGE_PATIO: UnitItemDeficiencies = {
             repairBy: '30 Day',
             points: '5.0/n',
             code: 'SINK-LAUNDRY-01'
-        },
+        }
+    ]
+};
+
+export const SINK_LAUNDRY_COMPONENT_MISSING: UnitItemDeficiencies = {
+    itemName: 'Component is missing',
+    deficiencies: [
         {
             id: 'sink_laundry_2',
             name: 'Component is missing',
@@ -2270,7 +2468,13 @@ export const SINK_LAUNDRY_GARAGE_PATIO: UnitItemDeficiencies = {
             repairBy: '30 Day',
             points: '5.0/n',
             code: 'SINK-LAUNDRY-02'
-        },
+        }
+    ]
+};
+
+export const SINK_LAUNDRY_IMPROPERLY_INSTALLED: UnitItemDeficiencies = {
+    itemName: 'Improperly installed.',
+    deficiencies: [
         {
             id: 'sink_laundry_3',
             name: 'Improperly installed.',
@@ -2280,7 +2484,13 @@ export const SINK_LAUNDRY_GARAGE_PATIO: UnitItemDeficiencies = {
             repairBy: '30 Day',
             points: '5.0/n',
             code: 'SINK-LAUNDRY-03'
-        },
+        }
+    ]
+};
+
+export const SINK_LAUNDRY_SINK_MISSING: UnitItemDeficiencies = {
+    itemName: 'Sink is missing.',
+    deficiencies: [
         {
             id: 'sink_laundry_4',
             name: 'Sink is missing.',
@@ -2290,7 +2500,13 @@ export const SINK_LAUNDRY_GARAGE_PATIO: UnitItemDeficiencies = {
             repairBy: '30 Day',
             points: '5.0/n',
             code: 'SINK-LAUNDRY-04'
-        },
+        }
+    ]
+};
+
+export const SINK_LAUNDRY_NOT_DRAINING: UnitItemDeficiencies = {
+    itemName: 'Sink not draining',
+    deficiencies: [
         {
             id: 'sink_laundry_5',
             name: 'Sink not draining',
@@ -2300,7 +2516,13 @@ export const SINK_LAUNDRY_GARAGE_PATIO: UnitItemDeficiencies = {
             repairBy: '30 Day',
             points: '5.0/n',
             code: 'SINK-LAUNDRY-05'
-        },
+        }
+    ]
+};
+
+export const SINK_LAUNDRY_COMPONENT_DAMAGED: UnitItemDeficiencies = {
+    itemName: 'Component is damaged',
+    deficiencies: [
         {
             id: 'sink_laundry_6',
             name: 'Component is damaged',
@@ -2316,15 +2538,15 @@ export const SINK_LAUNDRY_GARAGE_PATIO: UnitItemDeficiencies = {
 
 export const SINK_LAUNDRY_DEFICIENCIES = {
     category: '27. Sink (Laundry, Garage, or patio)',
-    items: [SINK_LAUNDRY_GARAGE_PATIO]
+    items: [SINK_LAUNDRY_CONTROL_KNOBS, SINK_LAUNDRY_COMPONENT_MISSING, SINK_LAUNDRY_IMPROPERLY_INSTALLED, SINK_LAUNDRY_SINK_MISSING, SINK_LAUNDRY_NOT_DRAINING, SINK_LAUNDRY_COMPONENT_DAMAGED]
 };
 
 // ==========================================
 // 28. STEPS AND STAIRS
 // ==========================================
 
-export const STEPS_STAIRS_UNIT: UnitItemDeficiencies = {
-    itemName: 'Steps and Stairs',
+export const STEPS_STRINGER_DAMAGED: UnitItemDeficiencies = {
+    itemName: 'Stringer is damaged',
     deficiencies: [
         {
             id: 'steps_1',
@@ -2335,7 +2557,13 @@ export const STEPS_STAIRS_UNIT: UnitItemDeficiencies = {
             repairBy: '30 Day',
             points: '5.0/n',
             code: 'STEPS-01'
-        },
+        }
+    ]
+};
+
+export const STEPS_TREAD_DAMAGED: UnitItemDeficiencies = {
+    itemName: 'Tread on a set of stairs damaged',
+    deficiencies: [
         {
             id: 'steps_2',
             name: 'Tread on a set of stairs damaged',
@@ -2351,7 +2579,7 @@ export const STEPS_STAIRS_UNIT: UnitItemDeficiencies = {
 
 export const STEPS_STAIRS_DEFICIENCIES = {
     category: '28. Steps and Stairs',
-    items: [STEPS_STAIRS_UNIT]
+    items: [STEPS_STRINGER_DAMAGED, STEPS_TREAD_DAMAGED]
 };
 
 // ==========================================
@@ -2383,8 +2611,8 @@ export const STRUCTURAL_DEFICIENCIES = {
 // 30. TRASH CHUTE
 // ==========================================
 
-export const TRASH_CHUTE_UNIT: UnitItemDeficiencies = {
-    itemName: 'Trash Chute',
+export const TRASH_CHUTE_DOOR: UnitItemDeficiencies = {
+    itemName: 'The chute door does not open, self-close, or latch.',
     deficiencies: [
         {
             id: 'trash_1',
@@ -2395,7 +2623,13 @@ export const TRASH_CHUTE_UNIT: UnitItemDeficiencies = {
             repairBy: '30 Day',
             points: '5.0/n',
             code: 'TRASH-01'
-        },
+        }
+    ]
+};
+
+export const TRASH_CHUTE_CLOGGED: UnitItemDeficiencies = {
+    itemName: 'Chute is clogged',
+    deficiencies: [
         {
             id: 'trash_2',
             name: 'Chute is clogged',
@@ -2411,7 +2645,7 @@ export const TRASH_CHUTE_UNIT: UnitItemDeficiencies = {
 
 export const TRASH_CHUTE_DEFICIENCIES = {
     category: '30. Trash Chute',
-    items: [TRASH_CHUTE_UNIT]
+    items: [TRASH_CHUTE_DOOR, TRASH_CHUTE_CLOGGED]
 };
 
 // ==========================================
@@ -2518,8 +2752,8 @@ export const WALL_DEFICIENCIES = {
 // 33. WATER HEATER
 // ==========================================
 
-export const WATER_HEATER_UNIT: UnitItemDeficiencies = {
-    itemName: 'Water Heater',
+export const WATER_HEATER_CHIMNEY_BLOCKED: UnitItemDeficiencies = {
+    itemName: 'Chimney or flue piping is blocked, misaligned, or missing',
     deficiencies: [
         {
             id: 'water_heater_1',
@@ -2530,7 +2764,13 @@ export const WATER_HEATER_UNIT: UnitItemDeficiencies = {
             repairBy: '24Hrs',
             points: '27.25/n',
             code: 'WATER-HEATER-01'
-        },
+        }
+    ]
+};
+
+export const WATER_HEATER_GAS_VALVE: UnitItemDeficiencies = {
+    itemName: 'Gas shutoff valve is damaged, missing or not installed',
+    deficiencies: [
         {
             id: 'water_heater_2',
             name: 'Gas shutoff valve is damaged, missing or not installed',
@@ -2540,7 +2780,13 @@ export const WATER_HEATER_UNIT: UnitItemDeficiencies = {
             repairBy: '24Hrs',
             points: '27.25/n',
             code: 'WATER-HEATER-02'
-        },
+        }
+    ]
+};
+
+export const WATER_HEATER_NO_HOT_WATER: UnitItemDeficiencies = {
+    itemName: 'No hot water',
+    deficiencies: [
         {
             id: 'water_heater_3',
             name: 'No hot water',
@@ -2550,7 +2796,13 @@ export const WATER_HEATER_UNIT: UnitItemDeficiencies = {
             repairBy: '24 Hrs.',
             points: '13.40/n',
             code: 'WATER-HEATER-03'
-        },
+        }
+    ]
+};
+
+export const WATER_HEATER_TPRV: UnitItemDeficiencies = {
+    itemName: 'TPRV has an active leak. Or obstructed, is unable to be fully actuated. Constructed of unsuitable material.',
+    deficiencies: [
         {
             id: 'water_heater_4',
             name: 'TPRV has an active leak. Or obstructed, is unable to be fully actuated. Constructed of unsuitable material.',
@@ -2560,7 +2812,13 @@ export const WATER_HEATER_UNIT: UnitItemDeficiencies = {
             repairBy: '24 Hrs.',
             points: '13.40/n',
             code: 'WATER-HEATER-04'
-        },
+        }
+    ]
+};
+
+export const WATER_HEATER_RELIEF_VALVE: UnitItemDeficiencies = {
+    itemName: 'The relief valve discharge piping terminates greater than 6 inches or less than 2 inches from waste receptor flood level.',
+    deficiencies: [
         {
             id: 'water_heater_5',
             name: 'The relief valve discharge piping terminates greater than 6 inches or less than 2 inches from waste receptor flood level.',
@@ -2576,15 +2834,15 @@ export const WATER_HEATER_UNIT: UnitItemDeficiencies = {
 
 export const WATER_HEATER_DEFICIENCIES = {
     category: '33. Water Heater',
-    items: [WATER_HEATER_UNIT]
+    items: [WATER_HEATER_CHIMNEY_BLOCKED, WATER_HEATER_GAS_VALVE, WATER_HEATER_NO_HOT_WATER, WATER_HEATER_TPRV, WATER_HEATER_RELIEF_VALVE]
 };
 
 // ==========================================
 // 34. WINDOW
 // ==========================================
 
-export const WINDOW_UNIT: UnitItemDeficiencies = {
-    itemName: 'Window',
+export const WINDOW_CANNOT_SECURE: UnitItemDeficiencies = {
+    itemName: 'Window cannot be secured.',
     deficiencies: [
         {
             id: 'window_1',
@@ -2595,7 +2853,13 @@ export const WINDOW_UNIT: UnitItemDeficiencies = {
             repairBy: '30 Day',
             points: '5.0/n',
             code: 'WINDOW-01'
-        },
+        }
+    ]
+};
+
+export const WINDOW_COMPONENT_DAMAGED: UnitItemDeficiencies = {
+    itemName: 'Window component is damaged or missing, and the window is not functionally adequate',
+    deficiencies: [
         {
             id: 'window_2',
             name: 'Window component is damaged or missing, and the window is not functionally adequate',
@@ -2605,7 +2869,13 @@ export const WINDOW_UNIT: UnitItemDeficiencies = {
             repairBy: '30 Day',
             points: '5.0/n',
             code: 'WINDOW-02'
-        },
+        }
+    ]
+};
+
+export const WINDOW_WILL_NOT_CLOSE: UnitItemDeficiencies = {
+    itemName: 'Window will not close.',
+    deficiencies: [
         {
             id: 'window_3',
             name: 'Window will not close.',
@@ -2615,7 +2885,13 @@ export const WINDOW_UNIT: UnitItemDeficiencies = {
             repairBy: '24 Hrs.',
             points: '13.40/n',
             code: 'WINDOW-03'
-        },
+        }
+    ]
+};
+
+export const WINDOW_WILL_NOT_OPEN: UnitItemDeficiencies = {
+    itemName: 'Window will not open or stay open.',
+    deficiencies: [
         {
             id: 'window_4',
             name: 'Window will not open or stay open.',
@@ -2631,7 +2907,7 @@ export const WINDOW_UNIT: UnitItemDeficiencies = {
 
 export const WINDOW_DEFICIENCIES = {
     category: '34. Window',
-    items: [WINDOW_UNIT]
+    items: [WINDOW_CANNOT_SECURE, WINDOW_COMPONENT_DAMAGED, WINDOW_WILL_NOT_CLOSE, WINDOW_WILL_NOT_OPEN]
 };
 
 // ==========================================
@@ -2708,19 +2984,59 @@ export const UNIT_CATEGORIES = ALL_UNIT_CATEGORIES.map(cat => cat.category);
 export const ALL_UNIT_DEFICIENCIES: UnitItemDeficiencies[] = ALL_UNIT_CATEGORIES.flatMap(cat => cat.items);
 
 // Function to get deficiencies by category name
+// IMPORTANT: Must match CATEGORY names properly, not just item names
+// to avoid "Sink (Laundry)" matching Restroom > Sink
 export const getUnitDeficienciesByCategory = (categoryName: string): UnitItemDeficiencies | null => {
-    const normalizedName = categoryName.toLowerCase().trim();
+    const normalizedName = categoryName.toLowerCase().trim().replace(/^\d+\.\s*/, '');
 
+    // PASS 1: Exact category name match (without number prefix)
+    for (const category of ALL_UNIT_CATEGORIES) {
+        const catName = category.category.replace(/^\d+\.\s*/, '').toLowerCase();
+        if (catName === normalizedName) {
+            return category.items[0];
+        }
+    }
+
+    // PASS 2: Category name starts with search term OR search term starts with category name
+    for (const category of ALL_UNIT_CATEGORIES) {
+        const catName = category.category.replace(/^\d+\.\s*/, '').toLowerCase();
+        // Check if the first word matches
+        const catFirstWord = catName.split(/[\s\-\(]/)[0];
+        const searchFirstWord = normalizedName.split(/[\s\-\(]/)[0];
+        
+        // If first words match AND have similar length (to distinguish "Sink" from "Sink (Laundry...)")
+        if (catFirstWord === searchFirstWord) {
+            // For categories like "Sink (Laundry, Garage, or patio)" vs item "Sink"
+            // Check if the search has parentheses or extra qualifiers
+            const searchHasQualifier = normalizedName.includes('(') || normalizedName.includes(',');
+            const catHasQualifier = catName.includes('(') || catName.includes(',');
+            
+            if (searchHasQualifier && catHasQualifier) {
+                // Both have qualifiers, check if they match
+                if (catName.includes(normalizedName) || normalizedName.includes(catName)) {
+                    return category.items[0];
+                }
+            } else if (!searchHasQualifier && !catHasQualifier) {
+                // Neither has qualifiers - exact first word match
+                return category.items[0];
+            }
+        }
+    }
+
+    // PASS 3: Check if search matches a specific item name exactly
     for (const category of ALL_UNIT_CATEGORIES) {
         for (const item of category.items) {
-            if (item.itemName.toLowerCase().includes(normalizedName) ||
-                normalizedName.includes(item.itemName.toLowerCase())) {
+            const itemNameLower = item.itemName.toLowerCase();
+            if (itemNameLower === normalizedName) {
                 return item;
             }
         }
-        // Also check category name
-        if (category.category.toLowerCase().includes(normalizedName) ||
-            normalizedName.includes(category.category.toLowerCase())) {
+    }
+
+    // PASS 4: Looser category matching - contains
+    for (const category of ALL_UNIT_CATEGORIES) {
+        const catName = category.category.replace(/^\d+\.\s*/, '').toLowerCase();
+        if (catName.includes(normalizedName) || normalizedName.includes(catName)) {
             return category.items[0];
         }
     }
@@ -2765,14 +3081,33 @@ export const searchUnitDeficiencies = (keyword: string): UnitDeficiencyOption[] 
 // ==========================================
 
 /**
+ * Helper to match category names properly without false positives
+ * Uses exact match first, then checks if search term starts category name
+ */
+const matchInsideCategory = (searchName: string, categoryFullName: string): boolean => {
+    const normalizedSearch = searchName.toLowerCase().trim().replace(/^\d+\.\s*/, '');
+    const catName = categoryFullName.replace(/^\d+\.\s*/, '').toLowerCase();
+    
+    // Exact match
+    if (catName === normalizedSearch) return true;
+    
+    // Check if search starts with category name (e.g., "railings" matches "25. Railings")
+    if (normalizedSearch.startsWith(catName.split(' ')[0])) return true;
+    
+    // Check if category starts with search term's first word
+    const searchFirstWord = normalizedSearch.split(/[\s\-]/)[0];
+    const catFirstWord = catName.split(/[\s\-]/)[0];
+    if (searchFirstWord === catFirstWord && searchFirstWord.length > 3) return true;
+    
+    return false;
+};
+
+/**
  * Check if an Inside category has subcategories (items.length > 1)
  */
 export const hasInsideSubcategories = (categoryName: string): boolean => {
-    const normalizedName = categoryName.toLowerCase().trim();
-    
     for (const category of ALL_UNIT_CATEGORIES) {
-        const catName = category.category.replace(/^\d+\.\s*/, '').toLowerCase();
-        if (catName.includes(normalizedName) || normalizedName.includes(catName)) {
+        if (matchInsideCategory(categoryName, category.category)) {
             return category.items.length > 1;
         }
     }
@@ -2784,11 +3119,8 @@ export const hasInsideSubcategories = (categoryName: string): boolean => {
  * Get subcategory names for an Inside category
  */
 export const getInsideCategorySubcategories = (categoryName: string): string[] => {
-    const normalizedName = categoryName.toLowerCase().trim();
-    
     for (const category of ALL_UNIT_CATEGORIES) {
-        const catName = category.category.replace(/^\d+\.\s*/, '').toLowerCase();
-        if (catName.includes(normalizedName) || normalizedName.includes(catName)) {
+        if (matchInsideCategory(categoryName, category.category)) {
             if (category.items.length > 1) {
                 return category.items.map(item => item.itemName);
             }
@@ -2806,9 +3138,11 @@ export const getInsideSubcategoryDeficiencies = (subcategoryName: string): UnitI
     
     for (const category of ALL_UNIT_CATEGORIES) {
         for (const item of category.items) {
-            if (item.itemName.toLowerCase() === normalizedName ||
-                item.itemName.toLowerCase().includes(normalizedName) ||
-                normalizedName.includes(item.itemName.toLowerCase())) {
+            const itemNameLower = item.itemName.toLowerCase();
+            // Exact match first
+            if (itemNameLower === normalizedName) return item;
+            // Then check if item name starts with search or vice versa
+            if (itemNameLower.startsWith(normalizedName) || normalizedName.startsWith(itemNameLower)) {
                 return item;
             }
         }
