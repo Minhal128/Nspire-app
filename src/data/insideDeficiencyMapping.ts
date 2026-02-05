@@ -1363,9 +1363,9 @@ export const HAZARD_INFESTATION: InsideSubcategory = {
             name: 'Extensive bedbugs infestation',
             detail: 'Extensive bedbugs infestation.',
             criteria: 'Sighting of at least one live bedbug in two or more, units or two rooms of the same unit during the daytime surface visual assessment.',
-            severity: 'Severe',
+            severity: 'Moderate',
             repairBy: '24 Hrs.',
-            points: '14.8/n',
+            points: '5.5/n',
             code: 'HAZ-INF-06'
         },
         {
@@ -1373,9 +1373,9 @@ export const HAZARD_INFESTATION: InsideSubcategory = {
             name: 'Extensive cockroach infestation (live)',
             detail: 'Extensive cockroach infestation (live).',
             criteria: 'Sighting of one or more live cockroaches in two or more unit area observed simultaneously during visual assessment on the inspection day.',
-            severity: 'Severe',
+            severity: 'Moderate',
             repairBy: '24 Hrs.',
-            points: '14.8/n',
+            points: '5.5/n',
             code: 'HAZ-INF-07'
         },
         {
@@ -1383,9 +1383,9 @@ export const HAZARD_INFESTATION: InsideSubcategory = {
             name: 'Extensive mouse infestation',
             detail: 'Extensive mouse infestation.',
             criteria: 'Sighting of at least one live mouse in two or more units or two rooms of the same unit during the daytime through surface visual assessment.',
-            severity: 'Severe',
+            severity: 'Moderate',
             repairBy: '24 Hrs.',
-            points: '14.8/n',
+            points: '5.5/n',
             code: 'HAZ-INF-08'
         },
         {
@@ -1393,9 +1393,9 @@ export const HAZARD_INFESTATION: InsideSubcategory = {
             name: 'Extensive rat infestation',
             detail: 'Extensive rate infestation.',
             criteria: 'A live rat is seen in the unit.',
-            severity: 'Severe',
+            severity: 'Moderate',
             repairBy: '24 Hrs.',
-            points: '14.8/n',
+            points: '5.5/n',
             code: 'HAZ-INF-09'
         }
     ]

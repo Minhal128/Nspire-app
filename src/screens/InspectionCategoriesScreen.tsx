@@ -54,10 +54,11 @@ const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   const handleUnitsPress = () => {
-    navigation.navigate('UnitLocations', {
+    navigation.navigate('LocationInspection', {
       property,
       selectedUnits,
       buildingId,
+      location: 'Unit',
     });
   };
 
@@ -169,7 +170,7 @@ const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
                   <View style={[styles.progressFill, { width: '0%' }]} />
                 </View>
                 <Text style={styles.progressText}>
-                  0/{UNIT_LOCATIONS.length} Locations • 0% Complete
+                  0/32 • 0% Complete
                 </Text>
               </View>
             </View>

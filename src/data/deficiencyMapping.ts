@@ -42,6 +42,7 @@ export type { UnitItemDeficiencies, UnitDeficiencyOption };
 // Unit locations are specific rooms within a dwelling unit
 // ==========================================
 const UNIT_LOCATION_NAMES = [
+  'unit',
   'attic/loft',
   'basement',
   'bathroom1',

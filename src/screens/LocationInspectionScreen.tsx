@@ -38,8 +38,8 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
   const [selectedItem, setSelectedItem] = useState<{ id: string; name: string } | null>(null);
 
   // Use appropriate inspection items based on location
-  // Outside = OUTSIDE_ITEMS (26), Inside = INSIDE_ITEMS (35), Unit Locations = UNIT_ITEMS (32)
-  const isUnitLocation = UNIT_LOCATIONS.includes(location);
+  // Outside = OUTSIDE_ITEMS (26), Inside = INSIDE_ITEMS (35), Unit = UNIT_ITEMS (32)
+  const isUnitLocation = location === 'Unit' || UNIT_LOCATIONS.includes(location);
   const inspectionItems = location === 'Outside' 
     ? OUTSIDE_ITEMS 
     : (isUnitLocation ? UNIT_ITEMS : INSIDE_ITEMS);

@@ -30,6 +30,7 @@ import {
 import { cloudinaryService } from '../services/cloudinaryService';
 import { geminiService } from '../services/openaiService';
 import { ScoringResult, calculateUnitScore, POSSIBLE_SCORE } from '../utils/scoringCalculations';
+import { UNIT_TOTAL_POSSIBLE_POINTS } from '../data/insideDeficiencyMapping';
 import {
   calculateOutsideScore,
   extractCategoryNumber,
@@ -95,6 +96,35 @@ const INSIDE_LOCATION_OPTIONS = [
   'Workout Room',
 ];
 
+// Unit inspection location options (25 locations)
+const UNIT_LOCATION_OPTIONS = [
+  'Attic/Loft',
+  'Basement',
+  'Bathroom1',
+  'Bathroom2',
+  'Bathroom3',
+  'Bedroom 1',
+  'Bedroom 2',
+  'Bedroom 3',
+  'Bedroom 4',
+  'Bedroom 5',
+  'Closet',
+  'Dinning Area',
+  'Entryway(Front/Rear',
+  'Garage',
+  'Hallway/Stairs',
+  'Home Office/Study',
+  'Kitchen',
+  'Laundry Room',
+  'Living Room',
+  'Location',
+  'Mechanical Room',
+  'Office',
+  'Other',
+  'Patio/Porch/Balcony',
+  'Storage Room',
+];
+
 type DeficiencyDetailScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
   'DeficiencyDetail'
@@ -149,6 +179,8 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   // Inside location picker state
   const [selectedInsideLocation, setSelectedInsideLocation] = useState<string>(INSIDE_LOCATION_OPTIONS[0]);
   const [showInsideLocationPicker, setShowInsideLocationPicker] = useState(false);
+  const [selectedUnitLocation, setSelectedUnitLocation] = useState<string>(UNIT_LOCATION_OPTIONS[0]);
+  const [showUnitLocationPicker, setShowUnitLocationPicker] = useState(false);
 
   // Processing modal state
   const [showProcessingModal, setShowProcessingModal] = useState(false);
@@ -195,10 +227,15 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     return rawPoints / totalSamples;
   };
 
-  // Calculate SCORE: 25 - PTS LOST
+  // Calculate SCORE: Possible Score - PTS LOST
+  // Unit inspections have 50 possible points, Inside/Outside have 25
+  const getPossibleScore = (): number => {
+    return isUnit ? UNIT_TOTAL_POSSIBLE_POINTS : POSSIBLE_SCORE;
+  };
+
   const calculateScore = (): number => {
     const ptsLost = calculatePtsLost();
-    return POSSIBLE_SCORE - ptsLost;
+    return getPossibleScore() - ptsLost;
   };
 
   // Update scoring dynamically when deficiency is selected/changed
@@ -829,6 +866,16 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                     </Text>
                     <Ionicons name="chevron-down" size={16} color="#0E7490" />
                   </TouchableOpacity>
+                ) : isUnit ? (
+                  <TouchableOpacity
+                    style={styles.locationDropdown}
+                    onPress={() => setShowUnitLocationPicker(true)}
+                  >
+                    <Text style={styles.locationDropdownText} numberOfLines={1}>
+                      {selectedUnitLocation}
+                    </Text>
+                    <Ionicons name="chevron-down" size={16} color="#0E7490" />
+                  </TouchableOpacity>
                 ) : (
                   <TouchableOpacity
                     style={styles.locationDropdown}
@@ -880,7 +927,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               </View>
               <View style={styles.scoringField}>
                 <Text style={styles.scoringFieldLabel}>Possible Score</Text>
-                <Text style={styles.scoringFieldValue}>{POSSIBLE_SCORE}</Text>
+                <Text style={styles.scoringFieldValue}>{getPossibleScore()}</Text>
               </View>
             </View>
 
@@ -1168,6 +1215,59 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                       {locationOption}
                     </Text>
                     {selectedInsideLocation === locationOption && (
+                      <Ionicons name="checkmark-circle" size={20} color="#0E7490" />
+                    )}
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Unit Location Picker Modal */}
+      <Modal
+        visible={showUnitLocationPicker}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowUnitLocationPicker(false)}
+      >
+        <View style={styles.pickerModalOverlay}>
+          <View style={styles.pickerModalContent}>
+            <View style={styles.pickerHeader}>
+              <Text style={styles.pickerTitle}>Select Location</Text>
+              <TouchableOpacity
+                onPress={() => setShowUnitLocationPicker(false)}
+                style={styles.pickerCloseButton}
+              >
+                <Ionicons name="close" size={24} color="#666666" />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.pickerSubtitle}>
+              {UNIT_LOCATION_OPTIONS.length} locations available
+            </Text>
+            <ScrollView style={styles.pickerList} showsVerticalScrollIndicator={true}>
+              {UNIT_LOCATION_OPTIONS.map((locationOption, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={[
+                    styles.pickerItem,
+                    selectedUnitLocation === locationOption && styles.pickerItemSelected
+                  ]}
+                  onPress={() => {
+                    setSelectedUnitLocation(locationOption);
+                    setShowUnitLocationPicker(false);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.pickerItemHeader}>
+                    <Text style={[
+                      styles.pickerItemText,
+                      selectedUnitLocation === locationOption && styles.pickerItemTextSelected
+                    ]}>
+                      {locationOption}
+                    </Text>
+                    {selectedUnitLocation === locationOption && (
                       <Ionicons name="checkmark-circle" size={20} color="#0E7490" />
                     )}
                   </View>

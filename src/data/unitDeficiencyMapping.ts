@@ -2905,9 +2905,57 @@ export const WINDOW_WILL_NOT_OPEN: UnitItemDeficiencies = {
     ]
 };
 
+export const WINDOW_COMPONENT_ADEQUATE: UnitItemDeficiencies = {
+    itemName: 'Window component is damaged or missing, and the window is functionally adequate.',
+    deficiencies: [
+        {
+            id: 'window_5',
+            name: 'Window component is damaged or missing, and the window is functionally adequate.',
+            detail: 'Window component is damaged or missing, and the window is functionally adequate.',
+            criteria: 'Window component is damaged (i.e., visibly defective; impacts functionality) or missing (i.e., evidence of prior installation, but now not present or is incomplete), and the window is functionally adequate.',
+            severity: 'Low',
+            repairBy: '60 Day',
+            points: '2.20/n',
+            code: 'WINDOW-05'
+        }
+    ]
+};
+
+export const WINDOW_GLAZING: UnitItemDeficiencies = {
+    itemName: 'Window glazing.',
+    deficiencies: [
+        {
+            id: 'window_6',
+            name: 'Window glazing.',
+            detail: 'Window glazing is cracked or broken.',
+            criteria: 'Window glazing is cracked or broken such that it impacts the window\'s functionality or poses a safety hazard.',
+            severity: 'Low',
+            repairBy: '60 Day',
+            points: '2.20/n',
+            code: 'WINDOW-06'
+        }
+    ]
+};
+
+export const WINDOW_MISSING: UnitItemDeficiencies = {
+    itemName: 'Window is missing.',
+    deficiencies: [
+        {
+            id: 'window_7',
+            name: 'Window is missing.',
+            detail: 'Window is missing.',
+            criteria: 'Window is missing (i.e., evidence of prior installation, but now not present or is incomplete).',
+            severity: 'Severe',
+            repairBy: '24 Hrs.',
+            points: '13.40/n',
+            code: 'WINDOW-07'
+        }
+    ]
+};
+
 export const WINDOW_DEFICIENCIES = {
     category: '34. Window',
-    items: [WINDOW_CANNOT_SECURE, WINDOW_COMPONENT_DAMAGED, WINDOW_WILL_NOT_CLOSE, WINDOW_WILL_NOT_OPEN]
+    items: [WINDOW_CANNOT_SECURE, WINDOW_COMPONENT_DAMAGED, WINDOW_WILL_NOT_CLOSE, WINDOW_WILL_NOT_OPEN, WINDOW_COMPONENT_ADEQUATE, WINDOW_GLAZING, WINDOW_MISSING]
 };
 
 // ==========================================

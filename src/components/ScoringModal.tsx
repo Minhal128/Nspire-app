@@ -19,6 +19,8 @@ import {
     getSeverityColor,
     getScoreStatus,
 } from '../utils/scoringCalculations';
+import { isUnitLocation } from '../data/deficiencyMapping';
+import { UNIT_TOTAL_POSSIBLE_POINTS } from '../data/insideDeficiencyMapping';
 
 interface ScoringModalProps {
     visible: boolean;
@@ -45,6 +47,10 @@ const ScoringModal: React.FC<ScoringModalProps> = ({
     const [severity, setSeverity] = useState(initialSeverity);
     const [scoringResult, setScoringResult] = useState<ScoringResult | null>(null);
     const [showDeficiencyPicker, setShowDeficiencyPicker] = useState(false);
+
+    // Determine if this is a Unit location (50 possible points) vs Inside/Outside (25 possible points)
+    const isUnit = isUnitLocation(location);
+    const possibleScore = isUnit ? UNIT_TOTAL_POSSIBLE_POINTS : POSSIBLE_SCORE;
 
     // Calculate score dynamically whenever inputs change
     useEffect(() => {
@@ -143,7 +149,7 @@ const ScoringModal: React.FC<ScoringModalProps> = ({
                             <View style={styles.halfField}>
                                 <Text style={styles.fieldLabel}>Possible Score</Text>
                                 <View style={styles.readOnlyField}>
-                                    <Text style={styles.readOnlyText}>{POSSIBLE_SCORE}</Text>
+                                    <Text style={styles.readOnlyText}>{possibleScore}</Text>
                                 </View>
                             </View>
                         </View>
@@ -160,7 +166,7 @@ const ScoringModal: React.FC<ScoringModalProps> = ({
                                 <Text style={styles.fieldLabel}>Score</Text>
                                 <View style={[styles.readOnlyField, scoreStatus && { borderColor: scoreStatus.color, borderWidth: 2 }]}>
                                     <Text style={[styles.readOnlyText, styles.scoreText, scoreStatus && { color: scoreStatus.color }]}>
-                                        {scoringResult?.score?.toFixed(2) || POSSIBLE_SCORE.toFixed(2)}
+                                        {scoringResult?.score?.toFixed(2) || possibleScore.toFixed(2)}
                                     </Text>
                                 </View>
                             </View>
