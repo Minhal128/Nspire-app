@@ -332,6 +332,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     } else {
       // Load deficiencies directly for the selected item
       const itemDeficiencies = getDeficienciesForItem(itemName, location);
+      console.log('DEBUG getDeficienciesForItem:', { itemName, location, deficiencies: itemDeficiencies.deficiencies.map(d => ({ name: d.name, severity: d.severity, points: d.points })) });
       setAvailableDeficiencies(itemDeficiencies.deficiencies);
       setAvailableSubcategories([]);
     }

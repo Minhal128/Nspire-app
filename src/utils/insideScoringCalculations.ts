@@ -1348,48 +1348,48 @@ export function getInsideSeverityConfig(
     if (matchesZeroFormulaPattern(deficiencyDescription)) {
       return { severity: 'Life-Threatening', pointsLostFormula: 0, specialFormula: 'zero' };
     }
-    
+
     // Check for gas leak patterns - Life-Threatening with 54.50/n
     if (matchesGasLeakPattern(deficiencyDescription)) {
       return { severity: 'Life-Threatening', pointsLostFormula: 54.50 };
     }
-    
+
     // Check for special formula patterns (Call-for-Aid annunciator) - Life-Threatening with 27.25/(50*n)
     if (matchesSpecialFormulaLifeThreatening50nPattern(deficiencyDescription)) {
       return { severity: 'Life-Threatening', pointsLostFormula: 27.25, specialFormula: 'divide_50n' };
     }
-    
+
     // Check for special formula patterns (Call-for-Aid pull cord) - Severe with 13.40/(50*n)
     if (matchesSpecialFormulaSevere50nPattern(deficiencyDescription)) {
       return { severity: 'Severe', pointsLostFormula: 13.40, specialFormula: 'divide_50n' };
     }
-    
+
     // Check for Severe deficiency patterns - 13.40/n
     if (matchesSevereDeficiencyPattern(deficiencyDescription)) {
       return { severity: 'Severe', pointsLostFormula: 13.40 };
     }
-    
+
     // Check for Life-Threatening patterns - 27.25/n
     if (matchesLifeThreateningDeficiencyPattern(deficiencyDescription)) {
       return { severity: 'Life-Threatening', pointsLostFormula: 27.25 };
     }
-    
+
     // Check for Moderate 13.40/n patterns (Door Entry cannot be secured)
     if (matchesModerate13_40Pattern(deficiencyDescription)) {
       return { severity: 'Moderate', pointsLostFormula: 13.40 };
     }
-    
+
     // Check for Moderate patterns - 5.0/n
     if (matchesModerateDeficiencyPattern(deficiencyDescription)) {
       return { severity: 'Moderate', pointsLostFormula: 5.0 };
     }
-    
+
     // Check for Low severity patterns - 2.20/n
     if (matchesLowDeficiencyPattern(deficiencyDescription)) {
       return { severity: 'Low', pointsLostFormula: 2.20 };
     }
   }
-  
+
   // If no pattern matched but we have a selected severity, use it with appropriate formula
   if (selectedSeverity) {
     switch (selectedSeverity) {
@@ -1404,7 +1404,7 @@ export function getInsideSeverityConfig(
         return { severity: 'Moderate', pointsLostFormula: 5.0 };
     }
   }
-  
+
   // Fall back to default configuration
   return getDefaultInsideSeverityConfig(categoryNumber);
 }
@@ -1450,9 +1450,9 @@ export interface InsideScoringResult {
  * @returns Complete scoring result
  */
 export function calculateInsideScore(input: InsideScoringInput): InsideScoringResult {
-  const { 
-    categoryNumber, 
-    totalSamples, 
+  const {
+    categoryNumber,
+    totalSamples,
     deficiencyDescription,
     deficiencyCount = 1,
     severity: selectedSeverity,
@@ -1493,13 +1493,13 @@ export function calculateInsideScore(input: InsideScoringInput): InsideScoringRe
     // PRIORITY 2: Use category-based and deficiency description pattern matching
     const severityConfig = getInsideSeverityConfig(categoryNumber, deficiencyDescription, selectedSeverity);
     const categoryOnlyConfig = getDefaultInsideSeverityConfig(categoryNumber);
-    
+
     pointsLostRaw = severityConfig.pointsLostFormula;
     severity = severityConfig.severity;
     specialFormula = severityConfig.specialFormula;
-    isDeficiencyOverride = deficiencyDescription !== undefined && 
-      (severityConfig.severity !== categoryOnlyConfig.severity || 
-       severityConfig.pointsLostFormula !== categoryOnlyConfig.pointsLostFormula);
+    isDeficiencyOverride = deficiencyDescription !== undefined &&
+      (severityConfig.severity !== categoryOnlyConfig.severity ||
+        severityConfig.pointsLostFormula !== categoryOnlyConfig.pointsLostFormula);
   }
 
   // Calculate Pts Lost based on formula type
@@ -1515,11 +1515,13 @@ export function calculateInsideScore(input: InsideScoringInput): InsideScoringRe
     pointsLost = pointsLostRaw / n;
   }
 
-  // Calculate Max Points Lost = Points Lost / n
-  const maxPtsLost = pointsLost / n;
+  // Max Points Lost = Same as Points Lost (X / n)
+  // NOT divided by n again - that was a bug causing incorrect severity display
+  const maxPtsLost = pointsLost;
 
-  // Calculate Score = Possible Score (25) - Max Points Lost
-  const score = POSSIBLE_SCORE - maxPtsLost;
+  // Calculate Score = Possible Score (25) - Points Lost
+  // For example: Severe (13.40/n) with n=1: Score = 25 - 13.40 = 11.60
+  const score = POSSIBLE_SCORE - pointsLost;
 
   return {
     categoryNumber,
@@ -1554,7 +1556,7 @@ export function extractInsideCategoryNumber(itemId?: string, itemName?: string):
       return num;
     }
   }
-  
+
   // Try to extract from item name (e.g., "1. Call for Aid")
   if (itemName) {
     const match = itemName.match(/^(\d+)\./);
@@ -1565,7 +1567,7 @@ export function extractInsideCategoryNumber(itemId?: string, itemName?: string):
       }
     }
   }
-  
+
   // Default to category 1 if not found
   return 1;
 }

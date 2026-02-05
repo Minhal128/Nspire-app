@@ -49,7 +49,7 @@ export const CHIMNEY_OUTSIDE: ItemDeficiencies = {
       criteria: 'A visually accessible, observed chimney, flue, or firebox connected to a fireplace or wood-burning appliance is damaged (i.e., visibly defective; impacts functionality) such that it may not safely contain fire and convey smoke and combustion gases to the exterior.',
       severity: 'Life-Threatening',
       repairBy: '24Hrs',
-      points: '24.8/n',
+      points: '49.60/n',
       code: 'CHIM-OUT-01'
     },
     {
@@ -59,7 +59,7 @@ export const CHIMNEY_OUTSIDE: ItemDeficiencies = {
       criteria: 'This condition is a deficiency, regardless of whether the fireplace is working or has been decommissioned.',
       severity: 'Life-Threatening',
       repairBy: '24Hrs',
-      points: '24.8/n',
+      points: '49.60/n',
       code: 'CHIM-OUT-02'
     }
   ]
@@ -76,7 +76,7 @@ export const DRYER_VENT_OUTSIDE: ItemDeficiencies = {
       criteria: 'Airflow is restricted.',
       severity: 'Life-Threatening',
       repairBy: '24Hrs',
-      points: '24.8/n',
+      points: '49.60/n',
       code: 'DRYER-OUT-01'
     },
     {
@@ -96,7 +96,7 @@ export const DRYER_VENT_OUTSIDE: ItemDeficiencies = {
       criteria: 'Airflow is restricted.',
       severity: 'Life-Threatening',
       repairBy: '24Hrs',
-      points: '24.8/n',
+      points: '49.60/n',
       code: 'DRYER-OUT-03'
     }
   ]
@@ -1123,137 +1123,137 @@ export const OUTSIDE_CATEGORIES = [
 // ==========================================
 export function getOutsideDeficienciesByCategory(categoryName: string): ItemDeficiencies | null {
   const normalizedName = categoryName.toLowerCase().trim();
-  
+
   // Address and Signage
   if (normalizedName.includes('address') || normalizedName.includes('signage')) {
     return ADDRESS_SIGNAGE_OUTSIDE;
   }
-  
+
   // Chimney - use includes for flexible matching
   if (normalizedName.includes('chimney')) {
     return CHIMNEY_OUTSIDE;
   }
-  
+
   // Clothes Dryer Exhaust Ventilation
   if (normalizedName.includes('dryer') || normalizedName.includes('clothes dryer') || normalizedName.includes('exhaust ventilation')) {
     return DRYER_VENT_OUTSIDE;
   }
-  
+
   // Door
   if (normalizedName.includes('door') || normalizedName.includes('garage door')) {
     return DOOR_OUTSIDE;
   }
-  
+
   // Drain
   if (normalizedName.includes('drain') || normalizedName.includes('drainage') || normalizedName.includes('site drainage')) {
     return DRAIN_OUTSIDE;
   }
-  
+
   // Egress
   if (normalizedName.includes('egress') || normalizedName.includes('obstructed means')) {
     return EGRESS_OUTSIDE;
   }
-  
+
   // Electrical
   if (normalizedName.includes('electrical') || normalizedName.includes('conductor') || normalizedName.includes('gfci') || normalizedName.includes('afci') || normalizedName.includes('outlet') || normalizedName.includes('switch')) {
     return ELECTRICAL_OUTSIDE;
   }
-  
+
   // Fencing/Gate
   if (normalizedName.includes('fenc') || normalizedName.includes('gate')) {
     return FENCING_GATE_OUTSIDE;
   }
-  
+
   // Fire Safety
   if (normalizedName.includes('fire') || normalizedName.includes('exit sign') || normalizedName.includes('extinguisher') || normalizedName.includes('sprinkler')) {
     return FIRE_SAFETY_OUTSIDE;
   }
-  
+
   // Foundation
   if (normalizedName.includes('foundation')) {
     return FOUNDATION_OUTSIDE;
   }
-  
+
   // Hazard
   if (normalizedName.includes('hazard') || normalizedName.includes('rat') || normalizedName.includes('litter') || normalizedName.includes('sharp') || normalizedName.includes('trip')) {
     return HAZARD_OUTSIDE;
   }
-  
+
   // HVAC
   if (normalizedName.includes('hvac') || normalizedName.includes('heating') || normalizedName.includes('ventilation') || normalizedName.includes('air conditioning')) {
     return HVAC_OUTSIDE;
   }
-  
+
   // Leak - Gas or Oil
   if ((normalizedName.includes('leak') && (normalizedName.includes('gas') || normalizedName.includes('oil'))) || normalizedName.includes('propane')) {
     return LEAK_GAS_OIL_OUTSIDE;
   }
-  
+
   // Leak - sewage
   if (normalizedName.includes('sewage') || normalizedName.includes('sewer')) {
     return LEAK_SEWAGE_OUTSIDE;
   }
-  
+
   // Leak - water
   if (normalizedName.includes('leak') && normalizedName.includes('water')) {
     return LEAK_WATER_OUTSIDE;
   }
-  
+
   // Lighting
   if (normalizedName.includes('lighting') || normalizedName.includes('light')) {
     return LIGHTING_OUTSIDE;
   }
-  
+
   // Parking lots, Driveways, Roads
   if (normalizedName.includes('parking') || normalizedName.includes('driveway') || normalizedName.includes('road')) {
     return PARKING_OUTSIDE;
   }
-  
+
   // Paint
   if (normalizedName.includes('paint') || normalizedName.includes('lead')) {
     return PAINT_OUTSIDE;
   }
-  
+
   // Railings
   if (normalizedName.includes('railing') || normalizedName.includes('guardrail') || normalizedName.includes('handrail')) {
     return RAILINGS_OUTSIDE;
   }
-  
+
   // Roof Assembly
   if (normalizedName.includes('roof') || normalizedName.includes('gutter')) {
     return ROOF_OUTSIDE;
   }
-  
+
   // Sidewalk, walkway, and ramp
   if (normalizedName.includes('sidewalk') || normalizedName.includes('walkway') || normalizedName.includes('ramp')) {
     return SIDEWALK_OUTSIDE;
   }
-  
+
   // Step and Stairs
   if (normalizedName.includes('step') || normalizedName.includes('stair') || normalizedName.includes('tread') || normalizedName.includes('stringer')) {
     return STAIRS_OUTSIDE;
   }
-  
+
   // Structural
   if (normalizedName.includes('structural')) {
     return STRUCTURAL_OUTSIDE;
   }
-  
+
   // Retaining Wall
   if (normalizedName.includes('retaining') || normalizedName.includes('wall') && normalizedName.includes('exterior')) {
     return RETAINING_WALL_OUTSIDE;
   }
-  
+
   // Water Heater
   if (normalizedName.includes('water heater') || normalizedName.includes('tprv')) {
     return WATER_HEATER_OUTSIDE;
   }
-  
+
   // General Comment
   if (normalizedName.includes('general') || normalizedName.includes('comment')) {
     return GENERAL_COMMENT_OUTSIDE;
   }
-  
+
   return null;
 }
 

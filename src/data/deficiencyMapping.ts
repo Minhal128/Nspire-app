@@ -10,6 +10,12 @@ import {
   UnitDeficiencyOption,
 } from './unitDeficiencyMapping';
 
+// Import Outside deficiencies for Outside inspections (correct NSPIRE values)
+import {
+  getOutsideDeficienciesByCategory,
+  ALL_OUTSIDE_DEFICIENCIES,
+} from './outsideDeficiencyMapping';
+
 // Re-export Unit functions and types
 export {
   getUnitDeficienciesByCategory,
@@ -3172,6 +3178,7 @@ export const getDeficienciesForItem = (itemName: string, locationType?: string):
   const cleanedName = itemName.replace(/^\d+\.\s*/, '');
   const normalizedName = cleanedName.toLowerCase();
   const isInside = locationType?.toLowerCase() === 'inside';
+  const isOutside = locationType?.toLowerCase() === 'outside';
 
   // Check if this is a Unit location (Basement, Bathroom2, Bedroom 1, etc.)
   // Unit locations use completely separate deficiency data from Inside/Outside
@@ -3198,6 +3205,17 @@ export const getDeficienciesForItem = (itemName: string, locationType?: string):
           code: d.code,
         }))
       };
+    }
+  }
+
+  // ==========================================
+  // OUTSIDE INSPECTIONS - Use dedicated Outside mapping with correct NSPIRE values
+  // Outside has different severity/points values than Inside/Unit
+  // ==========================================
+  if (isOutside) {
+    const outsideResult = getOutsideDeficienciesByCategory(cleanedName);
+    if (outsideResult) {
+      return outsideResult;
     }
   }
 

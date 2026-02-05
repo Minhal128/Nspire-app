@@ -258,22 +258,25 @@ export function calculateOutsideScore(input: OutsideScoringInput): OutsideScorin
     // PRIORITY 2: Use category-based and deficiency description pattern matching
     const severityConfig = getOutsideSeverityConfig(categoryNumber, deficiencyDescription);
     const categoryOnlyConfig = getSeverityByCategoryNumber(categoryNumber);
-    
+
     pointsLostRaw = severityConfig.pointsLostFormula;
     severity = severityConfig.severity;
-    isDeficiencyOverride = deficiencyDescription !== undefined && 
-      (severityConfig.severity !== categoryOnlyConfig.severity || 
-       severityConfig.pointsLostFormula !== categoryOnlyConfig.pointsLostFormula);
+    isDeficiencyOverride = deficiencyDescription !== undefined &&
+      (severityConfig.severity !== categoryOnlyConfig.severity ||
+        severityConfig.pointsLostFormula !== categoryOnlyConfig.pointsLostFormula);
   }
 
   // Pts Lost = numerator / n (calculated points lost)
+  // This is the NSPIRE formula: Pts Lost = X / n where X is the severity points (e.g., 12.20 for Severe)
   const pointsLost = pointsLostRaw / n;
 
-  // Calculate Max Points Lost = Points Lost / n
-  const maxPtsLost = pointsLost / n;
+  // Max Points Lost = Same as Points Lost (X / n)
+  // NOT divided by n again - that was a bug causing severe to show as moderate
+  const maxPtsLost = pointsLost;
 
-  // Calculate Score = Possible Score (25) - Max Points Lost
-  const score = POSSIBLE_SCORE - maxPtsLost;
+  // Calculate Score = Possible Score (25) - Points Lost
+  // For example: Severe with n=1: Score = 25 - 12.20 = 12.80
+  const score = POSSIBLE_SCORE - pointsLost;
 
   return {
     categoryNumber,
