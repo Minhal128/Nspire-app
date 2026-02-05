@@ -1,6 +1,6 @@
 // Comprehensive NSPIRE Deficiency Mapping for All 26 Categories - OUTSIDE
 
-// Import Unit deficiencies for Unit inspections
+// Import Unit deficiencies for Unit inspections (used for Inside section - 35 categories)
 import {
   getUnitDeficienciesByCategory,
   getUnitItemsForCategory,
@@ -8,6 +8,9 @@ import {
   UNIT_CATEGORIES,
   UnitItemDeficiencies,
   UnitDeficiencyOption,
+  hasInsideSubcategories,
+  getInsideCategorySubcategories,
+  getInsideSubcategoryDeficiencies as getUnitSubcategoryDeficiencies,
 } from './unitDeficiencyMapping';
 
 // Import Outside deficiencies for Outside inspections (correct NSPIRE values)
@@ -15,6 +18,15 @@ import {
   getOutsideDeficienciesByCategory,
   ALL_OUTSIDE_DEFICIENCIES,
 } from './outsideDeficiencyMapping';
+
+// Import Inside deficiencies for Inside inspections (Unit locations use this - 32 categories)
+import {
+  getInsideDeficienciesForItem,
+  getAllInsideDeficienciesForItem,
+  getInsideSubcategories,
+  getInsideSubcategoryDeficiencies,
+  ALL_INSIDE_CATEGORIES,
+} from './insideDeficiencyMapping';
 
 // Re-export Unit functions and types
 export {
@@ -1782,7 +1794,7 @@ export const PARKING_DEFICIENCIES: ItemDeficiencies = {
       criteria: 'Single pothole over 4 inches deep/1 sq ft OR multiple potholes exceeding limits.',
       severity: 'Moderate',
       repairBy: '30 Day',
-      points: '5.5/n',
+      points: '4.5/n',
       code: 'PARK-01'
     },
     {
@@ -1790,9 +1802,9 @@ export const PARKING_DEFICIENCIES: ItemDeficiencies = {
       name: 'Parking lot has ponding.',
       detail: 'More than 3 inches of water have accumulated in the parking lot, and 5% or more of the area is unusable.',
       criteria: 'Significant ponding making area unusable.',
-      severity: 'Low',
-      repairBy: '60 Day',
-      points: '2.40/n',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '4.5/n',
       code: 'PARK-02'
     },
     {
@@ -1802,7 +1814,7 @@ export const PARKING_DEFICIENCIES: ItemDeficiencies = {
       criteria: 'Blocked access (not including temporary obstruction).',
       severity: 'Severe',
       repairBy: '24 Hrs.',
-      points: '14.8/n',
+      points: '12.20/n',
       code: 'PARK-03'
     },
     {
@@ -1812,7 +1824,7 @@ export const PARKING_DEFICIENCIES: ItemDeficiencies = {
       criteria: 'The driveway is not functionally adequate.',
       severity: 'Moderate',
       repairBy: '30 Day',
-      points: '5.5/n',
+      points: '4.5/n',
       code: 'PARK-04'
     }
   ]
@@ -3185,16 +3197,28 @@ export const getDeficienciesForItem = (itemName: string, locationType?: string):
   const isUnit = isUnitLocation(locationType || '');
 
   // ==========================================
-  // UNIT INSPECTIONS - Use dedicated Unit mapping
-  // Completely separate from Inside/Outside
+  // UNIT INSPECTIONS - Use Inside mapping file (32 categories for dwelling rooms)
   // ==========================================
   if (isUnit) {
-    const unitResult = getUnitDeficienciesByCategory(cleanedName);
-    if (unitResult) {
-      // Convert UnitItemDeficiencies to ItemDeficiencies format
-      return {
-        itemName: unitResult.itemName,
-        deficiencies: unitResult.deficiencies.map(d => ({
+    const insideResult = getAllInsideDeficienciesForItem(cleanedName);
+    if (insideResult) {
+      // Flatten subcategories if present
+      let allDeficiencies: DeficiencyOption[] = [];
+      if (insideResult.subcategories) {
+        allDeficiencies = insideResult.subcategories.flatMap(sub => 
+          sub.deficiencies.map(d => ({
+            id: d.id,
+            name: d.name,
+            detail: d.detail,
+            criteria: d.criteria,
+            severity: d.severity,
+            repairBy: d.repairBy,
+            points: d.points,
+            code: d.code || '',
+          }))
+        );
+      } else if (insideResult.deficiencies) {
+        allDeficiencies = insideResult.deficiencies.map(d => ({
           id: d.id,
           name: d.name,
           detail: d.detail,
@@ -3202,8 +3226,12 @@ export const getDeficienciesForItem = (itemName: string, locationType?: string):
           severity: d.severity,
           repairBy: d.repairBy,
           points: d.points,
-          code: d.code,
-        }))
+          code: d.code || '',
+        }));
+      }
+      return {
+        itemName: insideResult.itemName,
+        deficiencies: allDeficiencies
       };
     }
   }
@@ -3216,6 +3244,28 @@ export const getDeficienciesForItem = (itemName: string, locationType?: string):
     const outsideResult = getOutsideDeficienciesByCategory(cleanedName);
     if (outsideResult) {
       return outsideResult;
+    }
+  }
+
+  // ==========================================
+  // INSIDE INSPECTIONS - Use Unit mapping file (35 categories)
+  // ==========================================
+  if (isInside) {
+    const unitResult = getUnitDeficienciesByCategory(cleanedName);
+    if (unitResult) {
+      return {
+        itemName: unitResult.itemName,
+        deficiencies: unitResult.deficiencies.map(d => ({
+          id: d.id,
+          name: d.name,
+          detail: d.detail,
+          criteria: d.criteria,
+          severity: d.severity,
+          repairBy: d.repairBy,
+          points: d.points,
+          code: d.code || '',
+        }))
+      };
     }
   }
 
@@ -3381,6 +3431,19 @@ export const hasSubcategories = (itemName: string, locationType?: string): boole
   const cleanedName = itemName.replace(/^\d+\.\s*/, '');
   const normalizedName = cleanedName.toLowerCase();
   const isOutside = locationType?.toLowerCase() === 'outside';
+  const isUnit = isUnitLocation(locationType || '');
+  const isInside = locationType?.toLowerCase() === 'inside';
+
+  // Unit locations - check if the item has subcategories in insideDeficiencyMapping
+  if (isUnit) {
+    const subcats = getInsideSubcategories(cleanedName);
+    return subcats.length > 0;
+  }
+
+  // Inside locations - check if the item has subcategories in unitDeficiencyMapping
+  if (isInside) {
+    return hasInsideSubcategories(cleanedName);
+  }
 
   if (isOutside) {
     // Outside categories with subcategories
@@ -3403,6 +3466,20 @@ export const getSubcategoriesForItem = (itemName: string, locationType?: string)
   const cleanedName = itemName.replace(/^\d+\.\s*/, '');
   const normalizedName = cleanedName.toLowerCase();
   const isOutside = locationType?.toLowerCase() === 'outside';
+  const isUnit = isUnitLocation(locationType || '');
+  const isInside = locationType?.toLowerCase() === 'inside';
+
+  // Unit locations - get subcategories from insideDeficiencyMapping
+  if (isUnit) {
+    const subcats = getInsideSubcategories(cleanedName);
+    return subcats.map((name, index) => ({ id: `unit_subcat_${index + 1}`, name }));
+  }
+
+  // Inside locations - get subcategories from unitDeficiencyMapping
+  if (isInside) {
+    const subcats = getInsideCategorySubcategories(cleanedName);
+    return subcats.map((name, index) => ({ id: `inside_subcat_${index + 1}`, name }));
+  }
 
   if (isOutside) {
     if (normalizedName === 'door') return DOOR_SUBCATEGORIES_OUTSIDE;
@@ -3522,6 +3599,54 @@ export const getDeficienciesForSubcategory = (subcategoryName: string): ItemDefi
   }
   if (normalizedName === 'wall - exterior' || normalizedName.includes('wall - exterior')) {
     return WALL_EXTERIOR_DEFICIENCIES;
+  }
+
+  // ==========================================
+  // INSIDE SUBCATEGORIES - Search all Inside categories for matching subcategory
+  // This handles Inside inspection subcategories like Railings > Guardrail, Railings > Handrail
+  // ==========================================
+  const insideSubcatResult = getUnitSubcategoryDeficiencies(subcategoryName);
+  if (insideSubcatResult) {
+    return {
+      itemName: insideSubcatResult.itemName,
+      deficiencies: insideSubcatResult.deficiencies.map(d => ({
+        id: d.id,
+        name: d.name,
+        detail: d.detail,
+        criteria: d.criteria,
+        severity: d.severity,
+        repairBy: d.repairBy,
+        points: d.points,
+        code: d.code || '',
+      }))
+    };
+  }
+
+  // ==========================================
+  // UNIT SUBCATEGORIES - Search all Unit categories for matching subcategory
+  // This handles Unit inspection subcategories like Bathroom > Bathtub and Shower
+  // ==========================================
+  for (const category of ALL_INSIDE_CATEGORIES) {
+    if (category.subcategories) {
+      const matchingSubcat = category.subcategories.find(
+        sub => sub.name.toLowerCase() === normalizedName
+      );
+      if (matchingSubcat) {
+        return {
+          itemName: matchingSubcat.name,
+          deficiencies: matchingSubcat.deficiencies.map(d => ({
+            id: d.id,
+            name: d.name,
+            detail: d.detail,
+            criteria: d.criteria,
+            severity: d.severity,
+            repairBy: d.repairBy,
+            points: d.points,
+            code: d.code || '',
+          }))
+        };
+      }
+    }
   }
 
   return {

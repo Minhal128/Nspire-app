@@ -1,4 +1,6 @@
 // Inspection data for NSPIRE compliance
+import { ALL_UNIT_CATEGORIES } from './unitDeficiencyMapping';
+import { ALL_INSIDE_CATEGORIES } from './insideDeficiencyMapping';
 
 export const UNIT_LOCATIONS = [
   'Attic/Loft',
@@ -63,40 +65,17 @@ export const OUTSIDE_ITEMS: InspectionItem[] = [
   { id: '26', name: 'General Comment' }
 ];
 
-export const INSIDE_ITEMS: InspectionItem[] = [
-  { id: '1', name: 'Bathroom' },
-  { id: '2', name: 'Cabinets and Storage (Pantry/Laundry)' },
-  { id: '3', name: 'Call-for-Aid System' },
-  { id: '4', name: 'Carbon Monoxide Alarm' },
-  { id: '5', name: 'Ceiling' },
-  { id: '6', name: 'Chimney' },
-  { id: '7', name: 'Clothes Dryer Exhaust Ventilation' },
-  { id: '8', name: 'Doors' },
-  { id: '9', name: 'Drainage (floor drain)' },
-  { id: '10', name: 'Egress' },
-  { id: '11', name: 'Electrical' },
-  { id: '12', name: 'Fire Safety' },
-  { id: '13', name: 'Floor' },
-  { id: '14', name: 'Foundation' },
-  { id: '15', name: 'Hazard' },
-  { id: '16', name: 'Heating, Ventilation, and Air Conditioning' },
-  { id: '17', name: 'Kitchen' },
-  { id: '18', name: 'Leak – Gas or Oil' },
-  { id: '19', name: 'Leak - Sewage System' },
-  { id: '20', name: 'Leak - Water' },
-  { id: '21', name: 'Lighting' },
-  { id: '22', name: 'Mold' },
-  { id: '23', name: 'Paint - Lead-Based Paint' },
-  { id: '24', name: 'Railings' },
-  { id: '25', name: 'Sink (Laundry, Garage, or Patio)' },
-  { id: '26', name: 'Steps and Stairs' },
-  { id: '27', name: 'Structural System' },
-  { id: '28', name: 'Ventilation (Other)' },
-  { id: '29', name: 'Wall' },
-  { id: '30', name: 'Water Heater' },
-  { id: '31', name: 'Window' },
-  { id: '32', name: 'General Comment' }
-];
+// Inside items generated directly from unitDeficiencyMapping.ts (35 categories)
+export const INSIDE_ITEMS: InspectionItem[] = ALL_UNIT_CATEGORIES.map((cat, index) => ({
+  id: String(index + 1),
+  name: cat.category.replace(/^\d+\.\s*/, '') // Remove number prefix like "1. "
+}));
+
+// Unit items generated from insideDeficiencyMapping.ts (32 categories)
+export const UNIT_ITEMS: InspectionItem[] = ALL_INSIDE_CATEGORIES.map((cat, index) => ({
+  id: String(index + 1),
+  name: cat.itemName
+}));
 
 export interface InspectionResponse {
   itemId: string;

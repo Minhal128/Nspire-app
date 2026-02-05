@@ -346,7 +346,7 @@ export default function AIInspectionScreen({ navigation, route }: AIInspectionSc
         
         {selectedUnits && selectedUnits.length > 0 ? (
           <View style={styles.unitsList}>
-            {selectedUnits.map((unit, index) => (
+            {selectedUnits.map((unit: string, index: number) => (
               <View key={index} style={styles.unitChip}>
                 <Text style={styles.unitChipText}>{unit}</Text>
               </View>

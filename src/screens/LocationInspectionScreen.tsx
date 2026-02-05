@@ -13,7 +13,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../types/navigation';
 import { Ionicons } from '@expo/vector-icons';
-import { OUTSIDE_ITEMS, INSIDE_ITEMS, InspectionResponse } from '../data/inspectionData';
+import { OUTSIDE_ITEMS, INSIDE_ITEMS, UNIT_ITEMS, UNIT_LOCATIONS, InspectionResponse } from '../data/inspectionData';
 
 type LocationInspectionScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -38,8 +38,11 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
   const [selectedItem, setSelectedItem] = useState<{ id: string; name: string } | null>(null);
 
   // Use appropriate inspection items based on location
-  // Outside = OUTSIDE_ITEMS, Inside or Unit Locations = INSIDE_ITEMS
-  const inspectionItems = location === 'Outside' ? OUTSIDE_ITEMS : INSIDE_ITEMS;
+  // Outside = OUTSIDE_ITEMS (26), Inside = INSIDE_ITEMS (35), Unit Locations = UNIT_ITEMS (32)
+  const isUnitLocation = UNIT_LOCATIONS.includes(location);
+  const inspectionItems = location === 'Outside' 
+    ? OUTSIDE_ITEMS 
+    : (isUnitLocation ? UNIT_ITEMS : INSIDE_ITEMS);
 
   const handleResponse = (itemId: string, itemName: string, response: ResponseType) => {
     // If clicking the same response again, unselect it
