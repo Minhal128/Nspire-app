@@ -1,5 +1,77 @@
 // Comprehensive NSPIRE Deficiency Mapping for All 26 Categories - OUTSIDE
 
+// Import Unit deficiencies for Unit inspections
+import {
+  getUnitDeficienciesByCategory,
+  getUnitItemsForCategory,
+  ALL_UNIT_DEFICIENCIES,
+  UNIT_CATEGORIES,
+  UnitItemDeficiencies,
+  UnitDeficiencyOption,
+} from './unitDeficiencyMapping';
+
+// Re-export Unit functions and types
+export {
+  getUnitDeficienciesByCategory,
+  getUnitItemsForCategory,
+  ALL_UNIT_DEFICIENCIES,
+  UNIT_CATEGORIES,
+};
+export type { UnitItemDeficiencies, UnitDeficiencyOption };
+
+// ==========================================
+// UNIT LOCATION DETECTION
+// Unit locations are specific rooms within a dwelling unit
+// ==========================================
+const UNIT_LOCATION_NAMES = [
+  'attic/loft',
+  'basement',
+  'bathroom1',
+  'bathroom2',
+  'bathroom3',
+  'bedroom 1',
+  'bedroom 2',
+  'bedroom 3',
+  'bedroom 4',
+  'bedroom 5',
+  'closet',
+  'dinning area',
+  'entryway(front/rear',
+  'garage',
+  'hallway/stairs',
+  'home office/study',
+  'kitchen',
+  'laundry room',
+  'living room',
+  'location',
+  'mechanical room',
+  'office',
+  'other',
+  'patio/porch/balcony',
+  'storage room',
+];
+
+/**
+ * Check if a location is a unit location (specific room like Basement, Bedroom, etc.)
+ * NOT "Outside" and NOT "Inside" - these are specific room locations
+ */
+export function isUnitLocation(location: string): boolean {
+  if (!location) return false;
+  const loc = location.toLowerCase().trim();
+
+  // Outside and Inside are NOT unit locations
+  if (loc === 'outside' || loc === 'inside') {
+    return false;
+  }
+
+  // Check if it matches any unit location name
+  return UNIT_LOCATION_NAMES.some(unitLoc =>
+    loc === unitLoc ||
+    loc.includes(unitLoc) ||
+    unitLoc.includes(loc)
+  );
+}
+
 export interface DeficiencyOption {
   id: string;
   name: string;
@@ -3100,6 +3172,34 @@ export const getDeficienciesForItem = (itemName: string, locationType?: string):
   const cleanedName = itemName.replace(/^\d+\.\s*/, '');
   const normalizedName = cleanedName.toLowerCase();
   const isInside = locationType?.toLowerCase() === 'inside';
+
+  // Check if this is a Unit location (Basement, Bathroom2, Bedroom 1, etc.)
+  // Unit locations use completely separate deficiency data from Inside/Outside
+  const isUnit = isUnitLocation(locationType || '');
+
+  // ==========================================
+  // UNIT INSPECTIONS - Use dedicated Unit mapping
+  // Completely separate from Inside/Outside
+  // ==========================================
+  if (isUnit) {
+    const unitResult = getUnitDeficienciesByCategory(cleanedName);
+    if (unitResult) {
+      // Convert UnitItemDeficiencies to ItemDeficiencies format
+      return {
+        itemName: unitResult.itemName,
+        deficiencies: unitResult.deficiencies.map(d => ({
+          id: d.id,
+          name: d.name,
+          detail: d.detail,
+          criteria: d.criteria,
+          severity: d.severity,
+          repairBy: d.repairBy,
+          points: d.points,
+          code: d.code,
+        }))
+      };
+    }
+  }
 
   // Exact matches first - specific door types before generic door
   if (normalizedName.includes('door - entry') || normalizedName.includes('door entry')) {

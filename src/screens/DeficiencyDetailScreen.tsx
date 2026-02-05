@@ -24,7 +24,8 @@ import {
   hasSubcategories,
   getSubcategoriesForItem,
   DeficiencyOption,
-  CODE_COMPLIANCE
+  CODE_COMPLIANCE,
+  isUnitLocation
 } from '../data/deficiencyMapping';
 import { cloudinaryService } from '../services/cloudinaryService';
 import { geminiService } from '../services/openaiService';
@@ -39,6 +40,11 @@ import {
   extractInsideCategoryNumber,
   InsideScoringResult
 } from '../utils/insideScoringCalculations';
+import {
+  calculateUnitInspectionScore,
+  extractUnitCategoryNumber,
+  UnitScoringResult
+} from '../utils/unitScoringCalculations';
 
 // Outside inspection location options
 const OUTSIDE_LOCATION_OPTIONS = [
@@ -134,6 +140,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const [scoringResult, setScoringResult] = useState<ScoringResult | null>(null);
   const [outsideScoringResult, setOutsideScoringResult] = useState<OutsideScoringResult | null>(null);
   const [insideScoringResult, setInsideScoringResult] = useState<InsideScoringResult | null>(null);
+  const [unitScoringResult, setUnitScoringResult] = useState<UnitScoringResult | null>(null);
 
   // Outside location picker state
   const [selectedOutsideLocation, setSelectedOutsideLocation] = useState<string>(OUTSIDE_LOCATION_OPTIONS[0]);
@@ -159,6 +166,9 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
   // Check if we're in the Outside inspection module
   const isOutsideLocation = location?.toLowerCase() === 'outside';
+
+  // Check if we're in a Unit location (specific room like Basement, Bedroom, etc.)
+  const isUnit = isUnitLocation(location);
 
   // Get total samples from selectedUnits (default to 20 if not available)
   const totalSamples = selectedUnits?.length || 20;
@@ -199,6 +209,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       setScoringResult(null);
       setOutsideScoringResult(null);
       setInsideScoringResult(null);
+      setUnitScoringResult(null);
       return;
     }
 
@@ -238,6 +249,34 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       result.score = outsideResult.score;
       result.severity = outsideResult.severity;
       setScoringResult(result);
+      setInsideScoringResult(null);
+      setUnitScoringResult(null);
+    } else if (isUnit) {
+      // Use Unit-specific scoring - NO pattern-based overrides
+      // Severity comes DIRECTLY from the deficiency mapping (unitDeficiencyMapping.ts)
+      const unitResult = calculateUnitInspectionScore({
+        totalSamples,
+        deficiencyCount,
+        severity: selectedDeficiency?.severity as 'Life-Threatening' | 'Severe' | 'Moderate' | 'Low' | undefined,
+        deficiencyPointsFormula: selectedDeficiency?.points,
+      });
+      setUnitScoringResult(unitResult);
+
+      // Also set the standard scoring result for compatibility
+      const result = calculateUnitScore({
+        totalSamples,
+        deficiencies: deficiencyCount,
+        severity: unitResult.severity as 'Life-Threatening' | 'Severe' | 'Moderate' | 'Low',
+      });
+      // Override with Unit-specific values
+      result.ptsLostRaw = unitResult.pointsLostRaw;
+      result.ptsLost = unitResult.pointsLost;
+      result.maxPtsLost = unitResult.maxPtsLost;
+      result.score = unitResult.score;
+      result.severity = unitResult.severity;
+      setScoringResult(result);
+      setOutsideScoringResult(null);
+      setInsideScoringResult(null);
     } else {
       // Use Inside-specific scoring with category-based and deficiency-based rules
       const categoryNumber = extractInsideCategoryNumber(itemId, itemName);
@@ -275,8 +314,9 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       result.severity = insideResult.severity;
       setScoringResult(result);
       setOutsideScoringResult(null);
+      setUnitScoringResult(null);
     }
-  }, [selectedDeficiency, deficiencyCount, totalSamples, isOutsideLocation, itemId, itemName, customDeficiencyDetail, customDeficiencyCriteria, isCustomEntry, images.length]);
+  }, [selectedDeficiency, deficiencyCount, totalSamples, isOutsideLocation, isUnit, itemId, itemName, customDeficiencyDetail, customDeficiencyCriteria, isCustomEntry, images.length]);
 
   useEffect(() => {
     // Check if item has subcategories (e.g., Door in Outside section)
