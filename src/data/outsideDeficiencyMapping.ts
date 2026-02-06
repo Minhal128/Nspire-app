@@ -237,9 +237,9 @@ export const ELECTRICAL_OUTSIDE: ItemDeficiencies = {
       name: 'Unprotected outlet is present within six feet of a water source, including a water heater or a laundry area when not in use.',
       detail: 'An unprotected outlet is present within six feet of a water source (i.e., sink, bathtub, shower, water faucet, toilet) that is located in the same room, and outlet is not GFCI protected.',
       criteria: 'An outlet, not GFCI-protected, is present within six feet of a water source (i.e., sink, bathtub, shower, water faucet, toilet) located in the same room. An outlet deigned for major appliances, when in use, is not evaluated under this category.',
-      severity: 'Severe',
+      severity: 'Moderate',
       repairBy: '24 Hrs.',
-      points: '12.20/n',
+      points: '4.5/n',
       code: 'ELEC-OUT-03'
     },
     {
