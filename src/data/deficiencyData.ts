@@ -13,6 +13,8 @@ export interface DeficiencyItem {
     deficiencyDetail: string;
     deficiencyCriteria: string;
     codeCompliance: string;
+    points?: string;
+    severity?: string;
 }
 
 // Location options for Inside inspections

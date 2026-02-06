@@ -13,10 +13,10 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { DEFICIENCY_DATA, DeficiencyItem } from '../data/deficiencyData';
-import { 
-  calculateInsideScore, 
+import {
+  calculateInsideScore,
   extractInsideCategoryNumber,
-  InsideScoringResult 
+  InsideScoringResult
 } from '../utils/insideScoringCalculations';
 
 interface DeficiencyFillingScreenProps {
@@ -26,7 +26,7 @@ interface DeficiencyFillingScreenProps {
 
 export default function DeficiencyFillingScreen({ navigation, route }: DeficiencyFillingScreenProps) {
   const { property, selectedUnits, coverage, totalUnits, samplingInfo, category, selectedModule } = route.params || {};
-  
+
   const [selectedDeficiency, setSelectedDeficiency] = useState<DeficiencyItem | null>(null);
   const [capturedImages, setCapturedImages] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
@@ -34,31 +34,32 @@ export default function DeficiencyFillingScreen({ navigation, route }: Deficienc
   // Calculate NSPIRE scoring based on selected deficiency
   const scoringResult: InsideScoringResult | null = useMemo(() => {
     if (!selectedDeficiency || category !== 'inside') return null;
-    
+
     const categoryNumber = extractInsideCategoryNumber(
       selectedDeficiency.id,
       selectedDeficiency.category
     );
     const totalSamples = selectedUnits?.length || 1;
-    
+
     return calculateInsideScore({
       categoryNumber,
       totalSamples,
       deficiencyDescription: selectedDeficiency.deficiencyDetail || selectedDeficiency.deficiencySelected,
       deficiencyCount: 1,
+      deficiencyPointsFormula: selectedDeficiency.points,
     });
   }, [selectedDeficiency, category, selectedUnits]);
 
   // Auto-select first deficiency for the category/module
   useEffect(() => {
-    const relevantDeficiencies = DEFICIENCY_DATA.filter(d => 
+    const relevantDeficiencies = DEFICIENCY_DATA.filter(d =>
       d.locationType === category || d.locationType === 'both'
     );
-    
+
     if (relevantDeficiencies.length > 0) {
       // For outside, filter by module if available
       if (category === 'outside' && selectedModule) {
-        const moduleDeficiencies = relevantDeficiencies.filter(d => 
+        const moduleDeficiencies = relevantDeficiencies.filter(d =>
           d.category.toLowerCase().includes(selectedModule.name.toLowerCase().split(' ')[0]) ||
           selectedModule.name.toLowerCase().includes(d.category.toLowerCase().split(' ')[0])
         );
@@ -82,15 +83,15 @@ export default function DeficiencyFillingScreen({ navigation, route }: Deficienc
 
       const result = useCamera
         ? await ImagePicker.launchCameraAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            quality: 0.8,
-            allowsEditing: false,
-          })
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          quality: 0.8,
+          allowsEditing: false,
+        })
         : await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            quality: 0.8,
-            allowsMultipleSelection: false,
-          });
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          quality: 0.8,
+          allowsMultipleSelection: false,
+        });
 
       if (!result.canceled && result.assets && result.assets[0]) {
         setCapturedImages(prev => [...prev, result.assets[0].uri]);
@@ -204,7 +205,7 @@ export default function DeficiencyFillingScreen({ navigation, route }: Deficienc
               <Ionicons name="calculator" size={20} color="#0E7490" />
               <Text style={styles.scoringTitle}>NSPIRE Scoring</Text>
             </View>
-            
+
             <View style={styles.scoringGrid}>
               <View style={styles.scoringItem}>
                 <Text style={styles.scoringLabel}>Severity</Text>
@@ -218,23 +219,28 @@ export default function DeficiencyFillingScreen({ navigation, route }: Deficienc
                   <Text style={styles.severityText}>{scoringResult.severity}</Text>
                 </View>
               </View>
-              
+
               <View style={styles.scoringItem}>
-                <Text style={styles.scoringLabel}>Points Lost</Text>
+                <Text style={styles.scoringLabel}>Pts Lost (Raw)</Text>
+                <Text style={styles.scoringValue}>{scoringResult.formula}</Text>
+              </View>
+
+              <View style={styles.scoringItem}>
+                <Text style={styles.scoringLabel}>Pts Lost</Text>
                 <Text style={styles.scoringValue}>{scoringResult.pointsLost.toFixed(2)}</Text>
               </View>
-              
+
               <View style={styles.scoringItem}>
                 <Text style={styles.scoringLabel}>Max Pts Lost</Text>
                 <Text style={styles.scoringValue}>{scoringResult.maxPtsLost.toFixed(4)}</Text>
               </View>
-              
+
               <View style={styles.scoringItem}>
                 <Text style={styles.scoringLabel}>Score</Text>
                 <Text style={[styles.scoringValue, styles.scoreHighlight]}>{scoringResult.score.toFixed(2)}</Text>
               </View>
             </View>
-            
+
             <View style={styles.scoringFooter}>
               <Text style={styles.scoringFooterText}>
                 Category {scoringResult.categoryNumber} • {scoringResult.totalSamples} samples • Possible: {scoringResult.possibleScore}
@@ -258,7 +264,7 @@ export default function DeficiencyFillingScreen({ navigation, route }: Deficienc
               <Ionicons name="camera" size={24} color="#FFFFFF" />
               <Text style={styles.captureButtonText}>Camera</Text>
             </TouchableOpacity>
-            
+
             <TouchableOpacity
               style={[styles.captureButton, styles.galleryButton]}
               onPress={() => handleImageCapture(false)}
@@ -302,10 +308,10 @@ export default function DeficiencyFillingScreen({ navigation, route }: Deficienc
           <Text style={[styles.proceedButtonText, capturedImages.length === 0 && styles.proceedButtonTextDisabled]}>
             Proceed to Summary
           </Text>
-          <Ionicons 
-            name="arrow-forward" 
-            size={20} 
-            color={capturedImages.length === 0 ? '#9CA3AF' : '#FFFFFF'} 
+          <Ionicons
+            name="arrow-forward"
+            size={20}
+            color={capturedImages.length === 0 ? '#9CA3AF' : '#FFFFFF'}
           />
         </TouchableOpacity>
       </ScrollView>

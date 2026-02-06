@@ -26,6 +26,7 @@ import authService from '../services/authService';
 import { inspectionService } from '../services/inspectionService';
 import { nspirePDFService } from '../services/nspirePDFService';
 import { INSIDE_LOCATIONS, OUTSIDE_LOCATIONS, DEFICIENCY_OPTIONS, DEFICIENCY_DATA, DeficiencyItem, getShortDeficiencyName, getDeficiencyOptions } from '../data/deficiencyData';
+import { ALL_UNIT_CATEGORIES } from '../data/unitDeficiencyMapping';
 
 const { width } = Dimensions.get('window');
 
@@ -64,43 +65,10 @@ const OUTSIDE_ITEMS = [
   'General * comment:',
 ];
 
+
+
 // Inside inspection items
-const INSIDE_ITEMS = [
-  'Cabinet and Storage (Pantry, Laundry)',
-  'Call-for-Aid System',
-  'Carbon Monoxide Alarm',
-  'Ceiling',
-  'Chimney',
-  'Clothes Dryer Exhaust Ventilation',
-  'Door',
-  'Drainage',
-  'Electrical',
-  'Elevator',
-  'Fire Safety',
-  'Floor',
-  'Foundation',
-  'Grab Bar',
-  'Hazard',
-  'Heating, Ventilation, and Air Conditioning',
-  'Kitchen',
-  'LEAK – Gas or Oil',
-  'Leak-sewage system (Clogged drain)(Missing drain cap).',
-  'Leak- water',
-  'Lighting',
-  'Mold',
-  'Paint - Potential Lead-Based Paint Hazards – Visual Assessment',
-  'Railings',
-  'Restroom',
-  'Sink (Laundry, Garage, or patio)',
-  'Steps and Stairs',
-  'Structural System',
-  'Trash Chute',
-  'Ventilation',
-  'Wall',
-  'Water Heater',
-  'Window',
-  'General comment:',
-];
+const INSIDE_ITEMS = ALL_UNIT_CATEGORIES.map(cat => cat.category.replace(/^\d+\.\s*/, ''));
 
 type InspectionStatus = 'No OD' | 'OD' | 'N/A';
 
@@ -111,7 +79,7 @@ interface InspectionItem {
 
 export default function AIInspectionScreen({ navigation, route }: AIInspectionScreenProps) {
   const { property, selectedUnits, coverage, totalUnits, samplingInfo } = route.params || {};
-  
+
   const [currentView, setCurrentView] = useState<'main' | 'outside' | 'inside' | 'units'>('main');
   const [outsideItems, setOutsideItems] = useState<InspectionItem[]>(
     OUTSIDE_ITEMS.map(name => ({ name, status: 'No OD' }))
@@ -193,7 +161,7 @@ export default function AIInspectionScreen({ navigation, route }: AIInspectionSc
           <Ionicons name="camera" size={32} color="#FFFFFF" />
           <Text style={styles.mainButtonText}>Outside</Text>
         </TouchableOpacity>
-        
+
         <TouchableOpacity
           style={[styles.mainButton, styles.insideButton]}
           onPress={() => setCurrentView('inside')}
@@ -201,7 +169,7 @@ export default function AIInspectionScreen({ navigation, route }: AIInspectionSc
           <Ionicons name="images" size={32} color="#FFFFFF" />
           <Text style={styles.mainButtonText}>Inside</Text>
         </TouchableOpacity>
-        
+
         <TouchableOpacity
           style={[styles.mainButton, styles.unitsButton]}
           onPress={() => setCurrentView('units')}
@@ -217,7 +185,7 @@ export default function AIInspectionScreen({ navigation, route }: AIInspectionSc
           <Ionicons name="eye-outline" size={20} color="#FFFFFF" />
           <Text style={styles.previewButtonText}>Preview Report</Text>
         </TouchableOpacity>
-        
+
         <TouchableOpacity style={styles.exportButton}>
           <Ionicons name="download-outline" size={20} color="#FFFFFF" />
           <Text style={styles.exportButtonText}>Export PDF</Text>
@@ -231,7 +199,7 @@ export default function AIInspectionScreen({ navigation, route }: AIInspectionSc
       {/* Header */}
       <View style={styles.tableHeader}>
         <Text style={styles.tableTitle}>{type.toUpperCase()} INSPECTION</Text>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.backButton}
           onPress={() => setCurrentView('main')}
         >
@@ -245,19 +213,19 @@ export default function AIInspectionScreen({ navigation, route }: AIInspectionSc
         <Text style={[styles.tableHeaderCell, styles.itemNameHeader]}>
           {type.toUpperCase()} BUTTON
         </Text>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.selectAllButton}
           onPress={() => handleSelectAll('No OD', type)}
         >
           <Text style={styles.selectAllText}>Select All{'\n'}No OD</Text>
         </TouchableOpacity>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.selectAllButton}
           onPress={() => handleSelectAll('OD', type)}
         >
           <Text style={styles.selectAllText}>Observe{'\n'}Deficiency</Text>
         </TouchableOpacity>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.selectAllButton}
           onPress={() => handleSelectAll('N/A', type)}
         >
@@ -271,7 +239,7 @@ export default function AIInspectionScreen({ navigation, route }: AIInspectionSc
           <View key={index} style={styles.tableRow}>
             <Text style={styles.itemNumber}>{index + 1}.</Text>
             <Text style={styles.itemName}>{item.name}</Text>
-            
+
             <TouchableOpacity
               style={[
                 styles.statusButton,
@@ -287,7 +255,7 @@ export default function AIInspectionScreen({ navigation, route }: AIInspectionSc
                 No OD
               </Text>
             </TouchableOpacity>
-            
+
             <TouchableOpacity
               style={[
                 styles.statusButton,
@@ -303,7 +271,7 @@ export default function AIInspectionScreen({ navigation, route }: AIInspectionSc
                 OD
               </Text>
             </TouchableOpacity>
-            
+
             <TouchableOpacity
               style={[
                 styles.statusButton,
@@ -329,7 +297,7 @@ export default function AIInspectionScreen({ navigation, route }: AIInspectionSc
     <View style={styles.unitsContainer}>
       <View style={styles.tableHeader}>
         <Text style={styles.tableTitle}>UNITS INSPECTION</Text>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.backButton}
           onPress={() => setCurrentView('main')}
         >
@@ -337,13 +305,13 @@ export default function AIInspectionScreen({ navigation, route }: AIInspectionSc
           <Text style={styles.backButtonText}>Back</Text>
         </TouchableOpacity>
       </View>
-      
+
       <View style={styles.unitsContent}>
         <Text style={styles.unitsTitle}>Selected Units for Inspection</Text>
         <Text style={styles.unitsSubtitle}>
           Total Units: {totalUnits || 1} | Coverage: {coverage || '100%'}
         </Text>
-        
+
         {selectedUnits && selectedUnits.length > 0 ? (
           <View style={styles.unitsList}>
             {selectedUnits.map((unit: string, index: number) => (
@@ -359,7 +327,7 @@ export default function AIInspectionScreen({ navigation, route }: AIInspectionSc
             <Text style={styles.noUnitsSubtext}>General property inspection</Text>
           </View>
         )}
-        
+
         {samplingInfo && (
           <View style={styles.samplingInfo}>
             <Text style={styles.samplingTitle}>Sampling Information</Text>

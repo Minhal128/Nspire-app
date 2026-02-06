@@ -105,6 +105,10 @@ export interface DeficiencyOption {
 export interface ItemDeficiencies {
   itemName: string;
   deficiencies: DeficiencyOption[];
+  subcategories?: {
+    name: string;
+    deficiencies: DeficiencyOption[];
+  }[];
 }
 
 // 1. Address and Signage
@@ -501,7 +505,7 @@ export const FIRE_EXTINGUISHER_DEFICIENCIES: ItemDeficiencies = {
     {
       id: 'fire_ext_1',
       name: 'A fire extinguisher is damaged or missing.',
-      detail: 'A fire extinguisher is deficient if it is visibly damaged or missing, including cases where prior installation is evident but the unit is no longer present or complete.',
+      detail: 'A fire extinguisher is deficient if it is visibly damaged or missing, including cases where prior installation is evident but the unit is no longer present or incomplete.',
       criteria: 'A fire extinguisher is deficient if it is visibly damaged or missing, including cases where prior installation is evident but the unit is no longer present or complete.',
       severity: 'Life-Threatening',
       repairBy: '24 Hrs.',
@@ -1842,7 +1846,7 @@ export const PAINT_DEFICIENCIES: ItemDeficiencies = {
       criteria: 'Less than 2 square feet per room deteriorated paint, damage to the surface such as holes that expose paint layers, and friction on painted surfaces.',
       severity: 'Moderate',
       repairBy: '30 Day',
-      points: '4.5/n',
+      points: '5.0/n',
       code: 'PAINT-01'
     },
     {
@@ -1852,7 +1856,7 @@ export const PAINT_DEFICIENCIES: ItemDeficiencies = {
       criteria: 'More than 2 square feet per room deteriorated paint, damage to the surface such as holes that expose paint layers, and friction on painted surfaces.',
       severity: 'Severe',
       repairBy: '24 Hrs.',
-      points: '12.20/n',
+      points: '13.40/n',
       code: 'PAINT-02'
     }
   ]
@@ -1863,64 +1867,24 @@ export const RAILINGS_DEFICIENCIES: ItemDeficiencies = {
   itemName: 'Railings',
   deficiencies: [
     {
-      id: 'rail_1',
-      name: 'Guardrail Missing',
-      detail: 'The guardrail is missing or not installed, limiting its safe use.',
-      criteria: 'Missing along a walking surface over 30 inches above the floor or grade.',
+      id: 'rail_guard_1',
+      name: 'Guardrail',
+      detail: 'Guardrail is missing, damaged, or not installed.',
+      criteria: 'The guardrail is missing or not installed along a walking surface that is more than 30 inches above the floor or grade below. Or repair is needed.',
       severity: 'Life-Threatening',
-      repairBy: '24 Hrs.',
-      points: '24.8/n',
-      code: 'RAIL-01'
+      repairBy: '24Hrs',
+      points: '27.25/n',
+      code: 'RAILING-GUARD-01'
     },
     {
-      id: 'rail_2',
-      name: 'Guardrail Damaged',
-      detail: 'Guardrail component is missing or damaged.',
-      criteria: 'Missing critical components, visibly damaged, under 30 inches, or not securely attached.',
+      id: 'rail_hand_1',
+      name: 'Handrail',
+      detail: 'Handrail is missing, damaged, not secured, or not installed.',
+      criteria: 'Handrail is missing, not functionally adequate, not installed where required, or not secured.',
       severity: 'Moderate',
       repairBy: '30 Day',
-      points: '4.5/n',
-      code: 'RAIL-02'
-    },
-    {
-      id: 'rail_3',
-      name: 'Handrail Missing',
-      detail: 'Handrail is missing (evidence of prior installation).',
-      criteria: 'Handrail is missing.',
-      severity: 'Moderate',
-      repairBy: '30 Day',
-      points: '4.5/n',
-      code: 'RAIL-03'
-    },
-    {
-      id: 'rail_4',
-      name: 'Handrail Not Functionally Adequate',
-      detail: 'Handrail cannot reasonably be grasped, is not continuous, or is not between 28-42 inches high.',
-      criteria: 'Handrail is not functionally adequate.',
-      severity: 'Moderate',
-      repairBy: '30 Day',
-      points: '4.5/n',
-      code: 'RAIL-04'
-    },
-    {
-      id: 'rail_5',
-      name: 'Handrail Not Installed Where Required',
-      detail: '4 or more stair risers are present OR ramp has rise >6 inches/projection >72 inches.',
-      criteria: 'Handrail not installed where required.',
-      severity: 'Severe',
-      repairBy: '24 Hrs.',
-      points: '12.20/n',
-      code: 'RAIL-05'
-    },
-    {
-      id: 'rail_6',
-      name: 'Handrail Not Secured',
-      detail: 'There is movement in the anchors of the handrail.',
-      criteria: 'Handrail is not secured.',
-      severity: 'Moderate',
-      repairBy: '30 Day',
-      points: '4.5/n',
-      code: 'RAIL-06'
+      points: '5.0/n',
+      code: 'RAILING-HAND-01'
     }
   ]
 };
@@ -3119,24 +3083,94 @@ export const RESTROOM_DEFICIENCIES: ItemDeficiencies = {
   itemName: 'Restroom',
   deficiencies: [
     {
-      id: 'rest_1',
-      name: 'Restroom fixture is inoperable',
-      detail: 'Toilet, sink, or other restroom fixture does not function properly.',
-      criteria: 'Restroom fixture is inoperable.',
-      severity: 'Severe',
-      repairBy: '24 Hrs.',
-      points: '14.8/n',
-      code: 'REST-01'
-    },
-    {
-      id: 'rest_2',
-      name: 'Restroom component is damaged or missing',
-      detail: 'Restroom component is damaged, deteriorated, or missing.',
-      criteria: 'Restroom component is damaged or missing.',
+      id: 'rest_bath_1',
+      name: 'Bathtub or shower is inoperable or does not drain.',
+      detail: 'Bathtub or shower is inoperable or does not drain.',
+      criteria: 'Bathtub or shower system failure or standing water.',
       severity: 'Moderate',
       repairBy: '30 Day',
-      points: '5.5/n',
-      code: 'REST-02'
+      points: '5.0/n',
+      code: 'REST-BATH-01'
+    },
+    {
+      id: 'rest_bath_2',
+      name: 'Bathtub or shower component is damaged or missing.',
+      detail: 'Bathtub or shower component is damaged or missing.',
+      criteria: 'Bathtub or shower component is missing or damaged.',
+      severity: 'Low',
+      repairBy: '60 Day',
+      points: '2.40/n',
+      code: 'REST-BATH-02'
+    },
+    {
+      id: 'rest_sink_1',
+      name: 'Cannot activate or deactivate hot and cold water.',
+      detail: 'Cannot activate or deactivate hot and cold water.',
+      criteria: 'Control knobs do not activate or deactivate hot and cold water.',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.0/n',
+      code: 'REST-SINK-01'
+    },
+    {
+      id: 'rest_sink_2',
+      name: 'Sink component is damaged or missing.',
+      detail: 'Sink component is damaged or missing.',
+      criteria: 'Sink component is missing or damaged.',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.0/n',
+      code: 'REST-SINK-02'
+    },
+    {
+      id: 'rest_sink_3',
+      name: 'Sink is improperly installed or not draining.',
+      detail: 'Sink is improperly installed or not draining.',
+      criteria: 'Sink is pulling away from wall or water is not draining.',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.0/n',
+      code: 'REST-SINK-03'
+    },
+    {
+      id: 'rest_toilet_1',
+      name: 'Toilet component is damaged, inoperable, or missing.',
+      detail: 'Toilet component is damaged, inoperable, or missing.',
+      criteria: 'Toilet is not functionally adequate or missing components.',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.0/n',
+      code: 'REST-TOILET-01'
+    },
+    {
+      id: 'rest_toilet_2',
+      name: 'Toilet is not flushing or backing up.',
+      detail: 'Toilet is not flushing or backing up.',
+      criteria: 'Overall toilet system failure.',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.0/n',
+      code: 'REST-TOILET-02'
+    },
+    {
+      id: 'rest_toilet_3',
+      name: 'Toilet is not secured.',
+      detail: 'Toilet is not secured.',
+      criteria: 'Movement detected in the toilet base.',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.0/n',
+      code: 'REST-TOILET-03'
+    },
+    {
+      id: 'rest_vent_1',
+      name: 'Restroom ventilation is missing or inoperable.',
+      detail: 'Restroom ventilation is missing or inoperable.',
+      criteria: 'Exhaust fan system failure or missing components.',
+      severity: 'Moderate',
+      repairBy: '30 Day',
+      points: '5.0/n',
+      code: 'REST-VENT-01'
     }
   ]
 };
@@ -3198,6 +3232,51 @@ export const getDeficienciesForItem = (itemName: string, locationType?: string):
   const isUnit = isUnitLocation(locationType || '');
 
   // ==========================================
+  // INSIDE INSPECTIONS - Use Unit mapping file (35 categories)
+  // Flatten all matching items into a single list of deficiencies
+  // ==========================================
+  if (isInside) {
+    let itemsToProcess: UnitItemDeficiencies[] = [];
+    const categoryMatch = getUnitItemsForCategory(cleanedName);
+
+    if (categoryMatch && categoryMatch.length > 0) {
+      itemsToProcess = categoryMatch;
+    } else {
+      // Fallback: check if it's a subcategory name (e.g., "Handrail" or "Guardrail")
+      const subItemMatch = getUnitSubcategoryDeficiencies(cleanedName);
+      if (subItemMatch) {
+        itemsToProcess = [subItemMatch];
+      }
+    }
+
+    if (itemsToProcess.length > 0) {
+      const allDeficiencies = itemsToProcess.flatMap(item =>
+        item.deficiencies.map(d => ({
+          itemName: item.itemName,
+          id: d.id,
+          name: d.name,
+          detail: d.detail,
+          criteria: d.criteria,
+          severity: d.severity,
+          repairBy: d.repairBy,
+          points: d.points,
+          code: d.code
+        }))
+      );
+      return {
+        itemName: itemName,
+        deficiencies: allDeficiencies
+      };
+    }
+
+    // IF INSIDE, DO NOT FALL BACK TO OTHER DATA
+    return {
+      itemName: itemName,
+      deficiencies: []
+    };
+  }
+
+  // ==========================================
   // UNIT INSPECTIONS - Use Inside mapping file (32 categories for dwelling rooms)
   // ==========================================
   if (isUnit) {
@@ -3206,7 +3285,7 @@ export const getDeficienciesForItem = (itemName: string, locationType?: string):
       // Flatten subcategories if present
       let allDeficiencies: DeficiencyOption[] = [];
       if (insideResult.subcategories) {
-        allDeficiencies = insideResult.subcategories.flatMap(sub => 
+        allDeficiencies = insideResult.subcategories.flatMap(sub =>
           sub.deficiencies.map(d => ({
             id: d.id,
             name: d.name,
@@ -3248,27 +3327,7 @@ export const getDeficienciesForItem = (itemName: string, locationType?: string):
     }
   }
 
-  // ==========================================
-  // INSIDE INSPECTIONS - Use Unit mapping file (35 categories)
-  // ==========================================
-  if (isInside) {
-    const unitResult = getUnitDeficienciesByCategory(cleanedName);
-    if (unitResult) {
-      return {
-        itemName: unitResult.itemName,
-        deficiencies: unitResult.deficiencies.map(d => ({
-          id: d.id,
-          name: d.name,
-          detail: d.detail,
-          criteria: d.criteria,
-          severity: d.severity,
-          repairBy: d.repairBy,
-          points: d.points,
-          code: d.code || '',
-        }))
-      };
-    }
-  }
+
 
   // Exact matches first - specific door types before generic door
   if (normalizedName.includes('door - entry') || normalizedName.includes('door entry')) {
@@ -3441,7 +3500,7 @@ export const hasSubcategories = (itemName: string, locationType?: string): boole
     return subcats.length > 0;
   }
 
-  // Inside locations - check if the item has subcategories in unitDeficiencyMapping
+  // Inside locations - check if item has subcategories in unitDeficiencyMapping (used for Inside)
   if (isInside) {
     return hasInsideSubcategories(cleanedName);
   }
@@ -3476,7 +3535,7 @@ export const getSubcategoriesForItem = (itemName: string, locationType?: string)
     return subcats.map((name, index) => ({ id: `unit_subcat_${index + 1}`, name }));
   }
 
-  // Inside locations - get subcategories from unitDeficiencyMapping
+  // Inside locations - get subcategories from unitDeficiencyMapping (used for Inside)
   if (isInside) {
     const subcats = getInsideCategorySubcategories(cleanedName);
     return subcats.map((name, index) => ({ id: `inside_subcat_${index + 1}`, name }));
@@ -3498,8 +3557,38 @@ export const getSubcategoriesForItem = (itemName: string, locationType?: string)
 };
 
 // Helper function to get deficiencies for a subcategory
-export const getDeficienciesForSubcategory = (subcategoryName: string): ItemDeficiencies => {
-  const normalizedName = subcategoryName.toLowerCase();
+export const getDeficienciesForSubcategory = (subcategoryName: string, locationType?: string): ItemDeficiencies => {
+  const normalizedName = subcategoryName.toLowerCase().trim();
+  const isInside = locationType?.toLowerCase() === 'inside';
+  const isUnit = isUnitLocation(locationType || '');
+
+  // ==========================================
+  // INSIDE SUBCATEGORIES - Use Unit mapping file
+  // ==========================================
+  if (isInside) {
+    const insideSubcatResult = getUnitSubcategoryDeficiencies(subcategoryName);
+    if (insideSubcatResult) {
+      return {
+        itemName: insideSubcatResult.itemName,
+        deficiencies: insideSubcatResult.deficiencies.map(d => ({
+          id: d.id,
+          name: d.name,
+          detail: d.detail,
+          criteria: d.criteria,
+          severity: d.severity,
+          repairBy: d.repairBy,
+          points: d.points,
+          code: d.code || '',
+        }))
+      };
+    }
+    // IF INSIDE, DO NOT FALL BACK TO OTHER DATA
+    return {
+      itemName: subcategoryName,
+      deficiencies: []
+    };
+  }
+
 
   // Door subcategories
   if (normalizedName.includes('door - general standard') || normalizedName === 'door - general standard') {

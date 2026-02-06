@@ -873,7 +873,7 @@ export const ROOF_OUTSIDE: ItemDeficiencies = {
       id: 'roof_out_6',
       name: 'Substrate is exposed.',
       detail: 'Any amount of substrate is exposed.',
-      criteria: 'Vsually observed.',
+      criteria: 'Visually observed.',
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '4.5/n',

@@ -2033,24 +2033,15 @@ export const RAILINGS_GUARDRAIL: UnitItemDeficiencies = {
     deficiencies: [
         {
             id: 'railing_guard_1',
-            name: 'The guardrail is missing or not installed. It does limit its safe use.',
-            detail: 'The guardrail is missing or not installed. It does limit its safe use.',
-            criteria: 'The guardrail is missing (i.e., evidence of prior installation but is now not present or is incomplete) or not installed (i.e., never installed, but should have been) along a walking surface that is more than 30 inches above the floor or grade below.',
+            name: 'Guardrail',
+            detail: 'Guardrail is missing, damaged, or not installed.',
+            criteria: 'The guardrail is missing or not installed along a walking surface that is more than 30 inches above the floor or grade below. Or repair is needed.',
             severity: 'Life-Threatening',
             repairBy: '24Hrs',
             points: '27.25/n',
             code: 'RAILING-GUARD-01'
         },
-        {
-            id: 'railing_guard_2',
-            name: 'Guard rail component, missing, damaged. Does not limit the safe use. The guardrail is functionally adequate.',
-            detail: 'Guard rail component, missing, damaged. Does not limit the safe use. The guardrail is functionally adequate.',
-            criteria: 'A guardrail is deficient if it\'s missing critical components, visibly damaged, under 30 inches in height, or not securely attached to effectively prevent fall hazards',
-            severity: 'Life-Threatening',
-            repairBy: '24 Hrs.',
-            points: '27.25/n',
-            code: 'RAILING-GUARD-02'
-        }
+
     ]
 };
 
@@ -2059,9 +2050,9 @@ export const RAILINGS_HANDRAIL: UnitItemDeficiencies = {
     deficiencies: [
         {
             id: 'railing_hand_1',
-            name: 'Handrail is missing.',
-            detail: 'Handrail is missing.',
-            criteria: 'Handrail is missing (i.e., evidence of prior installation, but now not present or is incomplete).',
+            name: 'Handrail',
+            detail: 'Handrail is missing, damaged, not secured, or not installed.',
+            criteria: 'Handrail is missing, not functionally adequate, not installed where required, or not secured.',
             severity: 'Moderate',
             repairBy: '30 Day',
             points: '27.25/n',
@@ -2069,9 +2060,9 @@ export const RAILINGS_HANDRAIL: UnitItemDeficiencies = {
         },
         {
             id: 'railing_hand_2',
-            name: 'Handrail is not functionally adequate.',
-            detail: 'Handrail is not functionally adequate.',
-            criteria: 'A handrail is deficient if it can\'t be reasonably grasped for support, isn\'t continuous along the full stair flight, or falls outside the required height range of 28 to 42 inches.',
+            name: 'Handrail',
+            detail: 'Handrail is not functionally adequate',
+            criteria: 'A handrail is deficient if it cant be reasonably grasped for support, isnt continuous along the full stair flight, or falls outside the required height range of 28 to 42 inches.',
             severity: 'Moderate',
             repairBy: '30 Day',
             points: '5.0/n',
@@ -2079,17 +2070,17 @@ export const RAILINGS_HANDRAIL: UnitItemDeficiencies = {
         },
         {
             id: 'railing_hand_3',
-            name: 'Handrail is not installed where required.',
+            name: 'Handrail',
             detail: 'Handrail is not installed where required.',
-            criteria: '4 or more stair risers are present, and a handrail is not installed. OR A ramp has a rise greater than 6 inches or a horizontal projection greater than 72 inches and a handrail is not installed on both sides.',
+            criteria: ' 4 or more stair risers are present, and a handrail is not installed.  OR A ramp has a rise greater than 6 inches or a horizontal projection greater than 72 inches and a handrail is not installed on both sides.',
             severity: 'Severe',
-            repairBy: '24 Hrs.',
+            repairBy: '24Hr',
             points: '13.40/n',
             code: 'RAILING-HAND-03'
         },
         {
             id: 'railing_hand_4',
-            name: 'Handrail is not secured.',
+            name: 'Handrail',
             detail: 'Handrail is not secured.',
             criteria: 'There is movement in the anchors of the handrail.',
             severity: 'Moderate',
@@ -2114,9 +2105,9 @@ export const RESTROOM_BATHTUB_SHOWER: UnitItemDeficiencies = {
     deficiencies: [
         {
             id: 'restroom_bath_1',
-            name: 'Bathtub or shower is inoperable or does not drain.',
-            detail: 'Bathtub or shower is inoperable or does not drain, and at least one bathtub or shower is present elsewhere that is operational.',
-            criteria: 'A bathtub or shower is inoperable, or standing water is present, such that the inspector believes water is unable to drain or drains very slowly.',
+            name: 'Common area, the bathtub or shower is inoperable or does not drain.',
+            detail: 'Common area, the bathtub or shower is inoperable or does not drain.',
+            criteria: 'Common area bathtub or shower is present, and it is inoperable ( not meeting function or purpose, with or without visible damage), or standing water is present such that water is unable to drain.',
             severity: 'Low',
             repairBy: '30 Day',
             points: '2.20/n',
@@ -2124,9 +2115,9 @@ export const RESTROOM_BATHTUB_SHOWER: UnitItemDeficiencies = {
         },
         {
             id: 'restroom_bath_2',
-            name: 'Bathtub or shower component damaged (may not limit hygiene).',
-            detail: 'Bathtub or shower component is damaged, inoperable, or missing, and it may not limit the resident\'s ability to maintain personal hygiene.',
-            criteria: 'Component, inoperable or missing—whether due to system failure, incomplete installation, or absence of non-mechanical parts like a stopper or discoloration affecting less than 50% of the surface.',
+            name: ' Common area bathtub or shower hardware and water fixtures.',
+            detail: ' Common area bathtub or shower water fixture is damaged or inoperable, not meeting function or purpose, such that it may not limit the resident’s ability to maintain personal hygiene.',
+            criteria: 'Bathtub or shower component is missing (i.e., evidence of prior installation, but now not present or is incomplete) or damaged (i.e., visibly defective; impacts functionality).',
             severity: 'Low',
             repairBy: '60 Day',
             points: '2.20/n',
@@ -2134,34 +2125,25 @@ export const RESTROOM_BATHTUB_SHOWER: UnitItemDeficiencies = {
         },
         {
             id: 'restroom_bath_3',
-            name: 'Bathtub or shower component damaged (may limit hygiene).',
-            detail: 'Bathtub or shower component is damaged, inoperable, or missing, and it may limit the resident\'s ability to maintain personal hygiene.',
-            criteria: 'Bathtub or shower is inoperable or missing, limiting the resident\'s ability to maintain personal hygiene. This includes nonfunctional fixtures, absent components with signs of prior installation, or severe discoloration affecting over 50% of the surface.',
+            name: ' Bathtub or shower component is damaged, inoperable, or missing, and it may limit the residents ability to maintain personal hygiene.',
+            detail: ' Bathtub or shower component is damaged, inoperable, or missing, and it may limit the residents ability to maintain personal hygiene. ',
+            criteria: 'A bathtub or shower is deficient if any component is damaged, inoperable, or missing in a way that limits the resident’s ability to maintain personal hygiene.',
             severity: 'Low',
-            repairBy: '30 Day',
+            repairBy: '60 Day',
             points: '2.20/n',
             code: 'RESTROOM-BATH-03'
         },
         {
             id: 'restroom_bath_4',
-            name: 'Bathtub or shower cannot be used in private.',
-            detail: 'Bathtub or shower cannot be used in private.',
-            criteria: 'For the purpose of this standard, the resident should be able to use the bathtub or shower without being observed from an adjacent room or exterior space.',
+            name: ' Bathtub or shower cannot be used in private',
+            detail: 'Bathtub or shower cannot be used in private',
+            criteria: 'Hole in the door and damaged hardware, missing door. The resident should be able to use the bathtub or shower without being observed from an adjacent area or exterior space.',
             severity: 'Moderate',
-            repairBy: '30 Day',
+            repairBy: '60 Day',
             points: '5.0/n',
             code: 'RESTROOM-BATH-04'
         },
-        /*  {
-              id: 'restroom_bath_5',
-              name: 'Only one bathtub/shower present and inoperable.',
-              detail: 'Only one bathtub or shower is present, and it is inoperable or does not drain.',
-              criteria: 'Only one bathtub or shower is present within the unit and it is inoperable (i.e., overall system is not meeting function or purpose, with or without visible damage). Or, standing water is present such that the inspector believes water is unable to drain.',
-              severity: 'Severe',
-              repairBy: '24Hrs',
-              points: '14.8/n',
-              code: 'RESTROOM-BATH-05'
-          }*/
+
     ]
 };
 
@@ -2170,9 +2152,9 @@ export const RESTROOM_CABINET_STORAGE: UnitItemDeficiencies = {
     deficiencies: [
         {
             id: 'restroom_cab_1',
-            name: 'Storage component is damaged, inoperable, or missing.',
+            name: 'Cabinet and Storage',
             detail: 'Storage component is damaged, inoperable, or missing.',
-            criteria: 'Some of the restroom cabinet doors, drawers, or shelves are missing (i.e., evidence of prior installation, but now not present or incomplete). Visibly defective; impacts the functionality or does not meet the functionality or serve the purpose.',
+            criteria: 'Restroom cabinet doors, drawers, or shelves are missing or damaged.',
             severity: 'Moderate',
             repairBy: '30 Day',
             points: '5.0/n',
@@ -2186,9 +2168,9 @@ export const RESTROOM_GRAB_BAR: UnitItemDeficiencies = {
     deficiencies: [
         {
             id: 'restroom_grab_1',
-            name: 'Grab bar is not secure.',
+            name: 'Grab Bar',
             detail: 'Grab bar is not secure.',
-            criteria: 'Any movement whatever is detected in the grab bar.',
+            criteria: 'Any movement detected in the grab bar.',
             severity: 'Moderate',
             repairBy: '30 Day',
             points: '5.0/n',
@@ -2202,43 +2184,13 @@ export const RESTROOM_MOLD: UnitItemDeficiencies = {
     deficiencies: [
         {
             id: 'restroom_mold_1',
-            name: 'Peeling paint-elevated moisture level.',
-            detail: 'Peeling paint-elevated moisture level.',
-            criteria: 'elevated moisture level (e.g., peeling paint or wallpaper, a wall that is warped or stained, or a buckled, cracked, or water-stained ceiling, carpet, or wooden floor).',
+            name: 'Mold -Like Substance',
+            detail: 'Presence of mold-like substance or peeling paint from elevated moisture.',
+            criteria: 'Visual observation of mold-like substance or signs of elevated moisture levels.',
             severity: 'Moderate',
             repairBy: '30 Day',
             points: '5.0/n',
             code: 'RESTROOM-MOLD-01'
-        },
-        {
-            id: 'restroom_mold_2',
-            name: 'More than 9\'SF- Presence of mold-like substance at extremely high levels is observed visually.',
-            detail: 'More than 9\'SF- Presence of mold-like substance at extremely high levels is observed visually.',
-            criteria: 'Cumulative area of patches is more than 9 square foot in a room.',
-            severity: 'Life-Threatening',
-            repairBy: '24Hrs',
-            points: '27.25/n',
-            code: 'RESTROOM-MOLD-02'
-        },
-        {
-            id: 'restroom_mold_3',
-            name: '1\' to 9\' SF-Presence of mold-like substance at high levels is observed visually.',
-            detail: '1\' to 9\' SF-Presence of mold-like substance at high levels is observed visually.',
-            criteria: 'Cumulative area of patches is more than one square foot and less than 9 square feet in a room.',
-            severity: 'Severe',
-            repairBy: '24 Hrs.',
-            points: '13.40/n',
-            code: 'RESTROOM-MOLD-03'
-        },
-        {
-            id: 'restroom_mold_4',
-            name: '4" or less Presence of a mold-like substance at a moderate level observed visually.',
-            detail: '4" or less Presence of a mold-like substance at a moderate level observed visually.',
-            criteria: 'Cumulative area of patches is more than 4 square inches and less than 1 square foot in a room.',
-            severity: 'Moderate',
-            repairBy: '30 Day',
-            points: '5.0/n',
-            code: 'RESTROOM-MOLD-04'
         }
     ]
 };
@@ -2280,7 +2232,7 @@ export const RESTROOM_SINK: UnitItemDeficiencies = {
             id: 'restroom_sink_4',
             name: 'The sink is not draining, not functioning adequately.',
             detail: 'The sink is not draining, not functioning adequately.',
-            criteria: 'Water is not draining from the basin of the sink, slow or clogged drain.',
+            criteria: 'Water is not draining from the basin of the sink. slow or clogged drain.',
             severity: 'Moderate',
             repairBy: '30 Day',
             points: '5.0/n',
@@ -2290,21 +2242,11 @@ export const RESTROOM_SINK: UnitItemDeficiencies = {
             id: 'restroom_sink_5',
             name: 'Sink component is damaged or missing, and the sink is functionally adequate.',
             detail: 'Sink component is damaged or missing, and the sink is functionally adequate.',
-            criteria: 'Sink component is damaged (i.e., visibly defective; impacts functionality) or missing (i.e., evidence of prior installation, but now not present or is incomplete), and the sink is functionally adequate.',
-            severity: 'Moderate',
-            repairBy: '30 Day',
-            points: '5.0/n',
-            code: 'RESTROOM-SINK-05'
-        },
-        {
-            id: 'restroom_sink_6',
-            name: 'Water is directed outside of the basin.',
-            detail: 'Water is directed outside of the basin.',
-            criteria: 'When in use, water is directed outside of the basin.',
+            criteria: 'Sink component is damaged (i.e., visibly defective; impacts functionality) or missing (i.e., evidence of prior installation, but now not present or is incomplete) and the sink is functionally adequate.',
             severity: 'Low',
             repairBy: '60 Day',
             points: '2.20/n',
-            code: 'RESTROOM-SINK-06'
+            code: 'RESTROOM-SINK-05'
         }
     ]
 };
@@ -2314,9 +2256,9 @@ export const RESTROOM_TOILET: UnitItemDeficiencies = {
     deficiencies: [
         {
             id: 'restroom_toilet_1',
-            name: 'A toilet is damaged or inoperable and at least 1 toilet is installed elsewhere that is operational.',
-            detail: 'A toilet is damaged or inoperable and at least 1 toilet is installed elsewhere that is operational.',
-            criteria: 'A toilet is deficient if it\'s damaged or inoperable, as long as another operational toilet exists elsewhere in the building.',
+            name: 'Toilet component is damaged, inoperable, or missing, and the toilet is not functionally adequate.',
+            detail: 'Toilet component is damaged, inoperable, or missing, and the toilet is not functionally adequate.',
+            criteria: 'Toilet component is damaged (i.e., visibly defective; impacts functionality) or missing (i.e., evidence of prior installation, but now not present or is incomplete).',
             severity: 'Moderate',
             repairBy: '30 Day',
             points: '5.0/n',
@@ -2324,9 +2266,9 @@ export const RESTROOM_TOILET: UnitItemDeficiencies = {
         },
         {
             id: 'restroom_toilet_2',
-            name: 'A toilet is missing and at least 1 toilet is installed elsewhere that is operational.',
-            detail: 'A toilet is missing and at least 1 toilet is installed elsewhere that is operational.',
-            criteria: 'A toilet is missing (i.e., evidence of prior installation, but now not present or is incomplete) and at least 1 toilet is installed elsewhere within the Unit that is operational.',
+            name: 'Toilet is not flushing or backing up.',
+            detail: 'Toilet is not flushing or backing up.',
+            criteria: 'Overall toilet system is not meeting function or purpose.',
             severity: 'Moderate',
             repairBy: '30 Day',
             points: '5.0/n',
@@ -2334,63 +2276,33 @@ export const RESTROOM_TOILET: UnitItemDeficiencies = {
         },
         {
             id: 'restroom_toilet_3',
-            name: 'Only 1 toilet was installed, and it is damaged or inoperable.',
-            detail: 'Only one toilet was installed, and it is now missing (i.e., there is evidence of prior installation, but it is no longer present or is incomplete).',
-            criteria: 'Only one toilet was installed, and it is damaged or inoperable.',
+            name: 'Toilet is not secured to the floor or wall.',
+            detail: 'Toilet is not secured to the floor or wall.',
+            criteria: 'There is movement detected in the toilet when pressure is applied.',
             severity: 'Moderate',
-            repairBy: '24Hrs',
+            repairBy: '30 Day',
             points: '5.0/n',
             code: 'RESTROOM-TOILET-03'
         },
         {
             id: 'restroom_toilet_4',
-            name: 'Only 1 toilet was installed, and it is missing.',
-            detail: 'Only one toilet is present, and it\'s either damaged or inoperable—preventing proper use.',
-            criteria: 'Only 1 toilet was installed, and it is missing (i.e., evidence of prior installation, but now not present or is incomplete).',
-            severity: 'Moderate',
-            repairBy: '24Hrs',
-            points: '5.0/n',
+            name: 'Toilet component is damaged or missing, and the toilet is functionally adequate.',
+            detail: 'Toilet component is damaged or missing, and the toilet is functionally adequate.',
+            criteria: 'Toilet component is damaged (i.e., visibly defective; impacts functionality) or missing (i.e., evidence of prior installation, but now not present or is incomplete) and the toilet is functionally adequate.',
+            severity: 'Low',
+            repairBy: '60 Day',
+            points: '2.20/n',
             code: 'RESTROOM-TOILET-04'
         },
         {
             id: 'restroom_toilet_5',
-            name: 'Toilet can not be used in private.',
-            detail: 'Toilet can not be used in private.',
-            criteria: 'Hole in the door and damaged hardware, missing door The resident should be able to use the bathtub or shower without being observed from an adjacent area or exterior space.',
+            name: 'Bathroom does not have a toilet.',
+            detail: 'Bathroom does not have a toilet.',
+            criteria: 'A toilet is not present or is incomplete in a bathroom.',
             severity: 'Moderate',
             repairBy: '30 Day',
             points: '5.0/n',
             code: 'RESTROOM-TOILET-05'
-        },
-        {
-            id: 'restroom_toilet_6',
-            name: 'Toilet component is damaged, inoperable, or missing such that it may limit the resident\'s ability to safely discharge human waste.',
-            detail: 'Toilet component is damaged, inoperable, or missing such that it may limit the resident\'s ability to safely discharge human waste.',
-            criteria: 'A toilet is deficient if any component is damaged, inoperable, or missing in a way that limits the resident\'s ability to discharge human waste safely.',
-            severity: 'Moderate',
-            repairBy: '30 Day',
-            points: '5.0/n',
-            code: 'RESTROOM-TOILET-06'
-        },
-        {
-            id: 'restroom_toilet_7',
-            name: 'Toilet component is damaged, inoperable, or missing and it does not limit the resident\'s ability to discharge human waste.',
-            detail: 'A toilet component may be damaged, inoperable, or missing—whether visibly defective, functionally impaired, or absent despite evidence of prior installation.',
-            criteria: 'Toilet component is damaged, inoperable, or missing and it does not limit the resident\'s ability to discharge human waste.',
-            severity: 'Moderate',
-            repairBy: '30 Day',
-            points: '5.0/n',
-            code: 'RESTROOM-TOILET-07'
-        },
-        {
-            id: 'restroom_toilet_8',
-            name: 'Toilet is not secured at the base.',
-            detail: 'Toilet is not secured at the base.',
-            criteria: 'Toilet is not secured at the base.',
-            severity: 'Moderate',
-            repairBy: '30 Day',
-            points: '5.0/n',
-            code: 'RESTROOM-TOILET-08'
         }
     ]
 };
@@ -2400,43 +2312,13 @@ export const RESTROOM_VENTILATION: UnitItemDeficiencies = {
     deficiencies: [
         {
             id: 'restroom_vent_1',
-            name: 'The restroom does not have ventilation, not present and operable.',
-            detail: 'The restroom does not have ventilation, not present and operable.',
-            criteria: 'Effecting the restroom.',
+            name: 'Ventilation',
+            detail: 'Restroom ventilation is missing, damaged, or inoperable.',
+            criteria: 'Exhaust fan system failure, missing components, or blocked airflow.',
             severity: 'Moderate',
             repairBy: '30 Day',
             points: '5.0/n',
             code: 'RESTROOM-VENT-01'
-        },
-        {
-            id: 'restroom_vent_2',
-            name: 'The exhaust system component is missing or damaged, affecting the function adequately.',
-            detail: 'The exhaust system component is missing or damaged, affecting the function adequately.',
-            criteria: 'Exhaust system component is damaged or missing (i.e., visibly defective; impacts functionality).',
-            severity: 'Moderate',
-            repairBy: '30 Day',
-            points: '5.0/n',
-            code: 'RESTROOM-VENT-02'
-        },
-        {
-            id: 'restroom_vent_3',
-            name: 'Exhaust system does not respond to the control switch.',
-            detail: 'Exhaust system does not respond to the control switch.',
-            criteria: 'Exhaust fan, inoperable.',
-            severity: 'Moderate',
-            repairBy: '30 Day',
-            points: '5.0/n',
-            code: 'RESTROOM-VENT-03'
-        },
-        {
-            id: 'restroom_vent_4',
-            name: 'Exhaust system has restricted air flow.',
-            detail: 'Exhaust system has restricted air flow.',
-            criteria: 'Exhaust system is blocked such that airflow may be restricted.',
-            severity: 'Moderate',
-            repairBy: '30 Day',
-            points: '5.0/n',
-            code: 'RESTROOM-VENT-04'
         }
     ]
 };
@@ -3045,57 +2927,22 @@ export const ALL_UNIT_DEFICIENCIES: UnitItemDeficiencies[] = ALL_UNIT_CATEGORIES
 // IMPORTANT: Must match CATEGORY names properly, not just item names
 // to avoid "Sink (Laundry)" matching Restroom > Sink
 export const getUnitDeficienciesByCategory = (categoryName: string): UnitItemDeficiencies | null => {
-    const normalizedName = categoryName.toLowerCase().trim().replace(/^\d+\.\s*/, '');
-
-    // PASS 1: Exact category name match (without number prefix)
+    // PASS 1: Use robust matching against category names
     for (const category of ALL_UNIT_CATEGORIES) {
-        const catName = category.category.replace(/^\d+\.\s*/, '').toLowerCase();
-        if (catName === normalizedName) {
+        if (matchInsideCategory(categoryName, category.category)) {
+            // If it matches a category with multiple items, it should be handled via subcategories.
+            // But if called directly for deficiencies, return the first item as a fallback.
             return category.items[0];
         }
     }
 
-    // PASS 2: Category name starts with search term OR search term starts with category name
-    for (const category of ALL_UNIT_CATEGORIES) {
-        const catName = category.category.replace(/^\d+\.\s*/, '').toLowerCase();
-        // Check if the first word matches
-        const catFirstWord = catName.split(/[\s\-\(]/)[0];
-        const searchFirstWord = normalizedName.split(/[\s\-\(]/)[0];
-
-        // If first words match AND have similar length (to distinguish "Sink" from "Sink (Laundry...)")
-        if (catFirstWord === searchFirstWord) {
-            // For categories like "Sink (Laundry, Garage, or patio)" vs item "Sink"
-            // Check if the search has parentheses or extra qualifiers
-            const searchHasQualifier = normalizedName.includes('(') || normalizedName.includes(',');
-            const catHasQualifier = catName.includes('(') || catName.includes(',');
-
-            if (searchHasQualifier && catHasQualifier) {
-                // Both have qualifiers, check if they match
-                if (catName.includes(normalizedName) || normalizedName.includes(catName)) {
-                    return category.items[0];
-                }
-            } else if (!searchHasQualifier && !catHasQualifier) {
-                // Neither has qualifiers - exact first word match
-                return category.items[0];
-            }
-        }
-    }
-
-    // PASS 3: Check if search matches a specific item name exactly
+    // PASS 2: Check if search matches a specific item name exactly (for direct item lookup)
+    const normalizedSearch = categoryName.toLowerCase().trim();
     for (const category of ALL_UNIT_CATEGORIES) {
         for (const item of category.items) {
-            const itemNameLower = item.itemName.toLowerCase();
-            if (itemNameLower === normalizedName) {
+            if (item.itemName.toLowerCase() === normalizedSearch) {
                 return item;
             }
-        }
-    }
-
-    // PASS 4: Looser category matching - contains
-    for (const category of ALL_UNIT_CATEGORIES) {
-        const catName = category.category.replace(/^\d+\.\s*/, '').toLowerCase();
-        if (catName.includes(normalizedName) || normalizedName.includes(catName)) {
-            return category.items[0];
         }
     }
 
@@ -3104,11 +2951,8 @@ export const getUnitDeficienciesByCategory = (categoryName: string): UnitItemDef
 
 // Function to get all items for a specific category
 export const getUnitItemsForCategory = (categoryName: string): UnitItemDeficiencies[] => {
-    const normalizedName = categoryName.toLowerCase().trim();
-
     for (const category of ALL_UNIT_CATEGORIES) {
-        if (category.category.toLowerCase().includes(normalizedName) ||
-            normalizedName.includes(category.category.toLowerCase())) {
+        if (matchInsideCategory(categoryName, category.category)) {
             return category.items;
         }
     }
@@ -3143,19 +2987,60 @@ export const searchUnitDeficiencies = (keyword: string): UnitDeficiencyOption[] 
  * Uses exact match first, then checks if search term starts category name
  */
 const matchInsideCategory = (searchName: string, categoryFullName: string): boolean => {
-    const normalizedSearch = searchName.toLowerCase().trim().replace(/^\d+\.\s*/, '');
-    const catName = categoryFullName.replace(/^\d+\.\s*/, '').toLowerCase();
+    // Normalize string by removing number prefix, convert to lower case, 
+    // and replace all variations of dashes/hyphens with a single space for robust comparison
+    const normalize = (str: string) =>
+        str.replace(/^\d+\.\s*/, '')
+            .toLowerCase()
+            .replace(/[\u2013\u2014\-]/g, ' ') // Replace various dash types with space
+            .replace(/\s+/g, ' ')             // Collapse multiple spaces
+            .trim();
+
+    const normalizedSearch = normalize(searchName);
+    const catName = normalize(categoryFullName);
+
+    // DEBUG: Log when Paint category is being checked
+    if (searchName.toLowerCase().includes('paint') || categoryFullName.toLowerCase().includes('paint')) {
+        console.log('DEBUG matchInsideCategory PAINT:', {
+            searchName,
+            categoryFullName,
+            normalizedSearch,
+            catName,
+            exactMatch: catName === normalizedSearch,
+        });
+    }
 
     // Exact match
     if (catName === normalizedSearch) return true;
 
-    // Check if search starts with category name (e.g., "railings" matches "25. Railings")
-    if (normalizedSearch.startsWith(catName.split(' ')[0])) return true;
+    // Word-based matching for robustness
+    const searchWords = normalizedSearch.split(' ');
+    const catWords = catName.split(' ');
 
-    // Check if category starts with search term's first word
-    const searchFirstWord = normalizedSearch.split(/[\s\-]/)[0];
-    const catFirstWord = catName.split(/[\s\-]/)[0];
-    if (searchFirstWord === catFirstWord && searchFirstWord.length > 3) return true;
+    // Match if first word is the same AND (it's the only word OR another word matches)
+    // AND ensure we don't match "Hazard" if we're searching for "Paint"
+    if (searchWords[0] === catWords[0] && searchWords[0].length > 3) {
+        if (searchWords.length === 1) return true;
+        // Check if any other word in search exists in the category name
+        if (searchWords.some((word, idx) => idx > 0 && catWords.includes(word))) return true;
+    }
+
+    // Robust match for Category 24 (Paint) - Move outside first-word block
+    // CRITICAL: Ensure we only match if both sides contain 'paint' or 'lead'
+    // to avoid matching "Paint ... Hazards" with "Hazard"
+    if (searchWords.includes('paint') && catWords.includes('paint')) return true;
+    if (searchWords.includes('lead') && catWords.includes('lead')) return true;
+
+    // Explicit fallback for Paint if search name is very short
+    if (normalizedSearch === 'paint' && (catWords.includes('paint') || catWords.includes('lead'))) return true;
+
+    // Loose inclusion (only if search is specific enough and NOT a generic word like Hazard)
+    if (normalizedSearch.length > 5 && normalizedSearch !== 'hazard' && (catName.includes(normalizedSearch) || normalizedSearch.includes(catName))) {
+        if (normalizedSearch.includes('paint') || normalizedSearch.includes('lead')) {
+            return catName.includes('paint') || catName.includes('lead');
+        }
+        return true;
+    }
 
     return false;
 };
@@ -3192,15 +3077,24 @@ export const getInsideCategorySubcategories = (categoryName: string): string[] =
  * Get deficiencies for a specific subcategory within an Inside category
  */
 export const getInsideSubcategoryDeficiencies = (subcategoryName: string): UnitItemDeficiencies | null => {
-    const normalizedName = subcategoryName.toLowerCase().trim();
+    // Normalize string by removing number prefix, convert to lower case, 
+    // and replace all variations of dashes/hyphens with a single space for robust comparison
+    const normalize = (str: string) =>
+        str.replace(/^\d+\.\s*/, '')
+            .toLowerCase()
+            .replace(/[\u2013\u2014\-]/g, ' ') // Replace various dash types with space
+            .replace(/\s+/g, ' ')             // Collapse multiple spaces
+            .trim();
+
+    const normalizedName = normalize(subcategoryName);
 
     for (const category of ALL_UNIT_CATEGORIES) {
         for (const item of category.items) {
-            const itemNameLower = item.itemName.toLowerCase();
+            const catItemName = normalize(item.itemName);
             // Exact match first
-            if (itemNameLower === normalizedName) return item;
+            if (catItemName === normalizedName) return item;
             // Then check if item name starts with search or vice versa
-            if (itemNameLower.startsWith(normalizedName) || normalizedName.startsWith(itemNameLower)) {
+            if (catItemName.startsWith(normalizedName) || normalizedName.startsWith(catItemName)) {
                 return item;
             }
         }

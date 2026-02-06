@@ -1428,6 +1428,7 @@ export interface InsideScoringResult {
   possibleScore: number;        // Fixed at 25
   maxPtsLost: number;           // Max Pts Lost = Pts Lost / n
   score: number;                // Score = 25 - maxPtsLost
+  formula: string;             // Resulting formula string (e.g. "27.25 / (50 * n)")
   formulaNumerator: number;     // The numerator used in the formula
   isDeficiencyOverride: boolean; // Whether deficiency-based override was applied
   specialFormula?: string;      // Special formula type if applicable
@@ -1477,7 +1478,7 @@ export function calculateInsideScore(input: InsideScoringInput): InsideScoringRe
       severity = selectedSeverity || 'Moderate';
       isDeficiencyOverride = true;
       // Check for special formula types
-      if (deficiencyPointsFormula.includes('50')) {
+      if (deficiencyPointsFormula.includes('/50')) {
         specialFormula = 'divide_50n';
       } else if (pointsLostRaw === 0 || deficiencyPointsFormula.includes('0.000')) {
         specialFormula = 'zero';
@@ -1504,15 +1505,19 @@ export function calculateInsideScore(input: InsideScoringInput): InsideScoringRe
 
   // Calculate Pts Lost based on formula type
   let pointsLost: number;
+  let formula: string;
   if (specialFormula === 'zero') {
     // Zero formula for smoke alarm and CO alarm: 0.000
     pointsLost = 0;
+    formula = '0.000';
   } else if (specialFormula === 'divide_50n') {
     // Special formula: numerator / (50 * n)
     pointsLost = pointsLostRaw / (50 * n);
+    formula = `${pointsLostRaw.toFixed(2)} / (50 * n)`;
   } else {
     // Standard formula: numerator / n
     pointsLost = pointsLostRaw / n;
+    formula = `${pointsLostRaw.toFixed(2)} / n`;
   }
 
   // Max Points Lost = Same as Points Lost (X / n)
@@ -1537,6 +1542,7 @@ export function calculateInsideScore(input: InsideScoringInput): InsideScoringRe
     maxPtsLost: parseFloat(maxPtsLost.toFixed(4)),
     score: parseFloat(score.toFixed(2)),
     formulaNumerator: pointsLostRaw,
+    formula,
     isDeficiencyOverride,
     specialFormula,
   };
