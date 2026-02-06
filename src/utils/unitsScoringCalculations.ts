@@ -25,6 +25,9 @@ const LIFE_THREATENING_60_PATTERNS = [
   'cumulative area of patches is more than 9 square feet in a room',
   'dryer is being used indoor',
   'dryer is being used indoors',
+  // Electrical dryer restricted airflow (60/n)
+  'electrical dryer exhaust ventilation has restricted airflow',
+  'electric dryer exhaust ventilation system is blocked or damaged',
   'the overcurrent protection device (i.e., fuse or breaker) is contaminated',
   'overcurrent protection device is contaminated',
   'fuse or breaker is contaminated',
@@ -243,6 +246,23 @@ const SEVERE_14_8_PATTERNS = [
   'tprv valve is not functioning',
   // Window lock
   'window lock does not keep the window closed',
+];
+
+// ============================================================================
+// MODERATE PATTERNS - 5.0/n (Specific to Ventilation, Toilet, etc.)
+// ============================================================================
+const MODERATE_5_0_PATTERNS = [
+  // Ventilation
+  'ventilation is not present and operable',
+  'the ventilation system is not present and operable',
+  'exhaust fan, window, or adequate means of ventilation is not present and operable',
+  // Toilet
+  'toilet component is damaged, inoperable, or missing, and the toilet is not functionally adequate',
+  'toilet is not flushing or backing up',
+  'toilet is not secured to the floor or wall',
+  'bathroom does not have a toilet',
+  'toilet is not present or is incomplete in a bathroom',
+  'there is movement detected in the toilet when pressure is applied',
 ];
 
 // ============================================================================
@@ -597,6 +617,14 @@ function matchesLowPattern(deficiencyDescription: string): boolean {
 }
 
 /**
+ * Check if deficiency matches Moderate 5.0/n patterns
+ */
+function matchesModerate5_0Pattern(deficiencyDescription: string): boolean {
+  const normalizedDesc = deficiencyDescription.toLowerCase();
+  return MODERATE_5_0_PATTERNS.some(pattern => normalizedDesc.includes(pattern.toLowerCase()));
+}
+
+/**
  * Get severity configuration with deficiency-based override for Units inspection
  * Deficiency-based rules take precedence over category-based rules
  * 
@@ -645,6 +673,11 @@ export function getUnitsSeverityConfig(
     // Check for Moderate 5.5/n patterns
     if (matchesModeratePattern(deficiencyDescription)) {
       return { severity: 'Moderate', pointsLostFormula: 5.5 };
+    }
+
+    // Check for Moderate 5.0/n patterns
+    if (matchesModerate5_0Pattern(deficiencyDescription)) {
+      return { severity: 'Moderate', pointsLostFormula: 5.0 };
     }
   }
 

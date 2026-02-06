@@ -1728,8 +1728,8 @@ export const LEAK_GAS_OIL_DEFICIENCIES: InsideItemDeficiencies = {
         {
             id: 'leak_gas_1',
             name: 'Natural gas, propane, or oil leak',
-            detail: 'Natural gas, propane, or oil leak.',
-            criteria: 'There is evidence of a gas, propane, or oil leak, or there is an uncapped gas or fuel supply line. Natural gas, propane, or oil leak. strong odor.',
+            detail: 'There is evidence of a gas, propane, or oil leak, or there is an uncapped gas or fuel supply line.',
+            criteria: ' Natural gas, propane, or oil leak. strong odor.',
             severity: 'Life-Threatening',
             repairBy: '24Hrs',
             points: '30/n',
@@ -1961,7 +1961,7 @@ export const PAINT_DEFICIENCIES: InsideItemDeficiencies = {
             criteria: 'More than 2 square feet per room deteriorated paint, damage to the surface such as holes that expose paint layers, and friction on painted surfaces.',
             severity: 'Severe',
             repairBy: '24 Hrs.',
-            points: '13.40/n',
+            points: '14.8/n',
             code: 'PAINT-02'
         }
     ]
@@ -1976,11 +1976,21 @@ export const RAILINGS_GUARDRAIL: InsideSubcategory = {
         {
             id: 'rail_guard_1',
             name: 'Guardrail',
-            detail: 'Guardrail is missing, damaged, or not installed.',
+            detail: 'The guardrail is missing or not installed. Does limit the safe use',
             criteria: 'The guardrail is missing or not installed along a walking surface that is more than 30 inches above the floor or grade below. Or repair is needed.',
             severity: 'Life-Threatening',
             repairBy: '24Hrs',
-            points: '27.25/n',
+            points: '30/n',
+            code: 'RAILING-GUARD-01'
+        },
+        {
+            id: 'rail_guard_2',
+            name: 'Guardrail',
+            detail: 'Guard rail component, missing, damaged. Does not limit the safe use. The guardrail is functionally adequate.',
+            criteria: 'A guardrail is deficient if it’s missing critical components, visibly damaged, under 30 inches in height, or not securely attached to reasonably prevent fall hazards.',
+            severity: 'Life-Threatening',
+            repairBy: '24Hrs',
+            points: '30/n',
             code: 'RAILING-GUARD-01'
         }
     ]
@@ -1992,11 +2002,41 @@ export const RAILINGS_HANDRAIL: InsideSubcategory = {
         {
             id: 'rail_hand_1',
             name: 'Handrail',
-            detail: 'Handrail is missing, damaged, not secured, or not installed.',
-            criteria: 'Handrail is missing, not functionally adequate, not installed where required, or not secured.',
+            detail: 'Handrail is not functionally adequate. ',
+            criteria: 'A handrail is deficient if it cannot be reasonably grasped for support, is not continuous along the full stair flight, or is outside the required height range of 28 to 42 inches',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '5.5/n',
+            code: 'RAILING-HAND-01'
+        },
+        {
+            id: 'rail_hand_2',
+            name: 'Handrail',
+            detail: 'Handrail is not functionally adequate. ',
+            criteria: ' Handrail is not functionally adequate.Or  Handrail is not continuous for the full length of each flight of stairs.Or  Handrail is not between 28 inches and 42 inches in height.',
+            severity: 'Moderate',
+            repairBy: '30 Day',
+            points: '5.5/n',
+            code: 'RAILING-HAND-01'
+        },
+        {
+            id: 'rail_hand_3',
+            name: 'Handrail',
+            detail: 'Handrail is not installed where required.',
+            criteria: ' 4 or more stair risers are present, and a handrail is not installed.  Or a ramp has a rise greater than 6 inches or a horizontal projection greater than 72 inches and a handrail is not installed on both sides.',
+            severity: 'Low',
+            repairBy: '30 Day',
+            points: '2.4/n',
+            code: 'RAILING-HAND-01'
+        },
+        {
+            id: 'rail_hand_4',
+            name: 'Handrail',
+            detail: 'Handrail is not secured.',
+            criteria: ' There is movement in the anchors of the handrail.',
+            severity: 'Moderate',
+            repairBy: '30 Day',
+            points: '5.5/n',
             code: 'RAILING-HAND-01'
         }
     ]
@@ -2147,7 +2187,7 @@ export const VENTILATION_DEFICIENCIES: InsideItemDeficiencies = {
             criteria: 'An exhaust fan, window, or adequate means of ventilation is not present and operable.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '5.5/n',
             code: 'VENT-01'
         },
         {
@@ -2157,7 +2197,7 @@ export const VENTILATION_DEFICIENCIES: InsideItemDeficiencies = {
             criteria: 'Exhaust system component is damaged (i.e., visibly defective; impacts functionality). OR Exhaust system component is missing (i.e., evidence of prior installation, but now not present or is incomplete).',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '5.5/n',
             code: 'VENT-02'
         },
         {
@@ -2167,7 +2207,7 @@ export const VENTILATION_DEFICIENCIES: InsideItemDeficiencies = {
             criteria: 'Exhaust fan, inoperable.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '5.5/n',
             code: 'VENT-03'
         },
         {
@@ -2177,7 +2217,7 @@ export const VENTILATION_DEFICIENCIES: InsideItemDeficiencies = {
             criteria: 'Exhaust system is blocked such that airflow may be restricted.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '5.5/n',
             code: 'VENT-04'
         }
     ]

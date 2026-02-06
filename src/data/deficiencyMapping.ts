@@ -3589,6 +3589,56 @@ export const getDeficienciesForSubcategory = (subcategoryName: string, locationT
     };
   }
 
+  // ==========================================
+  // UNIT SUBCATEGORIES - Use Inside Unit mapping file check FIRST
+  // ==========================================
+  if (isUnit) {
+    for (const category of ALL_INSIDE_CATEGORIES as any[]) {
+      if (category.subcategories) {
+        const matchingSubcat = category.subcategories.find(
+          (sub: any) => sub.name.toLowerCase() === normalizedName
+        );
+        if (matchingSubcat) {
+          return {
+            itemName: matchingSubcat.name,
+            deficiencies: matchingSubcat.deficiencies.map((d: any) => ({
+              id: d.id,
+              name: d.name,
+              detail: d.detail,
+              criteria: d.criteria,
+              severity: d.severity,
+              repairBy: d.repairBy,
+              points: d.points,
+              code: d.code || '',
+            }))
+          };
+        }
+      }
+    }
+
+    // Also try item name match for Unit locations (fallback)
+    const insideItemResult = getInsideDeficienciesForItem(subcategoryName);
+    if (insideItemResult && insideItemResult.length > 0) {
+      return {
+        itemName: subcategoryName,
+        deficiencies: insideItemResult.map((d: any) => ({
+          id: d.id,
+          name: d.name,
+          detail: d.detail,
+          criteria: d.criteria,
+          severity: d.severity,
+          repairBy: d.repairBy,
+          points: d.points,
+          code: d.code || '',
+        }))
+      };
+    }
+  }
+
+
+
+
+
 
   // Door subcategories
   if (normalizedName.includes('door - general standard') || normalizedName === 'door - general standard') {
@@ -3712,32 +3762,7 @@ export const getDeficienciesForSubcategory = (subcategoryName: string, locationT
     };
   }
 
-  // ==========================================
-  // UNIT SUBCATEGORIES - Search all Unit categories for matching subcategory
-  // This handles Unit inspection subcategories like Bathroom > Bathtub and Shower
-  // ==========================================
-  for (const category of ALL_INSIDE_CATEGORIES) {
-    if (category.subcategories) {
-      const matchingSubcat = category.subcategories.find(
-        sub => sub.name.toLowerCase() === normalizedName
-      );
-      if (matchingSubcat) {
-        return {
-          itemName: matchingSubcat.name,
-          deficiencies: matchingSubcat.deficiencies.map(d => ({
-            id: d.id,
-            name: d.name,
-            detail: d.detail,
-            criteria: d.criteria,
-            severity: d.severity,
-            repairBy: d.repairBy,
-            points: d.points,
-            code: d.code || '',
-          }))
-        };
-      }
-    }
-  }
+
 
   return {
     itemName: subcategoryName,
