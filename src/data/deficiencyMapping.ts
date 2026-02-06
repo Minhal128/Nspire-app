@@ -3180,9 +3180,9 @@ export const VENTILATION_DEFICIENCIES: ItemDeficiencies = {
   deficiencies: [
     {
       id: 'vent_1',
-      name: 'Ventilation system is inoperable',
-      detail: 'Ventilation system does not function properly.',
-      criteria: 'Ventilation system is inoperable.',
+      name: 'Ventilation is not present and operable.',
+      detail: 'The ventilation system is not present and operable.',
+      criteria: 'An exhaust fan, window, or adequate means of ventilation is not present and operable.',
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
@@ -3190,9 +3190,9 @@ export const VENTILATION_DEFICIENCIES: ItemDeficiencies = {
     },
     {
       id: 'vent_2',
-      name: 'Ventilation component is damaged or missing',
-      detail: 'Ventilation component is damaged, deteriorated, or missing.',
-      criteria: 'Ventilation component is damaged or missing.',
+      name: 'Exhaust system component is damaged or missing.',
+      detail: 'Exhaust system component is damaged or missing.',
+      criteria: 'Exhaust system component is damaged (i.e., visibly defective; impacts functionality). OR Exhaust system component is missing (i.e., evidence of prior installation, but now not present or is incomplete).',
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',

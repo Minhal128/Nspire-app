@@ -2545,13 +2545,13 @@ export const TRASH_CHUTE_DEFICIENCIES = {
 // ==========================================
 
 export const VENTILATION_UNIT: UnitItemDeficiencies = {
-    itemName: 'Ventilation (with or without a fan)',
+    itemName: 'Ventilation',
     deficiencies: [
         {
             id: 'vent_1',
-            name: 'It is not functioning adequately.',
-            detail: 'Ventilation (with or without a fan)',
-            criteria: 'Effecting the room.',
+            name: 'Ventilation is not present and operable.',
+            detail: 'The ventilation system is not present and operable.',
+            criteria: 'An exhaust fan, window, or adequate means of ventilation is not present and operable.',
             severity: 'Moderate',
             repairBy: '30 Day',
             points: '5.0/n',
@@ -2917,7 +2917,43 @@ export const ALL_UNIT_CATEGORIES = [
     GENERAL_COMMENT_DEFICIENCIES            // 35
 ];
 
-// List of all Unit category names
+// ==========================================
+// MAPPING HELPER FUNCTIONS
+// ==========================================
+
+/**
+ * Shared helper to find a category using a two-pass matching strategy:
+ * 1. Exact match (normalized)
+ * 2. Robust fuzzy match
+ */
+const findUnitCategory = (categoryName: string) => {
+    const normalize = (str: string) =>
+        str.replace(/^\d+\.\s*/, '')
+            .toLowerCase()
+            .replace(/[\u2013\u2014\-]/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+
+    const normalizedSearch = normalize(categoryName);
+
+    // Pass 1: Exact match first
+    for (const category of ALL_UNIT_CATEGORIES) {
+        if (normalize(category.category) === normalizedSearch) {
+            return category;
+        }
+    }
+
+    // Pass 2: Robust matching
+    for (const category of ALL_UNIT_CATEGORIES) {
+        if (matchInsideCategory(categoryName, category.category)) {
+            return category;
+        }
+    }
+
+    return null;
+};
+
+// List of all Unit category names (normalized)
 export const UNIT_CATEGORIES = ALL_UNIT_CATEGORIES.map(cat => cat.category);
 
 // Get all unit deficiencies as flat array
@@ -2927,16 +2963,15 @@ export const ALL_UNIT_DEFICIENCIES: UnitItemDeficiencies[] = ALL_UNIT_CATEGORIES
 // IMPORTANT: Must match CATEGORY names properly, not just item names
 // to avoid "Sink (Laundry)" matching Restroom > Sink
 export const getUnitDeficienciesByCategory = (categoryName: string): UnitItemDeficiencies | null => {
-    // PASS 1: Use robust matching against category names
-    for (const category of ALL_UNIT_CATEGORIES) {
-        if (matchInsideCategory(categoryName, category.category)) {
-            // If it matches a category with multiple items, it should be handled via subcategories.
-            // But if called directly for deficiencies, return the first item as a fallback.
-            return category.items[0];
-        }
+    // Pass 1 & 2: Use shared helper (Exact match, then Robust match)
+    const category = findUnitCategory(categoryName);
+    if (category) {
+        // If it matches a category with multiple items, it should be handled via subcategories.
+        // But if called directly for deficiencies, return the first item as a fallback.
+        return category.items[0];
     }
 
-    // PASS 2: Check if search matches a specific item name exactly (for direct item lookup)
+    // PASS 3: Check if search matches a specific item name exactly (for direct item lookup)
     const normalizedSearch = categoryName.toLowerCase().trim();
     for (const category of ALL_UNIT_CATEGORIES) {
         for (const item of category.items) {
@@ -2951,10 +2986,9 @@ export const getUnitDeficienciesByCategory = (categoryName: string): UnitItemDef
 
 // Function to get all items for a specific category
 export const getUnitItemsForCategory = (categoryName: string): UnitItemDeficiencies[] => {
-    for (const category of ALL_UNIT_CATEGORIES) {
-        if (matchInsideCategory(categoryName, category.category)) {
-            return category.items;
-        }
+    const category = findUnitCategory(categoryName);
+    if (category) {
+        return category.items;
     }
 
     return [];
@@ -3049,27 +3083,18 @@ const matchInsideCategory = (searchName: string, categoryFullName: string): bool
  * Check if an Inside category has subcategories (items.length > 1)
  */
 export const hasInsideSubcategories = (categoryName: string): boolean => {
-    for (const category of ALL_UNIT_CATEGORIES) {
-        if (matchInsideCategory(categoryName, category.category)) {
-            return category.items.length > 1;
-        }
-    }
-
-    return false;
+    const category = findUnitCategory(categoryName);
+    return category ? category.items.length > 1 : false;
 };
 
 /**
  * Get subcategory names for an Inside category
  */
 export const getInsideCategorySubcategories = (categoryName: string): string[] => {
-    for (const category of ALL_UNIT_CATEGORIES) {
-        if (matchInsideCategory(categoryName, category.category)) {
-            if (category.items.length > 1) {
-                return category.items.map(item => item.itemName);
-            }
-        }
+    const category = findUnitCategory(categoryName);
+    if (category && category.items.length > 1) {
+        return category.items.map(item => item.itemName);
     }
-
     return [];
 };
 

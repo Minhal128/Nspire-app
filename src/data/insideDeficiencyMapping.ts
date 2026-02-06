@@ -2138,13 +2138,13 @@ export const STRUCTURAL_DEFICIENCIES: InsideItemDeficiencies = {
 // 31. VENTILATION
 // ==========================================
 export const VENTILATION_DEFICIENCIES: InsideItemDeficiencies = {
-    itemName: 'Ventilation (with or without a fan)',
+    itemName: 'Ventilation',
     deficiencies: [
         {
             id: 'vent_1',
-            name: 'It is not functioning adequately.',
-            detail: 'Ventilation (with or without a fan)',
-            criteria: 'Effecting the room.',
+            name: 'Ventilation is not present and operable.',
+            detail: 'The ventilation system is not present and operable.',
+            criteria: 'An exhaust fan, window, or adequate means of ventilation is not present and operable.',
             severity: 'Moderate',
             repairBy: '30 Day',
             points: '5.0/n',
