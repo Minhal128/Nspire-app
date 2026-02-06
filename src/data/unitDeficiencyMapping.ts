@@ -456,7 +456,7 @@ export const DOOR_FIRE_LABELED: UnitItemDeficiencies = {
             criteria: 'An object is present that may prevent the fire-labeled door from closing and latching. Or An object is present that may prevent the fire-labeled door from self-closing and latching.',
             severity: 'Severe',
             repairBy: '24 Hrs.',
-            points: '14.8/n',
+            points: '13.40/n',
             code: 'DOOR-FIRE-01'
         },
         {
@@ -466,7 +466,7 @@ export const DOOR_FIRE_LABELED: UnitItemDeficiencies = {
             criteria: 'A fire-labeled door assembly has a hole of any size. Or A fire-labeled door assembly is damaged (i.e., visibly defective; impacts functionality) such that its integrity may be compromised.',
             severity: 'Severe',
             repairBy: '24 Hrs.',
-            points: '14.8/n',
+            points: '13.40/n',
             code: 'DOOR-FIRE-02'
         },
         {
@@ -476,7 +476,7 @@ export const DOOR_FIRE_LABELED: UnitItemDeficiencies = {
             criteria: 'Fire-labeled door that serves as an entry door (i.e., a door that provides a means of access to the unit from the inside or outside) cannot be secured (i.e., access controlled) by at least one installed lock.',
             severity: 'Severe',
             repairBy: '24 Hrs.',
-            points: '14.8/n',
+            points: '13.40/n',
             code: 'DOOR-FIRE-03'
         },
         {
@@ -486,7 +486,7 @@ export const DOOR_FIRE_LABELED: UnitItemDeficiencies = {
             criteria: 'Fire-labeled door does not close and latch. OR fire-labeled door self-closing hardware is damaged or missing such that the door does not self-close and latch.',
             severity: 'Severe',
             repairBy: '24 Hrs.',
-            points: '14.8/n',
+            points: '13.40/n',
             code: 'DOOR-FIRE-04'
         },
         {
@@ -496,7 +496,7 @@ export const DOOR_FIRE_LABELED: UnitItemDeficiencies = {
             criteria: 'Fire-labeled door does not open such that it may limit access between spaces.',
             severity: 'Severe',
             repairBy: '24 Hrs.',
-            points: '14.8/n',
+            points: '13.40/n',
             code: 'DOOR-FIRE-05'
         },
         {
@@ -506,7 +506,7 @@ export const DOOR_FIRE_LABELED: UnitItemDeficiencies = {
             criteria: 'Fire-labeled door is missing (i.e., evidence of prior installation, but now not present or is incomplete).',
             severity: 'Life-Threatening',
             repairBy: '24Hrs',
-            points: '14.8/n',
+            points: '27.25/n',
             code: 'DOOR-FIRE-06'
         },
         {
@@ -516,7 +516,7 @@ export const DOOR_FIRE_LABELED: UnitItemDeficiencies = {
             criteria: 'Fire-labeled door seal or gasket is damaged, impacts functionality. Or fire labeled door seal or gasket is missing (i.e. evidence of prior installation, but now not present or is incomplete).',
             severity: 'Severe',
             repairBy: '24 Hrs.',
-            points: '14.8/n',
+            points: '13.40/n',
             code: 'DOOR-FIRE-07'
         }
     ]
@@ -653,7 +653,7 @@ export const ELECTRICAL_CONDUCTOR_OUTLET_SWITCH: UnitItemDeficiencies = {
             criteria: 'Electrical conductors must be enclosed and insulated, with no exposed wiring, open ports, missing covers, or gaps over 1/2"; missing light bulbs are evaluated under interior or exterior lighting.',
             severity: 'Life-Threatening',
             repairBy: '24Hrs',
-            points: '30/n',
+            points: '27.25/n',
             code: 'ELEC-COND-01'
         },
         {
@@ -661,9 +661,9 @@ export const ELECTRICAL_CONDUCTOR_OUTLET_SWITCH: UnitItemDeficiencies = {
             name: 'The outlet does not have visible damage, and testing indicates that it is not energized.',
             detail: 'The outlet does not have visible damage, and testing indicates that it is not energized.',
             criteria: 'An outlet that is reasonably accessible (i.e., can be reached without moving obstructions, dismantling, destructive measures, or actions that may pose a risk to persons or property) does not have visible damage and testing indicates that it is not energized.',
-            severity: 'Life-Threatening',
+            severity: 'Severe',
             repairBy: '24Hrs',
-            points: '30/n',
+            points: '13.40/n',
             code: 'ELEC-COND-02'
         },
         {
@@ -673,7 +673,7 @@ export const ELECTRICAL_CONDUCTOR_OUTLET_SWITCH: UnitItemDeficiencies = {
             criteria: 'Any portion of a visually accessible (i.e., can be reasonably accessed and observed) outlet or switch is damaged (i.e., visibly defective; impacts functionality) such that it may not safely carry or control electrical current at the outlet or switch.',
             severity: 'Life-Threatening',
             repairBy: '24Hrs',
-            points: '30/n',
+            points: '27.25/n',
             code: 'ELEC-COND-03'
         },
         {
@@ -683,7 +683,7 @@ export const ELECTRICAL_CONDUCTOR_OUTLET_SWITCH: UnitItemDeficiencies = {
             criteria: 'Testing of a three-pronged outlet that is reasonably accessible (i.e., can be reached without moving obstructions, dismantling, destructive measures, or actions that may pose a risk to persons or property) indicates that it is not properly wired or grounded.',
             severity: 'Severe',
             repairBy: '24 Hrs.',
-            points: '14.8/n',
+            points: '13.40/n',
             code: 'ELEC-COND-04'
         },
         {
@@ -693,7 +693,7 @@ export const ELECTRICAL_CONDUCTOR_OUTLET_SWITCH: UnitItemDeficiencies = {
             criteria: 'Water is currently in contact with an electrical conductor. Check for the source (water infiltration from the ceiling or inside of the wall).',
             severity: 'Life-Threatening',
             repairBy: '24Hrs',
-            points: '30/n',
+            points: '27.25/n',
             code: 'ELEC-COND-05'
         }
     ]
@@ -745,7 +745,7 @@ export const ELECTRICAL_SERVICE_PANEL: UnitItemDeficiencies = {
             criteria: 'The electrical service panel is not reasonably accessible (i.e., it cannot be reached and opened without moving obstructions, dismantling, destructive measures, or actions that may pose a risk to persons or their personal property). Or it is looked or in locked location, no key to access.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.5/n',
+            points: '5.0/n',
             code: 'ELEC-PANEL-01'
         },
         {
@@ -753,9 +753,9 @@ export const ELECTRICAL_SERVICE_PANEL: UnitItemDeficiencies = {
             name: 'The overcurrent protection device is contaminated.',
             detail: 'The overcurrent protection device is contaminated.',
             criteria: 'The overcurrent protection device (i.e., fuse or breaker) is contaminated (e.g., water, rust, corrosion, infestation, or foreign materials).',
-            severity: 'Life-Threatening',
+            severity: 'Severe',
             repairBy: '24Hrs',
-            points: '60/n',
+            points: '13.40/n',
             code: 'ELEC-PANEL-02'
         },
         {
@@ -765,7 +765,7 @@ export const ELECTRICAL_SERVICE_PANEL: UnitItemDeficiencies = {
             criteria: 'The overcurrent protection device (i.e., fuse or breaker) is damaged (i.e., visibly defective; impacts functionality) such that it may not interrupt the circuit during an over current condition (i.e., paint, or other foreign materials).',
             severity: 'Life-Threatening',
             repairBy: '24Hrs',
-            points: '60/n',
+            points: '27.25/n',
             code: 'ELEC-PANEL-03'
         }
     ]
@@ -1283,7 +1283,7 @@ export const HAZARD_SHARP_EDGES: UnitItemDeficiencies = {
             criteria: 'A sharp edge that can result in a cut or puncture hazard that is likely to require emergency care (e.g., stitches) is present within the built environment (i.e., human-made structures, features, and facilities).',
             severity: 'Severe',
             repairBy: '24 Hrs.',
-            points: '14.8/n',
+            points: '13.40/n',
             code: 'HAZARD-SHARP-01'
         }
     ]
@@ -1299,7 +1299,7 @@ export const HAZARD_TRIP: UnitItemDeficiencies = {
             criteria: 'There is an abrupt change in vertical elevation or horizontal separation on any walking surface along the normal path of travel, consisting of the following criteria: - An unintended ¾ inch or greater vertical difference',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.5/n',
+            points: '5.0/n',
             code: 'HAZARD-TRIP-01'
         },
         {
@@ -1309,7 +1309,7 @@ export const HAZARD_TRIP: UnitItemDeficiencies = {
             criteria: 'horizontal separation on any walking surface along the normal path of travel, consisting of the following criteria: -An unintended 2-inch horizontal separation perpendicular to the path of travel.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.5/n',
+            points: '5.0/n',
             code: 'HAZARD-TRIP-02'
         }
     ]
@@ -2117,9 +2117,9 @@ export const RESTROOM_BATHTUB_SHOWER: UnitItemDeficiencies = {
             name: 'Bathtub or shower is inoperable or does not drain.',
             detail: 'Bathtub or shower is inoperable or does not drain, and at least one bathtub or shower is present elsewhere that is operational.',
             criteria: 'A bathtub or shower is inoperable, or standing water is present, such that the inspector believes water is unable to drain or drains very slowly.',
-            severity: 'Moderate',
+            severity: 'Low',
             repairBy: '30 Day',
-            points: '5.5/n',
+            points: '2.20/n',
             code: 'RESTROOM-BATH-01'
         },
         {
@@ -2129,7 +2129,7 @@ export const RESTROOM_BATHTUB_SHOWER: UnitItemDeficiencies = {
             criteria: 'Component, inoperable or missing—whether due to system failure, incomplete installation, or absence of non-mechanical parts like a stopper or discoloration affecting less than 50% of the surface.',
             severity: 'Low',
             repairBy: '60 Day',
-            points: '2.40/n',
+            points: '2.20/n',
             code: 'RESTROOM-BATH-02'
         },
         {
@@ -2137,9 +2137,9 @@ export const RESTROOM_BATHTUB_SHOWER: UnitItemDeficiencies = {
             name: 'Bathtub or shower component damaged (may limit hygiene).',
             detail: 'Bathtub or shower component is damaged, inoperable, or missing, and it may limit the resident\'s ability to maintain personal hygiene.',
             criteria: 'Bathtub or shower is inoperable or missing, limiting the resident\'s ability to maintain personal hygiene. This includes nonfunctional fixtures, absent components with signs of prior installation, or severe discoloration affecting over 50% of the surface.',
-            severity: 'Moderate',
+            severity: 'Low',
             repairBy: '30 Day',
-            points: '5.5/n',
+            points: '2.20/n',
             code: 'RESTROOM-BATH-03'
         },
         {
@@ -2149,19 +2149,19 @@ export const RESTROOM_BATHTUB_SHOWER: UnitItemDeficiencies = {
             criteria: 'For the purpose of this standard, the resident should be able to use the bathtub or shower without being observed from an adjacent room or exterior space.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.5/n',
+            points: '5.0/n',
             code: 'RESTROOM-BATH-04'
         },
-        {
-            id: 'restroom_bath_5',
-            name: 'Only one bathtub/shower present and inoperable.',
-            detail: 'Only one bathtub or shower is present, and it is inoperable or does not drain.',
-            criteria: 'Only one bathtub or shower is present within the unit and it is inoperable (i.e., overall system is not meeting function or purpose, with or without visible damage). Or, standing water is present such that the inspector believes water is unable to drain.',
-            severity: 'Severe',
-            repairBy: '24Hrs',
-            points: '14.8/n',
-            code: 'RESTROOM-BATH-05'
-        }
+        /*  {
+              id: 'restroom_bath_5',
+              name: 'Only one bathtub/shower present and inoperable.',
+              detail: 'Only one bathtub or shower is present, and it is inoperable or does not drain.',
+              criteria: 'Only one bathtub or shower is present within the unit and it is inoperable (i.e., overall system is not meeting function or purpose, with or without visible damage). Or, standing water is present such that the inspector believes water is unable to drain.',
+              severity: 'Severe',
+              repairBy: '24Hrs',
+              points: '14.8/n',
+              code: 'RESTROOM-BATH-05'
+          }*/
     ]
 };
 
@@ -2337,9 +2337,9 @@ export const RESTROOM_TOILET: UnitItemDeficiencies = {
             name: 'Only 1 toilet was installed, and it is damaged or inoperable.',
             detail: 'Only one toilet was installed, and it is now missing (i.e., there is evidence of prior installation, but it is no longer present or is incomplete).',
             criteria: 'Only one toilet was installed, and it is damaged or inoperable.',
-            severity: 'Severe',
+            severity: 'Moderate',
             repairBy: '24Hrs',
-            points: '14.8/n',
+            points: '5.0/n',
             code: 'RESTROOM-TOILET-03'
         },
         {
@@ -2347,9 +2347,9 @@ export const RESTROOM_TOILET: UnitItemDeficiencies = {
             name: 'Only 1 toilet was installed, and it is missing.',
             detail: 'Only one toilet is present, and it\'s either damaged or inoperable—preventing proper use.',
             criteria: 'Only 1 toilet was installed, and it is missing (i.e., evidence of prior installation, but now not present or is incomplete).',
-            severity: 'Life-Threatening',
+            severity: 'Moderate',
             repairBy: '24Hrs',
-            points: '30/n',
+            points: '5.0/n',
             code: 'RESTROOM-TOILET-04'
         },
         {
@@ -2377,9 +2377,9 @@ export const RESTROOM_TOILET: UnitItemDeficiencies = {
             name: 'Toilet component is damaged, inoperable, or missing and it does not limit the resident\'s ability to discharge human waste.',
             detail: 'A toilet component may be damaged, inoperable, or missing—whether visibly defective, functionally impaired, or absent despite evidence of prior installation.',
             criteria: 'Toilet component is damaged, inoperable, or missing and it does not limit the resident\'s ability to discharge human waste.',
-            severity: 'Low',
-            repairBy: '60 Day',
-            points: '2.40/n',
+            severity: 'Moderate',
+            repairBy: '30 Day',
+            points: '5.0/n',
             code: 'RESTROOM-TOILET-07'
         },
         {
@@ -2915,7 +2915,7 @@ export const WINDOW_WILL_NOT_OPEN: UnitItemDeficiencies = {
     ]
 };
 
-export const WINDOW_COMPONENT_ADEQUATE: UnitItemDeficiencies = {
+/*export const WINDOW_COMPONENT_ADEQUATE: UnitItemDeficiencies = {
     itemName: 'Window component is damaged or missing, and the window is functionally adequate.',
     deficiencies: [
         {
@@ -2961,11 +2961,11 @@ export const WINDOW_MISSING: UnitItemDeficiencies = {
             code: 'WINDOW-07'
         }
     ]
-};
+};*/
 
 export const WINDOW_DEFICIENCIES = {
     category: '34. Window',
-    items: [WINDOW_CANNOT_SECURE, WINDOW_COMPONENT_DAMAGED, WINDOW_WILL_NOT_CLOSE, WINDOW_WILL_NOT_OPEN, WINDOW_COMPONENT_ADEQUATE, WINDOW_GLAZING, WINDOW_MISSING]
+    items: [WINDOW_CANNOT_SECURE, WINDOW_COMPONENT_DAMAGED, WINDOW_WILL_NOT_CLOSE, WINDOW_WILL_NOT_OPEN]
 };
 
 // ==========================================
@@ -3061,14 +3061,14 @@ export const getUnitDeficienciesByCategory = (categoryName: string): UnitItemDef
         // Check if the first word matches
         const catFirstWord = catName.split(/[\s\-\(]/)[0];
         const searchFirstWord = normalizedName.split(/[\s\-\(]/)[0];
-        
+
         // If first words match AND have similar length (to distinguish "Sink" from "Sink (Laundry...)")
         if (catFirstWord === searchFirstWord) {
             // For categories like "Sink (Laundry, Garage, or patio)" vs item "Sink"
             // Check if the search has parentheses or extra qualifiers
             const searchHasQualifier = normalizedName.includes('(') || normalizedName.includes(',');
             const catHasQualifier = catName.includes('(') || catName.includes(',');
-            
+
             if (searchHasQualifier && catHasQualifier) {
                 // Both have qualifiers, check if they match
                 if (catName.includes(normalizedName) || normalizedName.includes(catName)) {
@@ -3145,18 +3145,18 @@ export const searchUnitDeficiencies = (keyword: string): UnitDeficiencyOption[] 
 const matchInsideCategory = (searchName: string, categoryFullName: string): boolean => {
     const normalizedSearch = searchName.toLowerCase().trim().replace(/^\d+\.\s*/, '');
     const catName = categoryFullName.replace(/^\d+\.\s*/, '').toLowerCase();
-    
+
     // Exact match
     if (catName === normalizedSearch) return true;
-    
+
     // Check if search starts with category name (e.g., "railings" matches "25. Railings")
     if (normalizedSearch.startsWith(catName.split(' ')[0])) return true;
-    
+
     // Check if category starts with search term's first word
     const searchFirstWord = normalizedSearch.split(/[\s\-]/)[0];
     const catFirstWord = catName.split(/[\s\-]/)[0];
     if (searchFirstWord === catFirstWord && searchFirstWord.length > 3) return true;
-    
+
     return false;
 };
 
@@ -3169,7 +3169,7 @@ export const hasInsideSubcategories = (categoryName: string): boolean => {
             return category.items.length > 1;
         }
     }
-    
+
     return false;
 };
 
@@ -3184,7 +3184,7 @@ export const getInsideCategorySubcategories = (categoryName: string): string[] =
             }
         }
     }
-    
+
     return [];
 };
 
@@ -3193,7 +3193,7 @@ export const getInsideCategorySubcategories = (categoryName: string): string[] =
  */
 export const getInsideSubcategoryDeficiencies = (subcategoryName: string): UnitItemDeficiencies | null => {
     const normalizedName = subcategoryName.toLowerCase().trim();
-    
+
     for (const category of ALL_UNIT_CATEGORIES) {
         for (const item of category.items) {
             const itemNameLower = item.itemName.toLowerCase();
@@ -3205,6 +3205,6 @@ export const getInsideSubcategoryDeficiencies = (subcategoryName: string): UnitI
             }
         }
     }
-    
+
     return null;
 };
