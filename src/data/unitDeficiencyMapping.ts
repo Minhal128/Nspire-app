@@ -1643,9 +1643,9 @@ export const KITCHEN_SINK: UnitItemDeficiencies = {
             name: 'Sink component is damaged or missing, and the sink is functionally adequate.',
             detail: 'Sink component is damaged or missing, and the sink is functionally adequate.',
             criteria: 'Sink component is damaged (i.e., visibly defective; impacts functionality) or missing (i.e., evidence of prior installation, but now not present or is incomplete) and the sink is functionally adequate.',
-            severity: 'Low',
+            severity: 'Moderate',
             repairBy: '60 Day',
-            points: '2.20/n',
+            points: '5.0/n',
             code: 'KITCHEN-SINK-05'
         },
         {
