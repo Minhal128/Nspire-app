@@ -375,7 +375,7 @@ export default function DashboardScreen({
   const handleReadyForInspection = async () => {
     setActionModalVisible(false);
     if (selectedProperty) {
-      // Calculate units based on property data
+      // Show coverage modal first
       const totalUnits = selectedProperty.units || 1;
       setCalculatedUnits(totalUnits);
       setSelectedCoverage('100');
@@ -447,10 +447,12 @@ export default function DashboardScreen({
       } catch (error) {
         console.error('Error setting ready for inspection:', error);
       }
-      // Navigate to PropertyInfo screen with property and selected units
-      navigation.navigate('PropertyInfo', {
+      // Navigate to BuildingInspection with selected units divided across buildings
+      navigation.navigate('BuildingInspection' as any, {
         property: selectedProperty,
+        calculatedUnits: calculatedUnits,
         selectedUnits: selectedUnits,
+        coverage: selectedCoverage,
       });
     }
   };

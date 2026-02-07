@@ -23,6 +23,45 @@ import {
 } from '../types/nspireReport';
 
 /**
+ * Clean JSON from comments/AI analysis output
+ * Extracts readable text from JSON strings like { "analysis": "..." }
+ */
+function cleanJsonComments(text: string): string {
+  if (!text) return '';
+
+  // If it looks like JSON, try to extract the analysis/description
+  if (text.trim().startsWith('{') || text.trim().startsWith('[')) {
+    try {
+      const parsed = JSON.parse(text);
+      if (parsed.analysis) return parsed.analysis;
+      if (parsed.findings && Array.isArray(parsed.findings) && parsed.findings.length > 0) {
+        return parsed.findings[0].description || parsed.findings[0].title || text;
+      }
+      if (parsed.description) return parsed.description;
+      if (parsed.title) return parsed.title;
+    } catch (e) {
+      // Not valid JSON - try regex extraction
+    }
+  }
+
+  // Extract "analysis" value from partial/malformed JSON
+  const analysisMatch = text.match(/"analysis"\s*:\s*"([^"]+)/i);
+  if (analysisMatch) {
+    return analysisMatch[1].trim();
+  }
+
+  // Remove JSON-like markers
+  return text
+    .replace(/^\{\s*"findings"\s*:\s*\[\s*\{\s*/i, '')
+    .replace(/^"title"\s*:\s*"/i, '')
+    .replace(/^"description"\s*:\s*"/i, '')
+    .replace(/^\{\s*"analysis"\s*:\s*"/i, '')
+    .replace(/"\s*\}\s*\]\s*\}$/i, '')
+    .replace(/"\s*\}$/i, '')
+    .trim();
+}
+
+/**
  * Enhanced CSS Styles matching HUD format exactly
  */
 function generateEnhancedStyles(options: PDFGenerationOptions): string {
@@ -518,34 +557,49 @@ function generateEnhancedDeficiencyTable(deficiencies: DeficiencyEntry[], option
     `;
   }
 
+  // Build repeat detection map: if same deficiencyDetails appears more than once, mark subsequent as repeat
+  const detailsSeenMap = new Map<string, number>();
+  const repeatFlags = deficiencies.map(def => {
+    const key = (def.deficiencyDetails || '').trim().toLowerCase();
+    if (!key) return false;
+    const count = detailsSeenMap.get(key) || 0;
+    detailsSeenMap.set(key, count + 1);
+    return count > 0;
+  });
+
   return `
     <div class="deficiency-details-section">
       <h3 class="section-title">Inspectable Areas Deficiencies</h3>
       <table class="deficiency-details-table">
         <thead>
           <tr>
-            <th style="width: 25%;">Deficiency Details</th>
-            <th style="width: 15%;">Deficiency Name/Location</th>
-            <th style="width: 15%;">Comments</th>
-            <th style="width: 15%;">Deficiency Picture</th>
-            <th style="width: 10%;">Deduction Pts</th>
-            <th style="width: 10%;">Repeat Indicator</th>
-            <th style="width: 10%;">Severity</th>
+            <th style="width: 20%;">Deficiency Details</th>
+            <th style="width: 12%;">Deficiency Name</th>
+            <th style="width: 10%;">Location</th>
+            <th style="width: 18%;">Comments</th>
+            <th style="width: 14%;">Deficiency Picture</th>
+            <th style="width: 8%;">Deduction Pts</th>
+            <th style="width: 9%;">Repeat Indicator</th>
+            <th style="width: 9%;">Severity</th>
           </tr>
         </thead>
         <tbody>
-          ${deficiencies.map(def => `
+          ${deficiencies.map((def, idx) => {
+            const isRepeat = def.repeatIndicator || repeatFlags[idx];
+            const cleanedComments = cleanJsonComments(def.comments);
+            return `
             <tr class="avoid-break">
               <td class="left-align">
-                ${def.deficiencyDetails || 'Address or building identification codes are broken, missing, or not visible'}
+                ${def.deficiencyDetails || 'No details available'}
               </td>
               <td class="left-align">
-                <div class="deficiency-name">${def.deficiencyName}</div>
-                <div class="nspire-code">${def.nspireCode}</div>
-                <div class="location-info">${def.building} | ${def.unit}</div>
+                <div class="deficiency-name">${def.deficiencyQRId || 'QR-00000000'}</div>
               </td>
               <td class="left-align">
-                ${def.comments || 'Wait for Input'}
+                <div class="location-info">${def.room || def.area || 'Other'}</div>
+              </td>
+              <td class="left-align">
+                ${cleanedComments || '-'}
               </td>
               <td>
                 ${options.includeImages && def.imageUri
@@ -554,11 +608,12 @@ function generateEnhancedDeficiencyTable(deficiencies: DeficiencyEntry[], option
       : `<div class="image-placeholder">N/A</div>`
     }
               </td>
-              <td>${def.deductionPts}.0</td>
-              <td>${def.repeatIndicator ? 'Repeat' : 'Not Repeat'}</td>
+              <td>${def.deductionPts}</td>
+              <td>${isRepeat ? 'Repeat' : 'Not Repeat'}</td>
               <td>${def.severity}</td>
             </tr>
-          `).join('')}
+          `;
+          }).join('')}
         </tbody>
       </table>
     </div>

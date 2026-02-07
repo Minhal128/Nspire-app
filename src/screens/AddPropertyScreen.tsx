@@ -138,7 +138,17 @@ export default function AddPropertyScreen({ navigation }: AddPropertyScreenProps
       const response = await propertyService.createProperty(propertyData);
       if (response.success) {
         Alert.alert('Success', 'Property added successfully!', [
-          { text: 'OK', onPress: () => navigation.goBack() }
+          {
+            text: 'OK',
+            onPress: () =>
+              navigation.navigate('PropertyDetails' as any, {
+                property: {
+                  ...propertyData,
+                  _id: response.property?._id || response.property?.id || '',
+                  ...response.property,
+                },
+              }),
+          },
         ]);
       } else {
         Alert.alert('Error', response.message || 'Failed to add property');

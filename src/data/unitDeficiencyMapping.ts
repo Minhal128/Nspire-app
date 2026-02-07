@@ -1666,8 +1666,8 @@ export const KITCHEN_VENTILATION: UnitItemDeficiencies = {
     deficiencies: [
         {
             id: 'kitchen_vent_1',
-            name: 'The kitchen does not have ventilation, not present and operable.',
-            detail: 'The kitchen does not have ventilation, not present and operable.',
+            name: 'The restroom does not have ventilation, not present and operable.',
+            detail: 'The restroom does not have ventilation, not present and operable.',
             criteria: 'An exhaust fan, window, or adequate means of ventilation is not present and operable.',
             severity: 'Moderate',
             repairBy: '30 Day',
@@ -2029,19 +2029,29 @@ export const PAINT_DEFICIENCIES = {
 // ==========================================
 
 export const RAILINGS_GUARDRAIL: UnitItemDeficiencies = {
-    itemName: 'Guardrail',
+itemName: 'Guardrail',
     deficiencies: [
         {
             id: 'railing_guard_1',
             name: 'Guardrail',
-            detail: 'Guardrail is missing, damaged, or not installed.',
-            criteria: 'The guardrail is missing or not installed along a walking surface that is more than 30 inches above the floor or grade below. Or repair is needed.',
+            detail: 'Guardrail is missing or not installed. It does limit its safe use.',
+            criteria: 'The guardrail is missing (i.e., evidence of prior installation but is now not present or is incomplete) or not installed (i.e., never installed, but should have been) along a walking surface that is more than 30 inches above the floor or grade below.',
             severity: 'Life-Threatening',
             repairBy: '24Hrs',
             points: '27.25/n',
             code: 'RAILING-GUARD-01'
         },
-
+        {
+            id: 'railing_guard_2', // Unique ID for the second deficiency
+            name: 'Guardrail Component',
+            detail: 'Guard rail component, missing, damaged. Does not limit the safe use. The guardrail is functionally adequate.',
+            criteria: 'A guardrail is deficient if it’s missing critical components, visibly damaged, under 30 inches in height, or not securely attached to effectively prevent fall hazards.',
+            // !! You must define the correct severity, repair timeline, and points for this level.
+            severity: 'Life-Threatening', // Example - Confirm this with your scoring system.
+            repairBy: '24Hrs',   // Example - Confirm this with your scoring system.
+            points: '27.25/n',    // Example - Confirm this with your scoring system.
+            code: 'RAILING-GUARD-02' // Example - Unique code
+        }
     ]
 };
 
@@ -2256,9 +2266,9 @@ export const RESTROOM_TOILET: UnitItemDeficiencies = {
     deficiencies: [
         {
             id: 'restroom_toilet_1',
-            name: 'Toilet component is damaged, inoperable, or missing, and the toilet is not functionally adequate.',
-            detail: 'Toilet component is damaged, inoperable, or missing, and the toilet is not functionally adequate.',
-            criteria: 'Toilet component is damaged (i.e., visibly defective; impacts functionality) or missing (i.e., evidence of prior installation, but now not present or is incomplete).',
+            name: 'A toilet is damaged or inoperable and at least 1 toilet is installed elsewhere that is operational.',
+            detail: 'A toilet is damaged or inoperable and at least 1 toilet is installed elsewhere that is operational.',
+            criteria: 'A toilet is deficient if it\'s damaged or inoperable, as long as another operational toilet exists elsewhere in the building.',
             severity: 'Moderate',
             repairBy: '30 Day',
             points: '5.0/n',
@@ -2266,9 +2276,9 @@ export const RESTROOM_TOILET: UnitItemDeficiencies = {
         },
         {
             id: 'restroom_toilet_2',
-            name: 'Toilet is not flushing or backing up.',
-            detail: 'Toilet is not flushing or backing up.',
-            criteria: 'Overall toilet system is not meeting function or purpose.',
+            name: 'A toilet is missing and at least 1 toilet is installed elsewhere that is operational.',
+            detail: 'A toilet is missing and at least 1 toilet is installed elsewhere that is operational.',
+            criteria: 'A toilet is missing (i.e., evidence of prior installation, but now not present or is incomplete) and at least 1 toilet is installed elsewhere within the Unit that is operational.',
             severity: 'Moderate',
             repairBy: '30 Day',
             points: '5.0/n',
@@ -2276,9 +2286,9 @@ export const RESTROOM_TOILET: UnitItemDeficiencies = {
         },
         {
             id: 'restroom_toilet_3',
-            name: 'Toilet is not secured to the floor or wall.',
-            detail: 'Toilet is not secured to the floor or wall.',
-            criteria: 'There is movement detected in the toilet when pressure is applied.',
+            name: 'Only 1 toilet was installed, and it is damaged or inoperable.',
+            detail: 'Only 1 toilet was installed, and it is damaged or inoperable.',
+            criteria: 'A single installed toilet is deficient if it\'s damaged or inoperable, affecting its ability to function properly.',
             severity: 'Moderate',
             repairBy: '30 Day',
             points: '5.0/n',
@@ -2286,23 +2296,53 @@ export const RESTROOM_TOILET: UnitItemDeficiencies = {
         },
         {
             id: 'restroom_toilet_4',
-            name: 'Toilet component is damaged or missing, and the toilet is functionally adequate.',
-            detail: 'Toilet component is damaged or missing, and the toilet is functionally adequate.',
-            criteria: 'Toilet component is damaged (i.e., visibly defective; impacts functionality) or missing (i.e., evidence of prior installation, but now not present or is incomplete) and the toilet is functionally adequate.',
-            severity: 'Low',
-            repairBy: '60 Day',
-            points: '2.20/n',
+            name: 'Only 1 toilet was installed, and it is missing.',
+            detail: 'Only 1 toilet was installed, and it is missing.',
+            criteria: 'Only 1 toilet was installed, and it is missing (i.e., evidence of prior installation, but now not present or is incomplete).',
+            severity: 'Moderate',
+            repairBy: '30 Day',
+            points: '5.0/n',
             code: 'RESTROOM-TOILET-04'
         },
         {
             id: 'restroom_toilet_5',
-            name: 'Bathroom does not have a toilet.',
-            detail: 'Bathroom does not have a toilet.',
-            criteria: 'A toilet is not present or is incomplete in a bathroom.',
+            name: 'Toilet can not be used in private.',
+            detail: 'Toilet can not be used in private.',
+            criteria: 'Hole in the door and damaged hardware, missing door. The resident should be able to use the toilet without being observed from an adjacent area or exterior space.',
             severity: 'Moderate',
             repairBy: '30 Day',
             points: '5.0/n',
             code: 'RESTROOM-TOILET-05'
+        },
+        {
+            id: 'restroom_toilet_6',
+            name: 'Toilet component is damaged, inoperable, or missing such that it may limit the resident\'s ability to safely discharge human waste.',
+            detail: 'Toilet component is damaged, inoperable, or missing such that it may limit the resident\'s ability to safely discharge human waste.',
+            criteria: 'A toilet is deficient if any component is damaged, inoperable, or missing in a way that limits the resident\'s ability to discharge human waste safely.',
+            severity: 'Moderate',
+            repairBy: '30 Day',
+            points: '5.0/n',
+            code: 'RESTROOM-TOILET-06'
+        },
+        {
+            id: 'restroom_toilet_7',
+            name: 'Toilet component is damaged, inoperable, or missing and it does not limit the resident\'s ability to discharge human waste.',
+            detail: 'Toilet component is damaged, inoperable, or missing and it does not limit the resident\'s ability to discharge human waste.',
+            criteria: 'A toilet component is deficient if it\'s damaged, inoperable, or missing, even if it does not limit the resident\'s ability to discharge human waste safely.',
+            severity: 'Moderate',
+            repairBy: '30 Day',
+            points: '5.0/n',
+            code: 'RESTROOM-TOILET-07'
+        },
+        {
+            id: 'restroom_toilet_8',
+            name: 'Toilet is not secured at the base.',
+            detail: 'Toilet is not secured at the base.',
+            criteria: 'Toilet is not secured at the base.',
+            severity: 'Moderate',
+            repairBy: '30 Day',
+            points: '5.0/n',
+            code: 'RESTROOM-TOILET-08'
         }
     ]
 };
@@ -2739,8 +2779,8 @@ export const WINDOW_CANNOT_SECURE: UnitItemDeficiencies = {
         {
             id: 'window_1',
             name: 'Window cannot be secured.',
-            detail: 'Window cannot be secured.',
-            criteria: 'Window cannot be secured (i.e., access controlled) by at least 1 installed lock.',
+            detail: 'Window cannot be secured i.e., access controlled) by at least 1 installed lock.',
+            criteria: 'Only one lock present, and it is damaged, inoperable.',
             severity: 'Moderate',
             repairBy: '30 Day',
             points: '5.0/n',
@@ -2787,8 +2827,8 @@ export const WINDOW_WILL_NOT_OPEN: UnitItemDeficiencies = {
         {
             id: 'window_4',
             name: 'Window will not open or stay open.',
-            detail: 'Window will not open or stay open.',
-            criteria: 'Window will not open. Once opened, the window will not stay open without the use of a tool or item.',
+            detail: 'Window will not open. Once opened, the window will not stay open without the use of a tool or item.',
+            criteria: 'Will not stay open without the use of a tool or item..',
             severity: 'Moderate',
             repairBy: '30 Day',
             points: '5.0/n',

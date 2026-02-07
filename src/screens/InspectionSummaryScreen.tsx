@@ -223,6 +223,7 @@ const InspectionSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
 
           deficienciesArray.push({
             id: `${i + 1}`,
+            deficiencyQRId: defItem.deficiencyQRId || `QR-${Math.floor(10000000 + Math.random() * 90000000)}`,
             building: buildingId,
             unit: selectedUnits[0] || 'Unit Multiple',
             room: defItem.location || 'Multiple',

@@ -208,6 +208,12 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   // Auto-count deficiencies: count is based on images uploaded (0 until image is uploaded)
   const deficiencyCount = images.length > 0 ? images.length : 0;
 
+  // Generate a unique QR-XXXXX ID for each deficiency image
+  const generateDeficiencyQRId = (): string => {
+    const randomNum = Math.floor(10000000 + Math.random() * 90000000);
+    return `QR-${randomNum}`;
+  };
+
   // Get the raw points formula from the selected deficiency (e.g., "2.20/n", "27.25/n")
   const getPointsFormula = (): number => {
     if (!selectedDeficiency?.points) return 0;
@@ -222,13 +228,6 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
   // Calculate PTS LOST from formula: formula_value / n (where n = totalSamples)
   const calculatePtsLost = (): number => {
-    // If we have an inside scoring result, use its pre-calculated points lost
-    // which handles special formulas like 27.25 / (50 * n)
-    if (insideScoringResult) {
-      return insideScoringResult.pointsLost;
-    }
-
-    // Otherwise fallback to simple X/n logic
     const rawPoints = getPointsFormula();
     if (rawPoints === 0 || totalSamples === 0) return 0;
     return rawPoints / totalSamples;
@@ -391,6 +390,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const handleSelectSubcategory = (subcategory: { id: string; name: string }) => {
     setSelectedSubcategory(subcategory);
     // Load deficiencies for selected subcategory
+    // Pass location so Inside uses unitDeficiencyMapping data instead of falling through to Outside data
     const subDeficiencies = getDeficienciesForSubcategory(subcategory.name, location);
     setAvailableDeficiencies(subDeficiencies.deficiencies);
     setShowSubcategoryPicker(false);
@@ -564,6 +564,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                 isDeficiencyOverride: outsideScoringResult.isDeficiencyOverride,
               }),
             },
+            deficiencyQRId: generateDeficiencyQRId(), // Unique QR-XXXXX ID per image
             imageUrl: uploadResult.secure_url, // Cloudinary URL for storage
             imageUri: imageUri, // Local URI for display
             note: note || aiAnalysis.analysis,
@@ -590,6 +591,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                 isDeficiencyOverride: outsideScoringResult.isDeficiencyOverride,
               }),
             },
+            deficiencyQRId: generateDeficiencyQRId(), // Unique QR-XXXXX ID per image
             imageUrl: null,
             imageUri: imageUri,
             note,
@@ -729,10 +731,8 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                 }}
                 activeOpacity={0.7}
               >
-                <Text style={[styles.dropdownText, !selectedDeficiency && styles.placeholderText]} numberOfLines={3}>
-                  {selectedDeficiency
-                    ? ((!isOutsideLocation && !isUnit) ? selectedDeficiency.detail : selectedDeficiency.name)
-                    : '-- Select --'}
+                <Text style={[styles.dropdownText, !selectedDeficiency && styles.placeholderText]} numberOfLines={2}>
+                  {selectedDeficiency ? (selectedDeficiency.detail || selectedDeficiency.name) : '-- Select --'}
                 </Text>
                 <Ionicons name="chevron-down" size={20} color={selectedDeficiency ? "#0E7490" : "#666666"} />
               </TouchableOpacity>
@@ -921,7 +921,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               <View style={styles.scoringField}>
                 <Text style={styles.scoringFieldLabel}>Pts Lost (Raw)</Text>
                 <Text style={[styles.scoringFieldValue, !selectedDeficiency && { color: '#9CA3AF' }]}>
-                  {selectedDeficiency ? (insideScoringResult?.formula || getPointsFormula().toFixed(2)) : '--'}
+                  {selectedDeficiency ? getPointsFormula().toFixed(2) : '--'}
                 </Text>
               </View>
             </View>

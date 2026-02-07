@@ -90,6 +90,7 @@ export default function NSPIREReportScreen({ navigation, route }: NSPIREReportSc
     // Convert findings to deficiency entries
     const deficiencies: DeficiencyEntry[] = (data.findings || []).map((finding: any, index: number) => ({
       id: finding.id || `DEF-${index + 1}`,
+      deficiencyQRId: finding.deficiencyQRId || `QR-${Math.floor(10000000 + Math.random() * 90000000)}`,
       imageUri: finding.imageUri || '',
       building: finding.building || property?.building || 'A',
       unit: finding.unit || property?.unit || '-',

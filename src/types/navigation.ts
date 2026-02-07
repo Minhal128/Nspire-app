@@ -16,6 +16,8 @@ export type RootStackParamList = {
   AddProperty: undefined;
   RequestInspection: undefined;
   EditProperty: { property: any };
+  PropertyDetails: { property: any };
+  BuildingInspection: { property: any; calculatedUnits: number; selectedUnits: string[]; coverage: string };
   Analytics: undefined;
   UnitInspection: { property: any };
   AIInspection: { property: any; selectedUnits: string[]; coverage: string; totalUnits: number };

@@ -36,18 +36,25 @@ const getImageExtension = (uri: string): string => {
 const cleanJsonContent = (text: string): string => {
   if (!text) return '';
 
-  // If it looks like JSON findings, try to extract the description or title
+  // If it looks like JSON, try to extract the analysis/description
   if (text.trim().startsWith('{') || text.trim().startsWith('[')) {
     try {
       const parsed = JSON.parse(text);
+      if (parsed.analysis) return parsed.analysis;
       if (parsed.findings && Array.isArray(parsed.findings) && parsed.findings.length > 0) {
         return parsed.findings[0].description || parsed.findings[0].title || text;
       }
       if (parsed.description) return parsed.description;
       if (parsed.title) return parsed.title;
     } catch (e) {
-      // Not valid JSON, but maybe contains it?
+      // Not valid JSON - try regex extraction
     }
+  }
+
+  // Extract "analysis" value from partial/malformed JSON
+  const analysisMatch = text.match(/"analysis"\s*:\s*"([^"]+)/i);
+  if (analysisMatch) {
+    return analysisMatch[1].trim();
   }
 
   // Remove common JSON-like markers if they appear at the start
@@ -55,7 +62,9 @@ const cleanJsonContent = (text: string): string => {
     .replace(/^\{\s*"findings"\s*:\s*\[\s*\{\s*/i, '')
     .replace(/^"title"\s*:\s*"/i, '')
     .replace(/^"description"\s*:\s*"/i, '')
+    .replace(/^\{\s*"analysis"\s*:\s*"/i, '')
     .replace(/"\s*\}\s*\]\s*\}$/i, '')
+    .replace(/"\s*\}$/i, '')
     .trim();
 };
 
@@ -1104,25 +1113,45 @@ const generateDeficiencyTable = (deficiencies: DeficiencyEntry[], options: PDFGe
     `;
   }
 
+  // Build repeat detection map: if same deficiencyDetails appears more than once, mark subsequent as repeat
+  const detailsSeenMap = new Map<string, number>();
+  const repeatFlags = deficiencies.map(def => {
+    const key = (def.deficiencyDetails || '').trim().toLowerCase();
+    if (!key) return false;
+    const count = detailsSeenMap.get(key) || 0;
+    detailsSeenMap.set(key, count + 1);
+    return count > 0; // true if we've seen this detail before
+  });
+
   return `
     <div class="summary-section">
       <h2 class="section-title">Deficiency Detailed Report</h2>
       <table class="deficiency-table">
         <thead>
           <tr>
-            <th style="width: 110px;">Deficiency Picture</th>
-            <th style="width: 100px;">Location</th>
-            <th style="width: 130px;">Deficiency Name</th>
-            <th style="width: 180px;">Deficiency Details</th>
-            <th style="width: 140px;">Comments</th>
+            <th style="width: 120px;">Deficiency Details</th>
+            <th style="width: 80px;">Deficiency Name</th>
+            <th style="width: 70px;">Location</th>
+            <th style="width: 160px;">Comments</th>
+            <th style="width: 100px;">Deficiency Picture</th>
             <th style="width: 55px;">Deduction Pts</th>
-            <th style="width: 50px;">Repeat</th>
-            <th style="width: 90px;">Severity</th>
+            <th style="width: 55px;">Repeat Indicator</th>
+            <th style="width: 70px;">Severity</th>
           </tr>
         </thead>
         <tbody>
-          ${deficiencies.map(def => `
+          ${deficiencies.map((def, idx) => {
+            const isRepeat = def.repeatIndicator || repeatFlags[idx];
+            return `
             <tr class="avoid-break">
+              <td class="details-cell">${cleanJsonContent(def.deficiencyDetails)}</td>
+              <td>
+                <div class="deficiency-name">${def.deficiencyQRId || 'QR-00000000'}</div>
+              </td>
+              <td class="location-cell">
+                <div class="location-value">${def.room || def.area || 'Other'}</div>
+              </td>
+              <td class="comments-cell">${cleanJsonContent(def.comments) || '-'}</td>
               <td>
                 ${options.includeImages && def.imageUri
       ? (def.imageUri.startsWith('data:') || def.imageUri.startsWith('http'))
@@ -1141,39 +1170,16 @@ const generateDeficiencyTable = (deficiencies: DeficiencyEntry[], options: PDFGe
                      </div>`
     }
               </td>
-              <td class="location-cell">
-                <div class="location-item">
-                  <span class="location-label">Building:</span>
-                  <span class="location-value">${def.building}</span>
-                </div>
-                <div class="location-item">
-                  <span class="location-label">Unit:</span>
-                  <span class="location-value">${def.unit}</span>
-                </div>
-                <div class="location-item">
-                  <span class="location-label">Room:</span>
-                  <span class="location-value">${def.room}</span>
-                </div>
-                <div class="location-item">
-                  <span class="location-label">Area:</span>
-                  <span class="location-value">${def.area}</span>
-                </div>
-              </td>
-              <td>
-                <div class="deficiency-name">${def.deficiencyName}</div>
-                <span class="nspire-code">${def.nspireCode}</span>
-              </td>
-              <td class="details-cell">${cleanJsonContent(def.deficiencyDetails)}</td>
-              <td class="comments-cell">${def.comments || '-'}</td>
-              <td class="deduction-cell">-${def.deductionPts}</td>
+              <td class="deduction-cell">${def.deductionPts}</td>
               <td style="text-align: center;">
-                <span class="${def.repeatIndicator ? 'repeat-yes' : 'repeat-no'}">
-                  ${def.repeatIndicator ? 'YES' : 'NO'}
+                <span class="${isRepeat ? 'repeat-yes' : 'repeat-no'}">
+                  ${isRepeat ? 'Repeat' : 'Not Repeat'}
                 </span>
               </td>
               <td>${getSeverityBadge(def.severity)}</td>
             </tr>
-          `).join('')}
+          `;
+          }).join('')}
         </tbody>
       </table>
     </div>

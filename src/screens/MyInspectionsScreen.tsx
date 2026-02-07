@@ -340,7 +340,7 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
   const handleReadyForInspection = async () => {
     setActionModalVisible(false);
     if (selectedProperty) {
-      // Calculate units based on property data
+      // Show coverage modal first
       const totalUnits = selectedProperty.units || 1;
       setCalculatedUnits(totalUnits);
       setSelectedCoverage('100');
@@ -418,19 +418,16 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
     if (selectedProperty) {
       try {
         await propertyService.setReadyForInspection(selectedProperty._id!);
-        // Navigate to PropertyInfo screen with property and selected units
-        navigation.navigate('PropertyInfo' as never, { 
-          property: selectedProperty,
-          selectedUnits: selectedUnits,
-        } as never);
       } catch (error) {
         console.error('Error setting ready for inspection:', error);
-        // Still navigate even if the API call fails
-        navigation.navigate('PropertyInfo' as never, { 
-          property: selectedProperty,
-          selectedUnits: selectedUnits,
-        } as never);
       }
+      // Navigate to BuildingInspection with selected units divided across buildings
+      navigation.navigate('BuildingInspection' as any, {
+        property: selectedProperty,
+        calculatedUnits: calculatedUnits,
+        selectedUnits: selectedUnits,
+        coverage: selectedCoverage,
+      });
     }
   };
 

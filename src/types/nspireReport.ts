@@ -71,6 +71,9 @@ export interface OccupancyInfo {
 export interface DeficiencyEntry {
   id: string;
   
+  // Unique QR identifier for each deficiency image (QR-XXXXX format)
+  deficiencyQRId: string;
+  
   // Deficiency Picture
   imageUri?: string;
   imagePlaceholder?: boolean;

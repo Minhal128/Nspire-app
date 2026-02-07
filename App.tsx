@@ -45,6 +45,8 @@ import InspectionCategoriesScreen from "./src/screens/InspectionCategoriesScreen
 import UnitLocationsScreen from "./src/screens/UnitLocationsScreen";
 import LocationInspectionScreen from "./src/screens/LocationInspectionScreen";
 import DeficiencyDetailScreen from "./src/screens/DeficiencyDetailScreen";
+import PropertyDetailsScreen from "./src/screens/PropertyDetailsScreen";
+import BuildingInspectionScreen from "./src/screens/BuildingInspectionScreen";
 
 // Import auth service
 import authService from "./src/services/authService";
@@ -65,6 +67,8 @@ export type RootStackParamList = {
   AddProperty: undefined;
   RequestInspection: undefined;
   EditProperty: { property: any };
+  PropertyDetails: { property: any };
+  BuildingInspection: { property: any; calculatedUnits: number; selectedUnits: string[]; coverage: string };
   Analytics: undefined;
   UnitInspection: { property: any };
   InspectionChecklist: { property: any; unit: any };
@@ -352,6 +356,8 @@ export default function App() {
           <Stack.Screen name="UnitLocations" component={UnitLocationsScreen} />
           <Stack.Screen name="LocationInspection" component={LocationInspectionScreen} />
           <Stack.Screen name="DeficiencyDetail" component={DeficiencyDetailScreen} />
+          <Stack.Screen name="PropertyDetails" component={PropertyDetailsScreen} />
+          <Stack.Screen name="BuildingInspection" component={BuildingInspectionScreen} />
         </Stack.Navigator>
       </NavigationContainer>
     </ClerkProvider>
