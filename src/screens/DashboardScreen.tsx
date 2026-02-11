@@ -35,23 +35,31 @@ import { UNIT_SELECTION_OPTIONS } from "../utils/iosPickerUtils";
 
 // Coverage options for inspection
 const COVERAGE_OPTIONS = [
-  { label: '100% - All Units', value: '100', description: 'Inspect every unit in the property' },
-  { label: '50% - Half Units', value: '50', description: 'Inspect half of all units (randomly selected)' },
-  { label: 'Random Sample', value: 'random', description: 'Automatically select a random sample based on NSPIRE guidelines' },
+  { label: 'Random Units', value: 'random', description: 'Automatically select a random sample based on NSPIRE guidelines' },
+  { label: '50%', value: '50', description: 'Inspect half of all units (randomly selected)' },
+  { label: '100%', value: '100', description: 'Inspect every unit in the property' },
 ];
 
-// Countries with their ISO codes for proper state/city lookup
-const COUNTRIES = [
-  { label: "USA", value: "USA", isoCode: "US" },
-  { label: "UK", value: "UK", isoCode: "GB" },
-  { label: "CANADA", value: "CANADA", isoCode: "CA" },
-  { label: "Australia", value: "Australia", isoCode: "AU" },
-];
+// Helper to find country ISO code from typed name
+const findCountryIsoCode = (name: string): string => {
+  if (!name) return '';
+  const allCountries = Country.getAllCountries();
+  const lower = name.trim().toLowerCase();
+  const exact = allCountries.find(c => c.name.toLowerCase() === lower);
+  if (exact) return exact.isoCode;
+  const prefix = allCountries.find(c => c.name.toLowerCase().startsWith(lower));
+  return prefix?.isoCode || '';
+};
 
-// Helper to get country ISO code
-const getCountryIsoCode = (countryValue: string): string => {
-  const country = COUNTRIES.find(c => c.value === countryValue);
-  return country?.isoCode || 'US';
+// Helper to find state ISO code from typed name within a country
+const findStateIsoCode = (stateName: string, countryIso: string): string => {
+  if (!stateName || !countryIso) return '';
+  const allStates = State.getStatesOfCountry(countryIso);
+  const lower = stateName.trim().toLowerCase();
+  const exact = allStates.find(s => s.name.toLowerCase() === lower);
+  if (exact) return exact.isoCode;
+  const prefix = allStates.find(s => s.name.toLowerCase().startsWith(lower));
+  return prefix?.isoCode || '';
 };
 
 interface DashboardScreenProps {
@@ -88,20 +96,13 @@ export default function DashboardScreen({
 
   // Ready for Inspection Modal state
   const [inspectionModalVisible, setInspectionModalVisible] = useState(false);
-  const [selectedCoverage, setSelectedCoverage] = useState('100');
+  const [selectedCoverage, setSelectedCoverage] = useState('random');
   const [calculatedUnits, setCalculatedUnits] = useState(0);
   const [selectedUnits, setSelectedUnits] = useState<string[]>([]);
   const [refreshing, setRefreshing] = useState(false);
 
   // iOS picker modal states
-  const [statePickerVisible, setStatePickerVisible] = useState(false);
-  const [cityPickerVisible, setCityPickerVisible] = useState(false);
   const [unitPickerVisible, setUnitPickerVisible] = useState(false);
-  const [countryPickerVisible, setCountryPickerVisible] = useState(false);
-  const [tempState, setTempState] = useState('');
-  const [tempCity, setTempCity] = useState('');
-
-  const [tempCountry, setTempCountry] = useState('USA');
   const [tempUnitOption, setTempUnitOption] = useState('');
 
   // Add maximum loading timeout to prevent infinite loading
@@ -119,7 +120,7 @@ export default function DashboardScreen({
   const [user, setUser] = useState<User | null>(null);
 
   const [propertyName, setPropertyName] = useState("");
-  const [country, setCountry] = useState("USA");
+  const [country, setCountry] = useState("");
   const [state, setState] = useState("");
   const [city, setCity] = useState("");
   const [states, setStates] = useState<{ label: string; value: string }[]>([]);
@@ -139,15 +140,19 @@ export default function DashboardScreen({
 
   // Load states when country changes
   useEffect(() => {
-    const isoCode = getCountryIsoCode(country);
-    const countryStates = State.getStatesOfCountry(isoCode) || [];
-    const formattedStates = countryStates.map((s: IState) => ({
-      label: s.name,
-      value: s.isoCode
-    })).sort((a, b) => a.label.localeCompare(b.label));
-    console.log(`Dashboard states loaded for ${country}:`, formattedStates.length);
-    setStates(formattedStates);
-    setState(''); // Clear state selection when country changes
+    const isoCode = findCountryIsoCode(country);
+    if (isoCode) {
+      const countryStates = State.getStatesOfCountry(isoCode) || [];
+      const formattedStates = countryStates.map((s: IState) => ({
+        label: s.name,
+        value: s.isoCode
+      })).sort((a, b) => a.label.localeCompare(b.label));
+      console.log(`Dashboard states loaded for ${country}:`, formattedStates.length);
+      setStates(formattedStates);
+    } else {
+      setStates([]);
+    }
+    setState('');
     setCity('');
     setCities([]);
   }, [country]);
@@ -156,16 +161,20 @@ export default function DashboardScreen({
   useEffect(() => {
     if (state) {
       setLoadingCities(true);
-      setCity(''); // Clear current city selection
+      setCity('');
 
       try {
-        // Get cities using proper country ISO code
-        const isoCode = getCountryIsoCode(country);
-        const stateCities = City.getCitiesOfState(isoCode, state) || [];
-        const formattedCities = stateCities.map(c => ({ label: c.name, value: c.name }))
-          .sort((a, b) => a.label.localeCompare(b.label));
-        console.log('Dashboard cities loaded:', formattedCities.length);
-        setCities(formattedCities);
+        const countryIso = findCountryIsoCode(country);
+        const stateIso = findStateIsoCode(state, countryIso);
+        if (countryIso && stateIso) {
+          const stateCities = City.getCitiesOfState(countryIso, stateIso) || [];
+          const formattedCities = stateCities.map(c => ({ label: c.name, value: c.name }))
+            .sort((a, b) => a.label.localeCompare(b.label));
+          console.log('Dashboard cities loaded:', formattedCities.length);
+          setCities(formattedCities);
+        } else {
+          setCities([]);
+        }
       } catch (error) {
         console.error('Error loading cities:', error);
         setCities([]);
@@ -745,7 +754,7 @@ export default function DashboardScreen({
               style={styles.addButton}
               onPress={() => navigation.navigate("AddProperty")}
             >
-              <Text style={styles.addButtonText}>Add Property</Text>
+              <Text style={styles.addButtonText}>Add New Property</Text>
             </TouchableOpacity>
 
             {/* Property Name Input */}
@@ -770,85 +779,43 @@ export default function DashboardScreen({
               </View>
             </View>
 
-            {/* Country Picker */}
+            {/* Country */}
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Country</Text>
-              {Platform.OS === 'ios' ? (
-                <TouchableOpacity style={styles.iosPickerButton} onPress={() => { setTempCountry(country); setCountryPickerVisible(true); }}>
-                  <Text style={[styles.iosPickerText, !country && styles.placeholderText]}>
-                    {country || 'Select Country'}
-                  </Text>
-                  <Ionicons name="chevron-down" size={20} color="#6B7280" />
-                </TouchableOpacity>
-              ) : (
-                <View style={styles.pickerContainer}>
-                  <Picker
-                    selectedValue={country}
-                    onValueChange={(itemValue: string) => setCountry(itemValue)}
-                    style={styles.picker}
-                    dropdownIconColor="#6B7280"
-                  >
-                    {COUNTRIES.map((c) => (
-                      <Picker.Item key={c.value} label={c.label} value={c.value} color="#1F2937" />
-                    ))}
-                  </Picker>
-                </View>
-              )}
+              <TextInput
+                style={styles.textInputField}
+                placeholder="Enter Country"
+                placeholderTextColor="#6B7280"
+                value={country}
+                onChangeText={setCountry}
+                autoCapitalize="words"
+              />
             </View>
 
-            {/* State Picker */}
+            {/* State */}
             <View style={styles.inputContainer}>
               <Text style={styles.label}>State</Text>
-              {Platform.OS === 'ios' ? (
-                <TouchableOpacity style={styles.iosPickerButton} onPress={() => { setTempState(state); setStatePickerVisible(true); }}>
-                  <Text style={[styles.iosPickerText, !state && styles.placeholderText]}>
-                    {state ? states.find(s => s.value === state)?.label || 'Select State' : 'Select State'}
-                  </Text>
-                  <Ionicons name="chevron-down" size={20} color="#6B7280" />
-                </TouchableOpacity>
-              ) : (
-                <View style={styles.pickerContainer}>
-                  <Picker
-                    selectedValue={state}
-                    onValueChange={(itemValue: string) => setState(itemValue)}
-                    style={styles.picker}
-                    dropdownIconColor="#6B7280"
-                  >
-                    <Picker.Item label="Select State" value="" color="#6B7280" />
-                    {states.map((stateItem) => (
-                      <Picker.Item key={stateItem.value} label={stateItem.label} value={stateItem.value} color="#1F2937" />
-                    ))}
-                  </Picker>
-                </View>
-              )}
+              <TextInput
+                style={styles.textInputField}
+                placeholder="Enter State"
+                placeholderTextColor="#6B7280"
+                value={state}
+                onChangeText={setState}
+                autoCapitalize="words"
+              />
             </View>
 
-            {/* City Picker */}
+            {/* City */}
             <View style={styles.inputContainer}>
               <Text style={styles.label}>City</Text>
-              {Platform.OS === 'ios' ? (
-                <TouchableOpacity style={styles.iosPickerButton} onPress={() => { if (cities.length > 0) { setTempCity(city); setCityPickerVisible(true); } }}>
-                  <Text style={[styles.iosPickerText, !city && styles.placeholderText]}>
-                    {cities.length === 0 ? 'Select state first' : (city || 'Select City')}
-                  </Text>
-                  <Ionicons name="chevron-down" size={20} color="#6B7280" />
-                </TouchableOpacity>
-              ) : (
-                <View style={styles.pickerContainer}>
-                  <Picker
-                    selectedValue={city}
-                    onValueChange={(itemValue: string) => setCity(itemValue)}
-                    style={styles.picker}
-                    dropdownIconColor="#6B7280"
-                    enabled={cities.length > 0}
-                  >
-                    <Picker.Item label={cities.length === 0 ? "Select state first" : "Select City"} value="" color="#6B7280" />
-                    {cities.map((c, i) => (
-                      <Picker.Item key={`${c.value}-${i}`} label={c.label} value={c.value} color="#1F2937" />
-                    ))}
-                  </Picker>
-                </View>
-              )}
+              <TextInput
+                style={styles.textInputField}
+                placeholder="Enter City"
+                placeholderTextColor="#6B7280"
+                value={city}
+                onChangeText={setCity}
+                autoCapitalize="words"
+              />
             </View>
 
             {/* Search Button */}
@@ -913,81 +880,7 @@ export default function DashboardScreen({
         </ScrollView>
       </SafeAreaView>
 
-      {/* iOS State Picker Modal */}
-      {Platform.OS === 'ios' && (
-        <Modal visible={statePickerVisible} transparent animationType="slide">
-          <View style={styles.iosModalOverlay}>
-            <View style={styles.iosModalContent}>
-              <View style={styles.iosModalHeader}>
-                <Text style={styles.iosModalTitle}>Select State</Text>
-                <TouchableOpacity onPress={() => { setState(tempState); setStatePickerVisible(false); }}>
-                  <Text style={styles.iosModalDone}>Done</Text>
-                </TouchableOpacity>
-              </View>
-              <Picker selectedValue={tempState} onValueChange={setTempState} style={styles.iosPickerWheel}>
-                <Picker.Item label="Select State" value="" color="#6B7280" />
-                {states.map((stateItem) => (
-                  <Picker.Item key={stateItem.value} label={stateItem.label} value={stateItem.value} color="#007AFF" />
-                ))}
-              </Picker>
-              <TouchableOpacity style={styles.iosCancelButton} onPress={() => setStatePickerVisible(false)}>
-                <Text style={styles.iosCancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
-      )}
-
-      {/* iOS City Picker Modal */}
-      {Platform.OS === 'ios' && (
-        <Modal visible={cityPickerVisible} transparent animationType="slide">
-          <View style={styles.iosModalOverlay}>
-            <View style={styles.iosModalContent}>
-              <View style={styles.iosModalHeader}>
-                <Text style={styles.iosModalTitle}>Select City</Text>
-                <TouchableOpacity onPress={() => { setCity(tempCity); setCityPickerVisible(false); }}>
-                  <Text style={styles.iosModalDone}>Done</Text>
-                </TouchableOpacity>
-              </View>
-              <Picker selectedValue={tempCity} onValueChange={setTempCity} style={styles.iosPickerWheel}>
-                <Picker.Item label="Select City" value="" color="#6B7280" />
-                {cities.map((c, i) => (
-                  <Picker.Item key={`${c.value}-${i}`} label={c.label} value={c.value} color="#007AFF" />
-                ))}
-              </Picker>
-              <TouchableOpacity style={styles.iosCancelButton} onPress={() => setCityPickerVisible(false)}>
-                <Text style={styles.iosCancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
-      )}
-
-      {/* iOS Country Picker Modal */}
-      {Platform.OS === 'ios' && (
-        <Modal visible={countryPickerVisible} transparent animationType="slide">
-          <View style={styles.iosModalOverlay}>
-            <View style={styles.iosModalContent}>
-              <View style={styles.iosModalHeader}>
-                <Text style={styles.iosModalTitle}>Select Country</Text>
-                <TouchableOpacity onPress={() => { setCountry(tempCountry); setCountryPickerVisible(false); }}>
-                  <Text style={styles.iosModalDone}>Done</Text>
-                </TouchableOpacity>
-              </View>
-              <Picker selectedValue={tempCountry} onValueChange={setTempCountry} style={styles.iosPickerWheel}>
-                {COUNTRIES.map((c) => (
-                  <Picker.Item key={c.value} label={c.label} value={c.value} color="#007AFF" />
-                ))}
-              </Picker>
-              <TouchableOpacity style={styles.iosCancelButton} onPress={() => setCountryPickerVisible(false)}>
-                <Text style={styles.iosCancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
-      )}
-
-      {/* iOS Unit Selection Picker Modal - MOVED OUTSIDE ACTION MODAL */}
+      {/* iOS Unit Selection Picker Modal */}
       {Platform.OS === 'ios' && (
         <Modal visible={unitPickerVisible} transparent animationType="slide">
           <View style={styles.iosModalOverlay}>
@@ -1151,6 +1044,16 @@ const styles = StyleSheet.create({
     position: "absolute",
     right: 10,
     top: 10,
+  },
+  textInputField: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    fontSize: 14,
+    color: "#374151",
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
   },
   pickerContainer: {
     backgroundColor: "#FFFFFF",

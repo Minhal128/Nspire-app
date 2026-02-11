@@ -140,6 +140,7 @@ const InspectionSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
           <div class="title">INSPIRE INSPECTION REPORT</div>
           <div class="property-name">${propertyName}</div>
           <div class="property-address">${propertyAddress}</div>
+          <div class="inspection-info">Building: ${buildingId || 'B1'} | Units: ${selectedUnits.join(', ')}</div>
           <div class="inspection-info">Inspection #${inspectionId} | ${inspectionDate}</div>
         </div>
         
@@ -224,8 +225,8 @@ const InspectionSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
           deficienciesArray.push({
             id: `${i + 1}`,
             deficiencyQRId: defItem.deficiencyQRId || `QR-${Math.floor(10000000 + Math.random() * 90000000)}`,
-            building: buildingId,
-            unit: selectedUnits[0] || 'Unit Multiple',
+            building: buildingId || 'B1',
+            unit: selectedUnits.join(', ') || 'Unit Multiple',
             room: defItem.location || 'Multiple',
             area: defItem.location || 'Multiple',
             deficiencyName: defItem.deficiency.name || 'Deficiency',
@@ -274,6 +275,8 @@ const InspectionSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
           physicalConditionThreshold: 60,
           inspectorName: 'Current User',
           inspectorId: 'INS-001',
+          buildingName: buildingId || undefined,
+          inspectedUnits: selectedUnits.length > 0 ? selectedUnits : undefined,
         },
         inspectionData: [
           { type: 'Building' as const, propertyTotal: 2, sampleSize: 1, totalUnitsInspected: 1 },
@@ -291,7 +294,7 @@ const InspectionSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
           moderate: defCountsCalc.moderate,
           low: defCountsCalc.low,
           total: deficienciesArray.length,
-          byBuilding: { [buildingId]: deficienciesArray.length },
+          byBuilding: { [buildingId || 'B1']: deficienciesArray.length },
           byCategory: { 'Inside': deficienciesArray.length },
           repeatDeficiencies: 0,
           newDeficiencies: deficienciesArray.length,

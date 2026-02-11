@@ -59,6 +59,18 @@ class PropertyService {
   }
 
   /**
+   * Create multiple properties in bulk
+   */
+  async createBulkProperties(properties: CreatePropertyData[]): Promise<{ success: boolean; message: string; properties: Property[]; errors?: any[] }> {
+    try {
+      const response = await api.post<{ success: boolean; message: string; properties: Property[]; errors?: any[] }>('/properties/bulk', { properties });
+      return response;
+    } catch (error: any) {
+      throw new Error(error.message || 'Failed to create properties in bulk');
+    }
+  }
+
+  /**
    * Get all properties for the logged-in user
    */
   async getProperties(filters?: PropertyFilters): Promise<{ success: boolean; properties: Property[]; pagination: any }> {

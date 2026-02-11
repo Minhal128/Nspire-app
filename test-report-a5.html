@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NSPIRE - NATIONAL STANDARDS FOR THE PHYSICAL INSPECTION OF REAL ESTATE</title>
+  <style>
+    @page {
+      size: A5;
+      margin: 15mm 12mm;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 8pt;
+      line-height: 1.3;
+      color: #000000;
+      width: 148mm;
+      padding: 12mm 10mm;
+      background: #FFFFFF;
+      margin: 0 auto;
+    }
+    
+    .report-header {
+      text-align: center;
+      margin-bottom: 15px;
+    }
+    
+    .inspire-logo {
+      width: 120px;
+      height: auto;
+      margin: 0 auto 6px;
+      display: block;
+    }
+    
+    .header-title {
+      font-size: 12pt;
+      font-weight: bold;
+      color: #000000;
+      text-align: center;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .header-metadata {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 12px;
+      font-size: 7pt;
+    }
+    
+    .header-left, .header-right {
+      text-align: left;
+    }
+    
+    .header-row {
+      margin-bottom: 2px;
+      display: flex;
+    }
+    
+    .header-label {
+      font-weight: bold;
+      display: inline-block;
+      width: 110px;
+      flex-shrink: 0;
+    }
+    
+    .header-value {
+      color: #000000;
+      flex: 1;
+    }
+    
+    .scores-section {
+      margin: 12px 0;
+      border: 2px solid #000000;
+      padding: 10px;
+    }
+    
+    .preliminary-scores {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 10px;
+    }
+    
+    .score-block {
+      text-align: left;
+    }
+    
+    .score-block h3 {
+      font-size: 9pt;
+      font-weight: bold;
+      margin-bottom: 6px;
+      text-decoration: underline;
+    }
+    
+    .score-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 2px;
+      font-size: 7pt;
+    }
+    
+    .score-row.bold {
+      font-weight: bold;
+    }
+    
+    .score-label {
+      flex: 1;
+    }
+    
+    .score-value {
+      font-weight: bold;
+      min-width: 40px;
+      text-align: right;
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 10px 0;
+      font-size: 7pt;
+    }
+    
+    th {
+      background: #D3D3D3;
+      color: #000000;
+      font-weight: bold;
+      padding: 5px 4px;
+      text-align: center;
+      border: 1px solid #000000;
+    }
+    
+    td {
+      padding: 4px;
+      border: 1px solid #000000;
+      vertical-align: top;
+      text-align: center;
+    }
+    
+    td.left-align {
+      text-align: left;
+    }
+    
+    .section-title {
+      font-size: 9pt;
+      font-weight: bold;
+      margin: 12px 0 6px 0;
+      text-decoration: underline;
+    }
+    
+    .inspection-data-section { margin: 12px 0; }
+    .inspection-data-table th { background: #D3D3D3; }
+    .inspection-data-table th.multi-row { vertical-align: middle; }
+    .deficiency-summary-section { margin: 12px 0; }
+    .deficiency-details-section { margin: 12px 0; }
+    
+    .deficiency-details-table { font-size: 7pt; }
+    .deficiency-details-table th {
+      background: #D3D3D3;
+      font-size: 7pt;
+      padding: 4px 3px;
+      font-weight: bold;
+    }
+    .deficiency-details-table td {
+      font-size: 7pt;
+      padding: 3px;
+      vertical-align: top;
+    }
+    
+    .group-header-row td {
+      background: #FFFF00;
+      font-weight: bold;
+      font-size: 8pt;
+      text-align: left;
+      padding: 6px 4px;
+      border: 1px solid #000000;
+    }
+    
+    .deficiency-image {
+      width: 80px;
+      height: 60px;
+      object-fit: cover;
+      border: 1px solid #000000;
+      display: block;
+      margin: 0 auto;
+    }
+    
+    .image-placeholder {
+      width: 80px;
+      height: 60px;
+      background: #F5F5F5;
+      border: 1px solid #000000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 7pt;
+      color: #666666;
+      text-align: center;
+      margin: 0 auto;
+    }
+    
+    .deficiency-name { font-weight: bold; margin-bottom: 2px; }
+    .location-info { font-size: 7pt; line-height: 1.2; }
+    .certificates-section { margin: 12px 0; }
+    .certificates-table th { background: #D3D3D3; }
+    
+    .certification-section {
+      margin: 20px 0;
+      padding: 12px;
+      border: 1px solid #000000;
+    }
+    
+    .signature-area {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 20px;
+    }
+    
+    .signature-line {
+      border-bottom: 1px solid #000000;
+      width: 140px;
+      margin-bottom: 4px;
+    }
+    
+    .signature-label { font-size: 7pt; color: #666666; }
+    .signature-name { font-size: 8pt; font-weight: bold; margin-top: 4px; }
+    
+    .report-footer {
+      margin-top: 20px;
+      text-align: center;
+      font-size: 7pt;
+      color: #666666;
+      border-top: 1px solid #000000;
+      padding-top: 8px;
+    }
+    
+    .page-number {
+      text-align: center;
+      font-size: 7pt;
+      margin: 12px 0;
+      font-weight: bold;
+    }
+    
+    .page-break { page-break-after: always; }
+    .avoid-break { page-break-inside: avoid; }
+    
+    @media print {
+      body { padding: 0; width: 148mm; }
+      .page-break { page-break-after: always; }
+    }
+  </style>
+</head>
+<body>
+  <div class="report-container">
+
+    <!-- HEADER -->
+    <div class="report-header">
+      <img src="public/logo.png" class="inspire-logo" alt="INSPIRE" />
+      <p style="font-size: 7pt; color: #666; margin-bottom: 10px; text-align: center;">NATIONAL STANDARDS FOR THE PHYSICAL INSPECTION OF REAL ESTATE</p>
+      <h1 class="header-title">INSPIRE INSPECTION REPORT</h1>
+      
+      <div class="header-metadata">
+        <div class="header-left">
+          <div class="header-row">
+            <span class="header-label">Inspection No:</span>
+            <span class="header-value">INSP-2026-001</span>
+          </div>
+          <div class="header-row">
+            <span class="header-label">Inspection Type:</span>
+            <span class="header-value">General NSPIRE</span>
+          </div>
+          <div class="header-row">
+            <span class="header-label">Escort Name:</span>
+            <span class="header-value">Property Manager</span>
+          </div>
+          <div class="header-row">
+            <span class="header-label">Property Type:</span>
+            <span class="header-value">Multifamily</span>
+          </div>
+        </div>
+        
+        <div class="header-right">
+          <div class="header-row">
+            <span class="header-label">Start Date:</span>
+            <span class="header-value">2/11/2026</span>
+          </div>
+          <div class="header-row">
+            <span class="header-label">End Date:</span>
+            <span class="header-value">2/11/2026</span>
+          </div>
+          <div class="header-row">
+            <span class="header-label">Report Created:</span>
+            <span class="header-value">2/11/2026</span>
+          </div>
+          <div class="header-row">
+            <span class="header-label">Building:</span>
+            <span class="header-value">Imani Fe East</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCORES SECTION -->
+    <div class="scores-section avoid-break">
+      <div class="preliminary-scores">
+        <div class="score-block">
+          <h3>Preliminary Scores</h3>
+          <div class="score-row">
+            <span class="score-label">Preliminary Inspection Score:</span>
+            <span class="score-value">94</span>
+          </div>
+          <div class="score-row">
+            <span class="score-label">Calculated Score:</span>
+            <span class="score-value">94</span>
+          </div>
+          <div class="score-row">
+            <span class="score-label">Units Threshold:</span>
+            <span class="score-value">10.79</span>
+          </div>
+          <div class="score-row">
+            <span class="score-label">Property Threshold:</span>
+            <span class="score-value">60</span>
+          </div>
+        </div>
+        <div class="score-block">
+          <h3>Final Scores</h3>
+          <div class="score-row bold">
+            <span class="score-label">Final Inspection Score:</span>
+            <span class="score-value">94</span>
+          </div>
+          <div class="score-row">
+            <span class="score-label">Calculated Score:</span>
+            <span class="score-value">94</span>
+          </div>
+          <div class="score-row">
+            <span class="score-label">Units Threshold:</span>
+            <span class="score-value">10.79</span>
+          </div>
+          <div class="score-row">
+            <span class="score-label">Property Threshold:</span>
+            <span class="score-value">60</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BUILDING/UNIT INSPECTION DATA -->
+    <div class="inspection-data-section avoid-break">
+      <h3 class="section-title">Building/Unit Inspection Data</h3>
+      <table class="inspection-data-table">
+        <thead>
+          <tr>
+            <th rowspan="2" class="left-align multi-row">Type</th>
+            <th rowspan="2" class="multi-row">Property Total</th>
+            <th rowspan="2" class="multi-row">Sample Size</th>
+            <th colspan="1">Inspection</th>
+          </tr>
+          <tr>
+            <th>Total Units Inspected</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="left-align">Buildings</td>
+            <td>1</td>
+            <td>1</td>
+            <td>1</td>
+          </tr>
+          <tr>
+            <td class="left-align">Unit</td>
+            <td>10</td>
+            <td>1</td>
+            <td>1</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- DEFICIENCY SUMMARY -->
+    <div class="deficiency-summary-section avoid-break">
+      <h3 class="section-title">Deficiency Summary</h3>
+      <table>
+        <thead>
+          <tr>
+            <th class="left-align">Inspectable Area</th>
+            <th>Life-Threatening</th>
+            <th>Severe</th>
+            <th>Moderate</th>
+            <th>Low</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="left-align">Inside</td>
+            <td>0</td>
+            <td>0</td>
+            <td>1</td>
+            <td>0</td>
+          </tr>
+          <tr>
+            <td class="left-align">Outside</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+          </tr>
+          <tr>
+            <td class="left-align">Units</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- DEFICIENCY DETAILS - GROUPED BY BUILDING/UNIT -->
+    <div class="deficiency-details-section">
+      <h3 class="section-title">Inspectable Areas Deficiencies</h3>
+      <table class="deficiency-details-table">
+        <thead>
+          <tr>
+            <th style="width: 18%;">Deficiency Details</th>
+            <th style="width: 10%;">Deficiency Name</th>
+            <th style="width: 18%;">Comments</th>
+            <th style="width: 14%;">Deficiency Picture</th>
+            <th style="width: 8%;">Deduction Pts.</th>
+            <th style="width: 10%;">Repeat Indicator</th>
+            <th style="width: 8%;">Severity</th>
+          </tr>
+        </thead>
+        <tbody>
+
+          <!-- GROUP: Building - Imani Fe East -->
+          <tr class="group-header-row">
+            <td colspan="7">Building - Imani Fe East</td>
+          </tr>
+          <tr class="avoid-break">
+            <td class="left-align">Chute door does not open or self-close and latch.</td>
+            <td class="left-align"><div class="deficiency-name">QR-25796549</div></td>
+            <td class="left-align">Does not fully latch first floor</td>
+            <td><div class="image-placeholder">Photo</div></td>
+            <td>0.2</td>
+            <td>Not Repeat</td>
+            <td>Moderate</td>
+          </tr>
+          <tr class="avoid-break">
+            <td class="left-align">Interior wall component(s) is not functionally adequate.</td>
+            <td class="left-align"><div class="deficiency-name">QR-25796514</div></td>
+            <td class="left-align">Missing section of baseboard, work room 115</td>
+            <td><div class="image-placeholder">Photo</div></td>
+            <td>0</td>
+            <td>Repeat</td>
+            <td>Moderate</td>
+          </tr>
+
+          <!-- GROUP: Unit - Apt 204 -->
+          <tr class="group-header-row">
+            <td colspan="7">Unit - Apt 204</td>
+          </tr>
+          <tr class="avoid-break">
+            <td class="left-align">Common area, the bathtub or shower is inoperable or does not drain.</td>
+            <td class="left-align"><div class="deficiency-name">QR-62110538</div></td>
+            <td class="left-align">The image displays significant discoloration and rough, deteriorated texture on the lower portion of a wall.</td>
+            <td><div class="image-placeholder">Photo</div></td>
+            <td>3</td>
+            <td>Not Repeat</td>
+            <td>Moderate</td>
+          </tr>
+
+        </tbody>
+      </table>
+    </div>
+
+    <!-- CERTIFICATES -->
+    <div class="certificates-section avoid-break">
+      <h3 class="section-title">Certificates</h3>
+      <table class="certificates-table">
+        <thead>
+          <tr>
+            <th class="left-align">Certificate Type</th>
+            <th>Status</th>
+            <th class="left-align">Comment</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="left-align">Elevator</td><td>N/A</td><td class="left-align">No elevator present</td></tr>
+          <tr><td class="left-align">Boiler</td><td>Current</td><td class="left-align">Valid until 2026</td></tr>
+          <tr><td class="left-align">Lead-Based Paint</td><td>Current</td><td class="left-align">Compliant</td></tr>
+          <tr><td class="left-align">Fire Alarm</td><td>Current</td><td class="left-align">Tested monthly</td></tr>
+          <tr><td class="left-align">Sprinkler</td><td>N/A</td><td class="left-align">Not required</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- INSPECTOR CERTIFICATION -->
+    <div class="certification-section avoid-break">
+      <h3 class="section-title">Inspector Certification</h3>
+      <p style="margin-bottom: 12px; font-size: 7pt; line-height: 1.4;">
+        I certify this inspection was conducted per INSPIRE standards.
+      </p>
+      <div class="signature-area">
+        <div>
+          <div class="signature-line"></div>
+          <div class="signature-label">Inspector Signature</div>
+          <div class="signature-name">Current User</div>
+        </div>
+        <div>
+          <div class="signature-line" style="width: 100px;"></div>
+          <div class="signature-label">Date</div>
+          <div class="signature-name">2/11/2026</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FOOTER -->
+    <div class="page-number">--- PAGE 1 ---</div>
+    <div class="report-footer">
+      <p>Generated by NSPIRE Inspection System</p>
+      <p>Report generated on 2/11/2026, 4:03:50 AM</p>
+      <p style="margin-top: 4px;">This document is confidential and intended for authorized use only.</p>
+    </div>
+
+  </div>
+</body>
+</html>

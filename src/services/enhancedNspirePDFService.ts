@@ -416,6 +416,16 @@ function generateEnhancedHeader(metadata: InspectionMetadata, options: PDFGenera
             <span class="header-label">Report Created Date:</span>
             <span class="header-value">${metadata.reportCreatedDate}</span>
           </div>
+          ${metadata.buildingName ? `
+          <div class="header-row">
+            <span class="header-label">Building:</span>
+            <span class="header-value">${metadata.buildingName}</span>
+          </div>` : ''}
+          ${metadata.inspectedUnits && metadata.inspectedUnits.length > 0 ? `
+          <div class="header-row">
+            <span class="header-label">Inspected Units:</span>
+            <span class="header-value">${metadata.inspectedUnits.join(', ')}</span>
+          </div>` : ''}
         </div>
       </div>
     </div>

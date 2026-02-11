@@ -886,6 +886,16 @@ const generateHeader = (metadata: InspectionMetadata, options: PDFGenerationOpti
             <span class="header-label">Property ID:</span>
             <span class="header-value">${metadata.propertyId}</span>
           </div>
+          ${metadata.buildingName ? `
+          <div class="header-row">
+            <span class="header-label">Building:</span>
+            <span class="header-value">${metadata.buildingName}</span>
+          </div>` : ''}
+          ${metadata.inspectedUnits && metadata.inspectedUnits.length > 0 ? `
+          <div class="header-row">
+            <span class="header-label">Inspected Units:</span>
+            <span class="header-value">${metadata.inspectedUnits.join(', ')}</span>
+          </div>` : ''}
         </div>
         
         <div class="header-section">

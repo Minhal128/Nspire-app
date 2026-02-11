@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,150 +8,572 @@ import {
   SafeAreaView,
   Alert,
   ActivityIndicator,
-  Modal,
   Platform,
   ScrollView,
   KeyboardAvoidingView,
-  NativeSyntheticEvent,
-  TextInputFocusEventData,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Picker } from '@react-native-picker/picker';
 import { Country, State, City } from 'country-state-city';
+import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
 import { propertyService } from '../services';
-
-const SUPPORTED_COUNTRIES = ['US', 'GB', 'CA', 'AU'];
 
 interface AddPropertyScreenProps {
   navigation: any;
 }
 
-export default function AddPropertyScreen({ navigation }: AddPropertyScreenProps) {
-  const [propertyId, setPropertyId] = useState('');
-  const [propertyName, setPropertyName] = useState('');
-  const [numberOfBuildings, setNumberOfBuildings] = useState('');
-  const [numberOfUnits, setNumberOfUnits] = useState('');
-  const [selectedCountry, setSelectedCountry] = useState('');
-  const [selectedState, setSelectedState] = useState('');
-  const [selectedCity, setSelectedCity] = useState('');
-  const [address, setAddress] = useState('');
-  const [postalCode, setPostalCode] = useState('');
+interface PropertyForm {
+  id: string;
+  propertyId: string;
+  propertyName: string;
+  address: string;
+  countryText: string;
+  stateText: string;
+  cityText: string;
+  postalCode: string;
+  numberOfBuildings: string;
+  numberOfUnits: string;
+  resolvedCountryCode: string;
+  resolvedStateCode: string;
+  resolvedCityName: string;
+  countryError: string;
+  stateError: string;
+  cityError: string;
+}
+
+// Validation helpers — match user text against country-state-city package data
+const findCountryByName = (name: string) => {
+  if (!name.trim()) return null;
+  const lower = name.trim().toLowerCase();
+  const allCountries = Country.getAllCountries();
+  let match = allCountries.find(
+    (c) => c.name.toLowerCase() === lower || c.isoCode.toLowerCase() === lower,
+  );
+  if (!match) {
+    match = allCountries.find(
+      (c) =>
+        c.name.toLowerCase().startsWith(lower) ||
+        lower.startsWith(c.name.toLowerCase()),
+    );
+  }
+  return match || null;
+};
+
+const findStateByName = (name: string, countryCode: string) => {
+  if (!name.trim() || !countryCode) return null;
+  const lower = name.trim().toLowerCase();
+  const countryStates = State.getStatesOfCountry(countryCode);
+  let match = countryStates.find(
+    (s) => s.name.toLowerCase() === lower || s.isoCode.toLowerCase() === lower,
+  );
+  if (!match) {
+    match = countryStates.find(
+      (s) =>
+        s.name.toLowerCase().startsWith(lower) ||
+        lower.startsWith(s.name.toLowerCase()),
+    );
+  }
+  return match || null;
+};
+
+const findCityByName = (
+  name: string,
+  countryCode: string,
+  stateCode: string,
+) => {
+  if (!name.trim()) return null;
+  const lower = name.trim().toLowerCase();
+  let cityList = City.getCitiesOfState(countryCode, stateCode);
+  if ((!cityList || cityList.length === 0) && countryCode === 'GB') {
+    cityList = City.getCitiesOfCountry(countryCode) || [];
+  }
+  if (!cityList) return null;
+  let match = cityList.find((c) => c.name.toLowerCase() === lower);
+  if (!match) {
+    match = cityList.find(
+      (c) =>
+        c.name.toLowerCase().startsWith(lower) ||
+        lower.startsWith(c.name.toLowerCase()),
+    );
+  }
+  return match || null;
+};
+
+const createEmptyForm = (): PropertyForm => ({
+  id: `form-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+  propertyId: '',
+  propertyName: '',
+  address: '',
+  countryText: '',
+  stateText: '',
+  cityText: '',
+  postalCode: '',
+  numberOfBuildings: '',
+  numberOfUnits: '',
+  resolvedCountryCode: '',
+  resolvedStateCode: '',
+  resolvedCityName: '',
+  countryError: '',
+  stateError: '',
+  cityError: '',
+});
+
+export default function AddPropertyScreen({
+  navigation,
+}: AddPropertyScreenProps) {
+  const [forms, setForms] = useState<PropertyForm[]>([createEmptyForm()]);
   const [loading, setLoading] = useState(false);
+  const [uploadedFile, setUploadedFile] = useState<{ name: string; size: number } | null>(null);
+  const [isProcessingFile, setIsProcessingFile] = useState(false);
+  const scrollViewRef = useRef<ScrollView>(null);
 
-  // iOS picker modal states
-  const [countryPickerVisible, setCountryPickerVisible] = useState(false);
-  const [statePickerVisible, setStatePickerVisible] = useState(false);
-  const [cityPickerVisible, setCityPickerVisible] = useState(false);
-  const [tempCountry, setTempCountry] = useState('');
-  const [tempState, setTempState] = useState('');
-  const [tempCity, setTempCity] = useState('');
+  // Update a specific form field
+  const updateForm = (index: number, field: keyof PropertyForm, value: string) => {
+    setForms((prev) => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
+  };
 
-  const [countries, setCountries] = useState<{label: string; value: string}[]>([]);
-  const [states, setStates] = useState<{label: string; value: string}[]>([]);
-  const [cities, setCities] = useState<{label: string; value: string}[]>([]);
+  // Add a new property form
+  const addPropertyForm = () => {
+    setForms((prev) => [...prev, createEmptyForm()]);
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 300);
+  };
 
-  useEffect(() => {
-    const allCountries = Country.getAllCountries()
-      .filter(c => SUPPORTED_COUNTRIES.includes(c.isoCode))
-      .map(c => ({ label: c.name, value: c.isoCode }))
-      .sort((a, b) => a.label.localeCompare(b.label));
-    setCountries(allCountries);
-  }, []);
-
-  useEffect(() => {
-    if (selectedCountry) {
-      setSelectedState('');
-      setSelectedCity('');
-      setCities([]);
-      const countryStates = State.getStatesOfCountry(selectedCountry)
-        .map(s => ({ label: s.name, value: s.isoCode }))
-        .sort((a, b) => a.label.localeCompare(b.label));
-      setStates(countryStates);
-    } else {
-      setStates([]);
-      setCities([]);
+  // Remove a property form
+  const removePropertyForm = (index: number) => {
+    if (forms.length <= 1) {
+      Alert.alert('Cannot Remove', 'You must have at least one property form.');
+      return;
     }
-  }, [selectedCountry]);
+    Alert.alert(
+      'Remove Property',
+      `Are you sure you want to remove Property ${index + 1}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: () => {
+            setForms((prev) => prev.filter((_, i) => i !== index));
+          },
+        },
+      ],
+    );
+  };
 
-  useEffect(() => {
-    if (selectedCountry && selectedState) {
-      setSelectedCity('');
-      let cityList = City.getCitiesOfState(selectedCountry, selectedState);
-      if ((!cityList || cityList.length === 0) && selectedCountry === 'GB') {
-        cityList = City.getCitiesOfCountry(selectedCountry) || [];
+  // ---- File Import Logic (matches web app) ----
+
+  const parseTextOrCSV = (text: string): PropertyForm[] => {
+    const lines = text.trim().split('\n');
+    if (lines.length < 2) return [];
+
+    const parsedProperties: PropertyForm[] = [];
+    const headers = lines[0].toLowerCase().split(/[,\t]/).map((h) => h.trim());
+
+    // Map common header names to fields (same as web app)
+    const fieldMapping: Record<string, string> = {
+      'property id': 'propertyId',
+      'propertyid': 'propertyId',
+      'id': 'propertyId',
+      'address': 'address',
+      'property name': 'propertyName',
+      'propertyname': 'propertyName',
+      'name': 'propertyName',
+      'country': 'countryText',
+      'state': 'stateText',
+      'province': 'stateText',
+      'city': 'cityText',
+      'area': 'cityText',
+      'buildings': 'numberOfBuildings',
+      'building': 'numberOfBuildings',
+      'units': 'numberOfUnits',
+      'unit': 'numberOfUnits',
+      'zip': 'postalCode',
+      'zipcode': 'postalCode',
+      'zip code': 'postalCode',
+      'postal': 'postalCode',
+      'postal code': 'postalCode',
+      'postalcode': 'postalCode',
+    };
+
+    for (let i = 1; i < lines.length; i++) {
+      const values = lines[i].split(/[,\t]/).map((v) => v.trim());
+      if (values.length === 0 || (values.length === 1 && !values[0])) continue;
+
+      const property = createEmptyForm();
+
+      headers.forEach((header, idx) => {
+        const field = fieldMapping[header];
+        if (field && values[idx]) {
+          (property as any)[field] = values[idx];
+        }
+      });
+
+      // Only add if at least property ID or name exists
+      if (property.propertyId || property.propertyName) {
+        parsedProperties.push(property);
       }
-      const formattedCities = (cityList || [])
-        .map(c => ({ label: c.name, value: c.name }))
-        .sort((a, b) => a.label.localeCompare(b.label));
-      setCities(formattedCities);
-    } else {
-      setCities([]);
     }
-  }, [selectedCountry, selectedState]);
 
-  const validateForm = () => {
-    if (!propertyName.trim()) {
-      Alert.alert('Error', 'Property name is required');
+    return parsedProperties;
+  };
+
+  // Auto-resolve country/state/city codes for imported properties
+  const resolveLocationCodes = (properties: PropertyForm[]): PropertyForm[] => {
+    return properties.map((prop) => {
+      const resolved = { ...prop };
+
+      // Resolve country
+      if (resolved.countryText) {
+        const country = findCountryByName(resolved.countryText);
+        if (country) {
+          resolved.resolvedCountryCode = country.isoCode;
+          resolved.countryText = country.name;
+        } else {
+          resolved.resolvedCountryCode = resolved.countryText.trim();
+        }
+      }
+
+      // Resolve state
+      if (resolved.stateText && resolved.resolvedCountryCode) {
+        const state = findStateByName(resolved.stateText, resolved.resolvedCountryCode);
+        if (state) {
+          resolved.resolvedStateCode = state.isoCode;
+          resolved.stateText = state.name;
+        } else {
+          resolved.resolvedStateCode = resolved.stateText.trim();
+        }
+      }
+
+      // Resolve city
+      if (resolved.cityText && resolved.resolvedCountryCode && resolved.resolvedStateCode) {
+        const city = findCityByName(resolved.cityText, resolved.resolvedCountryCode, resolved.resolvedStateCode);
+        if (city) {
+          resolved.resolvedCityName = city.name;
+          resolved.cityText = city.name;
+        } else {
+          resolved.resolvedCityName = resolved.cityText.trim();
+        }
+      }
+
+      return resolved;
+    });
+  };
+
+  const handleBrowseFiles = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: [
+          'text/plain',
+          'text/csv',
+          'text/comma-separated-values',
+          'application/csv',
+          'application/vnd.ms-excel',
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'application/pdf',
+        ],
+        copyToCacheDirectory: true,
+      });
+
+      if (result.canceled) return;
+
+      const file = result.assets[0];
+      if (!file) return;
+
+      const fileName = file.name || '';
+      const fileExtension = '.' + fileName.split('.').pop()?.toLowerCase();
+      const validExtensions = ['.txt', '.csv', '.xls', '.xlsx', '.pdf'];
+
+      if (!validExtensions.includes(fileExtension)) {
+        Alert.alert('Invalid File', 'Please upload a .txt, .csv, .xls, .xlsx, or .pdf file');
+        return;
+      }
+
+      setUploadedFile({ name: fileName, size: file.size || 0 });
+      setIsProcessingFile(true);
+
+      try {
+        let importedForms: PropertyForm[] = [];
+
+        if (fileExtension === '.txt' || fileExtension === '.csv') {
+          // Real parsing for text/CSV files
+          const content = await FileSystem.readAsStringAsync(file.uri);
+          importedForms = parseTextOrCSV(content);
+
+          if (importedForms.length === 0) {
+            Alert.alert(
+              'No Data Found',
+              'No property data found in file. Please check the format and ensure it has the expected column headers.',
+            );
+          }
+        } else if (fileExtension === '.xls' || fileExtension === '.xlsx') {
+          // Excel files — not yet parseable on mobile, show empty form as placeholder
+          Alert.alert(
+            'Excel File Detected',
+            'Excel parsing is not yet supported on mobile. An empty property form has been created for you to fill in manually.\n\nFor best results, export your Excel file as CSV first.',
+          );
+          importedForms = [createEmptyForm()];
+        } else if (fileExtension === '.pdf') {
+          // PDF files — not yet parseable on mobile, show empty form as placeholder
+          Alert.alert(
+            'PDF File Detected',
+            'PDF parsing is not yet supported on mobile. An empty property form has been created for you to fill in manually.\n\nFor best results, export your data as CSV first.',
+          );
+          importedForms = [createEmptyForm()];
+        }
+
+        // Auto-resolve location codes and populate forms
+        if (importedForms.length > 0) {
+          const resolved = resolveLocationCodes(importedForms);
+          setForms(resolved);
+          Alert.alert(
+            'Import Successful',
+            `${resolved.length} ${resolved.length === 1 ? 'property has' : 'properties have'} been loaded into the form. Please review the data and edit any fields before submitting.`,
+          );
+          // Scroll to top so user sees the first imported property
+          setTimeout(() => {
+            scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+          }, 300);
+        }
+      } catch (err: any) {
+        Alert.alert('Error', 'Error processing file. Please try again.');
+      } finally {
+        setIsProcessingFile(false);
+      }
+    } catch (err: any) {
+      Alert.alert('Error', 'Could not open file picker.');
+    }
+  };
+
+  const clearUploadedFile = () => {
+    setUploadedFile(null);
+  };
+
+  // Blur handlers
+  const handleCountryBlur = (index: number) => {
+    const form = forms[index];
+    if (!form.countryText.trim()) {
+      updateForm(index, 'resolvedCountryCode', '');
+      updateForm(index, 'countryError', '');
+      return;
+    }
+    const found = findCountryByName(form.countryText);
+    if (found) {
+      setForms((prev) => {
+        const updated = [...prev];
+        updated[index] = {
+          ...updated[index],
+          resolvedCountryCode: found.isoCode,
+          countryText: found.name,
+          countryError: '',
+        };
+        return updated;
+      });
+    } else {
+      setForms((prev) => {
+        const updated = [...prev];
+        updated[index] = {
+          ...updated[index],
+          resolvedCountryCode: form.countryText.trim(),
+          countryError: '',
+        };
+        return updated;
+      });
+    }
+  };
+
+  const handleStateBlur = (index: number) => {
+    const form = forms[index];
+    if (!form.stateText.trim()) {
+      updateForm(index, 'resolvedStateCode', '');
+      updateForm(index, 'stateError', '');
+      return;
+    }
+    if (form.resolvedCountryCode) {
+      const found = findStateByName(form.stateText, form.resolvedCountryCode);
+      if (found) {
+        setForms((prev) => {
+          const updated = [...prev];
+          updated[index] = {
+            ...updated[index],
+            resolvedStateCode: found.isoCode,
+            stateText: found.name,
+            stateError: '',
+          };
+          return updated;
+        });
+      } else {
+        setForms((prev) => {
+          const updated = [...prev];
+          updated[index] = {
+            ...updated[index],
+            resolvedStateCode: form.stateText.trim(),
+            stateError: '',
+          };
+          return updated;
+        });
+      }
+    } else {
+      updateForm(index, 'resolvedStateCode', form.stateText.trim());
+      updateForm(index, 'stateError', '');
+    }
+  };
+
+  const handleCityBlur = (index: number) => {
+    const form = forms[index];
+    if (!form.cityText.trim()) {
+      updateForm(index, 'resolvedCityName', '');
+      updateForm(index, 'cityError', '');
+      return;
+    }
+    if (form.resolvedCountryCode && form.resolvedStateCode) {
+      const found = findCityByName(form.cityText, form.resolvedCountryCode, form.resolvedStateCode);
+      if (found) {
+        setForms((prev) => {
+          const updated = [...prev];
+          updated[index] = {
+            ...updated[index],
+            resolvedCityName: found.name,
+            cityText: found.name,
+            cityError: '',
+          };
+          return updated;
+        });
+      } else {
+        setForms((prev) => {
+          const updated = [...prev];
+          updated[index] = {
+            ...updated[index],
+            resolvedCityName: form.cityText.trim(),
+            cityError: '',
+          };
+          return updated;
+        });
+      }
+    } else {
+      updateForm(index, 'resolvedCityName', form.cityText.trim());
+      updateForm(index, 'cityError', '');
+    }
+  };
+
+  // Validate a single form
+  const validateForm = (form: PropertyForm, index: number): boolean => {
+    if (!form.propertyName.trim()) {
+      Alert.alert('Error', `Property ${index + 1}: Property Name is required`);
       return false;
     }
-    if (!selectedCountry) {
-      Alert.alert('Error', 'Country is required');
+    if (!form.address.trim()) {
+      Alert.alert('Error', `Property ${index + 1}: Address is required`);
       return false;
     }
-    if (!selectedState) {
-      Alert.alert('Error', 'State/Province is required');
+    if (!form.countryText.trim()) {
+      Alert.alert('Error', `Property ${index + 1}: Country is required`);
       return false;
     }
-    if (!selectedCity) {
-      Alert.alert('Error', 'City is required');
+    if (!form.stateText.trim()) {
+      Alert.alert('Error', `Property ${index + 1}: State is required`);
       return false;
     }
-    if (!address.trim()) {
-      Alert.alert('Error', 'Address is required');
+    if (!form.cityText.trim()) {
+      Alert.alert('Error', `Property ${index + 1}: City is required`);
+      return false;
+    }
+    if (!form.postalCode.trim()) {
+      Alert.alert('Error', `Property ${index + 1}: Postal Code is required`);
       return false;
     }
     return true;
   };
 
-  const handleSubmit = async () => {
-    if (!validateForm()) return;
+  // Submit all properties using bulk API
+  const handleSubmitAll = async () => {
+    for (let i = 0; i < forms.length; i++) {
+      if (!validateForm(forms[i], i)) return;
+    }
+
     setLoading(true);
+
     try {
-      const generatedPropertyId = propertyId.trim() || `PROP-${Date.now()}`;
-      const countryData = Country.getCountryByCode(selectedCountry);
-      const stateData = State.getStateByCodeAndCountry(selectedState, selectedCountry);
+      // Build the property data array for bulk submission
+      const propertiesPayload = forms.map((form, i) => {
+        const generatedPropertyId = form.propertyId.trim() || `PROP-${Date.now()}-${i}`;
+        const countryData = Country.getCountryByCode(form.resolvedCountryCode);
+        const stateData = State.getStateByCodeAndCountry(
+          form.resolvedStateCode,
+          form.resolvedCountryCode,
+        );
 
-      const propertyData = {
-        propertyId: generatedPropertyId,
-        name: propertyName.trim(),
-        address: address.trim(),
-        city: selectedCity,
-        state: selectedState,
-        country: selectedCountry,
-        countryName: countryData?.name || selectedCountry,
-        stateName: stateData?.name || selectedState,
-        zipCode: postalCode.trim(),
-        buildings: parseInt(numberOfBuildings) || 1,
-        units: parseInt(numberOfUnits) || 1,
-      };
+        return {
+          propertyId: generatedPropertyId,
+          name: form.propertyName.trim(),
+          address: form.address.trim(),
+          city: form.resolvedCityName || form.cityText.trim(),
+          state: form.resolvedStateCode || form.stateText.trim(),
+          country: form.resolvedCountryCode || form.countryText.trim(),
+          countryName: countryData?.name || form.countryText,
+          stateName: stateData?.name || form.stateText,
+          zipCode: form.postalCode.trim(),
+          buildings: parseInt(form.numberOfBuildings) || 1,
+          units: parseInt(form.numberOfUnits) || 1,
+        };
+      });
 
-      const response = await propertyService.createProperty(propertyData);
-      if (response.success) {
-        Alert.alert('Success', 'Property added successfully!', [
-          {
-            text: 'OK',
-            onPress: () =>
-              navigation.navigate('PropertyDetails' as any, {
-                property: {
-                  ...propertyData,
-                  _id: response.property?._id || response.property?.id || '',
-                  ...response.property,
-                },
-              }),
-          },
-        ]);
+      // Use bulk endpoint for multiple properties, single endpoint for one
+      if (propertiesPayload.length === 1) {
+        const response = await propertyService.createProperty(propertiesPayload[0]);
+        if (response.success) {
+          Alert.alert('Success', 'Property added successfully!', [
+            { text: 'Add More', onPress: () => { setForms([createEmptyForm()]); setUploadedFile(null); } },
+            { text: 'Go to Dashboard', onPress: () => navigation.goBack() },
+          ]);
+        } else {
+          Alert.alert('Error', response.message || 'Failed to add property.');
+        }
       } else {
-        Alert.alert('Error', response.message || 'Failed to add property');
+        // Bulk submit
+        try {
+          const response = await propertyService.createBulkProperties(propertiesPayload);
+          if (response.success) {
+            const count = response.properties?.length || propertiesPayload.length;
+            Alert.alert(
+              'Success',
+              `All ${count} properties added successfully!`,
+              [
+                { text: 'Add More', onPress: () => { setForms([createEmptyForm()]); setUploadedFile(null); } },
+                { text: 'Go to Dashboard', onPress: () => navigation.goBack() },
+              ],
+            );
+          } else {
+            Alert.alert('Error', response.message || 'Bulk submission failed.');
+          }
+        } catch (bulkError: any) {
+          // Fallback: submit one-by-one if bulk endpoint fails
+          const results: { success: boolean; name: string; error?: string }[] = [];
+          for (let i = 0; i < propertiesPayload.length; i++) {
+            try {
+              const resp = await propertyService.createProperty(propertiesPayload[i]);
+              results.push({ success: resp.success, name: forms[i].propertyName, error: resp.success ? undefined : resp.message });
+            } catch (err: any) {
+              results.push({ success: false, name: forms[i].propertyName, error: err.message });
+            }
+          }
+          const successCount = results.filter((r) => r.success).length;
+          const failCount = results.filter((r) => !r.success).length;
+          if (failCount === 0) {
+            Alert.alert('Success', `All ${successCount} properties added successfully!`, [
+              { text: 'Add More', onPress: () => { setForms([createEmptyForm()]); setUploadedFile(null); } },
+              { text: 'Go to Dashboard', onPress: () => navigation.goBack() },
+            ]);
+          } else {
+            const failedNames = results.filter((r) => !r.success).map((r) => r.name).join(', ');
+            Alert.alert('Partial Success', `${successCount} added, ${failCount} failed.\nFailed: ${failedNames}`);
+          }
+        }
       }
     } catch (error: any) {
       Alert.alert('Error', error.message || 'An unexpected error occurred.');
@@ -160,242 +582,632 @@ export default function AddPropertyScreen({ navigation }: AddPropertyScreenProps
     }
   };
 
-  return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color="#1F2937" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Add Property</Text>
-        <TouchableOpacity onPress={() => navigation.navigate('LocationStats')} style={styles.statsButton}>
-          <Ionicons name="stats-chart" size={20} color="#0E7490" />
+  // Label helpers
+  const RequiredLabel = ({ text }: { text: string }) => (
+    <Text style={styles.label}>
+      {text}
+      <Text style={styles.requiredAsterisk}>*</Text>
+    </Text>
+  );
+
+  const OptionalLabel = ({ text }: { text: string }) => (
+    <Text style={styles.label}>{text}</Text>
+  );
+
+  // Render a single property form card
+  const renderPropertyCard = (form: PropertyForm, index: number) => (
+    <View key={form.id} style={styles.propertyCard}>
+      {/* Card Header */}
+      <View style={styles.cardHeader}>
+        <Text style={styles.cardTitle}>Property {index + 1}</Text>
+        <TouchableOpacity
+          style={styles.removeButton}
+          onPress={() => removePropertyForm(index)}
+        >
+          <Ionicons name="trash-outline" size={16} color="#DC2626" />
+          <Text style={styles.removeButtonText}>Remove</Text>
         </TouchableOpacity>
       </View>
 
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 60}>
-        <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-          <View style={styles.formContainer}>
-            <View style={styles.infoBanner}>
-              <Ionicons name="information-circle" size={20} color="#0E7490" />
-              <Text style={styles.infoBannerText}>Supports: USA, Canada, UK & Australia</Text>
-            </View>
+      {/* Row 1: Property ID (Optional)  |  Address */}
+      <View style={styles.row}>
+        <View style={styles.halfColumn}>
+          <OptionalLabel text="Property id (Optional)" />
+          <TextInput
+            style={styles.input}
+            placeholder="Auto-generated"
+            placeholderTextColor="#6B7280"
+            value={form.propertyId}
+            onChangeText={(t) => updateForm(index, 'propertyId', t)}
+          />
+        </View>
+        <View style={styles.halfColumn}>
+          <RequiredLabel text="Address" />
+          <TextInput
+            style={styles.input}
+            placeholder="Enter Address"
+            placeholderTextColor="#6B7280"
+            value={form.address}
+            onChangeText={(t) => updateForm(index, 'address', t)}
+          />
+        </View>
+      </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Property ID (Optional)</Text>
-              <TextInput style={styles.input} placeholder="Auto-generated if empty" placeholderTextColor="#6B7280" value={propertyId} onChangeText={setPropertyId} />
-            </View>
+      {/* Row 2: Property Name  |  City */}
+      <View style={styles.row}>
+        <View style={styles.halfColumn}>
+          <RequiredLabel text="Property Name" />
+          <TextInput
+            style={styles.input}
+            placeholder="Enter Name"
+            placeholderTextColor="#6B7280"
+            value={form.propertyName}
+            onChangeText={(t) => updateForm(index, 'propertyName', t)}
+          />
+        </View>
+        <View style={styles.halfColumn}>
+          <RequiredLabel text="City" />
+          <TextInput
+            style={[styles.input, form.cityError ? styles.inputError : null]}
+            placeholder="Enter City"
+            placeholderTextColor="#6B7280"
+            value={form.cityText}
+            onChangeText={(t) => {
+              updateForm(index, 'cityText', t);
+              updateForm(index, 'cityError', '');
+              updateForm(index, 'resolvedCityName', '');
+            }}
+            onBlur={() => handleCityBlur(index)}
+            autoCapitalize="words"
+          />
+          {form.cityError ? (
+            <Text style={styles.errorText}>{form.cityError}</Text>
+          ) : null}
+        </View>
+      </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Property Name</Text>
-              <TextInput style={styles.input} placeholder="Enter Property Name" placeholderTextColor="#6B7280" value={propertyName} onChangeText={setPropertyName} />
-            </View>
+      {/* Row 3: Number of Buildings  |  State */}
+      <View style={styles.row}>
+        <View style={styles.halfColumn}>
+          <RequiredLabel text="Number of Buildings" />
+          <TextInput
+            style={styles.input}
+            placeholder="Enter Buildings"
+            placeholderTextColor="#6B7280"
+            value={form.numberOfBuildings}
+            onChangeText={(t) => updateForm(index, 'numberOfBuildings', t)}
+            keyboardType="number-pad"
+          />
+        </View>
+        <View style={styles.halfColumn}>
+          <RequiredLabel text="State" />
+          <TextInput
+            style={[styles.input, form.stateError ? styles.inputError : null]}
+            placeholder="Enter State"
+            placeholderTextColor="#6B7280"
+            value={form.stateText}
+            onChangeText={(t) => {
+              updateForm(index, 'stateText', t);
+              updateForm(index, 'stateError', '');
+              updateForm(index, 'resolvedStateCode', '');
+            }}
+            onBlur={() => handleStateBlur(index)}
+            autoCapitalize="words"
+          />
+          {form.stateError ? (
+            <Text style={styles.errorText}>{form.stateError}</Text>
+          ) : null}
+        </View>
+      </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Number Of Buildings</Text>
-              <TextInput style={styles.input} placeholder="Number of Buildings" placeholderTextColor="#6B7280" value={numberOfBuildings} onChangeText={setNumberOfBuildings} keyboardType="number-pad" />
-            </View>
+      {/* Row 4: Number of Units  |  Zip */}
+      <View style={styles.row}>
+        <View style={styles.halfColumn}>
+          <RequiredLabel text="Number of Units" />
+          <TextInput
+            style={styles.input}
+            placeholder="Enter Units"
+            placeholderTextColor="#6B7280"
+            value={form.numberOfUnits}
+            onChangeText={(t) => updateForm(index, 'numberOfUnits', t)}
+            keyboardType="number-pad"
+          />
+        </View>
+        <View style={styles.halfColumn}>
+          <RequiredLabel text="Zip" />
+          <TextInput
+            style={styles.input}
+            placeholder="Enter Zip"
+            placeholderTextColor="#6B7280"
+            value={form.postalCode}
+            onChangeText={(t) => updateForm(index, 'postalCode', t)}
+            returnKeyType="done"
+          />
+        </View>
+      </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Number Of Units</Text>
-              <TextInput style={styles.input} placeholder="Number of Units" placeholderTextColor="#6B7280" value={numberOfUnits} onChangeText={setNumberOfUnits} keyboardType="number-pad" />
-            </View>
+      {/* Row 5: Country (full width) */}
+      <View style={styles.row}>
+        <View style={[styles.halfColumn, { flex: 1 }]}>
+          <RequiredLabel text="Country" />
+          <TextInput
+            style={[
+              styles.input,
+              form.countryError ? styles.inputError : null,
+            ]}
+            placeholder="Enter Country"
+            placeholderTextColor="#6B7280"
+            value={form.countryText}
+            onChangeText={(t) => {
+              updateForm(index, 'countryText', t);
+              updateForm(index, 'countryError', '');
+              updateForm(index, 'resolvedCountryCode', '');
+            }}
+            onBlur={() => handleCountryBlur(index)}
+            autoCapitalize="words"
+          />
+          {form.countryError ? (
+            <Text style={styles.errorText}>{form.countryError}</Text>
+          ) : null}
+        </View>
+      </View>
+    </View>
+  );
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Country</Text>
-              {Platform.OS === 'ios' ? (
-                <TouchableOpacity style={styles.iosPickerButton} onPress={() => { setTempCountry(selectedCountry); setCountryPickerVisible(true); }}>
-                  <Text style={[styles.iosPickerText, !selectedCountry && styles.placeholderText]}>
-                    {selectedCountry ? countries.find(c => c.value === selectedCountry)?.label || 'Select Country' : 'Select Country'}
-                  </Text>
-                  <Ionicons name="chevron-down" size={20} color="#6B7280" />
-                </TouchableOpacity>
-              ) : (
-                <View style={styles.pickerWrapper}>
-                  <Picker selectedValue={selectedCountry} onValueChange={setSelectedCountry} style={styles.picker} dropdownIconColor="#6B7280">
-                    <Picker.Item label="Select Country" value="" color="#6B7280" />
-                    {countries.map((c) => (
-                      <Picker.Item key={c.value} label={c.label} value={c.value} color="#1F2937" />
-                    ))}
-                  </Picker>
-                </View>
-              )}
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>State/Province</Text>
-              {Platform.OS === 'ios' ? (
-                <TouchableOpacity style={styles.iosPickerButton} onPress={() => { if (states.length > 0) { setTempState(selectedState); setStatePickerVisible(true); } }}>
-                  <Text style={[styles.iosPickerText, !selectedState && styles.placeholderText]}>
-                    {states.length === 0 ? 'Select country first' : (selectedState ? states.find(s => s.value === selectedState)?.label || 'Select State/Province' : 'Select State/Province')}
-                  </Text>
-                  <Ionicons name="chevron-down" size={20} color="#6B7280" />
-                </TouchableOpacity>
-              ) : (
-                <View style={styles.pickerWrapper}>
-                  <Picker selectedValue={selectedState} onValueChange={setSelectedState} style={styles.picker} dropdownIconColor="#6B7280" enabled={states.length > 0}>
-                    <Picker.Item label={states.length === 0 ? "Select country first" : "Select State/Province"} value="" color="#6B7280" />
-                    {states.map((s) => (
-                      <Picker.Item key={s.value} label={s.label} value={s.value} color="#1F2937" />
-                    ))}
-                  </Picker>
-                </View>
-              )}
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Address</Text>
-              <TextInput style={styles.input} placeholder="Enter Address" placeholderTextColor="#6B7280" value={address} onChangeText={setAddress} />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>City</Text>
-              {Platform.OS === 'ios' ? (
-                <TouchableOpacity style={styles.iosPickerButton} onPress={() => { if (cities.length > 0) { setTempCity(selectedCity); setCityPickerVisible(true); } }}>
-                  <Text style={[styles.iosPickerText, !selectedCity && styles.placeholderText]}>
-                    {cities.length === 0 ? 'Select state first' : (selectedCity || 'Select City')}
-                  </Text>
-                  <Ionicons name="chevron-down" size={20} color="#6B7280" />
-                </TouchableOpacity>
-              ) : (
-                <View style={styles.pickerWrapper}>
-                  <Picker selectedValue={selectedCity} onValueChange={setSelectedCity} style={styles.picker} dropdownIconColor="#6B7280" enabled={cities.length > 0}>
-                    <Picker.Item label={cities.length === 0 ? "Select state first" : "Select City"} value="" color="#6B7280" />
-                    {cities.map((c, i) => (
-                      <Picker.Item key={`${c.value}-${i}`} label={c.label} value={c.value} color="#1F2937" />
-                    ))}
-                  </Picker>
-                </View>
-              )}
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Postal Code</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter Postal Code"
-                placeholderTextColor="#6B7280"
-                value={postalCode}
-                onChangeText={setPostalCode}
-                returnKeyType="done"
-              />
-            </View>
-
-            <TouchableOpacity style={[styles.submitButton, loading && styles.submitButtonDisabled]} onPress={handleSubmit} disabled={loading}>
-              {loading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.submitButtonText}>Add Property</Text>}
-            </TouchableOpacity>
-
-            <View style={{ height: 50 }} />
+  return (
+    <SafeAreaView style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="arrow-back" size={24} color="#1F2937" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Add Property</Text>
+        <View style={styles.headerRight}>
+          <View style={styles.countBadge}>
+            <Text style={styles.countBadgeText}>
+              {forms.length} {forms.length === 1 ? 'Property' : 'Properties'}
+            </Text>
           </View>
+        </View>
+      </View>
+
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 60}
+      >
+        <ScrollView
+          ref={scrollViewRef}
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Property Form Cards */}
+          {forms.map((form, index) => renderPropertyCard(form, index))}
+
+          {/* Add Another Property Button */}
+          <TouchableOpacity
+            style={styles.addAnotherButton}
+            onPress={addPropertyForm}
+          >
+            <Ionicons name="add" size={22} color="#FFFFFF" style={{ marginRight: 6 }} />
+            <Text style={styles.addAnotherButtonText}>Add Another Property</Text>
+          </TouchableOpacity>
+
+          {/* OR Divider */}
+          <View style={styles.orDivider}>
+            <View style={styles.orLine} />
+            <Text style={styles.orText}>OR</Text>
+            <View style={styles.orLine} />
+          </View>
+
+          {/* Import Properties from File */}
+          <View style={[styles.importSection, { width: '100%', maxWidth: 600, alignSelf: 'center' }]}>
+            <Text style={styles.importTitle}>Import Properties from File</Text>
+            <TouchableOpacity
+              style={[styles.dropZone, isProcessingFile && { opacity: 0.7 }]}
+              onPress={!isProcessingFile && !uploadedFile ? handleBrowseFiles : undefined}
+              activeOpacity={isProcessingFile || uploadedFile ? 1 : 0.7}
+              disabled={isProcessingFile}
+            >
+              {isProcessingFile ? (
+                <>
+                  <ActivityIndicator size="large" color="#0E7490" />
+                  <Text style={[styles.dropZoneSubText, { marginTop: 12 }]}>Processing file...</Text>
+                </>
+              ) : uploadedFile ? (
+                <>
+                  <View style={styles.fileSuccessIcon}>
+                    <Ionicons name="checkmark-circle" size={32} color="#16A34A" />
+                  </View>
+                  <Text style={styles.fileNameText}>{uploadedFile.name}</Text>
+                  <Text style={styles.dropZoneSubText}>
+                    {(uploadedFile.size / 1024).toFixed(1)} KB
+                  </Text>
+                  <Text style={styles.importedBadge}>
+                    {forms.length} {forms.length === 1 ? 'property' : 'properties'} loaded into form
+                  </Text>
+                  <TouchableOpacity onPress={() => { clearUploadedFile(); setForms([createEmptyForm()]); }} style={{ marginTop: 8 }}>
+                    <Text style={styles.removeFileText}>Remove file & clear data</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[styles.browseButton, { marginTop: 10 }]} onPress={handleBrowseFiles}>
+                    <Text style={styles.browseButtonText}>Upload Different File</Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <>
+                  <Ionicons name="cloud-upload-outline" size={40} color="#0E7490" />
+                  <Text style={styles.dropZoneText}>
+                    <Text style={{ color: '#0E7490', fontWeight: '700' }}>Tap to browse </Text>
+                    your files
+                  </Text>
+                  <Text style={styles.dropZoneSubText}>Supported: TXT, CSV, XLS, XLSX, PDF</Text>
+                  <TouchableOpacity style={styles.browseButton} onPress={handleBrowseFiles}>
+                    <Text style={styles.browseButtonText}>Browse Files</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.supportedFormats}>
+                    File data will auto-fill the property forms above
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
+            <View style={styles.expectedHeaders}>
+              <Text style={styles.expectedHeadersTitle}>Expected Column Headers:</Text>
+              <View style={styles.headerChipsGrid}>
+                {[
+                  ['Property ID', 'Address'],
+                  ['Property Name', 'Country'],
+                  ['State', 'City'],
+                  ['Postal Code', 'Buildings'],
+                  ['Units'],
+                ].map((row, rowIndex) => (
+                  <View key={rowIndex} style={styles.headerChipRow}>
+                    {row.map((h) => (
+                      <View key={h} style={styles.headerChip}>
+                        <Text style={styles.headerChipText}>{h}</Text>
+                      </View>
+                    ))}
+                  </View>
+                ))}
+              </View>
+            </View>
+          </View>
+
+          {/* Submit All Button */}
+          <TouchableOpacity
+            style={[styles.submitAllButton, loading && styles.submitButtonDisabled]}
+            onPress={handleSubmitAll}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <View style={styles.submitButtonContent}>
+                <Ionicons name="checkmark-circle" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
+                <Text style={styles.submitAllButtonText}>
+                  Submit {forms.length} {forms.length === 1 ? 'Property' : 'Properties'}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+
+          <View style={{ height: 50 }} />
         </ScrollView>
       </KeyboardAvoidingView>
-
-      {/* iOS Country Picker Modal */}
-      {Platform.OS === 'ios' && (
-        <Modal visible={countryPickerVisible} transparent animationType="slide">
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Select Country</Text>
-                <TouchableOpacity onPress={() => { setSelectedCountry(tempCountry); setCountryPickerVisible(false); }}>
-                  <Text style={styles.modalDone}>Done</Text>
-                </TouchableOpacity>
-              </View>
-              <Picker selectedValue={tempCountry} onValueChange={setTempCountry} style={styles.iosPicker}>
-                <Picker.Item label="Select Country" value="" color="#6B7280" />
-                {countries.map((c) => (
-                  <Picker.Item key={c.value} label={c.label} value={c.value} color="#007AFF" />
-                ))}
-              </Picker>
-              <TouchableOpacity style={styles.cancelButton} onPress={() => setCountryPickerVisible(false)}>
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
-      )}
-
-      {/* iOS State Picker Modal */}
-      {Platform.OS === 'ios' && (
-        <Modal visible={statePickerVisible} transparent animationType="slide">
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Select State/Province</Text>
-                <TouchableOpacity onPress={() => { setSelectedState(tempState); setStatePickerVisible(false); }}>
-                  <Text style={styles.modalDone}>Done</Text>
-                </TouchableOpacity>
-              </View>
-              <Picker selectedValue={tempState} onValueChange={setTempState} style={styles.iosPicker}>
-                <Picker.Item label="Select State/Province" value="" color="#6B7280" />
-                {states.map((s) => (
-                  <Picker.Item key={s.value} label={s.label} value={s.value} color="#007AFF" />
-                ))}
-              </Picker>
-              <TouchableOpacity style={styles.cancelButton} onPress={() => setStatePickerVisible(false)}>
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
-      )}
-
-      {/* iOS City Picker Modal */}
-      {Platform.OS === 'ios' && (
-        <Modal visible={cityPickerVisible} transparent animationType="slide">
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Select City</Text>
-                <TouchableOpacity onPress={() => { setSelectedCity(tempCity); setCityPickerVisible(false); }}>
-                  <Text style={styles.modalDone}>Done</Text>
-                </TouchableOpacity>
-              </View>
-              <Picker selectedValue={tempCity} onValueChange={setTempCity} style={styles.iosPicker}>
-                <Picker.Item label="Select City" value="" color="#6B7280" />
-                {cities.map((c, i) => (
-                  <Picker.Item key={`${c.value}-${i}`} label={c.label} value={c.value} color="#007AFF" />
-                ))}
-              </Picker>
-              <TouchableOpacity style={styles.cancelButton} onPress={() => setCityPickerVisible(false)}>
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
-      )}
     </SafeAreaView>
   );
 }
 
+// ---------- styles ----------
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F3F4F6' },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 16, backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
-  backButton: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   headerTitle: { fontSize: 18, fontWeight: '700', color: '#1F2937' },
-  statsButton: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F0F9FF', borderRadius: 8 },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  countBadge: {
+    backgroundColor: '#0E7490',
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  countBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
   scrollView: { flex: 1 },
-  scrollContent: { padding: 20, alignItems: 'center' },
-  formContainer: { backgroundColor: '#FFFFFF', borderRadius: 20, padding: 24, width: '100%', maxWidth: 500 },
-  infoBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F0F9FF', borderRadius: 8, padding: 12, marginBottom: 20, borderLeftWidth: 4, borderLeftColor: '#0E7490' },
-  infoBannerText: { fontSize: 13, color: '#0E7490', marginLeft: 8, fontWeight: '500' },
-  inputGroup: { marginBottom: 18 },
-  label: { fontSize: 14, fontWeight: '600', color: '#1F2937', marginBottom: 8 },
-  input: { backgroundColor: '#D1F2EB', borderRadius: 8, paddingVertical: 14, paddingHorizontal: 14, fontSize: 14, color: '#374151' },
-  pickerWrapper: { backgroundColor: '#D1F2EB', borderRadius: 8, overflow: 'hidden' },
-  picker: { height: 50, color: '#374151' },
-  submitButton: { backgroundColor: '#0E7490', borderRadius: 8, paddingVertical: 14, alignItems: 'center', marginTop: 24 },
-  submitButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
-  submitButtonDisabled: { backgroundColor: '#9CA3AF' },
-  // iOS Picker styles
-  iosPickerButton: { backgroundColor: '#D1F2EB', borderRadius: 8, paddingVertical: 14, paddingHorizontal: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  iosPickerText: { fontSize: 14, color: '#374151' },
-  placeholderText: { color: '#6B7280' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#2C2C2E', borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 30 },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: '#3A3A3C' },
-  modalTitle: { fontSize: 16, fontWeight: '600', color: '#FFFFFF' },
-  modalDone: { fontSize: 16, fontWeight: '600', color: '#007AFF' },
-  iosPicker: { backgroundColor: '#2C2C2E' },
-  cancelButton: { marginHorizontal: 16, backgroundColor: '#3A3A3C', borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
-  cancelButtonText: { fontSize: 16, fontWeight: '600', color: '#007AFF' },
+  scrollContent: { padding: 16, alignItems: 'center' },
+
+  /* ---- property card ---- */
+  propertyCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 16,
+    width: '100%',
+    maxWidth: 600,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0E7490',
+  },
+  removeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  removeButtonText: {
+    color: '#DC2626',
+    fontSize: 13,
+    fontWeight: '600',
+    marginLeft: 4,
+  },
+
+  /* ---- rows & columns ---- */
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  halfColumn: {
+    flex: 1,
+    marginHorizontal: 6,
+  },
+
+  /* ---- labels ---- */
+  label: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 6,
+    textAlign: 'center',
+  },
+  requiredAsterisk: {
+    color: '#DC2626',
+    fontWeight: '700',
+    fontSize: 13,
+  },
+
+  /* ---- inputs ---- */
+  input: {
+    backgroundColor: '#D1F2EB',
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    fontSize: 13,
+    color: '#374151',
+    borderWidth: 1,
+    borderColor: '#D1F2EB',
+    textAlign: 'center',
+    height: 46,
+  },
+  inputError: {
+    borderColor: '#DC2626',
+    borderWidth: 1,
+  },
+  errorText: {
+    color: '#DC2626',
+    fontSize: 11,
+    marginTop: 4,
+  },
+
+  /* ---- add another button ---- */
+  addAnotherButton: {
+    backgroundColor: '#FF4D67',
+    borderRadius: 30,
+    paddingVertical: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+    width: '100%',
+    maxWidth: 600,
+    alignSelf: 'center',
+    shadowColor: '#FF4D67',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  addAnotherButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+
+  /* ---- OR divider ---- */
+  orDivider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  orLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#D1D5DB',
+  },
+  orText: {
+    color: '#9CA3AF',
+    fontSize: 13,
+    fontWeight: '600',
+    marginHorizontal: 16,
+  },
+
+  /* ---- import section ---- */
+  importSection: {
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 16,
+    padding: 20,
+    backgroundColor: '#FFFFFF',
+    marginBottom: 20,
+  },
+  importTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#0E7490',
+    textAlign: 'center',
+    marginBottom: 18,
+  },
+  dropZone: {
+    borderWidth: 2,
+    borderColor: '#D1D5DB',
+    borderStyle: 'dashed',
+    borderRadius: 14,
+    paddingVertical: 30,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    backgroundColor: '#FAFAFA',
+  },
+  dropZoneText: {
+    fontSize: 15,
+    color: '#374151',
+    marginTop: 10,
+    textAlign: 'center',
+  },
+  dropZoneSubText: {
+    fontSize: 13,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  browseButton: {
+    backgroundColor: '#0E7490',
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 28,
+    marginTop: 14,
+  },
+  browseButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  supportedFormats: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    marginTop: 12,
+  },
+  fileSuccessIcon: {
+    marginBottom: 8,
+  },
+  fileNameText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#374151',
+    textAlign: 'center',
+  },
+  removeFileText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#DC2626',
+    textDecorationLine: 'underline',
+  },
+  importedBadge: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#16A34A',
+    marginTop: 6,
+    textAlign: 'center',
+  },
+  expectedHeaders: {
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 10,
+    padding: 16,
+    backgroundColor: '#FFFFFF',
+  },
+  expectedHeadersTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#374151',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  headerChipsGrid: {
+    gap: 10,
+  },
+  headerChipRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  headerChip: {
+    backgroundColor: '#F3F4F6',
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    minWidth: 100,
+    alignItems: 'center',
+  },
+  headerChipText: {
+    fontSize: 13,
+    color: '#4B5563',
+    fontWeight: '500',
+  },
+
+  /* ---- submit all ---- */
+  submitAllButton: {
+    backgroundColor: '#0E7490',
+    borderRadius: 30,
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    maxWidth: 600,
+    alignSelf: 'center',
+  },
+  submitButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  submitAllButtonText: {
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '700',
+  },
+  submitButtonDisabled: { backgroundColor: '#D1D5DB' },
 });

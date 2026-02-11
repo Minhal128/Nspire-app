@@ -239,7 +239,28 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     return isUnit ? UNIT_TOTAL_POSSIBLE_POINTS : POSSIBLE_SCORE;
   };
 
+  // Check if the current deficiency should force Score to 0.00
+  const isZeroScoreDeficiency = (): boolean => {
+    if (!selectedDeficiency && !isCustomEntry) return false;
+    const name = (selectedDeficiency?.name || customDeficiencyName || '').toLowerCase();
+    const detail = (selectedDeficiency?.detail || customDeficiencyDetail || '').toLowerCase();
+    const criteria = (selectedDeficiency?.criteria || customDeficiencyCriteria || '').toLowerCase();
+    const combined = `${name} ${detail} ${criteria}`;
+    const item = (itemName || '').toLowerCase();
+
+    // Carbon Monoxide Alarm — any deficiency in this category
+    if (item.includes('carbon monoxide alarm') || combined.includes('carbon monoxide alarm')) {
+      return true;
+    }
+    // ALL Smoke Alarm deficiencies under Fire Safety
+    if (item.includes('fire safety') && combined.includes('smoke alarm')) {
+      return true;
+    }
+    return false;
+  };
+
   const calculateScore = (): number => {
+    if (isZeroScoreDeficiency()) return 0;
     const ptsLost = calculatePtsLost();
     return getPossibleScore() - ptsLost;
   };
@@ -291,6 +312,11 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       result.maxPtsLost = outsideResult.maxPtsLost;
       result.score = outsideResult.score;
       result.severity = outsideResult.severity;
+      // Force score to 0 for Carbon Monoxide Alarm / smoke alarm covered by foreign object
+      if (isZeroScoreDeficiency()) {
+        result.score = 0;
+        outsideResult.score = 0;
+      }
       setScoringResult(result);
       setInsideScoringResult(null);
       setUnitScoringResult(null);
@@ -317,6 +343,11 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       result.maxPtsLost = unitResult.maxPtsLost;
       result.score = unitResult.score;
       result.severity = unitResult.severity;
+      // Force score to 0 for Carbon Monoxide Alarm / smoke alarm covered by foreign object
+      if (isZeroScoreDeficiency()) {
+        result.score = 0;
+        unitResult.score = 0;
+      }
       setScoringResult(result);
       setOutsideScoringResult(null);
       setInsideScoringResult(null);
@@ -355,6 +386,11 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       result.maxPtsLost = insideResult.maxPtsLost;
       result.score = insideResult.score;
       result.severity = insideResult.severity;
+      // Force score to 0 for Carbon Monoxide Alarm / smoke alarm covered by foreign object
+      if (isZeroScoreDeficiency()) {
+        result.score = 0;
+        insideResult.score = 0;
+      }
       setScoringResult(result);
       setOutsideScoringResult(null);
       setUnitScoringResult(null);

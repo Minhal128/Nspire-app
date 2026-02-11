@@ -41,6 +41,10 @@ export interface InspectionMetadata {
   inspectorName: string;
   inspectorId: string;
   inspectorSignature?: string;
+
+  // Building & Unit Information
+  buildingName?: string;
+  inspectedUnits?: string[];
 }
 
 /**

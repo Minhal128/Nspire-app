@@ -284,10 +284,12 @@ export const generateNSPIREReport = (
     startDate?: Date;
     endDate?: Date;
     notes?: string;
+    buildingName?: string;
+    selectedUnits?: string[];
   }
 ): NSPIREInspectionReport => {
   const now = new Date();
-  const { findings, property, inspectorName, inspectorId, escortName, startDate, endDate, notes } = inspectionData;
+  const { findings, property, inspectorName, inspectorId, escortName, startDate, endDate, notes, buildingName, selectedUnits } = inspectionData;
 
   // Convert findings to deficiencies
   const deficiencies = convertFindingsToDeficiencies(findings, {
@@ -320,6 +322,8 @@ export const generateNSPIREReport = (
     physicalConditionThreshold: 60,
     inspectorName: inspectorName || 'Inspector',
     inspectorId: inspectorId || 'INS-001',
+    buildingName: buildingName || undefined,
+    inspectedUnits: selectedUnits && selectedUnits.length > 0 ? selectedUnits : undefined,
   };
 
   // Build inspection data table

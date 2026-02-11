@@ -46,9 +46,9 @@ const STATE_OPTIONS = [
 
 // Coverage options for inspection
 const COVERAGE_OPTIONS = [
-  { label: '100% - All Units', value: '100', description: 'Inspect every unit in the property' },
-  { label: '50% - Half Units', value: '50', description: 'Inspect half of all units (randomly selected)' },
-  { label: 'Random Sample', value: 'random', description: 'Automatically select a random sample based on NSPIRE guidelines' },
+  { label: 'Random Units', value: 'random', description: 'Automatically select a random sample based on NSPIRE guidelines' },
+  { label: '50%', value: '50', description: 'Inspect half of all units (randomly selected)' },
+  { label: '100%', value: '100', description: 'Inspect every unit in the property' },
 ];
 
 interface MyInspectionsScreenProps {
@@ -69,20 +69,20 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
   const [properties, setProperties] = useState<PropertyType[]>([]);
   const [inspections, setInspections] = useState<Inspection[]>([]);
 
-  // Country/State/City filter states
+  // Country/State/City filter states (text-based)
   const [selectedCountry, setSelectedCountry] = useState('');
   const [selectedState, setSelectedState] = useState('');
   const [selectedCity, setSelectedCity] = useState('');
   const [countries, setCountries] = useState<ICountry[]>([]);
   const [states, setStates] = useState<IState[]>([]);
   const [cities, setCities] = useState<ICity[]>([]);
+  const [countryFilterText, setCountryFilterText] = useState('');
+  const [stateFilterText, setStateFilterText] = useState('');
+  const [cityFilterText, setCityFilterText] = useState('');
 
   // iOS Picker Modal states
   const [locationPickerVisible, setLocationPickerVisible] = useState(false);
   const [compliancePickerVisible, setCompliancePickerVisible] = useState(false);
-  const [countryPickerVisible, setCountryPickerVisible] = useState(false);
-  const [statePickerVisible, setStatePickerVisible] = useState(false);
-  const [cityPickerVisible, setCityPickerVisible] = useState(false);
 
   // Edit Property Modal state
   const [editModalVisible, setEditModalVisible] = useState(false);
@@ -93,12 +93,11 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
   const [editZipCode, setEditZipCode] = useState('');
   const [editBuildings, setEditBuildings] = useState('');
   const [editUnits, setEditUnits] = useState('');
-  const [editStatePickerVisible, setEditStatePickerVisible] = useState(false);
   const [savingProperty, setSavingProperty] = useState(false);
 
   // Ready for Inspection Modal state
   const [inspectionModalVisible, setInspectionModalVisible] = useState(false);
-  const [selectedCoverage, setSelectedCoverage] = useState('100');
+  const [selectedCoverage, setSelectedCoverage] = useState('random');
   const [calculatedUnits, setCalculatedUnits] = useState(0);
   const [selectedUnits, setSelectedUnits] = useState<string[]>([]);
 
@@ -158,12 +157,10 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
     loadInitialData();
   }, [loadInitialData]);
 
-  // Load only specific countries (USA, UK, Australia, Canada)
+  // Load all countries
   useEffect(() => {
-    const allowedCountryCodes = ['US', 'GB', 'AU', 'CA'];
     const allCountries = Country.getAllCountries();
-    const filteredCountries = allCountries.filter(c => allowedCountryCodes.includes(c.isoCode));
-    setCountries(filteredCountries);
+    setCountries(allCountries);
   }, []);
 
   // Load states when country changes
@@ -174,6 +171,8 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
       setSelectedState('');
       setSelectedCity('');
       setCities([]);
+      setStateFilterText('');
+      setCityFilterText('');
     } else {
       setStates([]);
       setSelectedState('');
@@ -188,11 +187,70 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
       const stateCities = City.getCitiesOfState(selectedCountry, selectedState);
       setCities(stateCities);
       setSelectedCity('');
+      setCityFilterText('');
     } else {
       setCities([]);
       setSelectedCity('');
     }
   }, [selectedCountry, selectedState]);
+
+  // Country/State/City blur handlers for filter text inputs
+  const handleCountryFilterBlur = () => {
+    if (!countryFilterText.trim()) {
+      setSelectedCountry('');
+      return;
+    }
+    const lower = countryFilterText.trim().toLowerCase();
+    const found = countries.find(
+      (c) => c.name.toLowerCase() === lower || c.isoCode.toLowerCase() === lower,
+    ) || countries.find(
+      (c) => c.name.toLowerCase().startsWith(lower),
+    );
+    if (found) {
+      setSelectedCountry(found.isoCode);
+      setCountryFilterText(found.name);
+    } else {
+      setSelectedCountry('');
+    }
+  };
+
+  const handleStateFilterBlur = () => {
+    if (!stateFilterText.trim()) {
+      setSelectedState('');
+      return;
+    }
+    const lower = stateFilterText.trim().toLowerCase();
+    const found = states.find(
+      (s) => s.name.toLowerCase() === lower || s.isoCode.toLowerCase() === lower,
+    ) || states.find(
+      (s) => s.name.toLowerCase().startsWith(lower),
+    );
+    if (found) {
+      setSelectedState(found.isoCode);
+      setStateFilterText(found.name);
+    } else {
+      setSelectedState('');
+    }
+  };
+
+  const handleCityFilterBlur = () => {
+    if (!cityFilterText.trim()) {
+      setSelectedCity('');
+      return;
+    }
+    const lower = cityFilterText.trim().toLowerCase();
+    const found = cities.find(
+      (c) => c.name.toLowerCase() === lower,
+    ) || cities.find(
+      (c) => c.name.toLowerCase().startsWith(lower),
+    );
+    if (found) {
+      setSelectedCity(found.name);
+      setCityFilterText(found.name);
+    } else {
+      setSelectedCity('');
+    }
+  };
 
   // Filter properties based on search and filters with null safety
   const filteredProperties = (properties || []).filter((property) => {
@@ -343,8 +401,8 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
       // Show coverage modal first
       const totalUnits = selectedProperty.units || 1;
       setCalculatedUnits(totalUnits);
-      setSelectedCoverage('100');
-      calculateSelectedUnits('100', totalUnits, selectedProperty);
+      setSelectedCoverage('random');
+      calculateSelectedUnits('random', totalUnits, selectedProperty);
       setInspectionModalVisible(true);
     }
   };
@@ -587,124 +645,51 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
           </View>
 
           {/* Filters */}
-          <Text style={styles.filtersLabel}>Filters</Text>
-          <View style={styles.filtersContainer}>
-            {/* Country Dropdown */}
-            <View style={styles.filterItem}>
-              <View style={styles.pickerContainer}>
-                {Platform.OS === 'ios' ? (
-                  <TouchableOpacity
-                    style={styles.iosPickerButton}
-                    onPress={() => setCountryPickerVisible(true)}
-                  >
-                    <Text style={[styles.iosPickerText, !selectedCountry && { color: '#9CA3AF' }]}>
-                      {selectedCountry ? countries.find(c => c.isoCode === selectedCountry)?.name || 'Country' : 'Country'}
-                    </Text>
-                  </TouchableOpacity>
-                ) : (
-                  <Picker
-                    selectedValue={selectedCountry}
-                    onValueChange={(itemValue: string) => setSelectedCountry(itemValue)}
-                    style={styles.picker}
-                  >
-                    <Picker.Item label="Country" value="" />
-                    {countries.map((country) => (
-                      <Picker.Item
-                        key={country.isoCode}
-                        label={country.name}
-                        value={country.isoCode}
-                      />
-                    ))}
-                  </Picker>
-                )}
-                <Ionicons
-                  name="chevron-down"
-                  size={18}
-                  color="#6B7280"
-                  style={styles.pickerIcon}
-                />
-              </View>
+          <View style={styles.filterSection}>
+            <View style={styles.filterInputGroup}>
+              <Text style={styles.filterInputLabel}>Country</Text>
+              <TextInput
+                style={styles.filterTextInput}
+                placeholder="Enter Country"
+                placeholderTextColor="#9CA3AF"
+                value={countryFilterText}
+                onChangeText={(t) => { setCountryFilterText(t); if (!t.trim()) setSelectedCountry(''); }}
+                onBlur={handleCountryFilterBlur}
+                autoCapitalize="words"
+              />
             </View>
 
-            {/* State/Province Dropdown */}
-            <View style={styles.filterItem}>
-              <View style={styles.pickerContainer}>
-                {Platform.OS === 'ios' ? (
-                  <TouchableOpacity
-                    style={styles.iosPickerButton}
-                    onPress={() => setStatePickerVisible(true)}
-                  >
-                    <Text style={[styles.iosPickerText, !selectedState && { color: '#9CA3AF' }]}>
-                      {selectedState ? states.find(s => s.isoCode === selectedState)?.name || 'State/Province' : 'State/Province'}
-                    </Text>
-                  </TouchableOpacity>
-                ) : (
-                  <Picker
-                    selectedValue={selectedState}
-                    onValueChange={(itemValue: string) => setSelectedState(itemValue)}
-                    style={styles.picker}
-                    enabled={states.length > 0}
-                  >
-                    <Picker.Item label={states.length > 0 ? "State/Province" : "Select Country First"} value="" />
-                    {states.map((state) => (
-                      <Picker.Item
-                        key={state.isoCode}
-                        label={state.name}
-                        value={state.isoCode}
-                      />
-                    ))}
-                  </Picker>
-                )}
-                <Ionicons
-                  name="chevron-down"
-                  size={18}
-                  color="#6B7280"
-                  style={styles.pickerIcon}
-                />
-              </View>
+            <View style={styles.filterInputGroup}>
+              <Text style={styles.filterInputLabel}>State</Text>
+              <TextInput
+                style={styles.filterTextInput}
+                placeholder={selectedCountry ? 'Enter State' : 'Select Country first'}
+                placeholderTextColor="#9CA3AF"
+                value={stateFilterText}
+                onChangeText={(t) => { setStateFilterText(t); if (!t.trim()) setSelectedState(''); }}
+                onBlur={handleStateFilterBlur}
+                autoCapitalize="words"
+                editable={!!selectedCountry}
+              />
+            </View>
+
+            <View style={styles.filterInputGroup}>
+              <Text style={styles.filterInputLabel}>City</Text>
+              <TextInput
+                style={styles.filterTextInput}
+                placeholder={selectedState ? 'Enter City' : 'Select state first'}
+                placeholderTextColor="#9CA3AF"
+                value={cityFilterText}
+                onChangeText={(t) => { setCityFilterText(t); if (!t.trim()) setSelectedCity(''); }}
+                onBlur={handleCityFilterBlur}
+                autoCapitalize="words"
+                editable={!!selectedState}
+              />
             </View>
           </View>
 
-          {/* Second row of filters */}
+          {/* Payment Status */}
           <View style={styles.filtersContainer}>
-            {/* City Dropdown */}
-            <View style={styles.filterItem}>
-              <View style={styles.pickerContainer}>
-                {Platform.OS === 'ios' ? (
-                  <TouchableOpacity
-                    style={styles.iosPickerButton}
-                    onPress={() => setCityPickerVisible(true)}
-                  >
-                    <Text style={[styles.iosPickerText, !selectedCity && { color: '#9CA3AF' }]}>
-                      {selectedCity || 'City'}
-                    </Text>
-                  </TouchableOpacity>
-                ) : (
-                  <Picker
-                    selectedValue={selectedCity}
-                    onValueChange={(itemValue: string) => setSelectedCity(itemValue)}
-                    style={styles.picker}
-                  >
-                    <Picker.Item label="City" value="" />
-                    {cities.map((city, index) => (
-                      <Picker.Item
-                        key={`${city.name}-${index}`}
-                        label={city.name}
-                        value={city.name}
-                      />
-                    ))}
-                  </Picker>
-                )}
-                <Ionicons
-                  name="chevron-down"
-                  size={18}
-                  color="#6B7280"
-                  style={styles.pickerIcon}
-                />
-              </View>
-            </View>
-
-            {/* Payment Status Dropdown */}
             <View style={styles.filterItem}>
               <View style={styles.pickerContainer}>
                 {Platform.OS === 'ios' ? (
@@ -803,39 +788,6 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
 
       {/* iOS Picker Modals */}
       <IOSPickerModal
-        visible={countryPickerVisible}
-        title="Select Country"
-        options={[
-          { label: 'All Countries', value: '' },
-          ...countries.map(c => ({ label: c.name, value: c.isoCode }))
-        ]}
-        selectedValue={selectedCountry}
-        onSelect={setSelectedCountry}
-        onClose={() => setCountryPickerVisible(false)}
-      />
-      <IOSPickerModal
-        visible={statePickerVisible}
-        title="Select State/Province"
-        options={[
-          { label: states.length > 0 ? 'All States/Provinces' : 'Select Country First', value: '' },
-          ...states.map(s => ({ label: s.name, value: s.isoCode }))
-        ]}
-        selectedValue={selectedState}
-        onSelect={setSelectedState}
-        onClose={() => setStatePickerVisible(false)}
-      />
-      <IOSPickerModal
-        visible={cityPickerVisible}
-        title="Select City"
-        options={[
-          { label: 'All Cities', value: '' },
-          ...cities.map((c, index) => ({ label: c.name, value: c.name }))
-        ]}
-        selectedValue={selectedCity}
-        onSelect={setSelectedCity}
-        onClose={() => setCityPickerVisible(false)}
-      />
-      <IOSPickerModal
         visible={compliancePickerVisible}
         title="Select Payment Status"
         options={COMPLIANCE_OPTIONS}
@@ -899,29 +851,14 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
                 </View>
                 <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
                   <Text style={styles.inputLabel}>State *</Text>
-                  {Platform.OS === 'ios' ? (
-                    <TouchableOpacity
-                      style={styles.editInput}
-                      onPress={() => setEditStatePickerVisible(true)}
-                    >
-                      <Text style={editState ? styles.pickerSelectedText : styles.pickerPlaceholderText}>
-                        {editState || 'Select State'}
-                      </Text>
-                    </TouchableOpacity>
-                  ) : (
-                    <View style={styles.editPickerWrapper}>
-                      <Picker
-                        selectedValue={editState}
-                        onValueChange={(value: string) => setEditState(value)}
-                        style={styles.editPicker}
-                      >
-                        <Picker.Item label="Select State" value="" />
-                        {US_STATES.map((state) => (
-                          <Picker.Item key={state.value} label={state.label} value={state.value} />
-                        ))}
-                      </Picker>
-                    </View>
-                  )}
+                  <TextInput
+                    style={styles.editInput}
+                    value={editState}
+                    onChangeText={setEditState}
+                    placeholder="Enter State"
+                    placeholderTextColor="#9CA3AF"
+                    autoCapitalize="words"
+                  />
                 </View>
               </View>
 
@@ -985,16 +922,6 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
           </View>
         </KeyboardAvoidingView>
       </Modal>
-
-      {/* Edit State Picker Modal (iOS) */}
-      <IOSPickerModal
-        visible={editStatePickerVisible}
-        title="Select State"
-        options={STATE_OPTIONS}
-        selectedValue={editState}
-        onSelect={setEditState}
-        onClose={() => setEditStatePickerVisible(false)}
-      />
 
       {/* Ready for Inspection Modal */}
       <Modal
@@ -1152,6 +1079,29 @@ const styles = StyleSheet.create({
     color: '#1F2937',
     paddingHorizontal: 20,
     marginBottom: 10,
+  },
+  filterSection: {
+    paddingHorizontal: 20,
+    marginBottom: 16,
+  },
+  filterInputGroup: {
+    marginBottom: 12,
+  },
+  filterInputLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 6,
+  },
+  filterTextInput: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    fontSize: 14,
+    color: '#374151',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   filtersContainer: {
     flexDirection: 'row',

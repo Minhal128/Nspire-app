@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,10 @@ import {
   ScrollView,
   TouchableOpacity,
   SafeAreaView,
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
@@ -27,10 +31,37 @@ interface Props {
 const PropertyInfoScreen: React.FC<Props> = ({ navigation, route }) => {
   const { property, selectedUnits } = route.params;
 
+  // Editable unit names
+  const [unitNames, setUnitNames] = useState<string[]>(selectedUnits);
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [tempUnitNames, setTempUnitNames] = useState<string[]>(selectedUnits);
+
+  const openEditModal = () => {
+    setTempUnitNames([...unitNames]);
+    setEditModalVisible(true);
+  };
+
+  const handleSaveUnitNames = () => {
+    setUnitNames(tempUnitNames.map(n => n.trim() || 'Unnamed'));
+    setEditModalVisible(false);
+  };
+
+  const handleCancelEdit = () => {
+    setEditModalVisible(false);
+  };
+
+  const updateTempName = (index: number, value: string) => {
+    setTempUnitNames(prev => {
+      const copy = [...prev];
+      copy[index] = value;
+      return copy;
+    });
+  };
+
   const handleStartInspection = () => {
     navigation.navigate('InspectionCategories', {
       property,
-      selectedUnits,
+      selectedUnits: unitNames,
       buildingId: 'B1',
     });
   };
@@ -110,11 +141,17 @@ const PropertyInfoScreen: React.FC<Props> = ({ navigation, route }) => {
         </View>
 
         {/* Selected Units Card */}
-        {selectedUnits.length > 0 && (
+        {unitNames.length > 0 && (
           <View style={styles.unitsCard}>
-            <Text style={styles.unitsTitle}>Selected Units</Text>
+            <View style={styles.unitsTitleRow}>
+              <Text style={styles.unitsTitle}>Selected Units</Text>
+              <TouchableOpacity style={styles.editButton} onPress={openEditModal}>
+                <Ionicons name="pencil-outline" size={16} color="#0E7490" />
+                <Text style={styles.editButtonText}>Edit</Text>
+              </TouchableOpacity>
+            </View>
             <View style={styles.unitsChipsContainer}>
-              {selectedUnits.map((unit, index) => (
+              {unitNames.map((unit, index) => (
                 <View key={index} style={styles.unitChip}>
                   <Text style={styles.unitChipText}>{unit}</Text>
                 </View>
@@ -122,6 +159,53 @@ const PropertyInfoScreen: React.FC<Props> = ({ navigation, route }) => {
             </View>
           </View>
         )}
+
+        {/* Edit Units Modal */}
+        <Modal
+          visible={editModalVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={handleCancelEdit}
+        >
+          <KeyboardAvoidingView
+            style={styles.modalOverlay}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          >
+            <View style={styles.modalContainer}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Rename Units</Text>
+                <TouchableOpacity onPress={handleCancelEdit}>
+                  <Ionicons name="close" size={24} color="#666" />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
+                {tempUnitNames.map((name, index) => (
+                  <View key={index} style={styles.modalInputRow}>
+                    <Text style={styles.modalInputLabel}>Unit {index + 1}</Text>
+                    <TextInput
+                      style={styles.modalInput}
+                      value={name}
+                      onChangeText={(text) => updateTempName(index, text)}
+                      placeholder={`Enter unit name`}
+                      placeholderTextColor="#9CA3AF"
+                      selectTextOnFocus
+                    />
+                  </View>
+                ))}
+              </ScrollView>
+
+              <View style={styles.modalFooter}>
+                <TouchableOpacity style={styles.modalCancelBtn} onPress={handleCancelEdit}>
+                  <Text style={styles.modalCancelText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.modalSaveBtn} onPress={handleSaveUnitNames}>
+                  <Text style={styles.modalSaveText}>Save</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </KeyboardAvoidingView>
+        </Modal>
       </ScrollView>
 
       {/* Fixed Bottom Button */}
@@ -277,11 +361,30 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 2,
   },
+  unitsTitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
   unitsTitle: {
     fontSize: 14,
     fontWeight: '600',
     color: '#1A1A1A',
-    marginBottom: 12,
+  },
+  editButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E0F2FE',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 14,
+    gap: 4,
+  },
+  editButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#0E7490',
   },
   unitsChipsContainer: {
     flexDirection: 'row',
@@ -333,6 +436,95 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '700',
     letterSpacing: 0.5,
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  modalContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    width: '100%',
+    maxHeight: '70%',
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1A1A1A',
+  },
+  modalScroll: {
+    maxHeight: 300,
+  },
+  modalInputRow: {
+    marginBottom: 14,
+  },
+  modalInputLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#6B7280',
+    marginBottom: 6,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  modalInput: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#1F2937',
+  },
+  modalFooter: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 10,
+    marginTop: 18,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+    paddingTop: 16,
+  },
+  modalCancelBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    backgroundColor: '#FFFFFF',
+  },
+  modalCancelText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  modalSaveBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    borderRadius: 10,
+    backgroundColor: '#0E7490',
+  },
+  modalSaveText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
 });
 

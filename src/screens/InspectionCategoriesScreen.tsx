@@ -6,6 +6,10 @@ import {
   ScrollView,
   TouchableOpacity,
   SafeAreaView,
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
@@ -30,6 +34,23 @@ interface Props {
 const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
   const { property, selectedUnits, buildingId } = route.params;
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
+  const [buildingName, setBuildingName] = useState(buildingId);
+  const [editBuildingModalVisible, setEditBuildingModalVisible] = useState(false);
+  const [tempBuildingName, setTempBuildingName] = useState(buildingId);
+
+  const openBuildingEditModal = () => {
+    setTempBuildingName(buildingName);
+    setEditBuildingModalVisible(true);
+  };
+
+  const handleSaveBuildingName = () => {
+    setBuildingName(tempBuildingName.trim() || buildingId);
+    setEditBuildingModalVisible(false);
+  };
+
+  const handleCancelBuildingEdit = () => {
+    setEditBuildingModalVisible(false);
+  };
 
   const toggleSection = (section: string) => {
     setExpandedSection(expandedSection === section ? null : section);
@@ -39,7 +60,7 @@ const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
     navigation.navigate('LocationInspection', {
       property,
       selectedUnits,
-      buildingId,
+      buildingId: buildingName,
       location: 'Outside',
     });
   };
@@ -48,7 +69,7 @@ const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
     navigation.navigate('LocationInspection', {
       property,
       selectedUnits,
-      buildingId,
+      buildingId: buildingName,
       location: 'Inside',
     });
   };
@@ -57,7 +78,7 @@ const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
     navigation.navigate('LocationInspection', {
       property,
       selectedUnits,
-      buildingId,
+      buildingId: buildingName,
       location: 'Unit',
     });
   };
@@ -86,13 +107,60 @@ const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
         {/* Building Info Card */}
         <View style={styles.buildingCard}>
           <View style={styles.buildingHeader}>
-            <Ionicons name="business-outline" size={24} color="#0E7490" />
-            <Text style={styles.buildingTitle}>BUILDING NO: {buildingId}</Text>
+            <Ionicons name="business-outline" size={24} color="#FFFFFF" />
+            <Text style={styles.buildingTitle}>BUILDING NO: {buildingName}</Text>
+            <TouchableOpacity style={styles.buildingEditBtn} onPress={openBuildingEditModal}>
+              <Ionicons name="pencil-outline" size={16} color="#FFFFFF" />
+            </TouchableOpacity>
           </View>
           <Text style={styles.unitsInfo}>
-            Units Under {buildingId}: {selectedUnits.join(', ')}
+            Units Under {buildingName}: {selectedUnits.join(', ')}
           </Text>
         </View>
+
+        {/* Edit Building Name Modal */}
+        <Modal
+          visible={editBuildingModalVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={handleCancelBuildingEdit}
+        >
+          <KeyboardAvoidingView
+            style={styles.modalOverlay}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          >
+            <View style={styles.modalContainer}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Edit Building Name</Text>
+                <TouchableOpacity onPress={handleCancelBuildingEdit}>
+                  <Ionicons name="close" size={24} color="#666" />
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.modalInputRow}>
+                <Text style={styles.modalInputLabel}>Building Name</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  value={tempBuildingName}
+                  onChangeText={setTempBuildingName}
+                  placeholder="Enter building name"
+                  placeholderTextColor="#9CA3AF"
+                  selectTextOnFocus
+                  autoFocus
+                />
+              </View>
+
+              <View style={styles.modalFooter}>
+                <TouchableOpacity style={styles.modalCancelBtn} onPress={handleCancelBuildingEdit}>
+                  <Text style={styles.modalCancelText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.modalSaveBtn} onPress={handleSaveBuildingName}>
+                  <Text style={styles.modalSaveText}>Save</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </KeyboardAvoidingView>
+        </Modal>
 
         {/* OUTSIDE Section */}
         <TouchableOpacity
@@ -233,6 +301,12 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     gap: 8,
   },
+  buildingEditBtn: {
+    marginLeft: 'auto',
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 14,
+    padding: 6,
+  },
   buildingTitle: {
     fontSize: 20,
     fontWeight: 'bold',
@@ -306,6 +380,91 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#999999',
     fontWeight: '500',
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  modalContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    width: '100%',
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1A1A1A',
+  },
+  modalInputRow: {
+    marginBottom: 14,
+  },
+  modalInputLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#6B7280',
+    marginBottom: 6,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  modalInput: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#1F2937',
+  },
+  modalFooter: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 10,
+    marginTop: 18,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+    paddingTop: 16,
+  },
+  modalCancelBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    backgroundColor: '#FFFFFF',
+  },
+  modalCancelText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  modalSaveBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    borderRadius: 10,
+    backgroundColor: '#0E7490',
+  },
+  modalSaveText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
 });
 

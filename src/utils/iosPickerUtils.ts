@@ -181,7 +181,7 @@ export const PROPERTY_TYPE_OPTIONS: PickerOption[] = [
 ];
 
 export const UNIT_SELECTION_OPTIONS: PickerOption[] = [
-  { label: 'Random Sample (NSPIRE)', value: 'random_32' },
+  { label: 'Random Units (NSPIRE)', value: 'random_32' },
   { label: 'Select unit 50%', value: 'select_50' },
   { label: 'Select unit 100%', value: 'select_100' },
 ];

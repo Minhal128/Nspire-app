@@ -11,27 +11,8 @@ import {
   ActivityIndicator,
   Platform,
 } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
 import { Ionicons } from '@expo/vector-icons';
 import { propertyService } from '../services';
-import IOSPickerModal from '../components/IOSPickerModal';
-import { US_STATE_OPTIONS } from '../utils/iosPickerUtils';
-
-// State options with all US states
-const STATE_OPTIONS = [
-  { label: 'Select State', value: '' },
-  ...US_STATE_OPTIONS,
-];
-
-// Helper function to get state label from code
-const getStateLabel = (stateCode: string): string => {
-  if (!stateCode) return 'Select State';
-  const stateOption = US_STATE_OPTIONS.find(
-    s => s.value.toLowerCase() === stateCode.toLowerCase() ||
-      s.label.toLowerCase() === stateCode.toLowerCase()
-  );
-  return stateOption ? stateOption.label : stateCode;
-};
 
 interface EditPropertyScreenProps {
   navigation: any;
@@ -104,9 +85,6 @@ export default function EditPropertyScreen({ navigation, route }: EditPropertySc
 
     fetchPropertyData();
   }, [property]);
-
-  // iOS Picker Modal State
-  const [statePickerVisible, setStatePickerVisible] = useState(false);
 
   const handleUpdate = async () => {
     if (!propertyName.trim()) {
@@ -228,34 +206,14 @@ export default function EditPropertyScreen({ navigation, route }: EditPropertySc
             {/* State */}
             <View style={styles.inputGroup}>
               <Text style={styles.label}>State</Text>
-              <View style={styles.pickerContainer}>
-                {Platform.OS === 'ios' ? (
-                  <TouchableOpacity
-                    style={styles.iosPickerButton}
-                    onPress={() => setStatePickerVisible(true)}
-                  >
-                    <Text style={[styles.iosPickerText, !state && { color: '#6B7280' }]}>
-                      {getStateLabel(state)}
-                    </Text>
-                  </TouchableOpacity>
-                ) : (
-                  <Picker
-                    selectedValue={state}
-                    onValueChange={(itemValue: string) => setState(itemValue)}
-                    style={styles.picker}
-                  >
-                    {STATE_OPTIONS.map((option) => (
-                      <Picker.Item key={option.value} label={option.label} value={option.value} />
-                    ))}
-                  </Picker>
-                )}
-                <Ionicons
-                  name="chevron-down"
-                  size={20}
-                  color="#6B7280"
-                  style={styles.pickerIcon}
-                />
-              </View>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter State"
+                placeholderTextColor="#6B7280"
+                value={state}
+                onChangeText={setState}
+                autoCapitalize="words"
+              />
             </View>
 
             {/* Number Of Building */}
@@ -338,15 +296,7 @@ export default function EditPropertyScreen({ navigation, route }: EditPropertySc
         </ScrollView>
       )}
 
-      {/* iOS State Picker Modal */}
-      <IOSPickerModal
-        visible={statePickerVisible}
-        title="Select State"
-        options={STATE_OPTIONS}
-        selectedValue={state}
-        onSelect={setState}
-        onClose={() => setStatePickerVisible(false)}
-      />
+      {/* end of form */}
     </SafeAreaView>
   );
 }
