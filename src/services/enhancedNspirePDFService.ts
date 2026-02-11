@@ -104,12 +104,33 @@ async function preloadDeficiencyImages(deficiencies: DeficiencyEntry[]): Promise
   const imageMap = new Map<string, string>();
   const uniqueUrls = new Set<string>();
   for (const def of deficiencies) {
-    if (def.imageUri && (def.imageUri.startsWith('http://') || def.imageUri.startsWith('https://'))) {
-      uniqueUrls.add(def.imageUri);
+    if (def.imageUri) {
+      // If already a base64 data URI, add directly to the map
+      if (def.imageUri.startsWith('data:')) {
+        imageMap.set(def.imageUri, def.imageUri);
+      } else if (def.imageUri.startsWith('http://') || def.imageUri.startsWith('https://')) {
+        uniqueUrls.add(def.imageUri);
+      } else if (def.imageUri.startsWith('file://') || def.imageUri.startsWith('/')) {
+        // Local file URI - try to convert to base64
+        try {
+          const filePath = def.imageUri.startsWith('file://') ? def.imageUri : def.imageUri;
+          const b64 = await FileSystem.readAsStringAsync(filePath, { encoding: FileSystem.EncodingType.Base64 });
+          if (b64 && b64.length > 100) {
+            const ext = def.imageUri.toLowerCase().includes('.png') ? 'png' : 'jpeg';
+            imageMap.set(def.imageUri, `data:image/${ext};base64,${b64}`);
+          }
+        } catch (e) {
+          console.warn('Failed to read local image file:', def.imageUri, e);
+        }
+      }
     }
   }
+  if (uniqueUrls.size === 0 && imageMap.size > 0) {
+    console.log(`${imageMap.size} images already in base64/local format, no remote images to fetch.`);
+    return imageMap;
+  }
   if (uniqueUrls.size === 0) return imageMap;
-  console.log(`Pre-fetching ${uniqueUrls.size} deficiency image(s)...`);
+  console.log(`Pre-fetching ${uniqueUrls.size} remote deficiency image(s)...`);
   const entries = await Promise.all(
     Array.from(uniqueUrls).map(async (url) => {
       const b64 = await fetchImageAsBase64(url);
@@ -311,9 +332,19 @@ function generateEnhancedDeficiencyTable(deficiencies: DeficiencyEntry[], imageM
     rows += `<tr class="gh"><td colspan="7">${esc(groupKey)}</td></tr>\n`;
     items.forEach(({ def, isRepeat }) => {
       const comments = cleanJsonComments(def.comments);
-      const imgB64 = def.imageUri ? (imageMap.get(def.imageUri) || '') : '';
-      const imgCell = imgB64
-        ? `<img src="${imgB64}" style="width:80px;height:60px;object-fit:cover;border:1px solid #000;display:block;margin:0 auto" />`
+      // Check if imageUri is already a base64 data URI (use directly) or look up from the preloaded map
+      let imgSrc = '';
+      if (def.imageUri) {
+        if (def.imageUri.startsWith('data:')) {
+          // Already a base64 data URI — use directly
+          imgSrc = def.imageUri;
+        } else {
+          // Look up from the preloaded image map
+          imgSrc = imageMap.get(def.imageUri) || '';
+        }
+      }
+      const imgCell = imgSrc
+        ? `<img src="${imgSrc}" style="width:80px;height:60px;object-fit:cover;border:1px solid #000;display:block;margin:0 auto" />`
         : `<div class="ip">Photo</div>`;
       rows += `<tr class="avoid-break">
 <td class="la">${esc(def.deficiencyDetails || 'No details available')}</td>
@@ -439,8 +470,24 @@ class EnhancedNSPIREPDFReportService {
         metadata: report.metadata?.inspectionNo || 'Unknown',
       });
 
+      // Log image URIs for debugging
+      if (report.deficiencies) {
+        report.deficiencies.forEach((def, i) => {
+          if (def.imageUri) {
+            const uriType = def.imageUri.startsWith('data:') ? 'base64' 
+              : def.imageUri.startsWith('http') ? 'remote' 
+              : def.imageUri.startsWith('file://') ? 'local-file' 
+              : 'other';
+            console.log(`Deficiency ${i + 1} image: ${uriType}, length: ${def.imageUri.length}`);
+          } else {
+            console.log(`Deficiency ${i + 1} image: none`);
+          }
+        });
+      }
+
       // Pre-fetch deficiency images as base64 before building HTML
       const imageMap = await preloadDeficiencyImages(report.deficiencies || []);
+      console.log(`Image map has ${imageMap.size} entries, ${Array.from(imageMap.values()).filter(v => v.length > 0).length} with data`);
 
       const html = generateEnhancedNSPIREReportHTML(report, options, imageMap);
 

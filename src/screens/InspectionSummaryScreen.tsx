@@ -206,21 +206,31 @@ const InspectionSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
           const defItem = inspectionData.deficiencies[i];
 
           // Convert local image to base64 for PDF
-          let imageBase64 = null;
+          let imageBase64: string | null = null;
+          const cloudinaryUrl = defItem.imageUrl || null;
+          
           if (defItem.imageUri) {
             try {
-              const base64 = await FileSystem.readAsStringAsync(defItem.imageUri, {
-                encoding: FileSystem.EncodingType.Base64,
-              });
-              imageBase64 = `data:image/jpeg;base64,${base64}`;
+              // Check if file exists before trying to read
+              const fileInfo = await FileSystem.getInfoAsync(defItem.imageUri);
+              if (fileInfo.exists) {
+                const base64 = await FileSystem.readAsStringAsync(defItem.imageUri, {
+                  encoding: FileSystem.EncodingType.Base64,
+                });
+                if (base64 && base64.length > 100) {
+                  imageBase64 = `data:image/jpeg;base64,${base64}`;
+                  console.log(`Image ${i + 1} converted to base64 (${Math.round(base64.length / 1024)}KB)`);
+                }
+              } else {
+                console.log(`Local image file not found: ${defItem.imageUri.substring(0, 60)}...`);
+              }
             } catch (imgError) {
               console.error('Error converting image to base64:', imgError);
-              // Try using Cloudinary URL as fallback
-              if (defItem.imageUrl) {
-                imageBase64 = defItem.imageUrl;
-              }
             }
           }
+          
+          // Use base64 if available, otherwise use Cloudinary URL for the enhanced PDF service to fetch
+          const finalImageUri = imageBase64 || cloudinaryUrl || null;
 
           deficienciesArray.push({
             id: `${i + 1}`,
@@ -239,7 +249,7 @@ const InspectionSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
             inspectedDate: inspectionDate,
             inspectedTime: new Date().toLocaleTimeString(),
             inspectorId: 'INS-001',
-            imageUri: imageBase64, // Use base64 data URI
+            imageUri: finalImageUri, // base64 data URI or Cloudinary URL
             status: 'Open' as const,
           });
         }
