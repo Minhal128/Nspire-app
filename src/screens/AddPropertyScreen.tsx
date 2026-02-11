@@ -1033,7 +1033,7 @@ const styles = StyleSheet.create({
 
   /* ---- add another button ---- */
   addAnotherButton: {
-    backgroundColor: '#FF4D67',
+    backgroundColor: '#FF0000',
     borderRadius: 30,
     paddingVertical: 16,
     flexDirection: 'row',
@@ -1043,7 +1043,7 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 600,
     alignSelf: 'center',
-    shadowColor: '#FF4D67',
+    shadowColor: '#FF0000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
