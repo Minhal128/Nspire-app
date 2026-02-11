@@ -15,7 +15,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Country, State, City } from 'country-state-city';
 import * as DocumentPicker from 'expo-document-picker';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as XLSX from 'xlsx';
 import { propertyService } from '../services';
 
 interface AddPropertyScreenProps {
@@ -168,38 +169,40 @@ export default function AddPropertyScreen({
 
   // ---- File Import Logic (matches web app) ----
 
+  /**
+   * Fuzzy-match a header string to a PropertyForm field name.
+   * Handles variations like "Property Id (Optional)", "Number Of Building", etc.
+   */
+  const matchHeader = (raw: string): string | null => {
+    const h = raw.toLowerCase().replace(/[^a-z0-9 ]/g, '').trim();
+    if (!h) return null;
+    // Exact / startsWith checks first
+    if (h === 'address') return 'address';
+    if (h === 'country') return 'countryText';
+    if (h === 'state' || h === 'province') return 'stateText';
+    if (h === 'city' || h === 'area') return 'cityText';
+    // Property id — may have "(optional)" suffix
+    if (h.includes('property') && h.includes('id')) return 'propertyId';
+    if (h === 'id') return 'propertyId';
+    // Property name
+    if (h.includes('property') && h.includes('nam')) return 'propertyName';
+    if (h === 'name' || h === 'propertyname') return 'propertyName';
+    // Buildings
+    if (h.includes('building')) return 'numberOfBuildings';
+    // Units
+    if (h.includes('unit')) return 'numberOfUnits';
+    // Postal / zip
+    if (h.includes('postal') || h.includes('zip')) return 'postalCode';
+    return null;
+  };
+
   const parseTextOrCSV = (text: string): PropertyForm[] => {
     const lines = text.trim().split('\n');
     if (lines.length < 2) return [];
 
     const parsedProperties: PropertyForm[] = [];
-    const headers = lines[0].toLowerCase().split(/[,\t]/).map((h) => h.trim());
-
-    // Map common header names to fields (same as web app)
-    const fieldMapping: Record<string, string> = {
-      'property id': 'propertyId',
-      'propertyid': 'propertyId',
-      'id': 'propertyId',
-      'address': 'address',
-      'property name': 'propertyName',
-      'propertyname': 'propertyName',
-      'name': 'propertyName',
-      'country': 'countryText',
-      'state': 'stateText',
-      'province': 'stateText',
-      'city': 'cityText',
-      'area': 'cityText',
-      'buildings': 'numberOfBuildings',
-      'building': 'numberOfBuildings',
-      'units': 'numberOfUnits',
-      'unit': 'numberOfUnits',
-      'zip': 'postalCode',
-      'zipcode': 'postalCode',
-      'zip code': 'postalCode',
-      'postal': 'postalCode',
-      'postal code': 'postalCode',
-      'postalcode': 'postalCode',
-    };
+    const headers = lines[0].split(/[,\t]/).map((h) => h.trim());
+    const fieldNames = headers.map(matchHeader);
 
     for (let i = 1; i < lines.length; i++) {
       const values = lines[i].split(/[,\t]/).map((v) => v.trim());
@@ -207,20 +210,39 @@ export default function AddPropertyScreen({
 
       const property = createEmptyForm();
 
-      headers.forEach((header, idx) => {
-        const field = fieldMapping[header];
+      fieldNames.forEach((field, idx) => {
         if (field && values[idx]) {
           (property as any)[field] = values[idx];
         }
       });
 
-      // Only add if at least property ID or name exists
       if (property.propertyId || property.propertyName) {
         parsedProperties.push(property);
       }
     }
 
     return parsedProperties;
+  };
+
+  /**
+   * Parse an Excel (.xls/.xlsx) file from a base64 string.
+   * Uses the same column-mapping logic as parseTextOrCSV.
+   */
+  const parseExcel = (base64: string): PropertyForm[] => {
+    try {
+      const workbook = XLSX.read(base64, { type: 'base64' });
+      const sheetName = workbook.SheetNames[0];
+      if (!sheetName) return [];
+      const sheet = workbook.Sheets[sheetName];
+
+      // Convert sheet to CSV string, then reuse parseTextOrCSV
+      const csv = XLSX.utils.sheet_to_csv(sheet);
+      if (!csv || csv.trim().length === 0) return [];
+      return parseTextOrCSV(csv);
+    } catch (err) {
+      console.error('Excel parse error:', err);
+      return [];
+    }
   };
 
   // Auto-resolve country/state/city codes for imported properties
@@ -275,7 +297,6 @@ export default function AddPropertyScreen({
           'application/csv',
           'application/vnd.ms-excel',
           'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-          'application/pdf',
         ],
         copyToCacheDirectory: true,
       });
@@ -287,10 +308,10 @@ export default function AddPropertyScreen({
 
       const fileName = file.name || '';
       const fileExtension = '.' + fileName.split('.').pop()?.toLowerCase();
-      const validExtensions = ['.txt', '.csv', '.xls', '.xlsx', '.pdf'];
+      const validExtensions = ['.txt', '.csv', '.xls', '.xlsx'];
 
       if (!validExtensions.includes(fileExtension)) {
-        Alert.alert('Invalid File', 'Please upload a .txt, .csv, .xls, .xlsx, or .pdf file');
+        Alert.alert('Invalid File', 'Please upload a .txt, .csv, .xls, or .xlsx file');
         return;
       }
 
@@ -312,19 +333,20 @@ export default function AddPropertyScreen({
             );
           }
         } else if (fileExtension === '.xls' || fileExtension === '.xlsx') {
-          // Excel files — not yet parseable on mobile, show empty form as placeholder
-          Alert.alert(
-            'Excel File Detected',
-            'Excel parsing is not yet supported on mobile. An empty property form has been created for you to fill in manually.\n\nFor best results, export your Excel file as CSV first.',
-          );
-          importedForms = [createEmptyForm()];
-        } else if (fileExtension === '.pdf') {
-          // PDF files — not yet parseable on mobile, show empty form as placeholder
-          Alert.alert(
-            'PDF File Detected',
-            'PDF parsing is not yet supported on mobile. An empty property form has been created for you to fill in manually.\n\nFor best results, export your data as CSV first.',
-          );
-          importedForms = [createEmptyForm()];
+          // Read the Excel file as base64, parse with SheetJS
+          try {
+            const b64 = await FileSystem.readAsStringAsync(file.uri, { encoding: 'base64' as any });
+            importedForms = parseExcel(b64);
+          } catch (xlsErr: any) {
+            console.error('xlsx read error:', xlsErr);
+          }
+
+          if (importedForms.length === 0) {
+            Alert.alert(
+              'No Data Found',
+              'Could not read property data from this Excel file. Make sure the first row has headers like: Property Name, Address, City, State, Country, Postal Code, Number Of Building, Number Of Unit.\n\nAlternatively, save the file as .csv and try again.',
+            );
+          }
         }
 
         // Auto-resolve location codes and populate forms
@@ -844,7 +866,7 @@ export default function AddPropertyScreen({
                     <Text style={{ color: '#0E7490', fontWeight: '700' }}>Tap to browse </Text>
                     your files
                   </Text>
-                  <Text style={styles.dropZoneSubText}>Supported: TXT, CSV, XLS, XLSX, PDF</Text>
+                  <Text style={styles.dropZoneSubText}>Supported: TXT, CSV, XLS, XLSX</Text>
                   <TouchableOpacity style={styles.browseButton} onPress={handleBrowseFiles}>
                     <Text style={styles.browseButtonText}>Browse Files</Text>
                   </TouchableOpacity>

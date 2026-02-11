@@ -1,7 +1,14 @@
 /**
  * Enhanced NSPIRE PDF Report Service for Mobile
- * Generates HUD-compliant NSPIRE inspection reports matching exact format
- * of reference document "Imani Fe 12.3.25 (1).pdf"
+ * Lightweight version optimized for mobile WebView PDF generation.
+ * Generates compact A5-style NSPIRE reports matching the reference template.
+ * 
+ * Key optimizations:
+ * - No base64 logo (text header instead) to keep HTML under 30KB
+ * - No remote image URLs (placeholder text) to prevent WebView hangs
+ * - Table-based layout (no CSS grid) for WebView compatibility
+ * - Timeout wrapper on Print.printToFileAsync
+ * - Compact 7-8pt fonts matching reference template
  */
 
 import * as Print from 'expo-print';
@@ -22,14 +29,14 @@ import {
   DeficiencySeverity,
 } from '../types/nspireReport';
 
+/** Timeout for PDF generation in milliseconds */
+const PDF_GENERATION_TIMEOUT = 30000;
+
 /**
  * Clean JSON from comments/AI analysis output
- * Extracts readable text from JSON strings like { "analysis": "..." }
  */
 function cleanJsonComments(text: string): string {
   if (!text) return '';
-
-  // If it looks like JSON, try to extract the analysis/description
   if (text.trim().startsWith('{') || text.trim().startsWith('[')) {
     try {
       const parsed = JSON.parse(text);
@@ -39,18 +46,10 @@ function cleanJsonComments(text: string): string {
       }
       if (parsed.description) return parsed.description;
       if (parsed.title) return parsed.title;
-    } catch (e) {
-      // Not valid JSON - try regex extraction
-    }
+    } catch (e) { /* not valid JSON */ }
   }
-
-  // Extract "analysis" value from partial/malformed JSON
   const analysisMatch = text.match(/"analysis"\s*:\s*"([^"]+)/i);
-  if (analysisMatch) {
-    return analysisMatch[1].trim();
-  }
-
-  // Remove JSON-like markers
+  if (analysisMatch) return analysisMatch[1].trim();
   return text
     .replace(/^\{\s*"findings"\s*:\s*\[\s*\{\s*/i, '')
     .replace(/^"title"\s*:\s*"/i, '')
@@ -61,379 +60,152 @@ function cleanJsonComments(text: string): string {
     .trim();
 }
 
+/** Escape HTML special characters */
+function esc(str: string): string {
+  if (!str) return '';
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+/** Per-image fetch timeout (8 seconds) */
+const IMAGE_FETCH_TIMEOUT = 8000;
+
 /**
- * Enhanced CSS Styles matching HUD format exactly
+ * Download a remote image and return a data URI (base64).
+ * Returns empty string on failure so the PDF still generates.
  */
-function generateEnhancedStyles(options: PDFGenerationOptions): string {
-  return `
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-    
-    body {
-      font-family: Arial, Helvetica, sans-serif;
-      font-size: 10pt;
-      line-height: 1.3;
-      color: #000000;
-      padding: 20px;
-      background: #FFFFFF;
-    }
-    
-    /* Header Styles - HUD Format */
-    .report-header {
-      text-align: center;
-      margin-bottom: 20px;
-    }
-    
-    .hud-logo {
-      width: 80px;
-      height: 80px;
-      margin: 0 auto 10px;
-      display: block;
-    }
-    
-    .header-title {
-      font-size: 16pt;
-      font-weight: bold;
-      color: #000000;
-      text-align: center;
-      margin-bottom: 20px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    
-    .header-metadata {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 20px;
-      margin-bottom: 20px;
-      font-size: 9pt;
-    }
-    
-    .header-left, .header-right {
-      text-align: left;
-    }
-    
-    .header-row {
-      margin-bottom: 3px;
-      display: flex;
-    }
-    
-    .header-label {
-      font-weight: bold;
-      display: inline-block;
-      width: 140px;
-      flex-shrink: 0;
-    }
-    
-    .header-value {
-      color: #000000;
-      flex: 1;
-    }
-    
-    /* Score Cards & Metrics - HUD Format */
-    .scores-section {
-      margin: 20px 0;
-      border: 2px solid #000000;
-      padding: 15px;
-    }
-    
-    .preliminary-scores {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 30px;
-      margin-bottom: 20px;
-    }
-    
-    .score-block {
-      text-align: left;
-    }
-    
-    .score-block h3 {
-      font-size: 11pt;
-      font-weight: bold;
-      margin-bottom: 10px;
-      text-decoration: underline;
-    }
-    
-    .score-row {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 3px;
-      font-size: 9pt;
-    }
-    
-    .score-row.bold {
-      font-weight: bold;
-    }
-    
-    .score-label {
-      flex: 1;
-    }
-    
-    .score-value {
-      font-weight: bold;
-      min-width: 50px;
-      text-align: right;
-    }
-    
-    /* Tables - HUD Format */
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin: 15px 0;
-      font-size: 9pt;
-    }
-    
-    th {
-      background: #D3D3D3;
-      color: #000000;
-      font-weight: bold;
-      padding: 8px 6px;
-      text-align: center;
-      border: 1px solid #000000;
-    }
-    
-    td {
-      padding: 6px;
-      border: 1px solid #000000;
-      vertical-align: top;
-      text-align: center;
-    }
-    
-    td.left-align {
-      text-align: left;
-    }
-    
-    /* Section Titles */
-    .section-title {
-      font-size: 11pt;
-      font-weight: bold;
-      margin: 20px 0 10px 0;
-      text-decoration: underline;
-    }
-    
-    /* Building/Unit Inspection Data Table */
-    .inspection-data-section {
-      margin: 20px 0;
-    }
-    
-    .inspection-data-table th {
-      background: #D3D3D3;
-    }
-    
-    .inspection-data-table th.multi-row {
-      vertical-align: middle;
-    }
-    
-    /* Deficiency Summary Table */
-    .deficiency-summary-section {
-      margin: 20px 0;
-    }
-    
-    /* Deficiency Details Table - 7 Column Format */
-    .deficiency-details-section {
-      margin: 20px 0;
-    }
-    
-    .deficiency-details-table {
-      font-size: 8pt;
-    }
-    
-    .deficiency-details-table th {
-      background: #D3D3D3;
-      font-size: 8pt;
-      padding: 6px 4px;
-      font-weight: bold;
-    }
-    
-    .deficiency-details-table td {
-      font-size: 8pt;
-      padding: 4px;
-      vertical-align: top;
-    }
-    
-    .deficiency-image {
-      width: 100px;
-      height: 75px;
-      object-fit: cover;
-      border: 1px solid #000000;
-      display: block;
-      margin: 0 auto;
-    }
-    
-    .image-placeholder {
-      width: 100px;
-      height: 75px;
-      background: #F5F5F5;
-      border: 1px solid #000000;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 8pt;
-      color: #666666;
-      text-align: center;
-      margin: 0 auto;
-    }
-    
-    .deficiency-name {
-      font-weight: bold;
-      margin-bottom: 2px;
-    }
-    
-    .nspire-code {
-      font-size: 7pt;
-      color: #666666;
-      font-style: italic;
-    }
-    
-    .location-info {
-      font-size: 8pt;
-      line-height: 1.2;
-    }
-    
-    /* Certificates Table */
-    .certificates-section {
-      margin: 20px 0;
-    }
-    
-    .certificates-table th {
-      background: #D3D3D3;
-    }
-    
-    /* Certification Section */
-    .certification-section {
-      margin: 30px 0;
-      padding: 20px;
-      border: 1px solid #000000;
-    }
-    
-    .signature-area {
-      display: flex;
-      justify-content: space-between;
-      margin-top: 30px;
-    }
-    
-    .signature-line {
-      border-bottom: 1px solid #000000;
-      width: 200px;
-      margin-bottom: 5px;
-    }
-    
-    .signature-label {
-      font-size: 8pt;
-      color: #666666;
-    }
-    
-    .signature-name {
-      font-size: 9pt;
-      font-weight: bold;
-      margin-top: 5px;
-    }
-    
-    /* Footer */
-    .report-footer {
-      margin-top: 30px;
-      text-align: center;
-      font-size: 8pt;
-      color: #666666;
-      border-top: 1px solid #000000;
-      padding-top: 10px;
-    }
-    
-    .page-number {
-      text-align: center;
-      font-size: 8pt;
-      margin: 20px 0;
-      font-weight: bold;
-    }
-    
-    /* Page Break Control */
-    .page-break {
-      page-break-after: always;
-    }
-    
-    .avoid-break {
-      page-break-inside: avoid;
-    }
-    
-    /* Print Specific */
-    @media print {
-      body {
-        padding: 0;
-      }
-      
-      .page-break {
-        page-break-after: always;
-      }
-    }
-  `;
+async function fetchImageAsBase64(url: string): Promise<string> {
+  try {
+    if (!url || (!url.startsWith('http://') && !url.startsWith('https://'))) return '';
+    // Use expo-file-system to download to a temp file, then read as base64
+    const tmpPath = FileSystem.cacheDirectory + 'img_' + Date.now() + '_' + Math.random().toString(36).slice(2) + '.jpg';
+    const downloadPromise = FileSystem.downloadAsync(url, tmpPath);
+    const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), IMAGE_FETCH_TIMEOUT));
+    const result = await Promise.race([downloadPromise, timeoutPromise]);
+    if (!result || !('uri' in result)) return '';
+    const b64 = await FileSystem.readAsStringAsync(result.uri, { encoding: FileSystem.EncodingType.Base64 });
+    // Clean up temp file (fire-and-forget)
+    FileSystem.deleteAsync(tmpPath, { idempotent: true }).catch(() => {});
+    if (!b64 || b64.length < 100) return '';
+    // Detect mime type from URL or default to jpeg
+    const ext = url.toLowerCase().includes('.png') ? 'png' : 'jpeg';
+    return `data:image/${ext};base64,${b64}`;
+  } catch (e) {
+    console.warn('Failed to fetch image:', url, e);
+    return '';
+  }
 }
 
 /**
- * Generate enhanced header matching INSPIRE format
+ * Pre-fetch all deficiency images in parallel.
+ * Returns a Map from original imageUri to base64 data URI.
+ * Images that fail to load will map to empty string.
  */
-function generateEnhancedHeader(metadata: InspectionMetadata, options: PDFGenerationOptions): string {
-  return `
-    <div class="report-header">
-      <img src="${INSPIRE_LOGO_BASE64}" class="inspire-logo" alt="INSPIRE" style="width: 180px; height: auto; margin: 0 auto 10px; display: block;" />
-      <p style="font-size: 8pt; color: #666; margin-bottom: 15px; text-align: center;">NATIONAL STANDARDS FOR THE PHYSICAL INSPECTION OF REAL ESTATE</p>
-      
-      <h1 class="header-title">INSPIRE INSPECTION REPORT</h1>
-      
-      <div class="header-metadata">
-        <div class="header-left">
-          <div class="header-row">
-            <span class="header-label">Inspection No:</span>
-            <span class="header-value">${metadata.inspectionNo}</span>
-          </div>
-          <div class="header-row">
-            <span class="header-label">Inspection Type:</span>
-            <span class="header-value">${metadata.inspectionType}</span>
-          </div>
-          <div class="header-row">
-            <span class="header-label">Escort Name:</span>
-            <span class="header-value">${metadata.escortName}</span>
-          </div>
-          <div class="header-row">
-            <span class="header-label">Property Type:</span>
-            <span class="header-value">Multifamily</span>
-          </div>
-        </div>
-        
-        <div class="header-right">
-          <div class="header-row">
-            <span class="header-label">Inspection Start Date:</span>
-            <span class="header-value">${metadata.startDate}</span>
-          </div>
-          <div class="header-row">
-            <span class="header-label">Inspection End Date:</span>
-            <span class="header-value">${metadata.endDate}</span>
-          </div>
-          <div class="header-row">
-            <span class="header-label">Report Created Date:</span>
-            <span class="header-value">${metadata.reportCreatedDate}</span>
-          </div>
-          ${metadata.buildingName ? `
-          <div class="header-row">
-            <span class="header-label">Building:</span>
-            <span class="header-value">${metadata.buildingName}</span>
-          </div>` : ''}
-          ${metadata.inspectedUnits && metadata.inspectedUnits.length > 0 ? `
-          <div class="header-row">
-            <span class="header-label">Inspected Units:</span>
-            <span class="header-value">${metadata.inspectedUnits.join(', ')}</span>
-          </div>` : ''}
-        </div>
-      </div>
-    </div>
-  `;
+async function preloadDeficiencyImages(deficiencies: DeficiencyEntry[]): Promise<Map<string, string>> {
+  const imageMap = new Map<string, string>();
+  const uniqueUrls = new Set<string>();
+  for (const def of deficiencies) {
+    if (def.imageUri && (def.imageUri.startsWith('http://') || def.imageUri.startsWith('https://'))) {
+      uniqueUrls.add(def.imageUri);
+    }
+  }
+  if (uniqueUrls.size === 0) return imageMap;
+  console.log(`Pre-fetching ${uniqueUrls.size} deficiency image(s)...`);
+  const entries = await Promise.all(
+    Array.from(uniqueUrls).map(async (url) => {
+      const b64 = await fetchImageAsBase64(url);
+      return [url, b64] as [string, string];
+    })
+  );
+  for (const [url, b64] of entries) {
+    imageMap.set(url, b64);
+  }
+  const loaded = entries.filter(([, b]) => b.length > 0).length;
+  console.log(`Pre-fetched ${loaded}/${uniqueUrls.size} images successfully.`);
+  return imageMap;
 }
 
 /**
- * Generate enhanced summary page with all HUD required sections
+ * Lightweight CSS matching reference A5 template.
+ * Uses only tables and floats — no CSS grid or flexbox for WebView compat.
+ */
+function generateEnhancedStyles(): string {
+  return `
+@page{size:A5;margin:15mm 12mm}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Arial,Helvetica,sans-serif;font-size:8pt;line-height:1.3;color:#000;padding:12mm 10mm;background:#fff}
+.report-header{text-align:center;margin-bottom:15px}
+.inspire-logo{width:120px;height:auto;margin:0 auto 6px;display:block}
+.logo-sub{font-size:7pt;color:#666;margin-bottom:10px}
+.header-title{font-size:12pt;font-weight:bold;text-align:center;margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px}
+.meta-table{width:100%;border:none;margin-bottom:12px;font-size:7pt}
+.meta-table td{border:none;padding:1px 4px;vertical-align:top;text-align:left}
+.meta-label{font-weight:bold;width:110px}
+.scores-section{margin:12px 0;border:2px solid #000;padding:10px}
+.scores-table{width:100%;border:none;font-size:7pt}
+.scores-table td{border:none;padding:2px 4px;vertical-align:top}
+.scores-table .score-heading{font-size:9pt;font-weight:bold;text-decoration:underline;padding-bottom:6px}
+.scores-table .score-val{font-weight:bold;text-align:right;min-width:40px}
+.scores-table .score-bold td{font-weight:bold}
+table{width:100%;border-collapse:collapse;margin:10px 0;font-size:7pt}
+th{background:#D3D3D3;color:#000;font-weight:bold;padding:5px 4px;text-align:center;border:1px solid #000}
+td{padding:4px;border:1px solid #000;vertical-align:top;text-align:center}
+td.la{text-align:left}
+.section-title{font-size:9pt;font-weight:bold;margin:12px 0 6px;text-decoration:underline}
+.dt{font-size:7pt}
+.dt th{background:#D3D3D3;font-size:7pt;padding:4px 3px;font-weight:bold}
+.dt td{font-size:7pt;padding:3px;vertical-align:top}
+.gh td{background:#FFFF00;font-weight:bold;font-size:8pt;text-align:left;padding:6px 4px;border:1px solid #000}
+.dn{font-weight:bold;margin-bottom:2px}
+.ip{width:80px;height:60px;background:#F5F5F5;border:1px solid #000;text-align:center;line-height:60px;font-size:7pt;color:#666;margin:0 auto}
+.cert-section{margin:20px 0;padding:12px;border:1px solid #000}
+.sig-table{width:100%;border:none;margin-top:20px}
+.sig-table td{border:none;padding:2px 4px}
+.sig-line{border-bottom:1px solid #000;width:140px;margin-bottom:4px}
+.sig-label{font-size:7pt;color:#666}
+.sig-name{font-size:8pt;font-weight:bold;margin-top:4px}
+.report-footer{margin-top:20px;text-align:center;font-size:7pt;color:#666;border-top:1px solid #000;padding-top:8px}
+.page-number{text-align:center;font-size:7pt;margin:12px 0;font-weight:bold}
+.avoid-break{page-break-inside:avoid}
+.page-break{page-break-after:always}
+@media print{body{padding:0}}
+`;
+}
+
+/**
+ * Generate header – text-only logo (no base64 image to keep HTML small).
+ * Uses table layout instead of CSS grid for WebView compatibility.
+ */
+function generateEnhancedHeader(metadata: InspectionMetadata): string {
+  return `
+<div class="report-header">
+  <img src="${INSPIRE_LOGO_BASE64}" class="inspire-logo" alt="INSPIRE" />
+  <div class="logo-sub">NATIONAL STANDARDS FOR THE PHYSICAL INSPECTION OF REAL ESTATE</div>
+  <h1 class="header-title">INSPIRE INSPECTION REPORT</h1>
+  <table class="meta-table"><tr>
+    <td>
+      <table class="meta-table">
+        <tr><td class="meta-label">Inspection No:</td><td>${esc(metadata.inspectionNo)}</td></tr>
+        <tr><td class="meta-label">Inspection Type:</td><td>${esc(metadata.inspectionType)}</td></tr>
+        <tr><td class="meta-label">Escort Name:</td><td>${esc(metadata.escortName)}</td></tr>
+        <tr><td class="meta-label">Property Type:</td><td>Multifamily</td></tr>
+      </table>
+    </td>
+    <td>
+      <table class="meta-table">
+        <tr><td class="meta-label">Start Date:</td><td>${esc(metadata.startDate)}</td></tr>
+        <tr><td class="meta-label">End Date:</td><td>${esc(metadata.endDate)}</td></tr>
+        <tr><td class="meta-label">Report Created:</td><td>${esc(metadata.reportCreatedDate)}</td></tr>
+        ${metadata.buildingName ? `<tr><td class="meta-label">Building:</td><td>${esc(metadata.buildingName)}</td></tr>` : ''}
+        ${metadata.inspectedUnits && metadata.inspectedUnits.length > 0 ? `<tr><td class="meta-label">Inspected Units:</td><td>${esc(metadata.inspectedUnits.join(', '))}</td></tr>` : ''}
+      </table>
+    </td>
+  </tr></table>
+</div>`;
+}
+
+/**
+ * Generate summary page — scores, inspection data, deficiency summary.
+ * Uses table layout for WebView compatibility.
  */
 function generateEnhancedSummaryPage(
   summary: DeficiencySummary,
@@ -443,310 +215,209 @@ function generateEnhancedSummaryPage(
   occupancyInfo: OccupancyInfo
 ): string {
   return `
-    <div class="scores-section avoid-break">
-      <div class="preliminary-scores">
-        <div class="score-block">
-          <h3>Preliminary Scores</h3>
-          <div class="score-row">
-            <span class="score-label">Preliminary Inspection Score:</span>
-            <span class="score-value">${metadata.preliminaryScore}</span>
-          </div>
-          <div class="score-row">
-            <span class="score-label">Calculated Score:</span>
-            <span class="score-value">${metadata.calculatedScore}</span>
-          </div>
-          <div class="score-row">
-            <span class="score-label">Units Threshold:</span>
-            <span class="score-value">10.79</span>
-          </div>
-          <div class="score-row">
-            <span class="score-label">Property Threshold:</span>
-            <span class="score-value">${metadata.physicalConditionThreshold}</span>
-          </div>
-        </div>
-        
-        <div class="score-block">
-          <h3>Final Scores</h3>
-          <div class="score-row bold">
-            <span class="score-label">Final Inspection Score:</span>
-            <span class="score-value">${metadata.finalScore}</span>
-          </div>
-          <div class="score-row">
-            <span class="score-label">Calculated Score:</span>
-            <span class="score-value">${metadata.calculatedScore}</span>
-          </div>
-          <div class="score-row">
-            <span class="score-label">Units Threshold:</span>
-            <span class="score-value">10.79</span>
-          </div>
-          <div class="score-row">
-            <span class="score-label">Property Threshold:</span>
-            <span class="score-value">${metadata.physicalConditionThreshold}</span>
-          </div>
-        </div>
-      </div>
-    </div>
-    
-    <div class="inspection-data-section avoid-break">
-      <h3 class="section-title">Building/Unit Inspection Data</h3>
-      <table class="inspection-data-table">
-        <thead>
-          <tr>
-            <th rowspan="2" class="left-align multi-row">Type</th>
-            <th rowspan="2" class="multi-row">Property Total</th>
-            <th rowspan="2" class="multi-row">Sample Size</th>
-            <th colspan="1">Inspection</th>
-          </tr>
-          <tr>
-            <th>Total Units Inspected</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${inspectionData.map(row => `
-            <tr>
-              <td class="left-align">${row.type}</td>
-              <td>${row.propertyTotal}</td>
-              <td>${row.sampleSize}</td>
-              <td>${row.totalUnitsInspected}</td>
-            </tr>
-          `).join('')}
-        </tbody>
+<div class="scores-section avoid-break">
+  <table class="scores-table"><tr>
+    <td style="width:50%;vertical-align:top">
+      <div class="score-heading">Preliminary Scores</div>
+      <table class="scores-table">
+        <tr><td>Preliminary Inspection Score:</td><td class="score-val">${metadata.preliminaryScore}</td></tr>
+        <tr><td>Calculated Score:</td><td class="score-val">${metadata.calculatedScore}</td></tr>
+        <tr><td>Units Threshold:</td><td class="score-val">10.79</td></tr>
+        <tr><td>Property Threshold:</td><td class="score-val">${metadata.physicalConditionThreshold}</td></tr>
       </table>
-    </div>
-    
-    <div class="deficiency-summary-section avoid-break">
-      <h3 class="section-title">Deficiency Summary</h3>
-      <table>
-        <thead>
-          <tr>
-            <th class="left-align">Inspectable Area</th>
-            <th>Life-Threatening</th>
-            <th>Severe</th>
-            <th>Moderate</th>
-            <th>Low</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td class="left-align">Inside</td>
-            <td>${summary.lifeThreatening}</td>
-            <td>${summary.severe}</td>
-            <td>${summary.moderate}</td>
-            <td>${summary.low}</td>
-          </tr>
-          <tr>
-            <td class="left-align">Outside</td>
-            <td>0</td>
-            <td>0</td>
-            <td>0</td>
-            <td>0</td>
-          </tr>
-          <tr>
-            <td class="left-align">Units</td>
-            <td>0</td>
-            <td>0</td>
-            <td>0</td>
-            <td>0</td>
-          </tr>
-        </tbody>
+    </td>
+    <td style="width:50%;vertical-align:top">
+      <div class="score-heading">Final Scores</div>
+      <table class="scores-table">
+        <tr class="score-bold"><td>Final Inspection Score:</td><td class="score-val">${metadata.finalScore}</td></tr>
+        <tr><td>Calculated Score:</td><td class="score-val">${metadata.calculatedScore}</td></tr>
+        <tr><td>Units Threshold:</td><td class="score-val">10.79</td></tr>
+        <tr><td>Property Threshold:</td><td class="score-val">${metadata.physicalConditionThreshold}</td></tr>
       </table>
-    </div>
-  `;
+    </td>
+  </tr></table>
+</div>
+
+<div class="avoid-break">
+  <h3 class="section-title">Building/Unit Inspection Data</h3>
+  <table>
+    <thead>
+      <tr>
+        <th rowspan="2" class="la" style="vertical-align:middle">Type</th>
+        <th rowspan="2" style="vertical-align:middle">Property Total</th>
+        <th rowspan="2" style="vertical-align:middle">Sample Size</th>
+        <th colspan="1">Inspection</th>
+      </tr>
+      <tr><th>Total Units Inspected</th></tr>
+    </thead>
+    <tbody>
+      ${inspectionData.map(row => `<tr><td class="la">${esc(row.type)}</td><td>${row.propertyTotal}</td><td>${row.sampleSize}</td><td>${row.totalUnitsInspected}</td></tr>`).join('')}
+    </tbody>
+  </table>
+</div>
+
+<div class="avoid-break">
+  <h3 class="section-title">Deficiency Summary</h3>
+  <table>
+    <thead>
+      <tr><th class="la">Inspectable Area</th><th>Life-Threatening</th><th>Severe</th><th>Moderate</th><th>Low</th></tr>
+    </thead>
+    <tbody>
+      <tr><td class="la">Inside</td><td>${summary.lifeThreatening}</td><td>${summary.severe}</td><td>${summary.moderate}</td><td>${summary.low}</td></tr>
+      <tr><td class="la">Outside</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+      <tr><td class="la">Units</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+    </tbody>
+  </table>
+</div>`;
 }
 
 /**
- * Generate enhanced deficiency table with exact 7-column format
+ * Generate deficiency table – 7 columns matching reference template.
+ * Grouped by Building / Unit with yellow header rows.
+ * Uses pre-loaded base64 images (no remote URLs in final HTML).
  */
-function generateEnhancedDeficiencyTable(deficiencies: DeficiencyEntry[], options: PDFGenerationOptions): string {
+function generateEnhancedDeficiencyTable(deficiencies: DeficiencyEntry[], imageMap: Map<string, string> = new Map()): string {
   if (deficiencies.length === 0) {
     return `
-      <div class="deficiency-details-section">
-        <h3 class="section-title">Inspectable Areas Deficiencies</h3>
-        <p style="text-align: center; padding: 20px; font-style: italic;">No deficiencies found during this inspection.</p>
-      </div>
-    `;
+<div>
+  <h3 class="section-title">Inspectable Areas Deficiencies</h3>
+  <p style="text-align:center;padding:12px;font-style:italic;">No deficiencies found during this inspection.</p>
+</div>`;
   }
 
-  // Build repeat detection map: if same deficiencyDetails appears more than once, mark subsequent as repeat
-  const detailsSeenMap = new Map<string, number>();
+  // Build repeat detection map
+  const detailsSeen = new Map<string, number>();
   const repeatFlags = deficiencies.map(def => {
     const key = (def.deficiencyDetails || '').trim().toLowerCase();
     if (!key) return false;
-    const count = detailsSeenMap.get(key) || 0;
-    detailsSeenMap.set(key, count + 1);
+    const count = detailsSeen.get(key) || 0;
+    detailsSeen.set(key, count + 1);
     return count > 0;
   });
 
+  // Group deficiencies by building + unit
+  interface GroupedDef { def: DeficiencyEntry; isRepeat: boolean; }
+  const groups = new Map<string, GroupedDef[]>();
+  deficiencies.forEach((def, idx) => {
+    const building = def.building || 'Building A';
+    const unit = def.unit || '';
+    const groupKey = unit ? `Unit - ${unit}` : `Building - ${building}`;
+    if (!groups.has(groupKey)) groups.set(groupKey, []);
+    groups.get(groupKey)!.push({ def, isRepeat: def.repeatIndicator || repeatFlags[idx] });
+  });
+
+  let rows = '';
+  groups.forEach((items, groupKey) => {
+    rows += `<tr class="gh"><td colspan="7">${esc(groupKey)}</td></tr>\n`;
+    items.forEach(({ def, isRepeat }) => {
+      const comments = cleanJsonComments(def.comments);
+      const imgB64 = def.imageUri ? (imageMap.get(def.imageUri) || '') : '';
+      const imgCell = imgB64
+        ? `<img src="${imgB64}" style="width:80px;height:60px;object-fit:cover;border:1px solid #000;display:block;margin:0 auto" />`
+        : `<div class="ip">Photo</div>`;
+      rows += `<tr class="avoid-break">
+<td class="la">${esc(def.deficiencyDetails || 'No details available')}</td>
+<td class="la"><div class="dn">${esc(def.deficiencyQRId || 'QR-00000000')}</div></td>
+<td class="la">${esc(comments) || '-'}</td>
+<td>${imgCell}</td>
+<td>${def.deductionPts}</td>
+<td>${isRepeat ? 'Repeat' : 'Not Repeat'}</td>
+<td>${esc(def.severity)}</td>
+</tr>\n`;
+    });
+  });
+
   return `
-    <div class="deficiency-details-section">
-      <h3 class="section-title">Inspectable Areas Deficiencies</h3>
-      <table class="deficiency-details-table">
-        <thead>
-          <tr>
-            <th style="width: 20%;">Deficiency Details</th>
-            <th style="width: 12%;">Deficiency Name</th>
-            <th style="width: 10%;">Location</th>
-            <th style="width: 18%;">Comments</th>
-            <th style="width: 14%;">Deficiency Picture</th>
-            <th style="width: 8%;">Deduction Pts</th>
-            <th style="width: 9%;">Repeat Indicator</th>
-            <th style="width: 9%;">Severity</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${deficiencies.map((def, idx) => {
-            const isRepeat = def.repeatIndicator || repeatFlags[idx];
-            const cleanedComments = cleanJsonComments(def.comments);
-            return `
-            <tr class="avoid-break">
-              <td class="left-align">
-                ${def.deficiencyDetails || 'No details available'}
-              </td>
-              <td class="left-align">
-                <div class="deficiency-name">${def.deficiencyQRId || 'QR-00000000'}</div>
-              </td>
-              <td class="left-align">
-                <div class="location-info">${def.room || def.area || 'Other'}</div>
-              </td>
-              <td class="left-align">
-                ${cleanedComments || '-'}
-              </td>
-              <td>
-                ${options.includeImages && def.imageUri
-      ? `<img src="${def.imageUri}" alt="Deficiency Image" class="deficiency-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
-                     <div class="image-placeholder" style="display: none;">Image Failed</div>`
-      : `<div class="image-placeholder">N/A</div>`
-    }
-              </td>
-              <td>${def.deductionPts}</td>
-              <td>${isRepeat ? 'Repeat' : 'Not Repeat'}</td>
-              <td>${def.severity}</td>
-            </tr>
-          `;
-          }).join('')}
-        </tbody>
-      </table>
-    </div>
-  `;
+<div>
+  <h3 class="section-title">Inspectable Areas Deficiencies</h3>
+  <table class="dt">
+    <thead>
+      <tr>
+        <th style="width:18%">Deficiency Details</th>
+        <th style="width:10%">Deficiency Name</th>
+        <th style="width:18%">Comments</th>
+        <th style="width:14%">Deficiency Picture</th>
+        <th style="width:8%">Deduction Pts.</th>
+        <th style="width:10%">Repeat Indicator</th>
+        <th style="width:8%">Severity</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${rows}
+    </tbody>
+  </table>
+</div>`;
 }
 
 /**
- * Generate certificates table as specified
+ * Generate certificates table
  */
 function generateCertificatesTable(): string {
-  const certificates = [
-    { name: 'Elevator', status: 'N/A', comment: 'No elevator present' },
-    { name: 'Boiler', status: 'Current', comment: 'Valid until 2026' },
-    { name: 'Lead-Based Paint', status: 'Current', comment: 'Compliant' },
-    { name: 'Fire Alarm', status: 'Current', comment: 'Tested monthly' },
-    { name: 'Sprinkler', status: 'N/A', comment: 'Not required' }
+  const certs = [
+    ['Elevator', 'N/A', 'No elevator present'],
+    ['Boiler', 'Current', 'Valid until 2026'],
+    ['Lead-Based Paint', 'Current', 'Compliant'],
+    ['Fire Alarm', 'Current', 'Tested monthly'],
+    ['Sprinkler', 'N/A', 'Not required'],
   ];
-
   return `
-    <div class="certificates-section avoid-break">
-      <h3 class="section-title">Certificates</h3>
-      <table class="certificates-table">
-        <thead>
-          <tr>
-            <th class="left-align">Certificate Type</th>
-            <th>Status</th>
-            <th class="left-align">Comment</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${certificates.map(cert => `
-            <tr>
-              <td class="left-align">${cert.name}</td>
-              <td>${cert.status}</td>
-              <td class="left-align">${cert.comment}</td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-    </div>
-  `;
+<div class="avoid-break">
+  <h3 class="section-title">Certificates</h3>
+  <table>
+    <thead><tr><th class="la">Certificate Type</th><th>Status</th><th class="la">Comment</th></tr></thead>
+    <tbody>
+      ${certs.map(c => `<tr><td class="la">${c[0]}</td><td>${c[1]}</td><td class="la">${c[2]}</td></tr>`).join('')}
+    </tbody>
+  </table>
+</div>`;
 }
 
 /**
- * Generate enhanced certification section
+ * Generate certification section — table-based signature layout
  */
 function generateEnhancedCertificationSection(certification: any): string {
   return `
-    <div class="certification-section avoid-break">
-      <h3 class="section-title">Inspector Certification</h3>
-      <p style="margin-bottom: 20px; font-size: 9pt; line-height: 1.4;">
-        ${certification.certificationStatement}
-      </p>
-      
-      <div class="signature-area">
-        <div>
-          <div class="signature-line"></div>
-          <div class="signature-label">Inspector Signature</div>
-          <div class="signature-name">${certification.certifiedBy}</div>
-        </div>
-        <div>
-          <div class="signature-line" style="width: 150px;"></div>
-          <div class="signature-label">Date</div>
-          <div class="signature-name">${certification.certificationDate}</div>
-        </div>
-      </div>
-    </div>
-  `;
+<div class="cert-section avoid-break">
+  <h3 class="section-title">Inspector Certification</h3>
+  <p style="margin-bottom:12px;font-size:7pt;line-height:1.4">${esc(certification.certificationStatement)}</p>
+  <table class="sig-table"><tr>
+    <td>
+      <div class="sig-line"></div>
+      <div class="sig-label">Inspector Signature</div>
+      <div class="sig-name">${esc(certification.certifiedBy)}</div>
+    </td>
+    <td style="text-align:right">
+      <div class="sig-line" style="width:100px;margin-left:auto"></div>
+      <div class="sig-label">Date</div>
+      <div class="sig-name">${esc(certification.certificationDate)}</div>
+    </td>
+  </tr></table>
+</div>`;
 }
 
 /**
- * Generate enhanced footer with pagination
+ * Generate footer
  */
 function generateEnhancedFooter(options: PDFGenerationOptions): string {
   return `
-    <div class="page-number">--- PAGE 1 ---</div>
-    <div class="report-footer">
-      <p>${options.footerText || 'Generated by NSPIRE Inspection System'}</p>
-      <p>Report generated on ${new Date().toLocaleString()}</p>
-      <p style="margin-top: 5px;">This document is confidential and intended for authorized use only.</p>
-    </div>
-  `;
+<div class="page-number">--- PAGE 1 ---</div>
+<div class="report-footer">
+  <p>${esc(options.footerText || 'Generated by NSPIRE Inspection System')}</p>
+  <p>Report generated on ${new Date().toLocaleString()}</p>
+  <p style="margin-top:4px">This document is confidential and intended for authorized use only.</p>
+</div>`;
 }
 
 /**
- * Generate complete enhanced NSPIRE Report HTML
+ * Generate complete lightweight NSPIRE Report HTML.
+ * Designed to stay under ~20KB for reliable mobile WebView PDF conversion.
  */
 export function generateEnhancedNSPIREReportHTML(
   report: NSPIREInspectionReport,
-  options: PDFGenerationOptions = DEFAULT_PDF_OPTIONS
+  options: PDFGenerationOptions = DEFAULT_PDF_OPTIONS,
+  imageMap: Map<string, string> = new Map()
 ): string {
-  return `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NSPIRE - NATIONAL STANDARDS FOR THE PHYSICAL INSPECTION OF REAL ESTATE</title>
-  <style>${generateEnhancedStyles(options)}</style>
-</head>
-<body>
-  <div class="report-container">
-    ${generateEnhancedHeader(report.metadata, options)}
-    
-    ${options.includeSummaryPage ? generateEnhancedSummaryPage(
-    report.summary,
-    report.categoryBreakdown,
-    report.metadata,
-    report.inspectionData,
-    report.occupancyInfo
-  ) : ''}
-    
-    ${options.includeDetailedDeficiencies ? generateEnhancedDeficiencyTable(report.deficiencies, options) : ''}
-    
-    ${generateCertificatesTable()}
-    
-    ${options.includeCertification && report.certification ? generateEnhancedCertificationSection(report.certification) : ''}
-    
-    ${generateEnhancedFooter(options)}
-  </div>
-</body>
-</html>
-  `;
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>NSPIRE Report</title><style>${generateEnhancedStyles()}</style></head><body><div class="report-container">${generateEnhancedHeader(report.metadata)}${options.includeSummaryPage ? generateEnhancedSummaryPage(report.summary, report.categoryBreakdown, report.metadata, report.inspectionData, report.occupancyInfo) : ''}${options.includeDetailedDeficiencies ? generateEnhancedDeficiencyTable(report.deficiencies, imageMap) : ''}${generateCertificatesTable()}${options.includeCertification && report.certification ? generateEnhancedCertificationSection(report.certification) : ''}${generateEnhancedFooter(options)}</div></body></html>`;
 }
 
 /**
@@ -754,7 +425,8 @@ export function generateEnhancedNSPIREReportHTML(
  */
 class EnhancedNSPIREPDFReportService {
   /**
-   * Generate enhanced PDF from NSPIRE report data
+   * Generate enhanced PDF from NSPIRE report data.
+   * Uses a timeout wrapper to prevent indefinite hangs on mobile.
    */
   async generateEnhancedPDF(
     report: NSPIREInspectionReport,
@@ -765,51 +437,54 @@ class EnhancedNSPIREPDFReportService {
       console.log('Report data:', {
         deficiencies: report.deficiencies?.length || 0,
         metadata: report.metadata?.inspectionNo || 'Unknown',
-        includeImages: options.includeImages
       });
 
-      console.log('Generating Enhanced HTML...');
-      const html = generateEnhancedNSPIREReportHTML(report, options);
+      // Pre-fetch deficiency images as base64 before building HTML
+      const imageMap = await preloadDeficiencyImages(report.deficiencies || []);
 
-      // Validate HTML is not empty
+      const html = generateEnhancedNSPIREReportHTML(report, options, imageMap);
+
       if (!html || html.trim().length < 100) {
         throw new Error('Generated HTML is empty or too short');
       }
 
-      console.log('Enhanced HTML generated successfully, length:', html.length);
+      console.log('Enhanced HTML generated, length:', html.length, 'bytes');
 
-      console.log('Converting Enhanced HTML to PDF...');
-      const printResult = await Print.printToFileAsync({
+      // A5 dimensions in points: 419.53 × 595.28
+      // Use a timeout wrapper to prevent indefinite hang
+      console.log('Converting HTML to PDF with timeout...');
+      const printPromise = Print.printToFileAsync({
         html,
         base64: false,
-        width: options.pageSize === 'a4' ? 595 : 612,
-        height: options.pageSize === 'a4' ? 842 : 792,
+        width: 420,   // A5 width in points
+        height: 595,  // A5 height in points
         margins: {
-          left: 50,
-          right: 50,
-          top: 50,
-          bottom: 50,
+          left: 34,  // ~12mm
+          right: 34,
+          top: 42,   // ~15mm
+          bottom: 42,
         },
       });
 
-      // Validate PDF was created
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('PDF generation timed out after 30s')), PDF_GENERATION_TIMEOUT)
+      );
+
+      const printResult = await Promise.race([printPromise, timeoutPromise]);
+
       if (!printResult.uri) {
-        throw new Error('Enhanced PDF generation returned empty URI');
+        throw new Error('PDF generation returned empty URI');
       }
 
-      // Check if PDF file exists
       const pdfInfo = await FileSystem.getInfoAsync(printResult.uri);
       if (!pdfInfo.exists) {
-        throw new Error('Generated Enhanced PDF file does not exist');
+        throw new Error('Generated PDF file does not exist');
       }
 
-      console.log('Enhanced PDF generated successfully:', printResult.uri);
-      console.log('Enhanced PDF file size:', pdfInfo.size, 'bytes');
-
+      console.log('Enhanced PDF generated:', printResult.uri, 'size:', pdfInfo.size, 'bytes');
       return { uri: printResult.uri, success: true };
     } catch (error: any) {
       console.error('Enhanced PDF Generation Error:', error);
-      console.error('Error stack:', error.stack);
       return {
         uri: '',
         success: false,
@@ -1013,7 +688,7 @@ class EnhancedNSPIREPDFReportService {
       'low': 'Low',
       'observation': 'Low'
     };
-    return mapping[severity?.toLowerCase()] || 'Moderate'; mapping[severity?.toLowerCase()] || 'Moderate';
+    return mapping[severity?.toLowerCase()] || 'Moderate';
   }
 
   private calculateEnhancedDeductionPoints(severity: string): number {
