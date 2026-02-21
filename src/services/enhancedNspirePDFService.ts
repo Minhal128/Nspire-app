@@ -728,10 +728,14 @@ class EnhancedNSPIREPDFReportService {
     const mapping: Record<string, string> = {
       'critical': 'Life-Threatening',
       'life-threatening': 'Life-Threatening',
+      'life threatening': 'Life-Threatening',
+      'lifethreatening': 'Life-Threatening',
       'major': 'Severe',
       'severe': 'Severe',
-      'minor': 'Moderate',
+      'high': 'Severe',
+      'medium': 'Moderate',
       'moderate': 'Moderate',
+      'minor': 'Low',
       'low': 'Low',
       'observation': 'Low'
     };
@@ -742,10 +746,14 @@ class EnhancedNSPIREPDFReportService {
     const points: Record<string, number> = {
       'critical': 10,
       'life-threatening': 10,
+      'life threatening': 10,
+      'lifethreatening': 10,
       'major': 6,
       'severe': 6,
-      'minor': 3,
+      'high': 6,
+      'medium': 3,
       'moderate': 3,
+      'minor': 1,
       'low': 1,
       'observation': 1
     };

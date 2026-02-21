@@ -188,8 +188,16 @@ export default function NSPIREReportScreen({ navigation, route }: NSPIREReportSc
   const mapSeverity = (severity: string): DeficiencySeverity => {
     const mapping: Record<string, DeficiencySeverity> = {
       'critical': 'Life-Threatening',
+      'life-threatening': 'Life-Threatening',
+      'life threatening': 'Life-Threatening',
+      'lifethreatening': 'Life-Threatening',
       'major': 'Severe',
-      'minor': 'Moderate',
+      'severe': 'Severe',
+      'high': 'Severe',
+      'medium': 'Moderate',
+      'moderate': 'Moderate',
+      'minor': 'Low',
+      'low': 'Low',
       'observation': 'Low',
     };
     return mapping[severity?.toLowerCase()] || 'Moderate';
@@ -198,8 +206,16 @@ export default function NSPIREReportScreen({ navigation, route }: NSPIREReportSc
   const calculateDeductionPoints = (severity: string): number => {
     const points: Record<string, number> = {
       'critical': 10,
+      'life-threatening': 10,
+      'life threatening': 10,
+      'lifethreatening': 10,
       'major': 6,
-      'minor': 3,
+      'severe': 6,
+      'high': 6,
+      'medium': 3,
+      'moderate': 3,
+      'minor': 1,
+      'low': 1,
       'observation': 1,
     };
     return points[severity?.toLowerCase()] || 3;

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,12 +10,19 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../types/navigation';
 import { Colors } from '../constants';
 import { Ionicons } from '@expo/vector-icons';
+import {
+  initializePropertyInspectionState,
+  markUnitCompleted,
+  getCompletedUnits,
+  resetPropertyInspectionState,
+} from '../utils/unitInspectionStorage';
 
 type PropertyInfoScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -29,12 +36,56 @@ interface Props {
 }
 
 const PropertyInfoScreen: React.FC<Props> = ({ navigation, route }) => {
-  const { property, selectedUnits } = route.params;
+  const { property, selectedUnits, completedUnits: passedCompletedUnits } = route.params;
+  const buildingId = 'B1';
+  const propertyId = property._id || property.id || property.propertyId || 'unknown';
 
   // Editable unit names
   const [unitNames, setUnitNames] = useState<string[]>(selectedUnits);
+  const [completedUnits, setCompletedUnits] = useState<string[]>(passedCompletedUnits || []);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [tempUnitNames, setTempUnitNames] = useState<string[]>(selectedUnits);
+
+  // Load completed units from storage on mount and when returning from inspection
+  const loadCompletedUnits = useCallback(async () => {
+    try {
+      await initializePropertyInspectionState(propertyId, buildingId, unitNames);
+      const completed = await getCompletedUnits(propertyId, buildingId);
+      // Merge with any passed completed units
+      const allCompleted = [...new Set([...completed, ...(passedCompletedUnits || [])])];
+      setCompletedUnits(allCompleted);
+
+      // Persist any newly passed completed units
+      if (passedCompletedUnits && passedCompletedUnits.length > 0) {
+        for (const unit of passedCompletedUnits) {
+          if (!completed.includes(unit)) {
+            await markUnitCompleted(propertyId, buildingId, unit);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error loading completed units:', error);
+    }
+  }, [propertyId, buildingId, unitNames, passedCompletedUnits]);
+
+  useEffect(() => {
+    loadCompletedUnits();
+  }, [loadCompletedUnits]);
+
+  // Refresh on screen focus (when coming back from inspection flow)
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      loadCompletedUnits();
+    });
+    return unsubscribe;
+  }, [navigation, loadCompletedUnits]);
+
+  const isUnitCompleted = (unitName: string) => completedUnits.includes(unitName);
+
+  const completedCount = completedUnits.filter(u => unitNames.includes(u)).length;
+  const totalCount = unitNames.length;
+  const allCompleted = completedCount === totalCount && totalCount > 0;
+  const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
   const openEditModal = () => {
     setTempUnitNames([...unitNames]);
@@ -58,12 +109,49 @@ const PropertyInfoScreen: React.FC<Props> = ({ navigation, route }) => {
     });
   };
 
-  const handleStartInspection = () => {
+  const handleStartUnitInspection = (unitName: string) => {
+    if (isUnitCompleted(unitName)) {
+      Alert.alert(
+        'Unit Already Inspected',
+        `${unitName} has already been inspected. Do you want to re-inspect?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Re-inspect',
+            onPress: () => navigateToInspection(unitName),
+          },
+        ]
+      );
+      return;
+    }
+    navigateToInspection(unitName);
+  };
+
+  const navigateToInspection = (unitName: string) => {
     navigation.navigate('InspectionCategories', {
       property,
-      selectedUnits: unitNames,
-      buildingId: 'B1',
+      selectedUnits: [unitName],
+      buildingId,
+      currentUnit: unitName,
     });
+  };
+
+  const handleResetAll = () => {
+    Alert.alert(
+      'Reset Inspections',
+      'Are you sure you want to reset all unit inspection progress? This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reset',
+          style: 'destructive',
+          onPress: async () => {
+            await resetPropertyInspectionState(propertyId, buildingId);
+            setCompletedUnits([]);
+          },
+        },
+      ]
+    );
   };
 
   return (
@@ -127,7 +215,7 @@ const PropertyInfoScreen: React.FC<Props> = ({ navigation, route }) => {
           <View style={styles.buildingInfoRow}>
             <View style={styles.buildingInfoItem}>
               <Text style={styles.buildingLabel}>Building ID</Text>
-              <Text style={styles.buildingValue}>B1</Text>
+              <Text style={styles.buildingValue}>{buildingId}</Text>
             </View>
             <View style={styles.buildingInfoItem}>
               <Text style={styles.buildingLabel}>Total Units</Text>
@@ -140,25 +228,113 @@ const PropertyInfoScreen: React.FC<Props> = ({ navigation, route }) => {
           </View>
         </View>
 
-        {/* Selected Units Card */}
-        {unitNames.length > 0 && (
-          <View style={styles.unitsCard}>
-            <View style={styles.unitsTitleRow}>
-              <Text style={styles.unitsTitle}>Selected Units</Text>
+        {/* Inspection Progress Card */}
+        <View style={styles.progressCard}>
+          <View style={styles.progressHeader}>
+            <Text style={styles.progressTitle}>Inspection Progress</Text>
+            <Text style={styles.progressCount}>
+              {completedCount}/{totalCount} Completed
+            </Text>
+          </View>
+          <View style={styles.progressBarContainer}>
+            <View style={[styles.progressBarFill, { width: `${progressPercent}%` }]} />
+          </View>
+          {allCompleted && (
+            <View style={styles.allCompleteBanner}>
+              <Ionicons name="checkmark-circle" size={18} color="#059669" />
+              <Text style={styles.allCompleteText}>All units inspected!</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Units Inspection List */}
+        <View style={styles.unitsListCard}>
+          <View style={styles.unitsListHeader}>
+            <Text style={styles.unitsListTitle}>Units for Inspection</Text>
+            <View style={styles.unitsListActions}>
               <TouchableOpacity style={styles.editButton} onPress={openEditModal}>
-                <Ionicons name="pencil-outline" size={16} color="#0E7490" />
+                <Ionicons name="pencil-outline" size={14} color="#0E7490" />
                 <Text style={styles.editButtonText}>Edit</Text>
               </TouchableOpacity>
-            </View>
-            <View style={styles.unitsChipsContainer}>
-              {unitNames.map((unit, index) => (
-                <View key={index} style={styles.unitChip}>
-                  <Text style={styles.unitChipText}>{unit}</Text>
-                </View>
-              ))}
+              {completedCount > 0 && (
+                <TouchableOpacity style={styles.resetButton} onPress={handleResetAll}>
+                  <Ionicons name="refresh-outline" size={14} color="#EF4444" />
+                  <Text style={styles.resetButtonText}>Reset</Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
-        )}
+
+          {/* Table Header */}
+          <View style={styles.tableHeader}>
+            <Text style={[styles.tableHeaderText, { flex: 0.1 }]}>#</Text>
+            <Text style={[styles.tableHeaderText, { flex: 0.4 }]}>Unit Name</Text>
+            <Text style={[styles.tableHeaderText, { flex: 0.25, textAlign: 'center' }]}>Status</Text>
+            <Text style={[styles.tableHeaderText, { flex: 0.25, textAlign: 'center' }]}>Action</Text>
+          </View>
+
+          {/* Unit Rows */}
+          {unitNames.map((unitName, index) => {
+            const completed = isUnitCompleted(unitName);
+            return (
+              <View
+                key={index}
+                style={[
+                  styles.unitRow,
+                  completed && styles.unitRowCompleted,
+                  index === unitNames.length - 1 && styles.unitRowLast,
+                ]}
+              >
+                {/* Row Number */}
+                <View style={{ flex: 0.1, justifyContent: 'center' }}>
+                  <Text style={styles.unitRowNumber}>{index + 1}</Text>
+                </View>
+
+                {/* Unit Name */}
+                <View style={{ flex: 0.4, justifyContent: 'center' }}>
+                  <View style={styles.unitNameContainer}>
+                    {completed && (
+                      <Ionicons name="checkmark-circle" size={16} color="#059669" style={{ marginRight: 6 }} />
+                    )}
+                    <Text style={[styles.unitName, completed && styles.unitNameCompleted]}>
+                      {unitName}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Status Badge */}
+                <View style={{ flex: 0.25, alignItems: 'center', justifyContent: 'center' }}>
+                  <View style={[styles.statusBadge, completed ? styles.statusCompleted : styles.statusPending]}>
+                    <Text style={[styles.statusText, completed ? styles.statusTextCompleted : styles.statusTextPending]}>
+                      {completed ? 'Done' : 'Pending'}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Action Button */}
+                <View style={{ flex: 0.25, alignItems: 'center', justifyContent: 'center' }}>
+                  <TouchableOpacity
+                    style={[
+                      styles.unitStartButton,
+                      completed && styles.unitStartButtonCompleted,
+                    ]}
+                    onPress={() => handleStartUnitInspection(unitName)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons
+                      name={completed ? 'eye-outline' : 'play-circle-outline'}
+                      size={14}
+                      color={completed ? '#059669' : '#FFFFFF'}
+                    />
+                    <Text style={[styles.unitStartText, completed && styles.unitStartTextCompleted]}>
+                      {completed ? 'View' : 'Start'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            );
+          })}
+        </View>
 
         {/* Edit Units Modal */}
         <Modal
@@ -207,18 +383,6 @@ const PropertyInfoScreen: React.FC<Props> = ({ navigation, route }) => {
           </KeyboardAvoidingView>
         </Modal>
       </ScrollView>
-
-      {/* Fixed Bottom Button */}
-      <View style={styles.footer}>
-        <TouchableOpacity
-          style={styles.startButton}
-          onPress={handleStartInspection}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="clipboard-outline" size={22} color="#FFFFFF" />
-          <Text style={styles.startButtonText}>Start Inspection</Text>
-        </TouchableOpacity>
-      </View>
     </SafeAreaView>
   );
 };
@@ -254,7 +418,7 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 16,
-    paddingBottom: 140,
+    paddingBottom: 40,
   },
   propertyNameCard: {
     backgroundColor: '#0E7490',
@@ -350,7 +514,8 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#0E7490',
   },
-  unitsCard: {
+  // Progress Card
+  progressCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 16,
@@ -361,16 +526,74 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 2,
   },
-  unitsTitleRow: {
+  progressHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
   },
-  unitsTitle: {
+  progressTitle: {
     fontSize: 14,
     fontWeight: '600',
     color: '#1A1A1A',
+  },
+  progressCount: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#0E7490',
+  },
+  progressBarContainer: {
+    height: 8,
+    backgroundColor: '#E5E7EB',
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: '#059669',
+    borderRadius: 4,
+  },
+  allCompleteBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#ECFDF5',
+    borderRadius: 8,
+    paddingVertical: 8,
+    marginTop: 12,
+    gap: 6,
+  },
+  allCompleteText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#059669',
+  },
+  // Units Inspection List
+  unitsListCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  unitsListHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  unitsListTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1A1A1A',
+  },
+  unitsListActions: {
+    flexDirection: 'row',
+    gap: 8,
   },
   editButton: {
     flexDirection: 'row',
@@ -386,56 +609,113 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#0E7490',
   },
-  unitsChipsContainer: {
+  resetButton: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+    alignItems: 'center',
+    backgroundColor: '#FEE2E2',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 14,
+    gap: 4,
   },
-  unitChip: {
-    backgroundColor: '#E0F2FE',
+  resetButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#EF4444',
+  },
+  // Table styles
+  tableHeader: {
+    flexDirection: 'row',
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    backgroundColor: '#F0F9FF',
+    borderRadius: 8,
+    marginBottom: 6,
+  },
+  tableHeaderText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#0E7490',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  unitRow: {
+    flexDirection: 'row',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+    alignItems: 'center',
+  },
+  unitRowCompleted: {
+    backgroundColor: '#F0FDF4',
+  },
+  unitRowLast: {
+    borderBottomWidth: 0,
+  },
+  unitRowNumber: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#9CA3AF',
+  },
+  unitNameContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  unitName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1F2937',
+  },
+  unitNameCompleted: {
+    color: '#059669',
+  },
+  // Status badge
+  statusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  statusCompleted: {
+    backgroundColor: '#ECFDF5',
+  },
+  statusPending: {
+    backgroundColor: '#FEF3C7',
+  },
+  statusText: {
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
+  statusTextCompleted: {
+    color: '#059669',
+  },
+  statusTextPending: {
+    color: '#D97706',
+  },
+  // Unit start button
+  unitStartButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0E7490',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
+    gap: 4,
+  },
+  unitStartButtonCompleted: {
+    backgroundColor: '#ECFDF5',
     borderWidth: 1,
-    borderColor: '#0E7490',
+    borderColor: '#059669',
   },
-  unitChipText: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#0E7490',
-  },
-  footer: {
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 32,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E5E5',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -3 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 8,
-  },
-  startButton: {
-    backgroundColor: '#0E7490',
-    borderRadius: 50,
-    paddingVertical: 18,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    shadowColor: '#0E7490',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  startButtonText: {
-    color: '#FFFFFF',
-    fontSize: 17,
+  unitStartText: {
+    fontSize: 12,
     fontWeight: '700',
-    letterSpacing: 0.5,
+    color: '#FFFFFF',
+  },
+  unitStartTextCompleted: {
+    color: '#059669',
   },
   // Modal styles
   modalOverlay: {

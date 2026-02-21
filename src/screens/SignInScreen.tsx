@@ -185,13 +185,6 @@ export default function SignInScreen({ navigation, route }: SignInScreenProps) {
     try {
       setLoading(true);
 
-      // Ensure we start fresh to avoid "Already signed in" error
-      try {
-        await signOut();
-      } catch (e) {
-        console.log('Ignore sign out error:', e);
-      }
-
       // Get selected portal from route params (most reliable) or fallback to storage/default
       const selectedPortal = userType || await AsyncStorage.getItem('selectedPortal') || 'Inspector';
 
@@ -203,7 +196,7 @@ export default function SignInScreen({ navigation, route }: SignInScreenProps) {
 
       if (result.createdSessionId) {
         // Set active session
-        await result.setActive!({ session: result.createdSessionId });
+        await result.setActive?.({ session: result.createdSessionId });
 
         // Get user info from Clerk session
         let email = '';
@@ -211,13 +204,13 @@ export default function SignInScreen({ navigation, route }: SignInScreenProps) {
 
         // Try to get from signUp or signIn objects
         if (result.signUp) {
-          email = result.signUp.emailAddress || '';
-          fullName = (result.signUp as any).firstName || '';
+          email = result.signUp.emailAddress ?? '';
+          fullName = (result.signUp as any)?.firstName ?? '';
         }
 
         if (!email && result.signIn) {
-          email = result.signIn.identifier || '';
-          fullName = (result.signIn as any).firstName || '';
+          email = result.signIn.identifier ?? '';
+          fullName = (result.signIn as any)?.firstName ?? '';
         }
 
         // Fallback: Try from createdSession user object
@@ -374,13 +367,6 @@ export default function SignInScreen({ navigation, route }: SignInScreenProps) {
     try {
       setLoading(true);
 
-      // Ensure we start fresh to avoid "Already signed in" error
-      try {
-        await signOut();
-      } catch (e) {
-        console.log('Ignore sign out error:', e);
-      }
-
       // Get selected portal from route params (most reliable) or fallback to storage/default
       const selectedPortal = userType || await AsyncStorage.getItem('selectedPortal') || 'Inspector';
 
@@ -392,7 +378,7 @@ export default function SignInScreen({ navigation, route }: SignInScreenProps) {
 
       if (result.createdSessionId) {
         // Set active session
-        await result.setActive!({ session: result.createdSessionId });
+        await result.setActive?.({ session: result.createdSessionId });
 
         // Get user info from Clerk session
         let email = '';
@@ -400,13 +386,13 @@ export default function SignInScreen({ navigation, route }: SignInScreenProps) {
 
         // Try to get from signUp or signIn objects
         if (result.signUp) {
-          email = result.signUp.emailAddress || '';
-          fullName = (result.signUp as any).firstName || '';
+          email = result.signUp.emailAddress ?? '';
+          fullName = (result.signUp as any)?.firstName ?? '';
         }
 
         if (!email && result.signIn) {
-          email = result.signIn.identifier || '';
-          fullName = (result.signIn as any).firstName || '';
+          email = result.signIn.identifier ?? '';
+          fullName = (result.signIn as any)?.firstName ?? '';
         }
 
         // Fallback: Try from createdSession user object
@@ -454,13 +440,6 @@ export default function SignInScreen({ navigation, route }: SignInScreenProps) {
     try {
       setLoading(true);
 
-      // Ensure we start fresh to avoid "Already signed in" error
-      try {
-        await signOut();
-      } catch (e) {
-        console.log('Ignore sign out error:', e);
-      }
-
       // Get selected portal from route params (most reliable) or fallback to storage/default
       const selectedPortal = userType || await AsyncStorage.getItem('selectedPortal') || 'Inspector';
 
@@ -472,7 +451,7 @@ export default function SignInScreen({ navigation, route }: SignInScreenProps) {
 
       if (result.createdSessionId) {
         // Set active session
-        await result.setActive!({ session: result.createdSessionId });
+        await result.setActive?.({ session: result.createdSessionId });
 
         // Get user info from Clerk session
         let email = '';
@@ -480,13 +459,13 @@ export default function SignInScreen({ navigation, route }: SignInScreenProps) {
 
         // Try to get from signUp or signIn objects
         if (result.signUp) {
-          email = result.signUp.emailAddress || '';
-          fullName = (result.signUp as any).firstName || '';
+          email = result.signUp.emailAddress ?? '';
+          fullName = (result.signUp as any)?.firstName ?? '';
         }
 
         if (!email && result.signIn) {
-          email = result.signIn.identifier || '';
-          fullName = (result.signIn as any).firstName || '';
+          email = result.signIn.identifier ?? '';
+          fullName = (result.signIn as any)?.firstName ?? '';
         }
 
         // Fallback: Try from createdSession user object

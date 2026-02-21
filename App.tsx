@@ -83,8 +83,8 @@ export type RootStackParamList = {
   LegacyAIInspection: { property: any };
   InspectionReport: { property: any; session: any; findings: any[]; images: any[]; complianceScore: number; overallCondition: string };
   NSPIREReport: { report?: any; inspectionData?: any; property?: any };
-  PropertyInfo: { property: any; selectedUnits: string[] };
-  InspectionCategories: { property: any; selectedUnits: string[]; buildingId: string };
+  PropertyInfo: { property: any; selectedUnits: string[]; completedUnits?: string[] };
+  InspectionCategories: { property: any; selectedUnits: string[]; buildingId: string; currentUnit?: string };
   UnitLocations: { property: any; selectedUnits: string[]; buildingId: string };
   LocationInspection: { property: any; selectedUnits: string[]; buildingId: string; location: string };
   DeficiencyDetail: { 
@@ -100,6 +100,8 @@ export type RootStackParamList = {
     selectedUnits: string[];
     buildingId: string;
     inspectionData: any;
+    currentUnit?: string;
+    allUnits?: string[];
   };
 };
 
@@ -120,6 +122,13 @@ const tokenCache = {
   async saveToken(key: string, value: string) {
     try {
       return SecureStore.setItemAsync(key, value);
+    } catch (err) {
+      return;
+    }
+  },
+  async clearToken(key: string) {
+    try {
+      return SecureStore.deleteItemAsync(key);
     } catch (err) {
       return;
     }

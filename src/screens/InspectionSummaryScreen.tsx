@@ -245,7 +245,7 @@ const InspectionSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
             comments: defItem.note || defItem.deficiency.aiAnalysis || 'AI analyzed',
             deductionPts: 3,
             repeatIndicator: false,
-            severity: defItem.deficiency.aiSeverity || defItem.deficiency.severity || 'Moderate',
+            severity: defItem.deficiency.severity || defItem.deficiency.aiSeverity || 'Moderate',
             inspectedDate: inspectionDate,
             inspectedTime: new Date().toLocaleTimeString(),
             inspectorId: 'INS-001',

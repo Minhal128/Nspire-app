@@ -668,6 +668,8 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           isOutsideInspection: isOutsideLocation,
           outsideLocation: isOutsideLocation ? selectedOutsideLocation : undefined,
         },
+        currentUnit: selectedUnits[0] || undefined,
+        allUnits: selectedUnits,
       });
 
       // Show success message
@@ -806,35 +808,6 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               </TouchableOpacity>
             </TouchableOpacity>
           )}
-        </View>
-
-        {/* Deficiency Criteria - Editable with tap-to-expand */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>DEFICIENCY CRITERIA</Text>
-          <TouchableOpacity
-            style={[styles.criteriaDropdownBox, selectedDeficiency && styles.criteriaDropdownBoxActive]}
-            onPress={() => handleShowExpandedText('Deficiency Criteria', deficiencyCriteria || customDeficiencyCriteria || '')}
-            activeOpacity={0.8}
-          >
-            <TextInput
-              style={[styles.criteriaDropdownTextEditable, !selectedDeficiency && !customDeficiencyCriteria && styles.placeholderText]}
-              placeholder="-- Select deficiency first or type here --"
-              placeholderTextColor="#9CA3AF"
-              value={customDeficiencyCriteria || deficiencyCriteria || ''}
-              onChangeText={(text) => {
-                setCustomDeficiencyCriteria(text);
-                setDeficiencyCriteria(text);
-              }}
-              multiline
-              numberOfLines={3}
-            />
-            <TouchableOpacity
-              style={styles.expandButton}
-              onPress={() => handleShowExpandedText('Deficiency Criteria', deficiencyCriteria || customDeficiencyCriteria || '')}
-            >
-              <Ionicons name="expand-outline" size={18} color="#0E7490" />
-            </TouchableOpacity>
-          </TouchableOpacity>
         </View>
 
         {/* PIC Section */}
