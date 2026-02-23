@@ -2320,7 +2320,7 @@ Combination units (exit sign + emergency light) must be inspected as two separat
       id: 'fire_out_2',
       name: 'Fire Escape',
       detail: 'Fire escape component is damaged, or missing.',
-      criteria: 'A stair, ladder, platform, guardrail, or handrail is deficient if it is visibly damaged or missing in a way that affects its functionality or intended safety',
+      criteria: 'Fire escape  component is damaged, or missing',
       severity: 'Life-Threatening',
       repairBy: '24 Hrs',
       points: '24.8/n',

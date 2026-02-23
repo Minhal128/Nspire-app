@@ -7530,7 +7530,7 @@ export const KITCHEN_VENTILATION: UnitItemDeficiencies = {
     deficiencies: [
         {
             id: 'kitchen_vent_1',
-            name: 'An exhaust fan, window, or adequate means of ventilation is not present and operable.',
+            name: 'Ventilation (with or without a fan).',
             detail: 'An exhaust fan, window, or adequate means of ventilation is not present and operable.',
             criteria: 'An exhaust fan, window, or adequate means of ventilation is not present and operable.',
             severity: 'Moderate',
@@ -7565,7 +7565,7 @@ export const KITCHEN_VENTILATION: UnitItemDeficiencies = {
         },
         {
             id: 'kitchen_vent_2',
-            name: 'Exhaust system component is damaged or missing.',
+            name: 'Ventilation (with or without a fan).',
             detail: 'Exhaust system component is damaged (i.e., visibly defective; impacts functionality). Or an exhaust system component is missing.',
             criteria: 'Exhaust system component is damaged. OR Exhaust system component is missing.',
             severity: 'Moderate',
@@ -7600,7 +7600,7 @@ export const KITCHEN_VENTILATION: UnitItemDeficiencies = {
         },
         {
             id: 'kitchen_vent_3',
-            name: 'Exhaust system does not respond to the control switch.',
+            name: 'Ventilation (with or without a fan).',
             detail: 'Exhaust system does not respond to the control switch.',
             criteria: 'Exhaust vent inoperable.',
             severity: 'Moderate',
@@ -7635,7 +7635,7 @@ export const KITCHEN_VENTILATION: UnitItemDeficiencies = {
         },
         {
             id: 'kitchen_vent_4',
-            name: 'Exhaust system has restricted air flow.',
+            name: 'Ventilation (with or without a fan).',
             detail: 'Exhaust system has restricted air flow.',
             criteria: 'Exhaust system is blocked such that airflow may be restricted.',
             severity: 'Moderate',

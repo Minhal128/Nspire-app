@@ -994,7 +994,7 @@ export const FIRE_ESCAPE_DEFICIENCIES: ItemDeficiencies = {
     {
       id: 'fire_esc_1',
       name: 'Fire escape component is damaged, or missing.',
-      detail: 'A stair, ladder, platform, guardrail, or handrail is deficient if it is visibly damaged or missing in a way that affects its functionality or intended safety.',
+      detail: 'Fire escape  component is damaged, or missing',
       criteria: 'A stair, ladder, platform, guardrail, or handrail is deficient if it is visibly damaged or missing in a way that affects its functionality or intended safety.',
       severity: 'Life-Threatening',
       repairBy: '24 Hrs.',
@@ -1041,7 +1041,7 @@ export const FIRE_EXTINGUISHER_DEFICIENCIES: ItemDeficiencies = {
     {
       id: 'fire_ext_1',
       name: 'A fire extinguisher is damaged or missing.',
-      detail: 'A fire extinguisher is deficient if it is visibly damaged or missing, including cases where prior installation is evident but the unit is no longer present or complete.',
+      detail: 'A fire extinguisher is damaged or missing. A stair, ladder, platform, guardrail, or handrail is deficient if it is visibly damaged or missing in a way that affects its functionality or intended safety',
       criteria: 'A fire extinguisher is deficient if it is visibly damaged or missing, including cases where prior installation is evident but the unit is no longer present or complete.',
       severity: 'Life-Threatening',
       repairBy: '24 Hrs.',
@@ -1114,7 +1114,7 @@ IRC aligns with NFPA standards for extinguisher placement, maintenance, and visi
     {
       id: 'fire_ext_3',
       name: 'The fire extinguisher tag is missing or illegible or expired.',
-      detail: 'The date on the service tag of any fire extinguisher has exceeded one year. OR The fire extinguisher tag is missing or illegible. OR A non-chargeable or disposable fire extinguisher is more than 12 years old (based on manufacture date).',
+      detail: 'The fire extinguisher tag is missing or illegible or expired.',
       criteria: 'The date on the service tag of any fire extinguisher has exceeded one year. OR The fire extinguisher tag is missing or illegible. OR A non-chargeable or disposable fire extinguisher is more than 12 years old (based on manufacture date).',
       severity: 'Life-Threatening',
       repairBy: '24 Hrs.',
@@ -1159,7 +1159,7 @@ export const FLAMMABLE_COMBUSTIBLE_DEFICIENCIES: ItemDeficiencies = {
     {
       id: 'flam_1',
       name: 'The flammable or combustible material is on or within 3 feet of an ignition source.',
-      detail: 'Flammable or combustible materials are deficient if placed within 3 feet of thermal comfort appliances or fuel-burning water heaters, if improperly stored near ignition sources, or if chemicals are improperly stored in general.',
+      detail: 'The flammable or combustible material is on or within 3 feet of an ignition source.',
       criteria: 'Flammable or combustible materials are deficient if placed within 3 feet of thermal comfort appliances or fuel-burning water heaters, if improperly stored near ignition sources, or if chemicals are improperly stored in general.',
       severity: 'Life-Threatening',
       repairBy: '24 Hrs.',
@@ -1723,7 +1723,7 @@ export const HANDRAIL_DEFICIENCIES: ItemDeficiencies = {
     {
       id: 'hand_3',
       name: 'Handrail is not installed where required.',
-      detail: '4 or more stair risers are present, and a handrail is not installed. OR A ramp has a rise greater than 6 inches or a horizontal projection greater than 72 inches and a handrail is not installed on both sides.',
+      detail: 'Handrail is not installed where required.',
       criteria: '4 or more stair risers are present, and a handrail is not installed. OR A ramp has a rise greater than 6 inches or a horizontal projection greater than 72 inches and a handrail is not installed on both sides.',
       severity: 'Severe',
       repairBy: '24 Hrs.',
@@ -1734,7 +1734,7 @@ export const HANDRAIL_DEFICIENCIES: ItemDeficiencies = {
     {
       id: 'hand_4',
       name: 'Handrail is not secured.',
-      detail: 'There is movement in the anchors of the handrail.',
+      detail: 'Handrail is not secured. There is movement in the anchors of the handrail.',
       criteria: 'There is movement in the anchors of the handrail.',
       severity: 'Moderate',
       repairBy: '30 Day',
