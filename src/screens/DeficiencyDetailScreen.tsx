@@ -431,7 +431,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     setSelectedSubcategory(subcategory);
     // Load deficiencies for selected subcategory
     // Pass location so Inside uses unitDeficiencyMapping data instead of falling through to Outside data
-    const subDeficiencies = getDeficienciesForSubcategory(subcategory.name, location);
+    const subDeficiencies = getDeficienciesForSubcategory(subcategory.name, location, itemName);
     setAvailableDeficiencies(subDeficiencies.deficiencies);
     setShowSubcategoryPicker(false);
     // Reset deficiency selection

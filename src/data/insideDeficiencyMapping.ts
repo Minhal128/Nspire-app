@@ -5036,22 +5036,26 @@ export const MOLD_LIKE_SUBSTANCE: InsideSubcategory = {
             repairBy: '30 Day',
             points: '5.5/n',
             code: 'MOLD-01',
-            codeReference: `🧭 Step 1: Identification & Applicability
-• 	Applies to: All interior surfaces—walls, ceilings, floors, cabinetry, HVAC registers, closets, and behind appliances
-🔍 Step 2: Visual & Area-Based Assessment
-• 	Visual confirmation required: Odor alone is not sufficient
-• 	Visual Scan: Use a flashlight to inspect corners, ceilings, behind furniture, and inside cabinets
+            codeReference: `🧭 Step 1: Identify High-Risk Locations
+Inspect all shared-use areas where moisture may accumulate and mold-like substances may appear.
+🔍 Step 2: Visual Condition Assessment
+NSPIRE defines mold-like substance as visible discoloration or growth that may appear fuzzy, cottony, or spotty in colors like green, black, brown, white, or gray.
 🧪 Step 3: Inspection Technique
-• 	Estimate Surface Area: Measure or approximate the total affected area per room
-• 	Moisture Source Check: Look for leaks, condensation, or poor ventilation
-• 	Resident Confirmation: If possible, ask if the mold-like substance has been cleaned recently or if leaks have occurred
-📏 Step 4: Accessibility & Local Requirements
-• 	Inspection access: Must be visual and reachable without disassembly
-• 	Surface contrast: Mold must be distinguishable from the background color
-• 	IBU Overlay: May require visual contrast, tactile indicators, or multilingual signage in accessible units
-⚒️ Step 5: IRC Moisture & Sanitation Requirements
-• 	IRC R306 & R322: Units must be free from unsanitary conditions and moisture intrusion
-• 	IRC R703.1: Exterior walls must prevent water intrusion`
+• 	Visual Scan:
+• 	Look for discoloration, fuzzy patches, or water stains on walls, ceilings, floors, and fixtures
+• 	Odor Check:
+• 	Note musty or earthy smells, but only record if visual confirmation exists
+• 	Moisture Source Review:  Inspect for leaks, condensation, or poor ventilation near affected areas
+• 	Surface Type Identification: Mold-like substance on drywall, wood, tile grout, or caulk is scored; ignore household items like clothing or food
+📏 Step 4: Accessibility & Disability  Considerations. "IBU"
+• 	Safe Environment: Mold-like substance must not impair air quality or mobility
+• 	Clear Paths: Affected areas must not obstruct accessible routes
+• 	Sensory Safety: Odors or allergens must not compromise the health for residents with sensitivities
+⚒️ Step 5: IRC Moisture & Ventilation Requirements
+• 	IRC R303.3: Bathrooms must have mechanical ventilation or operable windows
+• 	IRC R317.1: Moisture-prone areas must use decay-resistant materials
+• 	IRC R703.4: Flashing is required to prevent water intrusion at exterior openings
+• 	IRC R408.3: Crawlspaces must be ventilated to prevent mold growth`
         },
         {
             id: 'mold_2',
@@ -5062,22 +5066,26 @@ export const MOLD_LIKE_SUBSTANCE: InsideSubcategory = {
             repairBy: '24Hrs',
             points: '30/n',
             code: 'MOLD-02',
-            codeReference: `🧭 Step 1: Identification & Applicability
-• 	Applies to: All interior surfaces—walls, ceilings, floors, cabinetry, HVAC registers, closets, and behind appliances
-🔍 Step 2: Visual & Area-Based Assessment
-• 	Visual confirmation required: Odor alone is not sufficient
-• 	Visual Scan: Use a flashlight to inspect corners, ceilings, behind furniture, and inside cabinets
+            codeReference: `🧭 Step 1: Identify High-Risk Locations
+Inspect all shared-use areas where moisture may accumulate and mold-like substances may appear.
+🔍 Step 2: Visual Condition Assessment
+NSPIRE defines mold-like substance as visible discoloration or growth that may appear fuzzy, cottony, or spotty in colors like green, black, brown, white, or gray.
 🧪 Step 3: Inspection Technique
-• 	Estimate Surface Area: Measure or approximate the total affected area per room
-• 	Moisture Source Check: Look for leaks, condensation, or poor ventilation
-• 	Resident Confirmation: If possible, ask if the mold-like substance has been cleaned recently or if leaks have occurred
-📏 Step 4: Accessibility & Local Requirements
-• 	Inspection access: Must be visual and reachable without disassembly
-• 	Surface contrast: Mold must be distinguishable from the background color
-• 	IBU Overlay: May require visual contrast, tactile indicators, or multilingual signage in accessible units
-⚒️ Step 5: IRC Moisture & Sanitation Requirements
-• 	IRC R306 & R322: Units must be free from unsanitary conditions and moisture intrusion
-• 	IRC R703.1: Exterior walls must prevent water intrusion`
+• 	Visual Scan:
+• 	Look for discoloration, fuzzy patches, or water stains on walls, ceilings, floors, and fixtures
+• 	Odor Check:
+• 	Note musty or earthy smells, but only record if visual confirmation exists
+• 	Moisture Source Review:  Inspect for leaks, condensation, or poor ventilation near affected areas
+• 	Surface Type Identification: Mold-like substance on drywall, wood, tile grout, or caulk is scored; ignore household items like clothing or food
+📏 Step 4: Accessibility & Disability  Considerations. "IBU"
+• 	Safe Environment: Mold-like substance must not impair air quality or mobility
+• 	Clear Paths: Affected areas must not obstruct accessible routes
+• 	Sensory Safety: Odors or allergens must not compromise the health for residents with sensitivities
+⚒️ Step 5: IRC Moisture & Ventilation Requirements
+• 	IRC R303.3: Bathrooms must have mechanical ventilation or operable windows
+• 	IRC R317.1: Moisture-prone areas must use decay-resistant materials
+• 	IRC R703.4: Flashing is required to prevent water intrusion at exterior openings
+• 	IRC R408.3: Crawlspaces must be ventilated to prevent mold growth`
         },
         {
             id: 'mold_3',
@@ -5088,22 +5096,26 @@ export const MOLD_LIKE_SUBSTANCE: InsideSubcategory = {
             repairBy: '24 Hrs.',
             points: '14.8/n',
             code: 'MOLD-03',
-            codeReference: `🧭 Step 1: Identification & Applicability
-• 	Applies to: All interior surfaces—walls, ceilings, floors, cabinetry, HVAC registers, closets, and behind appliances
-🔍 Step 2: Visual & Area-Based Assessment
-• 	Visual confirmation required: Odor alone is not sufficient
-• 	Visual Scan: Use a flashlight to inspect corners, ceilings, behind furniture, and inside cabinets
+            codeReference: `🧭 Step 1: Identify High-Risk Locations
+Inspect all shared-use areas where moisture may accumulate and mold-like substances may appear.
+🔍 Step 2: Visual Condition Assessment
+NSPIRE defines mold-like substance as visible discoloration or growth that may appear fuzzy, cottony, or spotty in colors like green, black, brown, white, or gray.
 🧪 Step 3: Inspection Technique
-• 	Estimate Surface Area: Measure or approximate the total affected area per room
-• 	Moisture Source Check: Look for leaks, condensation, or poor ventilation
-• 	Resident Confirmation: If possible, ask if the mold-like substance has been cleaned recently or if leaks have occurred
-📏 Step 4: Accessibility & Local Requirements
-• 	Inspection access: Must be visual and reachable without disassembly
-• 	Surface contrast: Mold must be distinguishable from the background color
-• 	IBU Overlay: May require visual contrast, tactile indicators, or multilingual signage in accessible units
-⚒️ Step 5: IRC Moisture & Sanitation Requirements
-• 	IRC R306 & R322: Units must be free from unsanitary conditions and moisture intrusion
-• 	IRC R703.1: Exterior walls must prevent water intrusion`
+• 	Visual Scan:
+• 	Look for discoloration, fuzzy patches, or water stains on walls, ceilings, floors, and fixtures
+• 	Odor Check:
+• 	Note musty or earthy smells, but only record if visual confirmation exists
+• 	Moisture Source Review:  Inspect for leaks, condensation, or poor ventilation near affected areas
+• 	Surface Type Identification: Mold-like substance on drywall, wood, tile grout, or caulk is scored; ignore household items like clothing or food
+📏 Step 4: Accessibility & Disability  Considerations. "IBU"
+• 	Safe Environment: Mold-like substance must not impair air quality or mobility
+• 	Clear Paths: Affected areas must not obstruct accessible routes
+• 	Sensory Safety: Odors or allergens must not compromise the health for residents with sensitivities
+⚒️ Step 5: IRC Moisture & Ventilation Requirements
+• 	IRC R303.3: Bathrooms must have mechanical ventilation or operable windows
+• 	IRC R317.1: Moisture-prone areas must use decay-resistant materials
+• 	IRC R703.4: Flashing is required to prevent water intrusion at exterior openings
+• 	IRC R408.3: Crawlspaces must be ventilated to prevent mold growth`
         },
         {
             id: 'mold_4',
@@ -5114,22 +5126,26 @@ export const MOLD_LIKE_SUBSTANCE: InsideSubcategory = {
             repairBy: '30 Day',
             points: '5.5/n',
             code: 'MOLD-04',
-            codeReference: `🧭 Step 1: Identification & Applicability
-• 	Applies to: All interior surfaces—walls, ceilings, floors, cabinetry, HVAC registers, closets, and behind appliances
-🔍 Step 2: Visual & Area-Based Assessment
-• 	Visual confirmation required: Odor alone is not sufficient
-• 	Visual Scan: Use a flashlight to inspect corners, ceilings, behind furniture, and inside cabinets
+            codeReference: `🧭 Step 1: Identify High-Risk Locations
+Inspect all shared-use areas where moisture may accumulate and mold-like substances may appear.
+🔍 Step 2: Visual Condition Assessment
+NSPIRE defines mold-like substance as visible discoloration or growth that may appear fuzzy, cottony, or spotty in colors like green, black, brown, white, or gray.
 🧪 Step 3: Inspection Technique
-• 	Estimate Surface Area: Measure or approximate the total affected area per room
-• 	Moisture Source Check: Look for leaks, condensation, or poor ventilation
-• 	Resident Confirmation: If possible, ask if the mold-like substance has been cleaned recently or if leaks have occurred
-📏 Step 4: Accessibility & Local Requirements
-• 	Inspection access: Must be visual and reachable without disassembly
-• 	Surface contrast: Mold must be distinguishable from the background color
-• 	IBU Overlay: May require visual contrast, tactile indicators, or multilingual signage in accessible units
-⚒️ Step 5: IRC Moisture & Sanitation Requirements
-• 	IRC R306 & R322: Units must be free from unsanitary conditions and moisture intrusion
-• 	IRC R703.1: Exterior walls must prevent water intrusion`
+• 	Visual Scan:
+• 	Look for discoloration, fuzzy patches, or water stains on walls, ceilings, floors, and fixtures
+• 	Odor Check:
+• 	Note musty or earthy smells, but only record if visual confirmation exists
+• 	Moisture Source Review:  Inspect for leaks, condensation, or poor ventilation near affected areas
+• 	Surface Type Identification: Mold-like substance on drywall, wood, tile grout, or caulk is scored; ignore household items like clothing or food
+📏 Step 4: Accessibility & Disability  Considerations. "IBU"
+• 	Safe Environment: Mold-like substance must not impair air quality or mobility
+• 	Clear Paths: Affected areas must not obstruct accessible routes
+• 	Sensory Safety: Odors or allergens must not compromise the health for residents with sensitivities
+⚒️ Step 5: IRC Moisture & Ventilation Requirements
+• 	IRC R303.3: Bathrooms must have mechanical ventilation or operable windows
+• 	IRC R317.1: Moisture-prone areas must use decay-resistant materials
+• 	IRC R703.4: Flashing is required to prevent water intrusion at exterior openings
+• 	IRC R408.3: Crawlspaces must be ventilated to prevent mold growth`
         }
     ]
 };

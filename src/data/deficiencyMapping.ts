@@ -11,6 +11,7 @@ import {
   hasInsideSubcategories,
   getInsideCategorySubcategories,
   getInsideSubcategoryDeficiencies as getUnitSubcategoryDeficiencies,
+  getInsideSubcategoryDeficienciesByParent,
 } from './unitDeficiencyMapping';
 
 // Import Outside deficiencies for Outside inspections (correct NSPIRE values)
@@ -4739,12 +4740,11 @@ export const getDeficienciesForItem = (itemName: string, locationType?: string):
   const isUnit = isUnitLocation(locationType || '');
 
   // ==========================================
-  // UNIT INSPECTIONS - Use Inside mapping file (32 categories for dwelling rooms)
+  // UNIT INSPECTIONS - Use insideDeficiencyMapping.ts ONLY (32 categories for dwelling rooms)
   // ==========================================
   if (isUnit) {
     const insideResult = getAllInsideDeficienciesForItem(cleanedName);
     if (insideResult) {
-      // Flatten subcategories if present
       let allDeficiencies: DeficiencyOption[] = [];
       if (insideResult.subcategories) {
         allDeficiencies = insideResult.subcategories.flatMap(sub =>
@@ -4778,11 +4778,12 @@ export const getDeficienciesForItem = (itemName: string, locationType?: string):
         deficiencies: allDeficiencies
       };
     }
+    // Never fall through to outside data for unit rooms
+    return { itemName: itemName, deficiencies: GENERAL_COMMENT_DEFICIENCIES.deficiencies };
   }
 
   // ==========================================
-  // OUTSIDE INSPECTIONS - Use dedicated Outside mapping with correct NSPIRE values
-  // Outside has different severity/points values than Inside/Unit
+  // OUTSIDE INSPECTIONS - Use outsideDeficiencyMapping.ts ONLY
   // ==========================================
   if (isOutside) {
     const outsideResult = getOutsideDeficienciesByCategory(cleanedName);
@@ -4792,7 +4793,7 @@ export const getDeficienciesForItem = (itemName: string, locationType?: string):
   }
 
   // ==========================================
-  // INSIDE INSPECTIONS - Use Unit mapping file (35 categories)
+  // INSIDE INSPECTIONS - Use unitDeficiencyMapping.ts ONLY (35 categories)
   // ==========================================
   if (isInside) {
     const unitResult = getUnitDeficienciesByCategory(cleanedName);
@@ -4812,6 +4813,26 @@ export const getDeficienciesForItem = (itemName: string, locationType?: string):
         }))
       };
     }
+    // Try subcategory lookup as fallback before giving up
+    const subResult = getUnitSubcategoryDeficiencies(cleanedName);
+    if (subResult) {
+      return {
+        itemName: subResult.itemName,
+        deficiencies: subResult.deficiencies.map(d => ({
+          id: d.id,
+          name: d.name,
+          detail: d.detail,
+          criteria: d.criteria,
+          severity: d.severity,
+          repairBy: d.repairBy,
+          points: d.points,
+          code: d.code || '',
+          codeReference: (d as any).codeReference || undefined,
+        }))
+      };
+    }
+    // Never fall through to outside data for inside rooms
+    return { itemName: itemName, deficiencies: GENERAL_COMMENT_DEFICIENCIES.deficiencies };
   }
 
   // ==========================================
@@ -5051,7 +5072,7 @@ export const getSubcategoriesForItem = (itemName: string, locationType?: string)
 };
 
 // Helper function to get deficiencies for a subcategory
-export const getDeficienciesForSubcategory = (subcategoryName: string, locationType?: string): ItemDeficiencies => {
+export const getDeficienciesForSubcategory = (subcategoryName: string, locationType?: string, parentCategory?: string): ItemDeficiencies => {
   const normalizedName = subcategoryName.toLowerCase();
   const isOutside = locationType?.toLowerCase() === 'outside';
   const isUnit = isUnitLocation(locationType || '');
@@ -5088,155 +5109,136 @@ export const getDeficienciesForSubcategory = (subcategoryName: string, locationT
     }
   }
 
-  if (normalizedName.includes('door - general standard') || normalizedName === 'door - general standard') {
-    return DOOR_GENERAL_STANDARD_OUTSIDE;
-  }
-  if (normalizedName === 'garage door' || normalizedName.includes('garage door')) {
-    return GARAGE_DOOR_OUTSIDE;
-  }
-
-  // Drain subcategories – use outsideDeficiencyMapping data for rich codeReference
-  if (normalizedName === 'drain') {
-    return DRAIN_DRAIN_DATA;
-  }
-  if (normalizedName === 'site drainage' || normalizedName.includes('site drainage')) {
-    return SITE_DRAINAGE_DATA;
-  }
-
-  // Electrical subcategories
-  if (normalizedName === 'electrical - conductor, outlet, and switch' || normalizedName.includes('electrical - conductor')) {
-    return ELECTRICAL_CONDUCTOR_OUTLET_SWITCH;
-  }
-  if (normalizedName.includes('afci outlet') || normalizedName.includes('afci breaker')) {
-    return ELECTRICAL_AFCI_OUTLET;
-  }
-  if (normalizedName.includes('unprotected outlet')) {
-    return ELECTRICAL_UNPROTECTED_OUTLET;
-  }
-  if (normalizedName.includes('gfci outlet') || normalizedName.includes('gfci breaker')) {
-    return ELECTRICAL_GFCI_OUTLET;
-  }
-  if (!isInside && !isUnit && (normalizedName === 'electrical service panel' || normalizedName.includes('service panel'))) {
-    // Use rich codeReference data from outsideDeficiencyMapping (Outside only)
-    // Inside and Unit locations use their own mapped data via getUnitSubcategoryDeficiencies
-    return ELECTRICAL_SERVICE_PANEL_DATA;
-  }
-
-  // Fire Safety subcategories
-  if (normalizedName === 'exit sign' || normalizedName.includes('exit sign')) {
-    return EXIT_SIGN_DEFICIENCIES;
-  }
-  if (normalizedName === 'fire escape' || normalizedName.includes('fire escape')) {
-    return FIRE_ESCAPE_DEFICIENCIES;
-  }
-  if (normalizedName === 'fire extinguisher' || normalizedName.includes('fire extinguisher')) {
-    return FIRE_EXTINGUISHER_DEFICIENCIES;
-  }
-  if (normalizedName.includes('flammable') || normalizedName.includes('combustible')) {
-    return FLAMMABLE_COMBUSTIBLE_DEFICIENCIES;
-  }
-  if (normalizedName.includes('sprinkler')) {
-    return SPRINKLER_ASSEMBLY_DEFICIENCIES;
-  }
-
-  // Fencing/Gate subcategories
-  if (normalizedName === 'fence and gate' || normalizedName.includes('fence')) {
-    return FENCE_AND_GATE_OUTSIDE;
-  }
-
-  // Hazard subcategories
-  if (normalizedName === 'rat') {
-    return RAT_DEFICIENCIES;
-  }
-  if (normalizedName === 'litter') {
-    return LITTER_DEFICIENCIES;
-  }
-  if (normalizedName === 'sharp edges' || normalizedName.includes('sharp')) {
-    return SHARP_EDGES_DEFICIENCIES;
-  }
-  if (normalizedName === 'trip hazard' || normalizedName.includes('trip')) {
-    return TRIP_HAZARD_DEFICIENCIES;
-  }
-
-  // Lighting subcategories
-  if (normalizedName.includes('auxiliary')) {
-    return LIGHTING_AUXILIARY_DEFICIENCIES;
-  }
-  if (normalizedName === 'lighting - exterior' || normalizedName.includes('lighting - exterior')) {
-    return LIGHTING_EXTERIOR_DEFICIENCIES;
-  }
-
-  // Parking subcategories
-  if (normalizedName === 'parking lot' || normalizedName.includes('parking lot')) {
-    return PARKING_LOT_DEFICIENCIES;
-  }
-  if (normalizedName.includes('private roads') || normalizedName.includes('driveways')) {
-    return PRIVATE_ROADS_DRIVEWAYS_DEFICIENCIES;
-  }
-
-  // Railings subcategories
-  if (normalizedName === 'guardrail' || normalizedName.includes('guardrail')) {
-    return GUARDRAIL_DEFICIENCIES;
-  }
-  if (normalizedName === 'handrail' || normalizedName.includes('handrail')) {
-    return HANDRAIL_DEFICIENCIES;
-  }
-
-  // Retaining Wall subcategories
-  if (normalizedName === 'retaining wall') {
-    return RETAINING_WALL_SUBCATEGORY;
-  }
-  if (normalizedName === 'wall - exterior' || normalizedName.includes('wall - exterior')) {
-    return WALL_EXTERIOR_DEFICIENCIES;
+  // ==========================================
+  // INSIDE LOCATIONS — Always use unitDeficiencyMapping subcategories
+  // Must run BEFORE all hardcoded Outside checks so Inside building locations
+  // (Halls/Corridors, Laundry Room, etc.) never use Outside data.
+  // ==========================================
+  if (isInside) {
+    // Prefer parent-aware lookup to avoid false positives from same-named items in different categories
+    const preciseResult = parentCategory ? getInsideSubcategoryDeficienciesByParent(parentCategory, subcategoryName) : null;
+    const insideResult = preciseResult ?? getUnitSubcategoryDeficiencies(subcategoryName);
+    if (insideResult) {
+      return {
+        itemName: insideResult.itemName,
+        deficiencies: insideResult.deficiencies.map(d => ({
+          id: d.id,
+          name: d.name,
+          detail: d.detail,
+          criteria: d.criteria,
+          severity: d.severity,
+          repairBy: d.repairBy,
+          points: d.points,
+          code: d.code || '',
+          codeReference: (d as any).codeReference || undefined,
+        }))
+      };
+    }
   }
 
   // ==========================================
-  // INSIDE SUBCATEGORIES - Search all Inside categories for matching subcategory
-  // This handles Inside inspection subcategories like Railings > Guardrail, Railings > Handrail
+  // OUTSIDE LOCATIONS — Use outsideDeficiencyMapping hardcoded subcategory data
   // ==========================================
-  const insideSubcatResult = getUnitSubcategoryDeficiencies(subcategoryName);
-  if (insideSubcatResult) {
-    return {
-      itemName: insideSubcatResult.itemName,
-      deficiencies: insideSubcatResult.deficiencies.map(d => ({
-        id: d.id,
-        name: d.name,
-        detail: d.detail,
-        criteria: d.criteria,
-        severity: d.severity,
-        repairBy: d.repairBy,
-        points: d.points,
-        code: d.code || '',
-        codeReference: (d as any).codeReference || undefined,
-      }))
-    };
-  }
+  if (isOutside) {
+    // Door subcategories
+    if (normalizedName.includes('door - general standard') || normalizedName === 'door - general standard') {
+      return DOOR_GENERAL_STANDARD_OUTSIDE;
+    }
+    if (normalizedName === 'garage door' || normalizedName.includes('garage door')) {
+      return GARAGE_DOOR_OUTSIDE;
+    }
 
-  // ==========================================
-  // UNIT SUBCATEGORIES - Search all Unit categories for matching subcategory
-  // This handles Unit inspection subcategories like Bathroom > Bathtub and Shower
-  // ==========================================
-  for (const category of ALL_INSIDE_CATEGORIES) {
-    if (category.subcategories) {
-      const matchingSubcat = category.subcategories.find(
-        sub => sub.name.toLowerCase() === normalizedName
-      );
-      if (matchingSubcat) {
-        return {
-          itemName: matchingSubcat.name,
-          deficiencies: matchingSubcat.deficiencies.map(d => ({
-            id: d.id,
-            name: d.name,
-            detail: d.detail,
-            criteria: d.criteria,
-            severity: d.severity,
-            repairBy: d.repairBy,
-            points: d.points,
-            code: d.code || '',
-            codeReference: d.codeReference,
-          }))
-        };
-      }
+    // Drain subcategories
+    if (normalizedName === 'drain') {
+      return DRAIN_DRAIN_DATA;
+    }
+    if (normalizedName === 'site drainage' || normalizedName.includes('site drainage')) {
+      return SITE_DRAINAGE_DATA;
+    }
+
+    // Electrical subcategories
+    if (normalizedName === 'electrical - conductor, outlet, and switch' || normalizedName.includes('electrical - conductor')) {
+      return ELECTRICAL_CONDUCTOR_OUTLET_SWITCH;
+    }
+    if (normalizedName.includes('afci outlet') || normalizedName.includes('afci breaker')) {
+      return ELECTRICAL_AFCI_OUTLET;
+    }
+    if (normalizedName.includes('unprotected outlet')) {
+      return ELECTRICAL_UNPROTECTED_OUTLET;
+    }
+    if (normalizedName.includes('gfci outlet') || normalizedName.includes('gfci breaker')) {
+      return ELECTRICAL_GFCI_OUTLET;
+    }
+    if (normalizedName === 'electrical service panel' || normalizedName.includes('service panel')) {
+      return ELECTRICAL_SERVICE_PANEL_DATA;
+    }
+
+    // Fire Safety subcategories
+    if (normalizedName === 'exit sign' || normalizedName.includes('exit sign')) {
+      return EXIT_SIGN_DEFICIENCIES;
+    }
+    if (normalizedName === 'fire escape' || normalizedName.includes('fire escape')) {
+      return FIRE_ESCAPE_DEFICIENCIES;
+    }
+    if (normalizedName === 'fire extinguisher' || normalizedName.includes('fire extinguisher')) {
+      return FIRE_EXTINGUISHER_DEFICIENCIES;
+    }
+    if (normalizedName.includes('flammable') || normalizedName.includes('combustible')) {
+      return FLAMMABLE_COMBUSTIBLE_DEFICIENCIES;
+    }
+    if (normalizedName.includes('sprinkler')) {
+      return SPRINKLER_ASSEMBLY_DEFICIENCIES;
+    }
+
+    // Fencing/Gate subcategories
+    if (normalizedName === 'fence and gate' || normalizedName.includes('fence')) {
+      return FENCE_AND_GATE_OUTSIDE;
+    }
+
+    // Hazard subcategories
+    if (normalizedName === 'rat') {
+      return RAT_DEFICIENCIES;
+    }
+    if (normalizedName === 'litter') {
+      return LITTER_DEFICIENCIES;
+    }
+    if (normalizedName === 'sharp edges' || normalizedName.includes('sharp')) {
+      return SHARP_EDGES_DEFICIENCIES;
+    }
+    if (normalizedName === 'trip hazard' || normalizedName.includes('trip')) {
+      return TRIP_HAZARD_DEFICIENCIES;
+    }
+
+    // Lighting subcategories
+    if (normalizedName.includes('auxiliary')) {
+      return LIGHTING_AUXILIARY_DEFICIENCIES;
+    }
+    if (normalizedName === 'lighting - exterior' || normalizedName.includes('lighting - exterior')) {
+      return LIGHTING_EXTERIOR_DEFICIENCIES;
+    }
+
+    // Parking subcategories
+    if (normalizedName === 'parking lot' || normalizedName.includes('parking lot')) {
+      return PARKING_LOT_DEFICIENCIES;
+    }
+    if (normalizedName.includes('private roads') || normalizedName.includes('driveways')) {
+      return PRIVATE_ROADS_DRIVEWAYS_DEFICIENCIES;
+    }
+
+    // Railings subcategories
+    if (normalizedName === 'guardrail' || normalizedName.includes('guardrail')) {
+      return GUARDRAIL_DEFICIENCIES;
+    }
+    if (normalizedName === 'handrail' || normalizedName.includes('handrail')) {
+      return HANDRAIL_DEFICIENCIES;
+    }
+
+    // Retaining Wall subcategories
+    if (normalizedName === 'retaining wall') {
+      return RETAINING_WALL_SUBCATEGORY;
+    }
+    if (normalizedName === 'wall - exterior' || normalizedName.includes('wall - exterior')) {
+      return WALL_EXTERIOR_DEFICIENCIES;
     }
   }
 

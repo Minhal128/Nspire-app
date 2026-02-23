@@ -3200,42 +3200,30 @@ export const CABINET_STORAGE_PANTRY: UnitItemDeficiencies = {
             name: 'Pantry, Food storage space is not present.',
             detail: 'Food, sanitation, and household supplies, evidence of previously installed, damaged or missing components.',
             criteria: 'Stowed items, including food, sanitation, and household supplies.',
-            severity: 'Low',
-            repairBy: '60 Day',
-            points: '2.20/n',
+            severity: 'Moderate',
+            repairBy: '30 Day',
+            points: '5.0/n',
             code: 'CAB-STORAGE-01',
-            codeReference: `🔍 1. Presence & Installation
-• Verify presence: Confirm that cabinets or storage units are installed and not missing.
-• Built-in vs. freestanding: Note whether units are wall-mounted, recessed, or movable.
-• NSPIRE Deficiency: Missing cabinets (with evidence of prior installation)
-
-🧩 2. Structural Integrity
-• Doors & drawers: Open and close each—check for sticking, misalignment, or detachment.
-• Hinges & slides: Inspect for rust, looseness, or broken components.
-• Mounting: Ensure wall-mounted units are securely fastened and not pulling away.
-• IRC Reference: Cabinets must be safely anchored and operable (IRC §R109.1.5, §R315)
-
-🧼 3. Surface Condition & Cleanability
-• Exterior finish: Look for peeling laminate, chipped paint, or exposed particle board.
-• Interior surfaces: Check for mold, grime, pest droppings, or water damage.
-
-🔒 4. Functionality & Usability
-• Locks/latches: If present, confirm they operate properly and aren't jammed.
-• Shelving: Ensure shelves are level, secure, and not sagging or cracked.
-• Accessibility: Confirm handles and doors are reachable (ADA reach range: 15–48" AFF)
-• IBU Overlay: Some jurisdictions require lockable storage for cleaning supplies or sharps
-
-🔥 5. Fire Safety & Clearance
-• Proximity to heat sources: Cabinets near stoves, heaters, or electrical panels must be fire-rated or shielded.
-• Ventilation: Storage areas must not obstruct mechanical or exhaust systems.
-• IRC Reference: Maintain clearance per IRC §M1505 and §R302.11
-
-🧠 6. Accessibility & Labeling (IBU)
-• Reach range: Confirm accessibility-compliant access to frequently used compartments.
-• Labeling: If used for emergency supplies or chemicals, ensure clear signage.
-• IBU Local Codes: May require enhanced labeling or restricted access for certain storage types
-
-📸 7. Documentation & Reporting`
+            codeReference: `🧭 Step 1: Identify Cabinet and Storage Locations
+Inspect all built-in or property-installed cabinets and storage units in shared-use areas.
+🔍 Step 2: Visual Condition Assessment
+Cabinet inaccessible or inoperable
+Cabinet missing entirely (with prior install evidence)
+🧪 Step 3: Functional Testing
+• 	Open/Close Test: Open every door and drawer fully to check for smooth operation
+• 	Hardware Check: Confirm knobs, handles, hinges, and slides are secure and functional
+• 	Interior Scan: Use a flashlight to inspect inside for water stains, mold-like substance, or loose shelving
+• 	Structural Stability: Gently press on cabinet sides and shelves to confirm secure mounting
+📏 Step 4: Accessibility & Disability  Considerations. "IBU"
+• 	Reach Range: Accessible cabinets should be within 15"–48" AFF
+• 	Operability: Doors and drawers must be usable with one hand, no tight grasping or twisting
+• 	Clear Floor Space: Minimum 30"x48" in front of accessible cabinets
+• 	Safe Use: No sharp edges, splinters, or protruding hardware
+⚒️ Step 5: IRC Installation & Safety Requirements
+• 	IRC R307.1: Cabinets must be securely anchored and properly spaced
+• 	IRC R702.3: Wall finishes must support mounted cabinetry
+• 	IRC P2705.1: Cabinets under sinks must allow access to plumbing without obstruction
+• 	IRC R317.1: Moisture-prone cabinetry must use decay-resistant materials`
         }
     ]
 };
@@ -6281,31 +6269,29 @@ export const GRAB_BAR: UnitItemDeficiencies = {
             repairBy: '30 Day',
             points: '5.0/n',
             code: 'GRAB-BAR-01',
-            codeReference: `🧭 Step 1: Presence & Location
-• Verify presence: NSPIRE only inspects grab bars if installed—there's no requirement to provide them.
-• Mounting zone: Typically adjacent to toilets, inside showers, or near tubs in bathrooms.
-
+            codeReference: `🧭 Step 1: Identify Grab Bar Locations
+Inspect all installed grab bars in shared-use hygiene areas.
+NSPIRE defines grab bars as safety devices designed to be grasped to maintain balance or assist with movement, specifically in bathrooms. 
 🔍 Step 2: Visual Condition Assessment
-• Material: Stainless steel, coated metal, or compliant plastic
-• Cleanliness: Must be free of grime, mold, or residue
-
+Grab bar is loose or unstable or damaged, Grab bar missing where required, Grab bar obstructed or inaccessible
 🧪 Step 3: Functional Testing
-• Stability Test: Grasp the center of the bar and apply a moderate force back and forth
-• If any movement is detected, cite it as a deficiency
-• Mounting Check: Confirm the grab bar is securely anchored to wall studs or blocking
-• Surface Inspection: Look for rust, cracks, or sharp edges
-
-📏 Step 4: Accessibility Compliance (IBU)
-• Height: Horizontal bars must be mounted 33"–36" AFF
-• Length: Toilet-side bars must be at least 42" long
-• Clearance: Minimum 1½" between wall and bar
-• Grip Surface: Must be slip-resistant and free of obstructions
-• Reachability: Must be within reach of seated users
-• IBU Overlay: May require reinforced backing or ADA-compliant mounting height (typically 33–36" AFF)
-
-⚒️ Step 5: IRC Structural Requirements
-• IRC §R307.1 – Universal design and accessibility provisions
-• IBU overlays – Local safety and usability codes`
+• 	Stability Test: Grasp the bar in the center and apply a moderate force back and forth.
+• 	Any movement = deficiency
+• 	Mounting Check: Confirm the grab bar is securely anchored to wall studs or blocking
+• 	Surface Inspection: Look for rust, cracks, or sharp edges
+• 	Accessibility Review: Ensure the grab bar is reachable and unobstructed.
+📏 Step 4: Accessibility & Disability  Considerations. "IBU"
+While NSPIRE does not enforce, IBU guidance is useful for best practice:
+• 	Height: 33"–36" above finished floor
+• 	Length: Minimum 42" for side wall, 36" for rear wall
+• 	Clearance: At least 1½" between wall and bar
+• 	Grip Surface: Smooth, non-slip, and continuous
+• 	Location: Beside toilets, inside showers/tubs, and near transfer zones
+⚒️ Step 5: IRC Installation & Safety Requirements
+• 	IRC R307.2: Shower walls must be finished with nonabsorbent material to ≥6 ft above floor
+• 	IRC P2705.1: Fixtures must be installed to allow safe access and use
+• 	IRC R317.1: Moisture-prone areas must use corrosion-resistant materials
+• 	IRC R703.4: Proper flashing and sealing are required to prevent water intrusion behind grab bar mounts`
         }
     ]
 };
@@ -6674,26 +6660,22 @@ export const HAZARD_SHARP_EDGES: UnitItemDeficiencies = {
             code: 'HAZARD-SHARP-01',
             codeReference: `🧭 Step 1: Identify Areas Where Sharp Edges May Be Present
 Inspect all shared-use spaces where residents may come into contact with built components.
-
 🔍 Step 2: Visual Condition Assessment
-• Rusted or bent metal, Splintered wood, Chipped ceramic or stone
-• Protruding nails, screws, staples
-
+• 	Rusted or bent metal,  Splintered wood, 	Chipped ceramic or stone
+• 	Protruding nails, screws, staples
 🧪 Step 3: Inspection Technique
-• Visual Scan: Walk through common areas and inspect all surfaces within reach (typically 0–6 feet)
-• Touch-Free Assessment: Do not touch the edge; visually determine if it could puncture or lacerate skin
-• Material Identification: Note whether the edge is metal, glass, tile, wood, or plastic
+• 	Visual Scan: Walk through common areas and inspect all surfaces within reach (typically 0–6 feet)
+• 	Touch-Free Assessment: Do not touch the edge; visually determine if it could puncture or lacerate skin
+• 	Material Identification: Note whether the edge is metal, glass, tile, wood, or plastic
 If the edge is damaged and located in a typical path of travel, it must be cited—even if no injury has occurred.
-
 📏 Step 4: Obstruction & Accessibility Overlay
-• Clear Floor Space: Sharp edges must not protrude into accessible routes
-• Egress paths: Hazards near exits or stairs elevate severity
-• IBU Local Codes: May require protective guards, rounded edges, or signage in high-traffic zones
-
+• 	Clear Floor Space: Sharp edges must not protrude into accessible routes
+• 	Egress paths: Hazards near exits or stairs elevate severity
+• 	IBU Local Codes: May require protective guards, rounded edges, or signage in high-traffic zones 
 ⚒️ Step 5: IRC Structural & Finish Requirements
-• IRC R302.1 – Protection against physical hazards
-• IRC R312.1: Guardrails and handrails must be smooth and free of sharp projections
-• IRC R302.1: Fire-resistant construction must not include exposed sharp metal or glass`
+• 	IRC R302.1 – Protection against physical hazards
+• 	IRC R312.1: Guardrails and handrails must be smooth and free of sharp projections
+• 	IRC R302.1: Fire-resistant construction must not include exposed sharp metal or glass`
         }
     ]
 };
@@ -7628,9 +7610,9 @@ export const KITCHEN_SINK: UnitItemDeficiencies = {
             name: 'Sink component is damaged or missing, and the sink is functionally adequate.',
             detail: 'Sink component is damaged or missing, and the sink is functionally adequate.',
             criteria: 'Sink component is damaged or missing, and the sink is functionally adequate.',
-            severity: 'Low',
-            repairBy: '60 Day',
-            points: '2.20/n',
+            severity: 'Moderate',
+            repairBy: '30 Day',
+            points: '5.0/n',
             code: 'KITCHEN-SINK-05',
             codeReference: `🧭 Step 1: Presence & Identification
 • Required if: The space is designated or used as a kitchen or food prep zone.
@@ -8346,26 +8328,24 @@ export const MOLD: UnitItemDeficiencies = {
             code: 'MOLD-01',
             codeReference: `🧭 Step 1: Identify High-Risk Locations
 Inspect all shared-use areas where moisture may accumulate and mold-like substances may appear.
-
 🔍 Step 2: Visual Condition Assessment
 NSPIRE defines mold-like substance as visible discoloration or growth that may appear fuzzy, cottony, or spotty in colors like green, black, brown, white, or gray.
-
 🧪 Step 3: Inspection Technique
-• Visual Scan: Look for discoloration, fuzzy patches, or water stains on walls, ceilings, floors, and fixtures
-• Odor Check: Note musty or earthy smells, but only record if visual confirmation exists
-• Moisture Source Review: Inspect for leaks, condensation, or poor ventilation near affected areas
-• Surface Type Identification: Mold-like substance on drywall, wood, tile grout, or caulk is scored; ignore household items like clothing or food
-
-📏 Step 4: Accessibility & Disability Considerations. "IBU"
-• Safe Environment: Mold-like substance must not impair air quality or mobility
-• Clear Paths: Affected areas must not obstruct accessible routes
-• Sensory Safety: Odors or allergens must not compromise the health for residents with sensitivities
-
+• 	Visual Scan:
+• 	Look for discoloration, fuzzy patches, or water stains on walls, ceilings, floors, and fixtures
+• 	Odor Check:
+• 	Note musty or earthy smells, but only record if visual confirmation exists
+• 	Moisture Source Review:  Inspect for leaks, condensation, or poor ventilation near affected areas
+• 	Surface Type Identification: Mold-like substance on drywall, wood, tile grout, or caulk is scored; ignore household items like clothing or food
+📏 Step 4: Accessibility & Disability  Considerations. "IBU"
+• 	Safe Environment: Mold-like substance must not impair air quality or mobility
+• 	Clear Paths: Affected areas must not obstruct accessible routes
+• 	Sensory Safety: Odors or allergens must not compromise the health for residents with sensitivities
 ⚒️ Step 5: IRC Moisture & Ventilation Requirements
-• IRC R303.3: Bathrooms must have mechanical ventilation or operable windows
-• IRC R317.1: Moisture-prone areas must use decay-resistant materials
-• IRC R703.4: Flashing is required to prevent water intrusion at exterior openings
-• IRC R408.3: Crawlspaces must be ventilated to prevent mold growth`
+• 	IRC R303.3: Bathrooms must have mechanical ventilation or operable windows
+• 	IRC R317.1: Moisture-prone areas must use decay-resistant materials
+• 	IRC R703.4: Flashing is required to prevent water intrusion at exterior openings
+• 	IRC R408.3: Crawlspaces must be ventilated to prevent mold growth`
         },
         {
             id: 'mold_2',
@@ -8378,26 +8358,24 @@ NSPIRE defines mold-like substance as visible discoloration or growth that may a
             code: 'MOLD-02',
             codeReference: `🧭 Step 1: Identify High-Risk Locations
 Inspect all shared-use areas where moisture may accumulate and mold-like substances may appear.
-
 🔍 Step 2: Visual Condition Assessment
 NSPIRE defines mold-like substance as visible discoloration or growth that may appear fuzzy, cottony, or spotty in colors like green, black, brown, white, or gray.
-
 🧪 Step 3: Inspection Technique
-• Visual Scan: Look for discoloration, fuzzy patches, or water stains on walls, ceilings, floors, and fixtures
-• Odor Check: Note musty or earthy smells, but only record if visual confirmation exists
-• Moisture Source Review: Inspect for leaks, condensation, or poor ventilation near affected areas
-• Surface Type Identification: Mold-like substance on drywall, wood, tile grout, or caulk is scored; ignore household items like clothing or food
-
-📏 Step 4: Accessibility & Disability Considerations. "IBU"
-• Safe Environment: Mold-like substance must not impair air quality or mobility
-• Clear Paths: Affected areas must not obstruct accessible routes
-• Sensory Safety: Odors or allergens must not compromise the health for residents with sensitivities
-
+• 	Visual Scan:
+• 	Look for discoloration, fuzzy patches, or water stains on walls, ceilings, floors, and fixtures
+• 	Odor Check:
+• 	Note musty or earthy smells, but only record if visual confirmation exists
+• 	Moisture Source Review:  Inspect for leaks, condensation, or poor ventilation near affected areas
+• 	Surface Type Identification: Mold-like substance on drywall, wood, tile grout, or caulk is scored; ignore household items like clothing or food
+📏 Step 4: Accessibility & Disability  Considerations. "IBU"
+• 	Safe Environment: Mold-like substance must not impair air quality or mobility
+• 	Clear Paths: Affected areas must not obstruct accessible routes
+• 	Sensory Safety: Odors or allergens must not compromise the health for residents with sensitivities
 ⚒️ Step 5: IRC Moisture & Ventilation Requirements
-• IRC R303.3: Bathrooms must have mechanical ventilation or operable windows
-• IRC R317.1: Moisture-prone areas must use decay-resistant materials
-• IRC R703.4: Flashing is required to prevent water intrusion at exterior openings
-• IRC R408.3: Crawlspaces must be ventilated to prevent mold growth`
+• 	IRC R303.3: Bathrooms must have mechanical ventilation or operable windows
+• 	IRC R317.1: Moisture-prone areas must use decay-resistant materials
+• 	IRC R703.4: Flashing is required to prevent water intrusion at exterior openings
+• 	IRC R408.3: Crawlspaces must be ventilated to prevent mold growth`
         },
         {
             id: 'mold_3',
@@ -8410,26 +8388,24 @@ NSPIRE defines mold-like substance as visible discoloration or growth that may a
             code: 'MOLD-03',
             codeReference: `🧭 Step 1: Identify High-Risk Locations
 Inspect all shared-use areas where moisture may accumulate and mold-like substances may appear.
-
 🔍 Step 2: Visual Condition Assessment
 NSPIRE defines mold-like substance as visible discoloration or growth that may appear fuzzy, cottony, or spotty in colors like green, black, brown, white, or gray.
-
 🧪 Step 3: Inspection Technique
-• Visual Scan: Look for discoloration, fuzzy patches, or water stains on walls, ceilings, floors, and fixtures
-• Odor Check: Note musty or earthy smells, but only record if visual confirmation exists
-• Moisture Source Review: Inspect for leaks, condensation, or poor ventilation near affected areas
-• Surface Type Identification: Mold-like substance on drywall, wood, tile grout, or caulk is scored; ignore household items like clothing or food
-
-📏 Step 4: Accessibility & Disability Considerations. "IBU"
-• Safe Environment: Mold-like substance must not impair air quality or mobility
-• Clear Paths: Affected areas must not obstruct accessible routes
-• Sensory Safety: Odors or allergens must not compromise the health for residents with sensitivities
-
+• 	Visual Scan:
+• 	Look for discoloration, fuzzy patches, or water stains on walls, ceilings, floors, and fixtures
+• 	Odor Check:
+• 	Note musty or earthy smells, but only record if visual confirmation exists
+• 	Moisture Source Review:  Inspect for leaks, condensation, or poor ventilation near affected areas
+• 	Surface Type Identification: Mold-like substance on drywall, wood, tile grout, or caulk is scored; ignore household items like clothing or food
+📏 Step 4: Accessibility & Disability  Considerations. "IBU"
+• 	Safe Environment: Mold-like substance must not impair air quality or mobility
+• 	Clear Paths: Affected areas must not obstruct accessible routes
+• 	Sensory Safety: Odors or allergens must not compromise the health for residents with sensitivities
 ⚒️ Step 5: IRC Moisture & Ventilation Requirements
-• IRC R303.3: Bathrooms must have mechanical ventilation or operable windows
-• IRC R317.1: Moisture-prone areas must use decay-resistant materials
-• IRC R703.4: Flashing is required to prevent water intrusion at exterior openings
-• IRC R408.3: Crawlspaces must be ventilated to prevent mold growth`
+• 	IRC R303.3: Bathrooms must have mechanical ventilation or operable windows
+• 	IRC R317.1: Moisture-prone areas must use decay-resistant materials
+• 	IRC R703.4: Flashing is required to prevent water intrusion at exterior openings
+• 	IRC R408.3: Crawlspaces must be ventilated to prevent mold growth`
         },
         {
             id: 'mold_4',
@@ -8442,26 +8418,24 @@ NSPIRE defines mold-like substance as visible discoloration or growth that may a
             code: 'MOLD-04',
             codeReference: `🧭 Step 1: Identify High-Risk Locations
 Inspect all shared-use areas where moisture may accumulate and mold-like substances may appear.
-
 🔍 Step 2: Visual Condition Assessment
 NSPIRE defines mold-like substance as visible discoloration or growth that may appear fuzzy, cottony, or spotty in colors like green, black, brown, white, or gray.
-
 🧪 Step 3: Inspection Technique
-• Visual Scan: Look for discoloration, fuzzy patches, or water stains on walls, ceilings, floors, and fixtures
-• Odor Check: Note musty or earthy smells, but only record if visual confirmation exists
-• Moisture Source Review: Inspect for leaks, condensation, or poor ventilation near affected areas
-• Surface Type Identification: Mold-like substance on drywall, wood, tile grout, or caulk is scored; ignore household items like clothing or food
-
-📏 Step 4: Accessibility & Disability Considerations. "IBU"
-• Safe Environment: Mold-like substance must not impair air quality or mobility
-• Clear Paths: Affected areas must not obstruct accessible routes
-• Sensory Safety: Odors or allergens must not compromise the health for residents with sensitivities
-
+• 	Visual Scan:
+• 	Look for discoloration, fuzzy patches, or water stains on walls, ceilings, floors, and fixtures
+• 	Odor Check:
+• 	Note musty or earthy smells, but only record if visual confirmation exists
+• 	Moisture Source Review:  Inspect for leaks, condensation, or poor ventilation near affected areas
+• 	Surface Type Identification: Mold-like substance on drywall, wood, tile grout, or caulk is scored; ignore household items like clothing or food
+📏 Step 4: Accessibility & Disability  Considerations. "IBU"
+• 	Safe Environment: Mold-like substance must not impair air quality or mobility
+• 	Clear Paths: Affected areas must not obstruct accessible routes
+• 	Sensory Safety: Odors or allergens must not compromise the health for residents with sensitivities
 ⚒️ Step 5: IRC Moisture & Ventilation Requirements
-• IRC R303.3: Bathrooms must have mechanical ventilation or operable windows
-• IRC R317.1: Moisture-prone areas must use decay-resistant materials
-• IRC R703.4: Flashing is required to prevent water intrusion at exterior openings
-• IRC R408.3: Crawlspaces must be ventilated to prevent mold growth`
+• 	IRC R303.3: Bathrooms must have mechanical ventilation or operable windows
+• 	IRC R317.1: Moisture-prone areas must use decay-resistant materials
+• 	IRC R703.4: Flashing is required to prevent water intrusion at exterior openings
+• 	IRC R408.3: Crawlspaces must be ventilated to prevent mold growth`
         }
     ]
 };
@@ -9003,7 +8977,7 @@ While NSPIRE does not enforce, IBU guidance is useful for best practice:
 };
 
 export const RESTROOM_MOLD: UnitItemDeficiencies = {
-    itemName: 'Mold -Like Substance',
+    itemName: 'Mold-Like Substance',
     deficiencies: [
         {
             id: 'restroom_mold_1',
@@ -10241,8 +10215,8 @@ export const VENTILATION: UnitItemDeficiencies = {
     deficiencies: [
         {
             id: 'vent_1',
-            name: 'Ventilation (with or without a fan)',
-            detail: 'It is not functioning adequately.',
+            name: 'It is not functioning adequately.',
+            detail: 'An exhaust fan, window, or adequate means of ventilation is not present and operable.',
             criteria: 'An exhaust fan, window, or adequate means of ventilation is not present and operable.',
             severity: 'Moderate',
             repairBy: '30 Day',
@@ -10251,31 +10225,27 @@ export const VENTILATION: UnitItemDeficiencies = {
             codeReference: `🧭 Step 1: Identify Ventilation Components and Locations
 Inspect all mechanical and passive ventilation systems in shared-use interior spaces.
 NSPIRE requires that ventilation systems be functionally adequate, meaning they must provide airflow and remove moisture or odors effectively
-
 🔍 Step 2: Visual Condition Assessment
 No exhaust fan and no operable window. Exhaust fan present but inoperable
-
 🧪 Step 3: Functional Testing
-• Fan Activation: Flip the switch or trigger the motion sensor; confirm the fan turns on and exhausts air
-• Airflow Check: Use a tissue or hand test near supply/return vents to detect airflow
-• Window Operation: Open and close operable windows to confirm usability
-• Moisture Scan: Inspect surrounding surfaces for condensation, staining, or mold-like substance
-
+• 	Fan Activation: Flip the switch or trigger the motion sensor; confirm the fan turns on and exhausts air
+• 	Airflow Check: Use a tissue or hand test near supply/return vents to detect airflow
+• 	Window Operation: Open and close operable windows to confirm usability
+• 	Moisture Scan: Inspect surrounding surfaces for condensation, staining, or mold-like substance
 📏 Step 4: Accessibility & Disability Considerations. "IBU"
-• Switch Height: Controls must be within 15"–48" AFF
-• Clear Floor Space: Minimum 30"x48" in front of ventilation controls
-• Safe Environment: No exposed wiring, sharp edges, or obstructed access
-• Visual/Audible Feedback: Fan should provide a clear indication of operation
-
+• 	Switch Height: Controls must be within 15"–48" AFF
+• 	Clear Floor Space: Minimum 30"x48" in front of ventilation controls
+• 	Safe Environment: No exposed wiring, sharp edges, or obstructed access
+• 	Visual/Audible Feedback: Fan should provide a clear indication of operation
 ⚒️ Step 5: IRC Ventilation Requirements
-• IRC R303.3: Bathrooms must have mechanical ventilation or operable windows
-• IRC M1507.2: Exhaust systems must vent to the outdoors and be sealed
-• IRC M1506.2: Air intake openings must be protected and unobstructed
-• IRC R317.1: Moisture-prone areas must use corrosion-resistant materials`
+• 	IRC R303.3: Bathrooms must have mechanical ventilation or operable windows
+• 	IRC M1507.2: Exhaust systems must vent to the outdoors and be sealed
+• 	IRC M1506.2: Air intake openings must be protected and unobstructed
+• 	IRC R317.1: Moisture-prone areas must use corrosion-resistant materials`
         },
         {
             id: 'vent_2',
-            name: 'Ventilation (with or without a fan)',
+            name: 'Exhaust system component is damaged (i.e., visibly defective; impacts functionality). Or an exhaust system component is missing.',
             detail: 'Exhaust system component is damaged (i.e., visibly defective; impacts functionality). Or an exhaust system component is missing.',
             criteria: 'Exhaust system component is damaged. OR Exhaust system component is missing.',
             severity: 'Moderate',
@@ -10285,31 +10255,27 @@ No exhaust fan and no operable window. Exhaust fan present but inoperable
             codeReference: `🧭 Step 1: Identify Ventilation Components and Locations
 Inspect all mechanical and passive ventilation systems in shared-use interior spaces.
 NSPIRE requires that ventilation systems be functionally adequate, meaning they must provide airflow and remove moisture or odors effectively
-
 🔍 Step 2: Visual Condition Assessment
 No exhaust fan and no operable window. Exhaust fan present but inoperable
-
 🧪 Step 3: Functional Testing
-• Fan Activation: Flip the switch or trigger the motion sensor; confirm the fan turns on and exhausts air
-• Airflow Check: Use a tissue or hand test near supply/return vents to detect airflow
-• Window Operation: Open and close operable windows to confirm usability
-• Moisture Scan: Inspect surrounding surfaces for condensation, staining, or mold-like substance
-
+• 	Fan Activation: Flip the switch or trigger the motion sensor; confirm the fan turns on and exhausts air
+• 	Airflow Check: Use a tissue or hand test near supply/return vents to detect airflow
+• 	Window Operation: Open and close operable windows to confirm usability
+• 	Moisture Scan: Inspect surrounding surfaces for condensation, staining, or mold-like substance
 📏 Step 4: Accessibility & Disability Considerations. "IBU"
-• Switch Height: Controls must be within 15"–48" AFF
-• Clear Floor Space: Minimum 30"x48" in front of ventilation controls
-• Safe Environment: No exposed wiring, sharp edges, or obstructed access
-• Visual/Audible Feedback: Fan should provide a clear indication of operation
-
+• 	Switch Height: Controls must be within 15"–48" AFF
+• 	Clear Floor Space: Minimum 30"x48" in front of ventilation controls
+• 	Safe Environment: No exposed wiring, sharp edges, or obstructed access
+• 	Visual/Audible Feedback: Fan should provide a clear indication of operation
 ⚒️ Step 5: IRC Ventilation Requirements
-• IRC R303.3: Bathrooms must have mechanical ventilation or operable windows
-• IRC M1507.2: Exhaust systems must vent to the outdoors and be sealed
-• IRC M1506.2: Air intake openings must be protected and unobstructed
-• IRC R317.1: Moisture-prone areas must use corrosion-resistant materials`
+• 	IRC R303.3: Bathrooms must have mechanical ventilation or operable windows
+• 	IRC M1507.2: Exhaust systems must vent to the outdoors and be sealed
+• 	IRC M1506.2: Air intake openings must be protected and unobstructed
+• 	IRC R317.1: Moisture-prone areas must use corrosion-resistant materials`
         },
         {
             id: 'vent_3',
-            name: 'Ventilation (with or without a fan)',
+            name: 'Exhaust system does not respond to the control switch.',
             detail: 'Exhaust system does not respond to the control switch.',
             criteria: 'Exhaust fan, inoperable.',
             severity: 'Moderate',
@@ -10319,32 +10285,28 @@ No exhaust fan and no operable window. Exhaust fan present but inoperable
             codeReference: `🧭 Step 1: Identify Ventilation Components and Locations
 Inspect all mechanical and passive ventilation systems in shared-use interior spaces.
 NSPIRE requires that ventilation systems be functionally adequate, meaning they must provide airflow and remove moisture or odors effectively
-
 🔍 Step 2: Visual Condition Assessment
 No exhaust fan and no operable window. Exhaust fan present but inoperable
-
 🧪 Step 3: Functional Testing
-• Fan Activation: Flip the switch or trigger the motion sensor; confirm the fan turns on and exhausts air
-• Airflow Check: Use a tissue or hand test near supply/return vents to detect airflow
-• Window Operation: Open and close operable windows to confirm usability
-• Moisture Scan: Inspect surrounding surfaces for condensation, staining, or mold-like substance
-
+• 	Fan Activation: Flip the switch or trigger the motion sensor; confirm the fan turns on and exhausts air
+• 	Airflow Check: Use a tissue or hand test near supply/return vents to detect airflow
+• 	Window Operation: Open and close operable windows to confirm usability
+• 	Moisture Scan: Inspect surrounding surfaces for condensation, staining, or mold-like substance
 📏 Step 4: Accessibility & Disability Considerations. "IBU"
-• Switch Height: Controls must be within 15"–48" AFF
-• Clear Floor Space: Minimum 30"x48" in front of ventilation controls
-• Safe Environment: No exposed wiring, sharp edges, or obstructed access
-• Visual/Audible Feedback: Fan should provide a clear indication of operation
-
+• 	Switch Height: Controls must be within 15"–48" AFF
+• 	Clear Floor Space: Minimum 30"x48" in front of ventilation controls
+• 	Safe Environment: No exposed wiring, sharp edges, or obstructed access
+• 	Visual/Audible Feedback: Fan should provide a clear indication of operation
 ⚒️ Step 5: IRC Ventilation Requirements
-• IRC R303.3: Bathrooms must have mechanical ventilation or operable windows
-• IRC M1507.2: Exhaust systems must vent to the outdoors and be sealed
-• IRC M1506.2: Air intake openings must be protected and unobstructed
-• IRC R317.1: Moisture-prone areas must use corrosion-resistant materials`
+• 	IRC R303.3: Bathrooms must have mechanical ventilation or operable windows
+• 	IRC M1507.2: Exhaust systems must vent to the outdoors and be sealed
+• 	IRC M1506.2: Air intake openings must be protected and unobstructed
+• 	IRC R317.1: Moisture-prone areas must use corrosion-resistant materials`
         },
         {
             id: 'vent_4',
-            name: 'Ventilation (with or without a fan)',
-            detail: 'Exhaust system has restricted air flow.',
+            name: 'Exhaust system has restricted air flow.',
+            detail: 'Exhaust system is blocked such that airflow may be restricted.',
             criteria: 'Exhaust system is blocked such that airflow may be restricted.',
             severity: 'Moderate',
             repairBy: '30 Day',
@@ -10353,27 +10315,23 @@ No exhaust fan and no operable window. Exhaust fan present but inoperable
             codeReference: `🧭 Step 1: Identify Ventilation Components and Locations
 Inspect all mechanical and passive ventilation systems in shared-use interior spaces.
 NSPIRE requires that ventilation systems be functionally adequate, meaning they must provide airflow and remove moisture or odors effectively
-
 🔍 Step 2: Visual Condition Assessment
 No exhaust fan and no operable window. Exhaust fan present but inoperable
-
 🧪 Step 3: Functional Testing
-• Fan Activation: Flip the switch or trigger the motion sensor; confirm the fan turns on and exhausts air
-• Airflow Check: Use a tissue or hand test near supply/return vents to detect airflow
-• Window Operation: Open and close operable windows to confirm usability
-• Moisture Scan: Inspect surrounding surfaces for condensation, staining, or mold-like substance
-
+• 	Fan Activation: Flip the switch or trigger the motion sensor; confirm the fan turns on and exhausts air
+• 	Airflow Check: Use a tissue or hand test near supply/return vents to detect airflow
+• 	Window Operation: Open and close operable windows to confirm usability
+• 	Moisture Scan: Inspect surrounding surfaces for condensation, staining, or mold-like substance
 📏 Step 4: Accessibility & Disability Considerations. "IBU"
-• Switch Height: Controls must be within 15"–48" AFF
-• Clear Floor Space: Minimum 30"x48" in front of ventilation controls
-• Safe Environment: No exposed wiring, sharp edges, or obstructed access
-• Visual/Audible Feedback: Fan should provide a clear indication of operation
-
+• 	Switch Height: Controls must be within 15"–48" AFF
+• 	Clear Floor Space: Minimum 30"x48" in front of ventilation controls
+• 	Safe Environment: No exposed wiring, sharp edges, or obstructed access
+• 	Visual/Audible Feedback: Fan should provide a clear indication of operation
 ⚒️ Step 5: IRC Ventilation Requirements
-• IRC R303.3: Bathrooms must have mechanical ventilation or operable windows
-• IRC M1507.2: Exhaust systems must vent to the outdoors and be sealed
-• IRC M1506.2: Air intake openings must be protected and unobstructed
-• IRC R317.1: Moisture-prone areas must use corrosion-resistant materials`
+• 	IRC R303.3: Bathrooms must have mechanical ventilation or operable windows
+• 	IRC M1507.2: Exhaust systems must vent to the outdoors and be sealed
+• 	IRC M1506.2: Air intake openings must be protected and unobstructed
+• 	IRC R317.1: Moisture-prone areas must use corrosion-resistant materials`
         }
     ]
 };
@@ -10392,7 +10350,7 @@ export const WALL: UnitItemDeficiencies = {
     deficiencies: [
         {
             id: 'wall_1',
-            name: 'Wall-Interior',
+            name: 'Interior wall component(s), severe cracks, not functionally adequate.',
             detail: 'Interior wall component(s), severe cracks, not functionally adequate. Damaged trim greater than 10% to 50% of the wall area.',
             criteria: 'Interior wall component(s) is not functionally adequate (i.e., impacts the integrity of the interior wall or does not allow interior wall to provide vertical separation between rooms or spaces).',
             severity: 'Moderate',
@@ -10426,7 +10384,7 @@ Cosmetic wear (minor scuffs, faded paint) is not scored
         },
         {
             id: 'wall_2',
-            name: 'Wall-Interior',
+            name: 'Hole greater than 2 inches in diameter, or accumulation of holes greater than 6" x 6".',
             detail: 'Hole is greater than 2 inches in diameter. OR An accumulation of holes in any one wall is greater than 6 inches by 6 inches.',
             criteria: 'The wall is damaged, and repairs still need to be completed appropriately.',
             severity: 'Moderate',
@@ -10460,7 +10418,7 @@ Cosmetic wear (minor scuffs, faded paint) is not scored
         },
         {
             id: 'wall_3',
-            name: 'Wall-Interior',
+            name: 'Interior wall has a loose or detached surface covering.',
             detail: 'Interior wall has a loose or detached surface covering.',
             criteria: 'Loose or detached surface coverings (e.g., drywall, plaster, paneling).',
             severity: 'Moderate',
@@ -11063,7 +11021,7 @@ const matchInsideCategory = (searchName: string, categoryFullName: string): bool
  */
 export const hasInsideSubcategories = (categoryName: string): boolean => {
     const category = findUnitCategory(categoryName);
-    return category ? category.items.length > 1 : false;
+    return category ? category.items.length >= 1 : false;
 };
 
 /**
@@ -11071,10 +11029,37 @@ export const hasInsideSubcategories = (categoryName: string): boolean => {
  */
 export const getInsideCategorySubcategories = (categoryName: string): string[] => {
     const category = findUnitCategory(categoryName);
-    if (category && category.items.length > 1) {
+    if (category && category.items.length >= 1) {
         return category.items.map(item => item.itemName);
     }
     return [];
+};
+
+/**
+ * Get deficiencies for a specific subcategory within a known parent category (Inside locations).
+ * More precise than getInsideSubcategoryDeficiencies because it only searches within the matching category,
+ * preventing false positives when multiple categories share the same item name (e.g. "Mold-Like Substance").
+ */
+export const getInsideSubcategoryDeficienciesByParent = (categoryName: string, itemName: string): UnitItemDeficiencies | null => {
+    const category = findUnitCategory(categoryName);
+    if (!category) return null;
+
+    const normalize = (str: string) =>
+        str.replace(/^\d+\.\s*/, '')
+            .toLowerCase()
+            .replace(/[\u2013\u2014\-]/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+
+    const normalizedItem = normalize(itemName);
+
+    for (const item of category.items) {
+        const catItemName = normalize(item.itemName);
+        if (catItemName === normalizedItem) return item;
+        if (catItemName.startsWith(normalizedItem) || normalizedItem.startsWith(catItemName)) return item;
+    }
+
+    return null;
 };
 
 /**

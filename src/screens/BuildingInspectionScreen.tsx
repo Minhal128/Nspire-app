@@ -215,7 +215,7 @@ export default function BuildingInspectionScreen() {
       buildingUnits.push(`Unit ${unitNumber}`);
     }
 
-    navigation.navigate('PropertyInfo' as any, {
+    navigation.navigate('InspectionCategories' as any, {
       property: property,
       selectedUnits: buildingUnits,
       buildingId: building.buildingId,

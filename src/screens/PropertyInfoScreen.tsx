@@ -115,11 +115,11 @@ const PropertyInfoScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   const navigateToInspection = (unitName: string) => {
-    navigation.navigate('InspectionCategories', {
+    navigation.navigate('LocationInspection', {
       property,
       selectedUnits: [unitName],
       buildingId,
-      currentUnit: unitName,
+      location: 'Unit',
     });
   };
 
