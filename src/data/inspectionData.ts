@@ -48,7 +48,7 @@ export const OUTSIDE_ITEMS: InspectionItem[] = [
   { id: '9', name: 'Fire Safety' },
   { id: '10', name: 'Foundation Standard' },
   { id: '11', name: 'Hazard' },
-  { id: '12', name: 'HVAC' },
+  { id: '12', name: 'Heating, Ventilation, and Air Conditioning (HVAC)' },
   { id: '13', name: 'Leak – Gas or Oil' },
   { id: '14', name: 'Leak - Sewage System' },
   { id: '15', name: 'Leak - Water' },

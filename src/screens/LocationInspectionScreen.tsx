@@ -40,8 +40,8 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
   // Use appropriate inspection items based on location
   // Outside = OUTSIDE_ITEMS (26), Inside = INSIDE_ITEMS (35), Unit = UNIT_ITEMS (32)
   const isUnitLocation = location === 'Unit' || UNIT_LOCATIONS.includes(location);
-  const inspectionItems = location === 'Outside' 
-    ? OUTSIDE_ITEMS 
+  const inspectionItems = location === 'Outside'
+    ? OUTSIDE_ITEMS
     : (isUnitLocation ? UNIT_ITEMS : INSIDE_ITEMS);
 
   const handleResponse = (itemId: string, itemName: string, response: ResponseType) => {
@@ -58,7 +58,20 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
     if (response === 'OD') {
       // Show deficiency modal when OD is clicked
       setSelectedItem({ id: itemId, name: itemName });
-      setShowDeficiencyModal(true);
+
+      if (itemName === 'General Comment') {
+        // Skip modal and go directly to Add New for General Comment
+        navigation.navigate('DeficiencyDetail', {
+          property,
+          selectedUnits,
+          buildingId,
+          location,
+          itemId,
+          itemName,
+        });
+      } else {
+        setShowDeficiencyModal(true);
+      }
     } else {
       setResponses((prev) => ({
         ...prev,

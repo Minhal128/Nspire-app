@@ -10,6 +10,7 @@ export interface InsideDeficiencyOption {
     repairBy: string;
     points: string;
     code?: string;
+    codeReference?: string;
 }
 
 export interface InsideSubcategory {
