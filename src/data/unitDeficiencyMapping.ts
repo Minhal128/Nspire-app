@@ -9,7 +9,7 @@
 //     criteria: string;
 //     severity: 'Life-Threatening' | 'Severe' | 'Moderate' | 'Low';
 //     repairBy: string;
-//     points: string;
+//     points: string;DOO
 //     code?: string;
 // }
 
@@ -1666,7 +1666,7 @@
 //     deficiencies: [
 //         {
 //             id: 'kitchen_vent_1',
-//             name: 'The restroom does not have ventilation, not present and operable.',
+//             name: 'Ventilation',
 //             detail: 'The restroom does not have ventilation, not present and operable.',
 //             criteria: 'An exhaust fan, window, or adequate means of ventilation is not present and operable.',
 //             severity: 'Moderate',
@@ -1676,7 +1676,7 @@
 //         },
 //         {
 //             id: 'kitchen_vent_2',
-//             name: 'Exhaust system component is damaged or missing.',
+//             name: 'Ventilation',
 //             detail: 'Exhaust system component is damaged or missing.',
 //             criteria: 'Exhaust system component is damaged (i.e., visibly defective; impacts functionality). OR Exhaust system component is missing (i.e., evidence of prior installation, but now not present or is incomplete).',
 //             severity: 'Moderate',
@@ -1686,7 +1686,7 @@
 //         },
 //         {
 //             id: 'kitchen_vent_3',
-//             name: 'Exhaust system does not respond to the control switch.',
+//             name: 'Ventilation',
 //             detail: 'Exhaust system does not respond to the control switch.',
 //             criteria: 'Exhaust vent inoperable.',
 //             severity: 'Moderate',
@@ -1696,7 +1696,7 @@
 //         },
 //         {
 //             id: 'kitchen_vent_4',
-//             name: 'Exhaust system has restricted air flow.',
+//             name: 'Ventilation',
 //             detail: 'Exhaust system has restricted air flow.',
 //             criteria: 'Exhaust system is blocked such that airflow may be restricted.',
 //             severity: 'Moderate',
@@ -3875,6 +3875,9 @@ export const CLOTHES_DRYER_DEFICIENCIES = {
 // ==========================================
 
 export const DOOR_ENTRY: UnitItemDeficiencies = {
+
+
+
     itemName: 'Door - Entry',
     deficiencies: [
         {
@@ -4679,14 +4682,188 @@ If the motor is present, it must function as intended—even if manual operation
 • IRC M1307.3: Mechanical equipment must not interfere with door operation
 • IRC R703.4: Flashing is required to prevent water intrusion at door openings
 IRC ensures garage doors are safe, secure, and compliant with fire and mechanical codes`
+        },
+
+
+
+    ]
+};
+
+export const DOOR_ENTRY_CANNOT_BE_SECURED: UnitItemDeficiencies = {
+    itemName: 'Entry door - Cannot be Secured',
+    deficiencies: [
+        {
+            id: 'Entry_door_1',
+            name: 'Entry door cannot be secured.',
+            detail: 'Entry door cannot be secured.',
+            criteria: 'Entry door cannot be secured (i.e., access controlled) by at least one installed lock.',
+            severity: 'Moderate',
+            repairBy: '30 Day',
+            points: '13.40/n',
+            code: 'DOOR-ENTRY-SEC-01',
+            codeReference: `🔍 1. Door Functionality
+• Open test: Confirm the door opens fully without sticking or obstruction.
+• Close test: Release the door—must close completely and latch securely.
+
+🔒 2. Security & Hardware
+• Lock operability: Check that the door can be locked and unlocked without excessive force.
+• Self-closing mechanism: Required for fire-rated doors—verify it functions properly.
+
+🧱 3. Physical Condition
+• Surface damage: Look for holes, splits, or cracks that penetrate the door slab.
+• Delamination: Check for peeling veneer or separated layers ≥2 inches.
+• Frame & threshold: Inspect for missing trim, loose sill plates, or warped jambs.
+
+🌬️ 4. Weatherproofing & Seal Integrity
+• Gasket/seal: Inspect for gaps >¼", light penetration, or water intrusion.
+• Sweep/threshold: Confirm the bottom seal is intact and not allowing drafts or pests.
+
+🔥 5. Fire-Rated Assembly (IRC §R302.5, NSPIRE Fire Overlay)
+• Label check: Look for a fire-rating label on the door edge or frame.
+• Integrity: Ensure no penetrations, warping, or missing components.
+• Self-closing: Mandatory for fire-rated doors—must latch automatically.
+
+🧠 6. Accessibility & IBU Overlay
+• Clear width: Minimum 32" clear opening per ADA and IRC §R311.2
+• Handle height: 34–48" AFF, operable with one hand, no tight grasping
+• IBU Local Codes: May require panic hardware, visual signage, or audible alerts`
         }
     ]
 };
 
+export const DOOR_ENTRY_COMPONENT_DAMAGED: UnitItemDeficiencies = {
+    itemName: 'Entry door - Component Damaged or Missing',
+    deficiencies: [
+        {
+            id: 'Entry_door_2',
+            name: 'Entry door component is damaged, inoperable or missing and it does not limit the door\'s ability to provide privacy or protection from weather or infestation.',
+            detail: 'Entry door component is inoperable, damaged or missing, and it does not limit the door\'s ability to provide privacy or protection from weather or infestation.',
+            criteria: 'Entry door component is inoperable, damaged or missing, and it does not limit the door\'s ability to provide privacy or protection from weather or infestation.',
+            severity: 'Low',
+            repairBy: '30 Day',
+            points: '2.20/n',
+            code: 'DOOR-ENTRY-COMP-01',
+            codeReference: `🔍 1. Door Functionality
+• Open test: Confirm the door opens fully without sticking or obstruction.
+• Close test: Release the door—must close completely and latch securely.
+
+🔒 2. Security & Hardware
+• Lock operability: Check that the door can be locked and unlocked without excessive force.
+• Self-closing mechanism: Required for fire-rated doors—verify it functions properly.
+
+🧱 3. Physical Condition
+• Surface damage: Look for holes, splits, or cracks that penetrate the door slab.
+• Delamination: Check for peeling veneer or separated layers ≥2 inches.
+• Frame & threshold: Inspect for missing trim, loose sill plates, or warped jambs.
+
+🌬️ 4. Weatherproofing & Seal Integrity
+• Gasket/seal: Inspect for gaps >¼", light penetration, or water intrusion.
+• Sweep/threshold: Confirm the bottom seal is intact and not allowing drafts or pests.
+
+🔥 5. Fire-Rated Assembly (IRC §R302.5, NSPIRE Fire Overlay)
+• Label check: Look for a fire-rating label on the door edge or frame.
+• Integrity: Ensure no penetrations, warping, or missing components.
+• Self-closing: Mandatory for fire-rated doors—must latch automatically.
+
+🧠 6. Accessibility & IBU Overlay
+• Clear width: Minimum 32" clear opening per ADA and IRC §R311.2
+• Handle height: 34–48" AFF, operable with one hand, no tight grasping
+• IBU Local Codes: May require panic hardware, visual signage, or audible alerts`
+        }
+    ]
+};
+
+export const DOOR_ENTRY_FRAME_DAMAGED: UnitItemDeficiencies = {
+    itemName: 'Entry door - Frame, Threshold, or Trim Damaged',
+    deficiencies: [
+        {
+            id: 'Entry_door_4',
+            name: 'The entry door frame, threshold, or trim is damaged.',
+            detail: 'The entry door frame, threshold, or trim is damaged or missing (i.e. visibly defective; impacts functionality).',
+            criteria: 'Entry door frame, threshold, or trim is damaged or missing such that it impacts functionality.',
+            severity: 'Moderate',
+            repairBy: '30 Day',
+            points: '5.0/n',
+            code: 'DOOR-ENTRY-FRAME-01',
+            codeReference: `🔍 1. Door Functionality
+• Open test: Confirm the door opens fully without sticking or obstruction.
+• Close test: Release the door—must close completely and latch securely.
+
+🔒 2. Security & Hardware
+• Lock operability: Check that the door can be locked and unlocked without excessive force.
+• Self-closing mechanism: Required for fire-rated doors—verify it functions properly.
+
+🧱 3. Physical Condition
+• Surface damage: Look for holes, splits, or cracks that penetrate the door slab.
+• Delamination: Check for peeling veneer or separated layers ≥2 inches.
+• Frame & threshold: Inspect for missing trim, loose sill plates, or warped jambs.
+
+🌬️ 4. Weatherproofing & Seal Integrity
+• Gasket/seal: Inspect for gaps >¼", light penetration, or water intrusion.
+• Sweep/threshold: Confirm the bottom seal is intact and not allowing drafts or pests.
+
+🔥 5. Fire-Rated Assembly (IRC §R302.5, NSPIRE Fire Overlay)
+• Label check: Look for a fire-rating label on the door edge or frame.
+• Integrity: Ensure no penetrations, warping, or missing components.
+• Self-closing: Mandatory for fire-rated doors—must latch automatically.
+
+🧠 6. Accessibility & IBU Overlay
+• Clear width: Minimum 32" clear opening per ADA and IRC §R311.2
+• Handle height: 34–48" AFF, operable with one hand, no tight grasping
+• IBU Local Codes: May require panic hardware, visual signage, or audible alerts`
+        }
+    ]
+};
+
+export const DOOR_ENTRY_MISSING: UnitItemDeficiencies = {
+    itemName: 'Entry door - Missing',
+    deficiencies: [
+        {
+            id: 'Entry_door_3',
+            name: 'Entry door is missing.',
+            detail: 'Entry door is missing. Evidence of prior installation.',
+            criteria: 'Entry door is not present or is incomplete (evidence of prior installation).',
+            severity: 'Severe',
+            repairBy: '30 Day',
+            points: '13.40/n',
+            code: 'DOOR-ENTRY-MISS-01',
+            codeReference: `🔍 1. Door Functionality
+• Open test: Confirm the door opens fully without sticking or obstruction.
+• Close test: Release the door—must close completely and latch securely.
+
+🔒 2. Security & Hardware
+• Lock operability: Check that the door can be locked and unlocked without excessive force.
+• Self-closing mechanism: Required for fire-rated doors—verify it functions properly.
+
+🧱 3. Physical Condition
+• Surface damage: Look for holes, splits, or cracks that penetrate the door slab.
+• Delamination: Check for peeling veneer or separated layers ≥2 inches.
+• Frame & threshold: Inspect for missing trim, loose sill plates, or warped jambs.
+
+🌬️ 4. Weatherproofing & Seal Integrity
+• Gasket/seal: Inspect for gaps >¼", light penetration, or water intrusion.
+• Sweep/threshold: Confirm the bottom seal is intact and not allowing drafts or pests.
+
+🔥 5. Fire-Rated Assembly (IRC §R302.5, NSPIRE Fire Overlay)
+• Label check: Look for a fire-rating label on the door edge or frame.
+• Integrity: Ensure no penetrations, warping, or missing components.
+• Self-closing: Mandatory for fire-rated doors—must latch automatically.
+
+🧠 6. Accessibility & IBU Overlay
+• Clear width: Minimum 32" clear opening per ADA and IRC §R311.2
+• Handle height: 34–48" AFF, operable with one hand, no tight grasping
+• IBU Local Codes: May require panic hardware, visual signage, or audible alerts`
+        }
+    ]
+};
 export const DOOR_DEFICIENCIES = {
     category: '7. Door',
-    items: [DOOR_ENTRY, DOOR_FIRE_LABELED, DOOR_GENERAL, DOOR_GARAGE]
+    items: [DOOR_ENTRY, DOOR_FIRE_LABELED, DOOR_GENERAL, DOOR_GARAGE,
+        DOOR_ENTRY_CANNOT_BE_SECURED, DOOR_ENTRY_COMPONENT_DAMAGED,
+        DOOR_ENTRY_FRAME_DAMAGED, DOOR_ENTRY_MISSING]
 };
+
+
 
 // ==========================================
 // 8. DRAINAGE
@@ -4697,36 +4874,34 @@ export const DRAINAGE: UnitItemDeficiencies = {
     deficiencies: [
         {
             id: 'drainage_1',
-            name: 'Drain/Floor drain',
+            name: 'Drain/Floor drain.',
             detail: 'The drain is fully blocked. Or there is a problem with the drainage.',
-            criteria: 'There is a problem with the drainage.',
+            criteria: 'The drain is fully blocked. Or there is a problem with the drainage.',
             severity: 'Moderate',
             repairBy: '30 Day',
             points: '5.0/n',
-            code: 'DRAINAGE-01',
-            codeReference: `🧭 Step 1: Identify Floor Drain Locations
-• Floor drain: Typically found in laundry rooms, mechanical closets, or bathrooms.
-• Fixture drain: Under sinks, tubs, or utility basins.
+            code: 'DRAIN-01',
+            codeReference: `🧭 Step 1: Identify Drainage Components
+Inspect all drainage systems serving the unit or common area:
+• Floor drains, sink drains, shower/tub drains, and exterior area drains
+• Confirm drainage is connected and intended to carry water away from the unit
 
 🔍 Step 2: Visual Condition Assessment
-• Cover presence: Drain must have a secure, intact cover or grate.
-• Damage: Look for cracks, corrosion, or missing components.
+• Look for standing water, slow drainage, or signs of backup
+• Check for water stains, mold, or damage near drainage points
 
-🧪 Step 3: Functional Testing (Non-Invasive)
-• Water test: Pour a small amount of water to check for proper drainage.
-• Standing water: Indicates blockage or poor slope.
-• Backflow signs: Look for residue, staining, or odor around the drain
+🧪 Step 3: Functional Testing
+• Water flow test: Pour water near the drain and confirm it flows freely
+• Standing water check: Look for pooling that indicates blockage or poor slope
+• Obstruction check: Confirm drain openings are free of debris or buildup
 
-📏 Step 4: Accessibility & Labeling
-• Reachability: Drain must be visually accessible without tools or disassembly.
-• Signage: If the drain serves an emergency or mechanical function, confirm labeling.
-• IBU Overlay: Some jurisdictions require inspection access panels or maintenance logs
+📏 Step 4: Accessibility & IBU Considerations
+• Drain covers must be flush and secured to prevent trip hazards
+• Drains must not obstruct accessible routes
 
-⚒️ Step 5: Code Compliance (IRC §P3005.1, IBU Overlay)
-• Trap configuration: Confirm presence of P-trap or approved alternative.
-• Vent connection: Drain must be vented per IRC to prevent siphoning.
-• Cleanout access: If required, verify location and accessibility.
-• IBU Local Codes: May require enhanced trap primers or backwater valves in flood-prone zones`
+⚒️ Step 5: IRC Requirements
+• IRC P3005: Drainage systems must be properly sloped and connected
+• IRC P3201: Floor drains must be properly trapped and vented`
         }
     ]
 };
@@ -10066,7 +10241,7 @@ export const VENTILATION: UnitItemDeficiencies = {
     deficiencies: [
         {
             id: 'vent_1',
-            name: 'It is not functioning adequately.',
+            name: 'Ventilation (with or without a fan)',
             detail: 'It is not functioning adequately.',
             criteria: 'An exhaust fan, window, or adequate means of ventilation is not present and operable.',
             severity: 'Moderate',
@@ -10100,7 +10275,7 @@ No exhaust fan and no operable window. Exhaust fan present but inoperable
         },
         {
             id: 'vent_2',
-            name: 'Exhaust system component is damaged or missing.',
+            name: 'Ventilation (with or without a fan)',
             detail: 'Exhaust system component is damaged (i.e., visibly defective; impacts functionality). Or an exhaust system component is missing.',
             criteria: 'Exhaust system component is damaged. OR Exhaust system component is missing.',
             severity: 'Moderate',
@@ -10134,7 +10309,7 @@ No exhaust fan and no operable window. Exhaust fan present but inoperable
         },
         {
             id: 'vent_3',
-            name: 'Exhaust system does not respond to the control switch.',
+            name: 'Ventilation (with or without a fan)',
             detail: 'Exhaust system does not respond to the control switch.',
             criteria: 'Exhaust fan, inoperable.',
             severity: 'Moderate',
@@ -10168,7 +10343,7 @@ No exhaust fan and no operable window. Exhaust fan present but inoperable
         },
         {
             id: 'vent_4',
-            name: 'Exhaust system has restricted air flow.',
+            name: 'Ventilation (with or without a fan)',
             detail: 'Exhaust system has restricted air flow.',
             criteria: 'Exhaust system is blocked such that airflow may be restricted.',
             severity: 'Moderate',
@@ -10217,7 +10392,7 @@ export const WALL: UnitItemDeficiencies = {
     deficiencies: [
         {
             id: 'wall_1',
-            name: 'Interior wall component(s), severe cracks, not functionally adequate. Damaged trim greater than 10% to 50% of the wall area.',
+            name: 'Wall-Interior',
             detail: 'Interior wall component(s), severe cracks, not functionally adequate. Damaged trim greater than 10% to 50% of the wall area.',
             criteria: 'Interior wall component(s) is not functionally adequate (i.e., impacts the integrity of the interior wall or does not allow interior wall to provide vertical separation between rooms or spaces).',
             severity: 'Moderate',
@@ -10251,7 +10426,7 @@ Cosmetic wear (minor scuffs, faded paint) is not scored
         },
         {
             id: 'wall_2',
-            name: 'Hole is greater than 2 inches in diameter. OR An accumulation of holes in any one wall is greater than 6 inches by 6 inches.',
+            name: 'Wall-Interior',
             detail: 'Hole is greater than 2 inches in diameter. OR An accumulation of holes in any one wall is greater than 6 inches by 6 inches.',
             criteria: 'The wall is damaged, and repairs still need to be completed appropriately.',
             severity: 'Moderate',
@@ -10285,7 +10460,7 @@ Cosmetic wear (minor scuffs, faded paint) is not scored
         },
         {
             id: 'wall_3',
-            name: 'Interior wall has a loose or detached surface covering.',
+            name: 'Wall-Interior',
             detail: 'Interior wall has a loose or detached surface covering.',
             criteria: 'Loose or detached surface coverings (e.g., drywall, plaster, paneling).',
             severity: 'Moderate',
