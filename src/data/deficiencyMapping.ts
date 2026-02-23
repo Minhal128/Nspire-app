@@ -4770,6 +4770,7 @@ export const getDeficienciesForItem = (itemName: string, locationType?: string):
           repairBy: d.repairBy,
           points: d.points,
           code: d.code || '',
+          codeReference: (d as any).codeReference,
         }));
       }
       return {
@@ -5055,6 +5056,38 @@ export const getDeficienciesForSubcategory = (subcategoryName: string, locationT
   const isOutside = locationType?.toLowerCase() === 'outside';
   const isUnit = isUnitLocation(locationType || '');
   const isInside = locationType?.toLowerCase() === 'inside';
+
+  // ==========================================
+  // UNIT LOCATIONS — Always use insideDeficiencyMapping subcategories
+  // Must run BEFORE all other checks so unit rooms (Bedroom, Bathroom, etc.)
+  // never accidentally fall through to Outside or Inside-building subcategory data.
+  // ==========================================
+  if (isUnit) {
+    for (const category of ALL_INSIDE_CATEGORIES) {
+      if (category.subcategories) {
+        const matchingSubcat = category.subcategories.find(
+          sub => sub.name.toLowerCase() === normalizedName
+        );
+        if (matchingSubcat) {
+          return {
+            itemName: matchingSubcat.name,
+            deficiencies: matchingSubcat.deficiencies.map(d => ({
+              id: d.id,
+              name: d.name,
+              detail: d.detail,
+              criteria: d.criteria,
+              severity: d.severity,
+              repairBy: d.repairBy,
+              points: d.points,
+              code: d.code || '',
+              codeReference: d.codeReference,
+            }))
+          };
+        }
+      }
+    }
+  }
+
   if (normalizedName.includes('door - general standard') || normalizedName === 'door - general standard') {
     return DOOR_GENERAL_STANDARD_OUTSIDE;
   }
@@ -5083,8 +5116,9 @@ export const getDeficienciesForSubcategory = (subcategoryName: string, locationT
   if (normalizedName.includes('gfci outlet') || normalizedName.includes('gfci breaker')) {
     return ELECTRICAL_GFCI_OUTLET;
   }
-  if (normalizedName === 'electrical service panel' || normalizedName.includes('service panel')) {
-    // Use rich codeReference data from outsideDeficiencyMapping
+  if (!isInside && !isUnit && (normalizedName === 'electrical service panel' || normalizedName.includes('service panel'))) {
+    // Use rich codeReference data from outsideDeficiencyMapping (Outside only)
+    // Inside and Unit locations use their own mapped data via getUnitSubcategoryDeficiencies
     return ELECTRICAL_SERVICE_PANEL_DATA;
   }
 

@@ -5103,30 +5103,26 @@ export const ELECTRICAL_SERVICE_PANEL: UnitItemDeficiencies = {
             points: '5.0/n',
             code: 'ELEC-PANEL-01',
             codeReference: `🧭 Step 1: Identify Electrical Service Panel Locations
-Inspect all main and sub-panels in shared-use areas.
-Panel must be reachable without moving furniture, appliances, or fixtures
-
+Inspect all main and sub-panels in shared-use areas. Panel must be reachable without moving furniture, appliances, or fixtures
 🔍 Step 2: Cover & Enclosure Integrity
-• Dead front cover: Must be securely fastened and undamaged
-• Door function: Opens fully (≥90°) and closes without obstruction
-• Gaps or missing knockouts: Must be sealed to prevent foreign object intrusion
-
+• 	Dead front cover: Must be securely fastened and undamaged
+• 	Door function: Opens fully (≥90°) and closes without obstruction
+• 	Gaps or missing knockouts: Must be sealed to prevent foreign object intrusion
 🧪 Step 3: Functional Testing (Visual Only)
-• Access Check: Confirm the panel can be opened without tools or moving heavy objects
-• Cover & Labeling: Ensure a dead-front cover is present and breakers are labeled
-• Breaker Condition: Look for signs of overheating, discoloration, or physical damage
-• Moisture or Contamination: Inspect for rust, water stains, or mold inside the panel
-• Conductor Safety: Confirm no exposed wires or missing knockouts
+• 	Access Check: Confirm the panel can be opened without tools or moving heavy objects
+• 	Cover & Labeling: Ensure a dead-front cover is present and breakers are labeled
+• 	Breaker Condition: Look for signs of overheating, discoloration, or physical damage
+• 	Moisture or Contamination: Inspect for rust, water stains, or mold inside the panel
+• 	Conductor Safety: Confirm no exposed wires or missing knockouts
 Do not operate breakers or remove covers unless qualified and authorized.
-
 📏 Step 4: Accessibility & Local Requirements
-• Height: Panel must be mounted ≤6'7" AFF to top breaker handle (IRC §E3405.3)
-• Labeling: Circuit directory must be legible and accurate
-• IBU Local Codes: May require seismic bracing, lockable covers, or inspection logs
-
+• 	Height: Panel must be mounted ≤6'7" AFF to top breaker handle (IRC §E3405.3)
+• 	Labeling: Circuit directory must be legible and accurate
+• 	IBU Local Codes: May require seismic bracing, lockable covers, or inspection logs
 ⚒️ Step 5: IRC Electrical Requirements
-• IRC (2021) §E3401–E3405, §E3705–E3706 – Panelboards, overcurrent protection, conductor terminations
-• IBU overlays – Local fire, shock hazard, and accessibility code`
+Codes Referenced:
+• 	IRC (2021) §E3401–E3405, §E3705–E3706 – Panelboards, overcurrent protection, conductor terminations
+• 	IBU overlays – Local fire, shock hazard, and accessibility code`
         },
         {
             id: 'elec_panel_2',
@@ -5138,30 +5134,26 @@ Do not operate breakers or remove covers unless qualified and authorized.
             points: '13.40/n',
             code: 'ELEC-PANEL-02',
             codeReference: `🧭 Step 1: Identify Electrical Service Panel Locations
-Inspect all main and sub-panels in shared-use areas.
-Panel must be reachable without moving furniture, appliances, or fixtures
-
+Inspect all main and sub-panels in shared-use areas. Panel must be reachable without moving furniture, appliances, or fixtures
 🔍 Step 2: Cover & Enclosure Integrity
-• Dead front cover: Must be securely fastened and undamaged
-• Door function: Opens fully (≥90°) and closes without obstruction
-• Gaps or missing knockouts: Must be sealed to prevent foreign object intrusion
-
+• 	Dead front cover: Must be securely fastened and undamaged
+• 	Door function: Opens fully (≥90°) and closes without obstruction
+• 	Gaps or missing knockouts: Must be sealed to prevent foreign object intrusion
 🧪 Step 3: Functional Testing (Visual Only)
-• Access Check: Confirm the panel can be opened without tools or moving heavy objects
-• Cover & Labeling: Ensure a dead-front cover is present and breakers are labeled
-• Breaker Condition: Look for signs of overheating, discoloration, or physical damage
-• Moisture or Contamination: Inspect for rust, water stains, or mold inside the panel
-• Conductor Safety: Confirm no exposed wires or missing knockouts
+• 	Access Check: Confirm the panel can be opened without tools or moving heavy objects
+• 	Cover & Labeling: Ensure a dead-front cover is present and breakers are labeled
+• 	Breaker Condition: Look for signs of overheating, discoloration, or physical damage
+• 	Moisture or Contamination: Inspect for rust, water stains, or mold inside the panel
+• 	Conductor Safety: Confirm no exposed wires or missing knockouts
 Do not operate breakers or remove covers unless qualified and authorized.
-
 📏 Step 4: Accessibility & Local Requirements
-• Height: Panel must be mounted ≤6'7" AFF to top breaker handle (IRC §E3405.3)
-• Labeling: Circuit directory must be legible and accurate
-• IBU Local Codes: May require seismic bracing, lockable covers, or inspection logs
-
+• 	Height: Panel must be mounted ≤6'7" AFF to top breaker handle (IRC §E3405.3)
+• 	Labeling: Circuit directory must be legible and accurate
+• 	IBU Local Codes: May require seismic bracing, lockable covers, or inspection logs
 ⚒️ Step 5: IRC Electrical Requirements
-• IRC (2021) §E3401–E3405, §E3705–E3706 – Panelboards, overcurrent protection, conductor terminations
-• IBU overlays – Local fire, shock hazard, and accessibility code`
+Codes Referenced:
+• 	IRC (2021) §E3401–E3405, §E3705–E3706 – Panelboards, overcurrent protection, conductor terminations
+• 	IBU overlays – Local fire, shock hazard, and accessibility code`
         },
         {
             id: 'elec_panel_3',
@@ -5173,30 +5165,26 @@ Do not operate breakers or remove covers unless qualified and authorized.
             points: '27.25/n',
             code: 'ELEC-PANEL-03',
             codeReference: `🧭 Step 1: Identify Electrical Service Panel Locations
-Inspect all main and sub-panels in shared-use areas.
-Panel must be reachable without moving furniture, appliances, or fixtures
-
+Inspect all main and sub-panels in shared-use areas. Panel must be reachable without moving furniture, appliances, or fixtures
 🔍 Step 2: Cover & Enclosure Integrity
-• Dead front cover: Must be securely fastened and undamaged
-• Door function: Opens fully (≥90°) and closes without obstruction
-• Gaps or missing knockouts: Must be sealed to prevent foreign object intrusion
-
+• 	Dead front cover: Must be securely fastened and undamaged
+• 	Door function: Opens fully (≥90°) and closes without obstruction
+• 	Gaps or missing knockouts: Must be sealed to prevent foreign object intrusion
 🧪 Step 3: Functional Testing (Visual Only)
-• Access Check: Confirm the panel can be opened without tools or moving heavy objects
-• Cover & Labeling: Ensure a dead-front cover is present and breakers are labeled
-• Breaker Condition: Look for signs of overheating, discoloration, or physical damage
-• Moisture or Contamination: Inspect for rust, water stains, or mold inside the panel
-• Conductor Safety: Confirm no exposed wires or missing knockouts
+• 	Access Check: Confirm the panel can be opened without tools or moving heavy objects
+• 	Cover & Labeling: Ensure a dead-front cover is present and breakers are labeled
+• 	Breaker Condition: Look for signs of overheating, discoloration, or physical damage
+• 	Moisture or Contamination: Inspect for rust, water stains, or mold inside the panel
+• 	Conductor Safety: Confirm no exposed wires or missing knockouts
 Do not operate breakers or remove covers unless qualified and authorized.
-
 📏 Step 4: Accessibility & Local Requirements
-• Height: Panel must be mounted ≤6'7" AFF to top breaker handle (IRC §E3405.3)
-• Labeling: Circuit directory must be legible and accurate
-• IBU Local Codes: May require seismic bracing, lockable covers, or inspection logs
-
+• 	Height: Panel must be mounted ≤6'7" AFF to top breaker handle (IRC §E3405.3)
+• 	Labeling: Circuit directory must be legible and accurate
+• 	IBU Local Codes: May require seismic bracing, lockable covers, or inspection logs
 ⚒️ Step 5: IRC Electrical Requirements
-• IRC (2021) §E3401–E3405, §E3705–E3706 – Panelboards, overcurrent protection, conductor terminations
-• IBU overlays – Local fire, shock hazard, and accessibility code`
+Codes Referenced:
+• 	IRC (2021) §E3401–E3405, §E3705–E3706 – Panelboards, overcurrent protection, conductor terminations
+• 	IBU overlays – Local fire, shock hazard, and accessibility code`
         }
     ]
 };

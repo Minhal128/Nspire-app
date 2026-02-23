@@ -36,8 +36,8 @@ interface Props {
 }
 
 const PropertyInfoScreen: React.FC<Props> = ({ navigation, route }) => {
-  const { property, selectedUnits, completedUnits: passedCompletedUnits } = route.params;
-  const buildingId = 'B1';
+  const { property, selectedUnits, completedUnits: passedCompletedUnits, buildingId: paramBuildingId } = route.params;
+  const buildingId = paramBuildingId || 'B1';
   const propertyId = property._id || property.id || property.propertyId || 'unknown';
 
   // Editable unit names
@@ -110,20 +110,7 @@ const PropertyInfoScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   const handleStartUnitInspection = (unitName: string) => {
-    if (isUnitCompleted(unitName)) {
-      Alert.alert(
-        'Unit Already Inspected',
-        `${unitName} has already been inspected. Do you want to re-inspect?`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Re-inspect',
-            onPress: () => navigateToInspection(unitName),
-          },
-        ]
-      );
-      return;
-    }
+    // Navigate directly whether starting fresh or viewing/editing a completed unit
     navigateToInspection(unitName);
   };
 

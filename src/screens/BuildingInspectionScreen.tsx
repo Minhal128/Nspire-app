@@ -218,6 +218,7 @@ export default function BuildingInspectionScreen() {
     navigation.navigate('PropertyInfo' as any, {
       property: property,
       selectedUnits: buildingUnits,
+      buildingId: building.buildingId,
     });
   };
 
