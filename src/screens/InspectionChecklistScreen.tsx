@@ -10,6 +10,7 @@ import {
   Modal,
   Alert,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Print from 'expo-print';
@@ -221,14 +222,22 @@ export default function InspectionChecklistScreen({ navigation, route }: Inspect
         </html>
       `;
 
-      const { uri } = await Print.printToFileAsync({ html: htmlContent });
-
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(uri, {
-          mimeType: 'application/pdf',
-          dialogTitle: 'Inspection Report',
-          UTI: 'com.adobe.pdf'
-        });
+      if (Platform.OS === 'web') {
+        const win = window.open('', '_blank');
+        if (win) {
+          win.document.write(htmlContent);
+          win.document.close();
+          setTimeout(() => win.print(), 600);
+        }
+      } else {
+        const { uri } = await Print.printToFileAsync({ html: htmlContent });
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(uri, {
+            mimeType: 'application/pdf',
+            dialogTitle: 'Inspection Report',
+            UTI: 'com.adobe.pdf'
+          });
+        }
       }
     } catch (error) {
       console.error('PDF Export error:', error);

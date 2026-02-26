@@ -91,12 +91,15 @@ export interface DeficiencyEntry {
   // Deficiency Information
   deficiencyName: string;
   nspireCode: string;
+  codeReference?: string;
   
   // Technical Details
   deficiencyDetails: string;
   
   // Inspector Notes
   comments: string;
+  note?: string;
+  isGeneralComment?: boolean;
   
   // Scoring Impact
   deductionPts: number;

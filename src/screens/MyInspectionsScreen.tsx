@@ -19,6 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import { Country, State, City, ICountry, IState, ICity } from 'country-state-city';
 import Sidebar from '../components/Sidebar';
+import ModalZoomWrapper from '../components/ModalZoomWrapper';
 import IOSPickerModal from '../components/IOSPickerModal';
 import { 
   authService, 
@@ -930,6 +931,7 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
         transparent={true}
         onRequestClose={() => setInspectionModalVisible(false)}
       >
+        <ModalZoomWrapper>
         <View style={styles.inspectionModalOverlay}>
           <View style={styles.inspectionModalContent}>
             <View style={styles.inspectionModalHeader}>
@@ -1004,6 +1006,7 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
             </TouchableOpacity>
           </View>
         </View>
+        </ModalZoomWrapper>
       </Modal>
     </>
   );

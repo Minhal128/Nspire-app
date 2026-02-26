@@ -5084,6 +5084,35 @@ export const getDeficienciesForSubcategory = (subcategoryName: string, locationT
   // never accidentally fall through to Outside or Inside-building subcategory data.
   // ==========================================
   if (isUnit) {
+    // If parentCategory is provided, search within that category first (precise match)
+    if (parentCategory) {
+      const cleanedParent = parentCategory.replace(/^\d+\.\s*/, '');
+      const parentCat = ALL_INSIDE_CATEGORIES.find(
+        cat => cat.itemName.toLowerCase() === cleanedParent.toLowerCase()
+      );
+      if (parentCat?.subcategories) {
+        const matchingSubcat = parentCat.subcategories.find(
+          sub => sub.name.toLowerCase() === normalizedName
+        );
+        if (matchingSubcat) {
+          return {
+            itemName: matchingSubcat.name,
+            deficiencies: matchingSubcat.deficiencies.map(d => ({
+              id: d.id,
+              name: d.name,
+              detail: d.detail,
+              criteria: d.criteria,
+              severity: d.severity,
+              repairBy: d.repairBy,
+              points: d.points,
+              code: d.code || '',
+              codeReference: d.codeReference,
+            }))
+          };
+        }
+      }
+    }
+    // Fallback: search all categories
     for (const category of ALL_INSIDE_CATEGORIES) {
       if (category.subcategories) {
         const matchingSubcat = category.subcategories.find(

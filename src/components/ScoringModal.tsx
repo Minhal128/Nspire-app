@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
+import ModalZoomWrapper from './ModalZoomWrapper';
 import {
     calculateUnitScore,
     ScoringResult,
@@ -87,6 +88,7 @@ const ScoringModal: React.FC<ScoringModalProps> = ({
             transparent={true}
             onRequestClose={onClose}
         >
+            <ModalZoomWrapper>
             <View style={styles.modalOverlay}>
                 <View style={styles.modalContent}>
                     {/* Header */}
@@ -214,8 +216,9 @@ const ScoringModal: React.FC<ScoringModalProps> = ({
                     </View>
                 </View>
             </View>
+            </ModalZoomWrapper>
 
-            {/* iOS Deficiency Picker Modal */}
+            {/* iOS Deficiency Picker Modal */
             {Platform.OS === 'ios' && (
                 <Modal
                     visible={showDeficiencyPicker}

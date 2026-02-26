@@ -6,6 +6,7 @@
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
+import { Platform } from 'react-native';
 import {
   NSPIREInspectionReport,
   DeficiencyEntry,
@@ -20,6 +21,14 @@ import {
   DeficiencySeverity,
 } from '../types/nspireReport';
 import { INSPIRE_LOGO_BASE64 } from '../constants/inspireLogo';
+
+/** Build a clickable data URI link showing the short NSPIRE code; clicking opens a clean HTML page with the full codeReference text */
+function makeCodeRefLink(nspireCode: string, codeReference?: string): string {
+  const shortCode = (nspireCode || '-').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  if (!codeReference) return shortCode;
+  const url = `https://inspirebackend-eight.vercel.app/api/code-ref?code=${encodeURIComponent(nspireCode)}&ref=${encodeURIComponent(codeReference)}`;
+  return `<a href="${url}" style="color:#0E7490;font-weight:600;text-decoration:underline;">${shortCode}</a>`;
+}
 
 const getImageExtension = (uri: string): string => {
   const cleanUri = uri.split('?')[0].split('#')[0];
@@ -279,7 +288,7 @@ export const generateNSPIREReportHTML = (
 <body>
   ${generateHeader(report.metadata, options)}
   
-  ${options.includeSummaryPage ? generateSummaryPage(report.summary, report.categoryBreakdown) : ''}
+  ${options.includeSummaryPage ? generateSummaryPage(report.summary, report.categoryBreakdown, report.deficiencies) : ''}
   
   ${generateInspectionDataTable(report.inspectionData)}
   
@@ -949,7 +958,19 @@ const generateHeader = (metadata: InspectionMetadata, options: PDFGenerationOpti
 /**
  * Generate Summary Page
  */
-const generateSummaryPage = (summary: DeficiencySummary, categoryBreakdown: CategoryBreakdown[]): string => {
+const generateSummaryPage = (summary: DeficiencySummary, categoryBreakdown: CategoryBreakdown[], deficiencies: DeficiencyEntry[] = []): string => {
+  const insideDefs = deficiencies.filter(d => d.area === 'Inside');
+  const outsideDefs = deficiencies.filter(d => d.area === 'Outside');
+  const unitsDefs = deficiencies.filter(d => d.area !== 'Inside' && d.area !== 'Outside');
+  const countBySev = (arr: DeficiencyEntry[]) => ({
+    lt: arr.filter(d => d.severity === 'Life-Threatening').length,
+    sv: arr.filter(d => d.severity === 'Severe').length,
+    md: arr.filter(d => d.severity === 'Moderate').length,
+    lw: arr.filter(d => d.severity === 'Low').length,
+  });
+  const iC = countBySev(insideDefs);
+  const oC = countBySev(outsideDefs);
+  const uC = countBySev(unitsDefs);
   return `
     <div class="summary-section avoid-break">
       <h2 class="section-title">Deficiency Summary</h2>
@@ -1019,6 +1040,42 @@ const generateSummaryPage = (summary: DeficiencySummary, categoryBreakdown: Cate
           </tbody>
         </table>
       ` : ''}
+
+      <h3 style="font-size: 10pt; margin-top: 16px; margin-bottom: 8px; color: #374151; font-weight: 600;">Deficiency Summary by Area</h3>
+      <table style="font-size: 8pt; border-collapse: collapse; width: 100%;">
+        <thead>
+          <tr>
+            <th style="padding: 6px 8px; background: #0E7490; color: white; text-align: left;">Inspectable Area</th>
+            <th style="padding: 6px 4px; background: #0E7490; color: white;">Life-Threatening</th>
+            <th style="padding: 6px 4px; background: #0E7490; color: white;">Severe</th>
+            <th style="padding: 6px 4px; background: #0E7490; color: white;">Moderate</th>
+            <th style="padding: 6px 4px; background: #0E7490; color: white;">Low</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="padding: 6px 8px; border: 1px solid #E5E7EB;">Inside</td>
+            <td style="padding: 6px 4px; text-align: center; border: 1px solid #E5E7EB;">${iC.lt}</td>
+            <td style="padding: 6px 4px; text-align: center; border: 1px solid #E5E7EB;">${iC.sv}</td>
+            <td style="padding: 6px 4px; text-align: center; border: 1px solid #E5E7EB;">${iC.md}</td>
+            <td style="padding: 6px 4px; text-align: center; border: 1px solid #E5E7EB;">${iC.lw}</td>
+          </tr>
+          <tr style="background:#F9FAFB;">
+            <td style="padding: 6px 8px; border: 1px solid #E5E7EB;">Outside</td>
+            <td style="padding: 6px 4px; text-align: center; border: 1px solid #E5E7EB;">${oC.lt}</td>
+            <td style="padding: 6px 4px; text-align: center; border: 1px solid #E5E7EB;">${oC.sv}</td>
+            <td style="padding: 6px 4px; text-align: center; border: 1px solid #E5E7EB;">${oC.md}</td>
+            <td style="padding: 6px 4px; text-align: center; border: 1px solid #E5E7EB;">${oC.lw}</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 8px; border: 1px solid #E5E7EB;">Units</td>
+            <td style="padding: 6px 4px; text-align: center; border: 1px solid #E5E7EB;">${uC.lt}</td>
+            <td style="padding: 6px 4px; text-align: center; border: 1px solid #E5E7EB;">${uC.sv}</td>
+            <td style="padding: 6px 4px; text-align: center; border: 1px solid #E5E7EB;">${uC.md}</td>
+            <td style="padding: 6px 4px; text-align: center; border: 1px solid #E5E7EB;">${uC.lw}</td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   `;
 };
@@ -1139,14 +1196,13 @@ const generateDeficiencyTable = (deficiencies: DeficiencyEntry[], options: PDFGe
       <table class="deficiency-table">
         <thead>
           <tr>
-            <th style="width: 120px;">Deficiency Details</th>
-            <th style="width: 80px;">Deficiency Name</th>
-            <th style="width: 70px;">Location</th>
-            <th style="width: 160px;">Comments</th>
-            <th style="width: 100px;">Deficiency Picture</th>
-            <th style="width: 55px;">Deduction Pts</th>
-            <th style="width: 55px;">Repeat Indicator</th>
-            <th style="width: 70px;">Severity</th>
+            <th style="width: 140px;">Deficiency Details</th>
+            <th style="width: 70px;">Code of Reference</th>
+            <th style="width: 90px;">Deficiency Picture</th>
+            <th style="width: 50px;">Deduction Pts</th>
+            <th style="width: 50px;">Repeat Indicator</th>
+            <th style="width: 60px;">Severity</th>
+            <th style="width: 80px;">Note</th>
           </tr>
         </thead>
         <tbody>
@@ -1154,14 +1210,8 @@ const generateDeficiencyTable = (deficiencies: DeficiencyEntry[], options: PDFGe
             const isRepeat = def.repeatIndicator || repeatFlags[idx];
             return `
             <tr class="avoid-break">
-              <td class="details-cell">${cleanJsonContent(def.deficiencyDetails)}</td>
-              <td>
-                <div class="deficiency-name">${def.deficiencyQRId || 'QR-00000000'}</div>
-              </td>
-              <td class="location-cell">
-                <div class="location-value">${def.room || def.area || 'Other'}</div>
-              </td>
-              <td class="comments-cell">${cleanJsonContent(def.comments) || '-'}</td>
+              <td class="details-cell">${(def as any).isGeneralComment ? '-' : cleanJsonContent(def.deficiencyDetails)}</td>
+              <td class="comments-cell" style="text-align:center;vertical-align:middle;">${(def as any).isGeneralComment ? '-' : makeCodeRefLink(def.nspireCode, def.codeReference)}</td>
               <td>
                 ${options.includeImages && def.imageUri
       ? (def.imageUri.startsWith('data:') || def.imageUri.startsWith('http'))
@@ -1180,13 +1230,14 @@ const generateDeficiencyTable = (deficiencies: DeficiencyEntry[], options: PDFGe
                      </div>`
     }
               </td>
-              <td class="deduction-cell">${def.deductionPts}</td>
+              <td class="deduction-cell">${(def as any).isGeneralComment ? '-' : def.deductionPts}</td>
               <td style="text-align: center;">
-                <span class="${isRepeat ? 'repeat-yes' : 'repeat-no'}">
-                  ${isRepeat ? 'Repeat' : 'Not Repeat'}
+                <span class="${(def as any).isGeneralComment ? '' : (isRepeat ? 'repeat-yes' : 'repeat-no')}">
+                  ${(def as any).isGeneralComment ? '-' : (isRepeat ? 'Repeat' : 'Not Repeat')}
                 </span>
               </td>
-              <td>${getSeverityBadge(def.severity)}</td>
+              <td>${(def as any).isGeneralComment ? '-' : getSeverityBadge(def.severity)}</td>
+              <td style="vertical-align:top;padding:4px 6px;">${def.note || '-'}</td>
             </tr>
           `;
           }).join('')}
@@ -1271,6 +1322,31 @@ class NSPIREPDFReportService {
     report: NSPIREInspectionReport,
     options: PDFGenerationOptions = DEFAULT_PDF_OPTIONS
   ): Promise<{ uri: string; success: boolean; error?: string }> {
+    // ── Web: open HTML in new tab and show print dialog ────────────────────
+    if (Platform.OS === 'web') {
+      try {
+        const html = generateNSPIREReportHTML(report, options);
+        const win = (window as any).open('', '_blank') as Window | null;
+        if (win) {
+          win.document.write(html);
+          win.document.close();
+          setTimeout(() => win.print(), 600);
+        } else {
+          const blob = new Blob([html], { type: 'text/html' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `NSPIRE-Report-${report.metadata.inspectionNo || Date.now()}.html`;
+          a.click();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+        return { uri: '', success: true };
+      } catch (error: any) {
+        return { uri: '', success: false, error: error.message || 'Failed to open print dialog' };
+      }
+    }
+
+    // ── Native: generate PDF file via expo-print ──────────────────────────
     try {
       console.log('Starting PDF generation...');
       console.log('Report data:', {
@@ -1429,7 +1505,12 @@ class NSPIREPDFReportService {
         throw new Error(result.error);
       }
 
-      // Check if sharing is available
+      // On web, generatePDF already opened the print dialog — nothing more to do
+      if (Platform.OS === 'web') {
+        return { success: true };
+      }
+
+      // Check if sharing is available (native only)
       const isAvailable = await Sharing.isAvailableAsync();
 
       if (isAvailable) {
@@ -1462,6 +1543,12 @@ class NSPIREPDFReportService {
     filename: string,
     options: PDFGenerationOptions = DEFAULT_PDF_OPTIONS
   ): Promise<{ uri: string; success: boolean; error?: string }> {
+    // On web, generatePDF already opened the print dialog — no FileSystem available
+    if (Platform.OS === 'web') {
+      await this.generatePDF(report, options);
+      return { uri: '', success: true };
+    }
+
     try {
       const result = await this.generatePDF(report, options);
 

@@ -13,6 +13,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../types/navigation';
 import { Ionicons } from '@expo/vector-icons';
+import ModalZoomWrapper from '../components/ModalZoomWrapper';
 import { OUTSIDE_ITEMS, INSIDE_ITEMS, UNIT_ITEMS, UNIT_LOCATIONS, InspectionResponse } from '../data/inspectionData';
 
 type LocationInspectionScreenNavigationProp = NativeStackNavigationProp<
@@ -221,7 +222,9 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        {inspectionItems.map((item, index) => (
+        {inspectionItems.map((item, index) => {
+          const isGeneralComment = item.name.toLowerCase().includes('general comment');
+          return (
           <View key={item.id} style={styles.itemCard}>
             <View style={styles.itemHeader}>
               <View style={styles.itemNumberBadge}>
@@ -229,6 +232,33 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
               </View>
               <Text style={styles.itemName}>{item.name}</Text>
             </View>
+            {isGeneralComment ? (
+              <TouchableOpacity
+                style={[styles.inspectionButton, responses[item.id] === 'OD' && styles.inspectionButtonDone]}
+                onPress={() => {
+                  setResponses((prev) => ({ ...prev, [item.id]: 'OD' }));
+                  navigation.navigate('DeficiencyDetail', {
+                    property,
+                    selectedUnits,
+                    buildingId,
+                    location,
+                    itemId: item.id,
+                    itemName: item.name,
+                  });
+                }}
+              >
+                <View style={styles.inspectionButtonInner}>
+                  <Ionicons
+                    name={responses[item.id] === 'OD' ? 'checkmark-circle' : 'clipboard-outline'}
+                    size={28}
+                    color={responses[item.id] === 'OD' ? '#FFFFFF' : '#0E7490'}
+                  />
+                  <Text style={[styles.inspectionButtonText, responses[item.id] === 'OD' && styles.inspectionButtonTextDone]}>
+                    {responses[item.id] === 'OD' ? 'Write Comment' : 'Inspection'}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            ) : (
             <View style={styles.responseButtons}>
               <TouchableOpacity
                 style={getButtonStyle(item.id, 'No OD')}
@@ -249,8 +279,10 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
                 <Text style={getButtonTextStyle(item.id, 'N/A')}>N/A</Text>
               </TouchableOpacity>
             </View>
+            )}
           </View>
-        ))}
+          );
+        })}
       </ScrollView>
 
       {/* Deficiency Modal */}
@@ -260,6 +292,7 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
         transparent={true}
         onRequestClose={() => setShowDeficiencyModal(false)}
       >
+        <ModalZoomWrapper>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
@@ -284,6 +317,7 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
             </TouchableOpacity>
           </View>
         </View>
+        </ModalZoomWrapper>
       </Modal>
 
       {/* Fixed Bottom Button */}
@@ -474,6 +508,35 @@ const styles = StyleSheet.create({
     color: '#666666',
   },
   responseButtonTextActive: {
+    color: '#FFFFFF',
+  },
+  inspectionButton: {
+    borderWidth: 2,
+    borderColor: '#0E7490',
+    borderRadius: 12,
+    paddingVertical: 22,
+    paddingHorizontal: 16,
+    backgroundColor: '#F0FAFB',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 80,
+  },
+  inspectionButtonDone: {
+    backgroundColor: '#0E7490',
+    borderColor: '#0E7490',
+  },
+  inspectionButtonInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  inspectionButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0E7490',
+    letterSpacing: 0.5,
+  },
+  inspectionButtonTextDone: {
     color: '#FFFFFF',
   },
   footer: {

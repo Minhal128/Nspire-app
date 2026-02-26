@@ -321,31 +321,59 @@ export default function AddPropertyScreen({
       try {
         let importedForms: PropertyForm[] = [];
 
-        if (fileExtension === '.txt' || fileExtension === '.csv') {
-          // Real parsing for text/CSV files
-          const content = await FileSystem.readAsStringAsync(file.uri);
-          importedForms = parseTextOrCSV(content);
-
-          if (importedForms.length === 0) {
-            Alert.alert(
-              'No Data Found',
-              'No property data found in file. Please check the format and ensure it has the expected column headers.',
-            );
+        if (Platform.OS === 'web') {
+          // On web, DocumentPicker returns a blob URI — use fetch() to read it
+          const response = await fetch(file.uri);
+          if (fileExtension === '.txt' || fileExtension === '.csv') {
+            const content = await response.text();
+            importedForms = parseTextOrCSV(content);
+            if (importedForms.length === 0) {
+              Alert.alert('No Data Found', 'No property data found in file. Please check the format and ensure it has the expected column headers.');
+            }
+          } else if (fileExtension === '.xls' || fileExtension === '.xlsx') {
+            try {
+              const buffer = await response.arrayBuffer();
+              const workbook = XLSX.read(buffer, { type: 'array' });
+              const sheetName = workbook.SheetNames[0];
+              if (sheetName) {
+                const sheet = workbook.Sheets[sheetName];
+                const csv = XLSX.utils.sheet_to_csv(sheet);
+                importedForms = parseTextOrCSV(csv);
+              }
+            } catch (xlsErr: any) {
+              console.error('xlsx read error:', xlsErr);
+            }
+            if (importedForms.length === 0) {
+              Alert.alert('No Data Found', 'Could not read property data from this Excel file. Make sure the first row has headers like: Property Name, Address, City, State, Country, Postal Code, Number Of Building, Number Of Unit.\n\nAlternatively, save the file as .csv and try again.');
+            }
           }
-        } else if (fileExtension === '.xls' || fileExtension === '.xlsx') {
-          // Read the Excel file as base64, parse with SheetJS
-          try {
-            const b64 = await FileSystem.readAsStringAsync(file.uri, { encoding: 'base64' as any });
-            importedForms = parseExcel(b64);
-          } catch (xlsErr: any) {
-            console.error('xlsx read error:', xlsErr);
-          }
+        } else {
+          if (fileExtension === '.txt' || fileExtension === '.csv') {
+            // Real parsing for text/CSV files
+            const content = await FileSystem.readAsStringAsync(file.uri);
+            importedForms = parseTextOrCSV(content);
 
-          if (importedForms.length === 0) {
-            Alert.alert(
-              'No Data Found',
-              'Could not read property data from this Excel file. Make sure the first row has headers like: Property Name, Address, City, State, Country, Postal Code, Number Of Building, Number Of Unit.\n\nAlternatively, save the file as .csv and try again.',
-            );
+            if (importedForms.length === 0) {
+              Alert.alert(
+                'No Data Found',
+                'No property data found in file. Please check the format and ensure it has the expected column headers.',
+              );
+            }
+          } else if (fileExtension === '.xls' || fileExtension === '.xlsx') {
+            // Read the Excel file as base64, parse with SheetJS
+            try {
+              const b64 = await FileSystem.readAsStringAsync(file.uri, { encoding: 'base64' as any });
+              importedForms = parseExcel(b64);
+            } catch (xlsErr: any) {
+              console.error('xlsx read error:', xlsErr);
+            }
+
+            if (importedForms.length === 0) {
+              Alert.alert(
+                'No Data Found',
+                'Could not read property data from this Excel file. Make sure the first row has headers like: Property Name, Address, City, State, Country, Postal Code, Number Of Building, Number Of Unit.\n\nAlternatively, save the file as .csv and try again.',
+              );
+            }
           }
         }
 

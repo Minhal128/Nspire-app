@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Modal,
   Dimensions,
+  Platform,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -209,7 +210,7 @@ const InspectionSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
           let imageBase64: string | null = null;
           const cloudinaryUrl = defItem.imageUrl || null;
           
-          if (defItem.imageUri) {
+          if (defItem.imageUri && Platform.OS !== 'web') {
             try {
               // Check if file exists before trying to read
               const fileInfo = await FileSystem.getInfoAsync(defItem.imageUri);
@@ -232,20 +233,29 @@ const InspectionSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
           // Use base64 if available, otherwise use Cloudinary URL for the enhanced PDF service to fetch
           const finalImageUri = imageBase64 || cloudinaryUrl || null;
 
+          // Determine the inspectable area (Outside / Inside / Units)
+          const inspectionArea: string = inspectionData.isOutsideInspection
+            ? 'Outside'
+            : (inspectionData.location === 'Inside' ? 'Inside' : 'Units');
+
+          const isGC = !!(defItem as any).isGeneralComment;
           deficienciesArray.push({
             id: `${i + 1}`,
             deficiencyQRId: defItem.deficiencyQRId || `QR-${Math.floor(10000000 + Math.random() * 90000000)}`,
             building: buildingId || 'B1',
             unit: selectedUnits.join(', ') || 'Unit Multiple',
             room: defItem.location || 'Multiple',
-            area: defItem.location || 'Multiple',
-            deficiencyName: defItem.deficiency.name || 'Deficiency',
-            nspireCode: defItem.deficiency.code || 'U-1',
-            deficiencyDetails: defItem.deficiency.detail || 'Damaged or vandalized',
-            comments: defItem.note || defItem.deficiency.aiAnalysis || 'AI analyzed',
-            deductionPts: 3,
+            area: inspectionArea,
+            isGeneralComment: isGC,
+            deficiencyName: isGC ? 'General Comment' : (defItem.deficiency.name || 'Deficiency'),
+            nspireCode: isGC ? '-' : (defItem.deficiency.code || 'U-1'),
+            codeReference: isGC ? '' : (defItem.deficiency.codeReference || ''),
+            deficiencyDetails: isGC ? '-' : (defItem.deficiency.detail || 'Damaged or vandalized'),
+            comments: defItem.note || (isGC ? '' : (defItem.deficiency.aiAnalysis || 'AI analyzed')),
+            note: defItem.note || '',
+            deductionPts: isGC ? 0 : 3,
             repeatIndicator: false,
-            severity: defItem.deficiency.severity || defItem.deficiency.aiSeverity || 'Moderate',
+            severity: isGC ? '-' : (defItem.deficiency.severity || defItem.deficiency.aiSeverity || 'Moderate'),
             inspectedDate: inspectionDate,
             inspectedTime: new Date().toLocaleTimeString(),
             inspectorId: 'INS-001',
@@ -305,12 +315,12 @@ const InspectionSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
           low: defCountsCalc.low,
           total: deficienciesArray.length,
           byBuilding: { [buildingId || 'B1']: deficienciesArray.length },
-          byCategory: { 'Inside': deficienciesArray.length },
+          byCategory: { [inspectionData.isOutsideInspection ? 'Outside' : (inspectionData.location === 'Inside' ? 'Inside' : 'Units')]: deficienciesArray.length },
           repeatDeficiencies: 0,
           newDeficiencies: deficienciesArray.length,
         },
         categoryBreakdown: [{
-          category: 'Inside',
+          category: inspectionData.isOutsideInspection ? 'Outside' : (inspectionData.location === 'Inside' ? 'Inside' : 'Units'),
           nspireSection: 'U-1',
           deficiencyCount: deficienciesArray.length,
           totalDeductions: deficienciesArray.length * 3,
@@ -339,7 +349,7 @@ const InspectionSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
         orientation: 'portrait',
       });
 
-      if (await Sharing.isAvailableAsync()) {
+      if (Platform.OS !== 'web' && await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(result.uri, {
           mimeType: 'application/pdf',
           dialogTitle: 'NSPIRE Inspection Report',
@@ -347,7 +357,12 @@ const InspectionSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
         });
       }
 
-      Alert.alert('PDF Downloaded', 'Report downloaded successfully!', [
+      const successTitle = Platform.OS === 'web' ? 'Report Ready' : 'PDF Downloaded';
+      const successMsg = Platform.OS === 'web'
+        ? 'Report opened in a new tab. Use your browser\'s print dialog to save as PDF.'
+        : 'Report downloaded successfully!';
+
+      Alert.alert(successTitle, successMsg, [
         { text: 'Close', style: 'cancel' },
         { text: 'Continue Inspection', onPress: () => navigation.navigate('LocationInspection', { property, selectedUnits, buildingId, location: inspectionData?.location || 'Outside' }) },
         { text: 'Go to Dashboard', onPress: () => navigation.reset({ index: 0, routes: [{ name: 'Dashboard' as never }] }) },

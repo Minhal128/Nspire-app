@@ -264,8 +264,8 @@ export const BATHROOM_MOLD: InsideSubcategory = {
     deficiencies: [
         {
             id: 'bath_mold_1',
-            name: 'Peeling Paint-Elevated moisture level.',
-            detail: 'Peeling Paint-Elevated moisture level.',
+            name: 'Elevated moisture level. (e.g., peeling paint or wallpaper, a wall that is warped or stained, or a buckled, cracked, or water-stained ceiling, carpet, or wooden floor).',
+            detail: 'Elevated moisture level. (e.g., peeling paint or wallpaper, a wall that is warped or stained, or a buckled, cracked, or water-stained ceiling, carpet, or wooden floor).',
             criteria: 'Elevated moisture level (e.g., peeling paint or wallpaper, a wall that is warped or stained, or a buckled, cracked, or water-stained ceiling, carpet, or wooden floor).',
             severity: 'Moderate',
             repairBy: '30 Day',
@@ -2224,12 +2224,12 @@ export const DRAINAGE_DEFICIENCIES: InsideItemDeficiencies = {
 // ==========================================
 // 10. EGRESS
 // ==========================================
-export const EGRESS_DEFICIENCIES: InsideItemDeficiencies = {
-    itemName: 'Egress',
+export const EGRESS_EXIT_ACCESS: InsideSubcategory = {
+    name: 'Egress (Exit Access)',
     deficiencies: [
         {
             id: 'egress_1',
-            name: 'Fire escape access to exteriors - doors and windows.',
+            name: 'Fire escape access to exteriors - doors and windows. (Double-key cylinder deadbolts and any locks or security features requiring a key, tool, or special effort from the street side are prohibited on exit doors, exit access doors, and egress windows).',
             detail: 'Double-key cylinder deadbolts and any locks or security features requiring a key, tool, or special effort from the street side are prohibited on exit doors, exit access doors, and egress windows.',
             criteria: 'Double-key cylinder deadbolts and any locks or security features requiring a key, tool, or special effort from the street side are prohibited on exit doors, exit access doors, and egress windows.',
             severity: 'Life-Threatening',
@@ -2260,7 +2260,7 @@ export const EGRESS_DEFICIENCIES: InsideItemDeficiencies = {
         },
         {
             id: 'egress_2',
-            name: 'Obstructed means of egress. Interior, closets, bedroom, bathroom., hallway and corridors.',
+            name: 'Obstructed means of egress. Interior, closets, bedroom, bathroom., hallway and corridors. (Exit paths—including doors, stairways, and egress windows—must remain clear and operable without keys, tools, or special effort).',
             detail: 'Exit paths—including doors, stairways, and egress windows—must remain clear and operable without keys, tools, or special effort.',
             criteria: 'Exit paths—including doors, stairways, and egress windows—must remain clear and operable without keys, tools, or special effort.',
             severity: 'Life-Threatening',
@@ -2291,9 +2291,9 @@ export const EGRESS_DEFICIENCIES: InsideItemDeficiencies = {
         },
         {
             id: 'egress_3',
-            name: 'Sleeping room is located on the 3rd floor or below and has an obtrude rescue opening.',
-            detail: 'If the egress door is the unit entry, see Deficiency 1; if near a fire escape, see Deficiency 3. Egress may be blocked by locks, bars, or obstructions.',
-            criteria: 'If the egress door is the unit entry, see Deficiency 1; if near a fire escape, see Deficiency 3. Egress may be blocked by locks, bars, or obstructions.',
+            name: 'Sleeping room is located on the 3rd floor or below and has an obstructed rescue opening. Egress may be blocked by locks, bars, or obstructions.',
+            detail: 'Egress may be blocked by locks, bars, or obstructions.',
+            criteria: 'Egress may be blocked by locks, bars, or obstructions.',
             severity: 'Life-Threatening',
             repairBy: '24Hrs',
             points: '30/n',
@@ -2320,6 +2320,13 @@ export const EGRESS_DEFICIENCIES: InsideItemDeficiencies = {
 • Minimum opening area: 5.7 sq ft (or 5.0 sq ft for ground floor)
 • Max sill height: 44 inches above finished floor`
         }
+    ]
+};
+
+export const EGRESS_DEFICIENCIES: InsideItemDeficiencies = {
+    itemName: 'Egress',
+    subcategories: [
+        EGRESS_EXIT_ACCESS
     ]
 };
 
@@ -2827,7 +2834,7 @@ export const FLAMMABLE_COMBUSTIBLE: InsideSubcategory = {
         {
             id: 'flam_1',
             name: 'The flammable or combustible material is on or within 3 feet of an appliance that provides heat for thermal comfort or a fuel-burning water heater. Or an improperly stored chemical.',
-            detail: 'Excluding heating oil in a heating oil tank, propane, gasoline, kerosene should never be stored in the Unit. Combustible item in its original container and stored in a safe place is not a deficiency.',
+            detail: 'The flammable or combustible material is on or within 3 feet of an appliance that provides heat for thermal comfort or a fuel-burning water heater. Or an improperly stored chemical.',
             criteria: 'Excluding heating oil in a heating oil tank, propane, gasoline, kerosene should never be stored in the Unit. Combustible item in its original container and stored in a safe place is not a deficiency.',
             severity: 'Life-Threatening',
             repairBy: '24Hrs',
@@ -3888,22 +3895,47 @@ export const KITCHEN_CABINET: InsideSubcategory = {
     deficiencies: [
         {
             id: 'kit_cab_1',
-            name: 'Storage component is damaged, inoperable, or missing.',
-            detail: 'Some of the kitchen cabinet doors, drawers, or shelves are missing. Visibly defective; impacts the functionality or does not meet the functionality or serve the purpose.',
-            criteria: 'Some of the kitchen cabinet doors, drawers, or shelves are missing. Visibly defective; impacts the functionality or does not meet the functionality or serve the purpose.',
+            name: 'Food storage space is not present (the presence of cold food storage should be evaluated under the refrigerator Standard).',
+            detail: 'Food storage space is not present (the presence of cold food storage should be evaluated under the refrigerator Standard).',
+            criteria: 'Food storage space is not present (the presence of cold food storage should be evaluated under the refrigerator Standard).',
             severity: 'Moderate',
             repairBy: '30 Day',
             points: '5.5/n',
             code: 'KIT-CAB-01',
             codeReference: `🧭 Step 1: Identification & Applicability
 • 	Required: Every unit with a designated kitchen must have permanent cabinetry for food and dish storage
-🔍 Step 2: Visual Condition Assessment
+🔍 Step 2: Visual Condition Assessment 
 • 	Check under sink cabinets for leaks, rot, or odor
 🧪 Step 3: Operability Test
 • 	Open and close every door and drawer
 • 	Check for full extension and smooth operation
 • 	Verify alignment and secure latching
-📏 Step 4: Accessibility & Local Requirements
+📏 Step 4:Accessibility & Local Requirements
+• 	Reach range: Shelves and drawers must be usable by residents with limited mobility
+• 	Handle type: Lever or loop-style preferred for accessibility
+• 	IBU Overlay: May require adjustable shelving, tactile labels, or visual contrast in accessible units
+⚒️ Step 5: IRC Structural Requirements
+• 	IRC R306.2: Kitchens must include space for food preparation and storage
+• 	IRC R602.3: Cabinets must be securely fastened to structural framing`
+        },
+        {
+            id: 'kit_cab_2',
+            name: 'Storage component is damaged, inoperable, or missing, with 50% or more of kitchen cabinet doors, drawers, or shelves absent. The condition is visibly defective and impacts functionality or the ability to serve its intended purpose.',
+            detail: 'Storage component is damaged, inoperable, or missing, with 50% or more of kitchen cabinet doors, drawers, or shelves absent. The condition is visibly defective and impacts functionality or the ability to serve its intended purpose.',
+            criteria: 'Storage component is damaged, inoperable, or missing, with 50% or more of kitchen cabinet doors, drawers, or shelves absent. The condition is visibly defective and impacts functionality or the ability to serve its intended purpose.',
+            severity: 'Moderate',
+            repairBy: '30 Day',
+            points: '5.5/n',
+            code: 'KIT-CAB-02',
+            codeReference: `🧭 Step 1: Identification & Applicability
+• 	Required: Every unit with a designated kitchen must have permanent cabinetry for food and dish storage
+🔍 Step 2: Visual Condition Assessment 
+• 	Check under sink cabinets for leaks, rot, or odor
+🧪 Step 3: Operability Test
+• 	Open and close every door and drawer
+• 	Check for full extension and smooth operation
+• 	Verify alignment and secure latching
+📏 Step 4:Accessibility & Local Requirements
 • 	Reach range: Shelves and drawers must be usable by residents with limited mobility
 • 	Handle type: Lever or loop-style preferred for accessibility
 • 	IBU Overlay: May require adjustable shelving, tactile labels, or visual contrast in accessible units
@@ -4125,16 +4157,16 @@ export const KITCHEN_MOLD: InsideSubcategory = {
     deficiencies: [
         {
             id: 'kit_mold_1',
-            name: 'Peeling Paint - Elevated moisture level.',
-            detail: 'Elevated moisture level (e.g., peeling paint or wallpaper, a wall that is warped or stained, or a buckled, cracked, or water-stained ceiling, carpet, or wooden floor).',
+            name: 'Elevated moisture level. (e.g., peeling paint or wallpaper, a wall that is warped or stained, or a buckled, cracked, or water-stained ceiling, carpet, or wooden floor).',
+            detail: 'Elevated moisture level. (e.g., peeling paint or wallpaper, a wall that is warped or stained, or a buckled, cracked, or water-stained ceiling, carpet, or wooden floor).',
             criteria: 'Elevated moisture level (e.g., peeling paint or wallpaper, a wall that is warped or stained, or a buckled, cracked, or water-stained ceiling, carpet, or wooden floor).',
             severity: 'Moderate',
             repairBy: '30 Day',
             points: '5.5/n',
             code: 'KIT-MOLD-01',
-            codeReference: `🧭 Step 1: Identification & Applicability
+            codeReference: `🧭 Step 1:  Identification & Applicability
 • 	Applies to: All kitchen surfaces—walls, ceilings, cabinetry, countertops, flooring, and behind/under appliances
-🔍 Step 2: Sanitation & Environmental Safety
+Step 2:  Sanitation & Environmental Safety
 • 	Visual inspection: Look for mold-like patches ≥4 square inches cumulatively
 🧪 Step 3: Inspection Technique
 • 	Visual Scan: Estimate Area: Measure or approximate total surface area affected
@@ -4155,9 +4187,9 @@ export const KITCHEN_MOLD: InsideSubcategory = {
             repairBy: '24Hrs',
             points: '30/n',
             code: 'KIT-MOLD-02',
-            codeReference: `🧭 Step 1: Identification & Applicability
+            codeReference: `🧭 Step 1:  Identification & Applicability
 • 	Applies to: All kitchen surfaces—walls, ceilings, cabinetry, countertops, flooring, and behind/under appliances
-🔍 Step 2: Sanitation & Environmental Safety
+Step 2:  Sanitation & Environmental Safety
 • 	Visual inspection: Look for mold-like patches ≥4 square inches cumulatively
 🧪 Step 3: Inspection Technique
 • 	Visual Scan: Estimate Area: Measure or approximate total surface area affected
@@ -4178,9 +4210,9 @@ export const KITCHEN_MOLD: InsideSubcategory = {
             repairBy: '24 Hrs.',
             points: '14.8/n',
             code: 'KIT-MOLD-03',
-            codeReference: `🧭 Step 1: Identification & Applicability
+            codeReference: `🧭 Step 1:  Identification & Applicability
 • 	Applies to: All kitchen surfaces—walls, ceilings, cabinetry, countertops, flooring, and behind/under appliances
-🔍 Step 2: Sanitation & Environmental Safety
+Step 2:  Sanitation & Environmental Safety
 • 	Visual inspection: Look for mold-like patches ≥4 square inches cumulatively
 🧪 Step 3: Inspection Technique
 • 	Visual Scan: Estimate Area: Measure or approximate total surface area affected
@@ -4201,9 +4233,9 @@ export const KITCHEN_MOLD: InsideSubcategory = {
             repairBy: '30 Day',
             points: '5.5/n',
             code: 'KIT-MOLD-04',
-            codeReference: `🧭 Step 1: Identification & Applicability
+            codeReference: `🧭 Step 1:  Identification & Applicability
 • 	Applies to: All kitchen surfaces—walls, ceilings, cabinetry, countertops, flooring, and behind/under appliances
-🔍 Step 2: Sanitation & Environmental Safety
+Step 2:  Sanitation & Environmental Safety
 • 	Visual inspection: Look for mold-like patches ≥4 square inches cumulatively
 🧪 Step 3: Inspection Technique
 • 	Visual Scan: Estimate Area: Measure or approximate total surface area affected
@@ -5029,8 +5061,8 @@ export const MOLD_LIKE_SUBSTANCE: InsideSubcategory = {
     deficiencies: [
         {
             id: 'mold_1',
-            name: 'Peeling Paint-Elevated moisture level.',
-            detail: 'Elevated moisture level (e.g., peeling paint or wallpaper, a wall that is warped or stained, or a buckled, cracked, or water-stained ceiling, carpet, or wooden floor).',
+            name: 'Elevated moisture level. (e.g., peeling paint or wallpaper, a wall that is warped or stained, or a buckled, cracked, or water-stained ceiling, carpet, or wooden floor).',
+            detail: 'Elevated moisture level. (e.g., peeling paint or wallpaper, a wall that is warped or stained, or a buckled, cracked, or water-stained ceiling, carpet, or wooden floor).',
             criteria: 'Elevated moisture level (e.g., peeling paint or wallpaper, a wall that is warped or stained, or a buckled, cracked, or water-stained ceiling, carpet, or wooden floor).',
             severity: 'Moderate',
             repairBy: '30 Day',
@@ -5153,7 +5185,7 @@ NSPIRE defines mold-like substance as visible discoloration or growth that may a
 export const MOLD_DEFICIENCIES: InsideItemDeficiencies = {
     itemName: 'Mold',
     subcategories: [
-        MOLD_LIKE_SUBSTANCE
+        BATHROOM_MOLD
     ]
 };
 
@@ -5311,12 +5343,12 @@ export const RAILINGS_HANDRAIL: InsideSubcategory = {
         },
         {
             id: 'rail_hand_2',
-            name: 'Handrail is not installed where required.',
-            detail: '4 or more stair risers are present, and a handrail is not installed. Or a ramp has a rise greater than 6 inches or a horizontal projection greater than 72 inches and a handrail is not installed on both sides.',
-            criteria: '4 or more stair risers are present, and a handrail is not installed. Or a ramp has a rise greater than 6 inches or a horizontal projection greater than 72 inches and a handrail is not installed on both sides.',
-            severity: 'Low',
-            repairBy: '60 Day',
-            points: '2.4/n',
+            name: 'Handrail is not continuous for the full length of each flight of stairs. Or Handrail is not between 28 inches and 42 inches in height.',
+            detail: 'Handrail is not continuous for the full length of each flight of stairs. Or Handrail is not between 28 inches and 42 inches in height.',
+            criteria: 'Handrail is not continuous for the full length of each flight of stairs. Or Handrail is not between 28 inches and 42 inches in height.',
+            severity: 'Moderate',
+            repairBy: '30 Day',
+            points: '5.5/n',
             code: 'RAILING-HAND-02',
             codeReference: `🧭 Step 1: Identify Locations Where Handrails Apply:
 • 	Interior stairs, ramps, and corridors
@@ -5338,13 +5370,40 @@ export const RAILINGS_HANDRAIL: InsideSubcategory = {
         },
         {
             id: 'rail_hand_3',
+            name: 'Handrail is not installed where required.',
+            detail: '4 or more stair risers are present, and a handrail is not installed. Or a ramp has a rise greater than 6 inches or a horizontal projection greater than 72 inches and a handrail is not installed on both sides.',
+            criteria: '4 or more stair risers are present, and a handrail is not installed. Or a ramp has a rise greater than 6 inches or a horizontal projection greater than 72 inches and a handrail is not installed on both sides.',
+            severity: 'Low',
+            repairBy: '60 Day',
+            points: '2.4/n',
+            code: 'RAILING-HAND-03',
+            codeReference: `🧭 Step 1: Identify Locations Where Handrails Apply:
+• 	Interior stairs, ramps, and corridors
+🔍 Step 2: Identification & Applicability
+• 	Required: On stairways with 4 or more risers; On ramps with rise >6 inches or horizontal run >72 inches
+🧪 Step 3: Functional Testing
+• 	Stability Check: Apply moderate force to confirm rail is firmly anchored
+• 	Length Check: Ensure rail runs continuously from first to last riser or ramp edge
+• 	Height Measurement: Measure from walking surface to top of rail (must be 28″–42″)
+• 	Graspability Test: Confirm rail shape allows full hand grip (e.g., round or oval profile)
+📏 Step 4: Accessibility & Local Requirements
+• 	Height compliance: 34–38″ AFF for ADA handrails (CBC §1014.2)
+• 	Visual contrast: Rail should be distinguishable from surroundings for low-vision residents
+• 	Grip profile: Circular or rounded preferred; 1¼″–2″ diameter
+• 	IBU Overlay: May require tactile indicators, extended rail ends, or dual handrails on ramps
+⚒️ Step 5: IRC Structural Requirements
+• 	IRC R311.7.8: Handrails required on one side of stairs with 4+ risers
+• 	IRC R311.7.8.1–8.3: Height: 34″–38″, Graspable shape required, Ends must return to the wall or terminate safely`
+        },
+        {
+            id: 'rail_hand_4',
             name: 'Handrail is not secured.',
             detail: 'There is movement in the anchors of the handrail.',
             criteria: 'There is movement in the anchors of the handrail.',
             severity: 'Moderate',
             repairBy: '30 Day',
             points: '5.5/n',
-            code: 'RAILING-HAND-03',
+            code: 'RAILING-HAND-04',
             codeReference: `🧭 Step 1: Identify Locations Where Handrails Apply:
 • 	Interior stairs, ramps, and corridors
 🔍 Step 2: Identification & Applicability
@@ -5788,8 +5847,8 @@ export const VENTILATION_DEFICIENCIES: InsideItemDeficiencies = {
 // ==========================================
 // 29. WALL
 // ==========================================
-export const WALL_DEFICIENCIES: InsideItemDeficiencies = {
-    itemName: 'Wall',
+export const WALL_INTERIOR: InsideSubcategory = {
+    name: 'Wall Interior',
     deficiencies: [
         {
             id: 'wall_1',
@@ -5873,6 +5932,11 @@ export const WALL_DEFICIENCIES: InsideItemDeficiencies = {
 • 	IRC §R302.1 – Protection against structural failure and fire spread`
         }
     ]
+};
+
+export const WALL_DEFICIENCIES: InsideItemDeficiencies = {
+    itemName: 'Wall',
+    subcategories: [WALL_INTERIOR]
 };
 
 // ==========================================

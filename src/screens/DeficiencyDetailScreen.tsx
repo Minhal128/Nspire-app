@@ -28,6 +28,7 @@ import {
   isUnitLocation
 } from '../data/deficiencyMapping';
 import { cloudinaryService } from '../services/cloudinaryService';
+import ModalZoomWrapper from '../components/ModalZoomWrapper';
 import { geminiService } from '../services/openaiService';
 import { ScoringResult, calculateUnitScore, POSSIBLE_SCORE } from '../utils/scoringCalculations';
 import { UNIT_TOTAL_POSSIBLE_POINTS } from '../data/insideDeficiencyMapping';
@@ -185,6 +186,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   // Code Reference modal state
   const [showCodeReference, setShowCodeReference] = useState(false);
   const [codeReferenceContent, setCodeReferenceContent] = useState('');
+  const [codeRefFontSize, setCodeRefFontSize] = useState(15);
 
   // Processing modal state
   const [showProcessingModal, setShowProcessingModal] = useState(false);
@@ -1089,6 +1091,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         transparent={true}
         onRequestClose={() => setShowDeficiencyPicker(false)}
       >
+        <ModalZoomWrapper>
         <View style={styles.pickerModalOverlay}>
           <View style={styles.pickerModalContent}>
             <View style={styles.pickerHeader}>
@@ -1147,6 +1150,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             </ScrollView>
           </View>
         </View>
+        </ModalZoomWrapper>
       </Modal>
 
       {/* Expanded Text Modal - Shows full text when user taps on truncated content */}
@@ -1156,6 +1160,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         transparent={true}
         onRequestClose={() => setShowExpandedText(false)}
       >
+        <ModalZoomWrapper>
         <View style={styles.expandedTextOverlay}>
           <View style={styles.expandedTextContent}>
             <View style={styles.expandedTextHeader}>
@@ -1180,6 +1185,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             </TouchableOpacity>
           </View>
         </View>
+        </ModalZoomWrapper>
       </Modal>
 
       {/* Outside Location Picker Modal */}
@@ -1189,6 +1195,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         transparent={true}
         onRequestClose={() => setShowLocationPicker(false)}
       >
+        <ModalZoomWrapper>
         <View style={styles.pickerModalOverlay}>
           <View style={styles.pickerModalContent}>
             <View style={styles.pickerHeader}>
@@ -1233,6 +1240,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             </ScrollView>
           </View>
         </View>
+        </ModalZoomWrapper>
       </Modal>
 
       {/* Inside Location Picker Modal */}
@@ -1242,6 +1250,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         transparent={true}
         onRequestClose={() => setShowInsideLocationPicker(false)}
       >
+        <ModalZoomWrapper>
         <View style={styles.pickerModalOverlay}>
           <View style={styles.pickerModalContent}>
             <View style={styles.pickerHeader}>
@@ -1286,6 +1295,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             </ScrollView>
           </View>
         </View>
+        </ModalZoomWrapper>
       </Modal>
 
       {/* Unit Location Picker Modal */}
@@ -1295,6 +1305,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         transparent={true}
         onRequestClose={() => setShowUnitLocationPicker(false)}
       >
+        <ModalZoomWrapper>
         <View style={styles.pickerModalOverlay}>
           <View style={styles.pickerModalContent}>
             <View style={styles.pickerHeader}>
@@ -1339,6 +1350,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             </ScrollView>
           </View>
         </View>
+        </ModalZoomWrapper>
       </Modal>
 
       {/* Processing Modal with 3-second auto-dismiss */}
@@ -1370,6 +1382,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         transparent={true}
         onRequestClose={() => setShowCodeReference(false)}
       >
+        <ModalZoomWrapper>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
@@ -1377,9 +1390,29 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                 <Ionicons name="document-text-outline" size={24} color="#0E7490" style={{ marginRight: 8 }} />
                 <Text style={styles.modalTitle}>CODE OF REFERENCE</Text>
               </View>
-              <TouchableOpacity onPress={() => setShowCodeReference(false)} style={styles.modalCloseButton}>
-                <Ionicons name="close" size={24} color="#6B7280" />
-              </TouchableOpacity>
+              <View style={styles.codeRefHeaderRight}>
+                {/* Font size controls */}
+                <View style={styles.fontSizePill}>
+                  <TouchableOpacity
+                    style={[styles.fontSizeBtn, codeRefFontSize <= 11 && styles.fontSizeBtnDisabled]}
+                    onPress={() => setCodeRefFontSize(s => Math.max(11, s - 2))}
+                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                  >
+                    <Text style={styles.fontSizeBtnText}>A－</Text>
+                  </TouchableOpacity>
+                  <View style={styles.fontSizeDivider} />
+                  <TouchableOpacity
+                    style={[styles.fontSizeBtn, codeRefFontSize >= 28 && styles.fontSizeBtnDisabled]}
+                    onPress={() => setCodeRefFontSize(s => Math.min(28, s + 2))}
+                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                  >
+                    <Text style={styles.fontSizeBtnText}>A＋</Text>
+                  </TouchableOpacity>
+                </View>
+                <TouchableOpacity onPress={() => { setShowCodeReference(false); setCodeRefFontSize(15); }} style={styles.modalCloseButton}>
+                  <Ionicons name="close" size={24} color="#6B7280" />
+                </TouchableOpacity>
+              </View>
             </View>
 
             <ScrollView
@@ -1387,7 +1420,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               showsVerticalScrollIndicator={true}
               contentContainerStyle={{ paddingBottom: 20 }}
             >
-              <Text style={styles.codeReferenceText}>{codeReferenceContent}</Text>
+              <Text style={[styles.codeReferenceText, { fontSize: codeRefFontSize, lineHeight: codeRefFontSize * 1.6 }]}>{codeReferenceContent}</Text>
             </ScrollView>
 
             <View style={styles.modalFooter}>
@@ -1400,6 +1433,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             </View>
           </View>
         </View>
+        </ModalZoomWrapper>
       </Modal>
 
       {/* Fixed Bottom Buttons */}
@@ -2139,6 +2173,38 @@ const styles = StyleSheet.create({
   },
   modalCloseButton: {
     padding: 4,
+  },
+  codeRefHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  fontSizePill: {
+    flexDirection: 'row',
+    backgroundColor: '#F3F4F6',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    overflow: 'hidden',
+  },
+  fontSizeBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fontSizeBtnDisabled: {
+    opacity: 0.30,
+  },
+  fontSizeBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0E7490',
+  },
+  fontSizeDivider: {
+    width: 1,
+    backgroundColor: '#E5E7EB',
+    marginVertical: 4,
   },
   modalBody: {
     paddingHorizontal: 24,

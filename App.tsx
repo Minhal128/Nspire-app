@@ -8,6 +8,9 @@ import { ClerkProvider } from '@clerk/clerk-expo';
 import * as SecureStore from 'expo-secure-store';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { Ionicons } from '@expo/vector-icons';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { ZoomProvider } from './src/contexts/ZoomContext';
+import ZoomWrapper from './src/components/ZoomWrapper';
 
 // Import screens
 import BoardingScreen from "./src/screens/BoardingScreen";
@@ -280,30 +283,41 @@ export default function App() {
   // Show loading screen while checking auth
   if (!isReady) {
     return (
-      <>
-        <StatusBar style="dark" />
-        <LoadingScreen />
-      </>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <ZoomProvider>
+          <ZoomWrapper>
+            <StatusBar style="dark" />
+            <LoadingScreen />
+          </ZoomWrapper>
+        </ZoomProvider>
+      </GestureHandlerRootView>
     );
   }
 
   // Show biometric authentication screen if required and not verified
   if (biometricRequired && !biometricVerified) {
     return (
-      <>
-        <StatusBar style="dark" />
-        <BiometricAuthScreen onAuthenticate={handleBiometricSuccess} />
-      </>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <ZoomProvider>
+          <ZoomWrapper>
+            <StatusBar style="dark" />
+            <BiometricAuthScreen onAuthenticate={handleBiometricSuccess} />
+          </ZoomWrapper>
+        </ZoomProvider>
+      </GestureHandlerRootView>
     );
   }
 
   return (
-    <ClerkProvider
-      publishableKey={process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!}
-      tokenCache={tokenCache}
-    >
-      <StatusBar style="dark" />
-      <NavigationContainer
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ZoomProvider>
+        <ZoomWrapper>
+          <ClerkProvider
+            publishableKey={process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!}
+            tokenCache={tokenCache}
+          >
+            <StatusBar style="dark" />
+            <NavigationContainer
         linking={linking}
         fallback={<LoadingScreen />}
         onReady={onReady}
@@ -370,6 +384,9 @@ export default function App() {
         </Stack.Navigator>
       </NavigationContainer>
     </ClerkProvider>
+        </ZoomWrapper>
+      </ZoomProvider>
+    </GestureHandlerRootView>
   );
 }
 
