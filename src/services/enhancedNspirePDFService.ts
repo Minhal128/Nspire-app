@@ -346,14 +346,18 @@ function generateEnhancedDeficiencyTable(deficiencies: DeficiencyEntry[], imageM
   });
 
   // Group deficiencies by building + unit
+  // Inside and Outside inspections are building-level — group under "Building - {building}"
+  // Unit inspections are grouped under "Unit - {unit}"
   interface GroupedDef { def: DeficiencyEntry; isRepeat: boolean; }
   const groups = new Map<string, GroupedDef[]>();
   deficiencies.forEach((def, idx) => {
     const building = def.building || 'Building A';
-    const unit = def.unit || '';
+    const unit = def.unit && def.unit !== '-' ? def.unit : '';
+    const area = def.area || '';
+    const isBuildingLevel = area === 'Inside' || area === 'Outside' || !unit;
     const groupKey = (def as any).isGeneralComment
       ? 'General Comment'
-      : (unit ? `Unit - ${unit}` : `Building - ${building}`);
+      : (isBuildingLevel ? `Building - ${building}` : `Unit - ${unit}`);
     if (!groups.has(groupKey)) groups.set(groupKey, []);
     groups.get(groupKey)!.push({ def, isRepeat: def.repeatIndicator || repeatFlags[idx] });
   });

@@ -1237,7 +1237,7 @@ const generateDeficiencyTable = (deficiencies: DeficiencyEntry[], options: PDFGe
                 </span>
               </td>
               <td>${(def as any).isGeneralComment ? '-' : getSeverityBadge(def.severity)}</td>
-              <td style="vertical-align:top;padding:4px 6px;">${def.note || '-'}</td>
+              <td style="vertical-align:top;padding:4px 6px;">${def.note || ''}</td>
             </tr>
           `;
           }).join('')}

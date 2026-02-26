@@ -609,7 +609,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             deficiencyQRId: generateDeficiencyQRId(), // Unique QR-XXXXX ID per image
             imageUrl: uploadResult.success ? uploadResult.url : null, // Cloudinary URL for storage
             imageUri: imageUri, // Local URI for display
-            note: note || aiAnalysis.analysis,
+            note: note || '',
             location: isOutsideLocation ? selectedOutsideLocation : location,
             itemName,
             itemId,

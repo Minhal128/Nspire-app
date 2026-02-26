@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -20,6 +20,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { enhancedNspirePDFService } from '../services/enhancedNspirePDFService';
+import { storeData, getData } from '../utils/storage';
 
 type InspectionSummaryScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -40,25 +41,48 @@ const InspectionSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
   const [exportingPDF, setExportingPDF] = useState(false);
   const [previewModalVisible, setPreviewModalVisible] = useState(false);
   const [previewHtml, setPreviewHtml] = useState('');
+  const [mergedDeficiencies, setMergedDeficiencies] = useState<any[]>(
+    inspectionData?.deficiencies || []
+  );
 
-  // Calculate actual deficiency counts from inspectionData
+  // On mount: load any previously saved deficiencies and merge with the new ones
+  useEffect(() => {
+    const loadAndMerge = async () => {
+      try {
+        const saveKey = `saved_inspection_${property?._id || property?.id || 'unknown'}_${buildingId}`;
+        const saved = await getData(saveKey);
+        if (saved?.deficiencies && Array.isArray(saved.deficiencies) && saved.deficiencies.length > 0) {
+          const incoming = inspectionData?.deficiencies || [];
+          // Deduplicate by deficiencyQRId; saved ones first, then new ones not already present
+          const existingIds = new Set(saved.deficiencies.map((d: any) => d.deficiencyQRId).filter(Boolean));
+          const uniqueNew = incoming.filter((d: any) => !existingIds.has(d.deficiencyQRId));
+          setMergedDeficiencies([...saved.deficiencies, ...uniqueNew]);
+        }
+      } catch (e) {
+        console.warn('Could not load saved inspection data:', e);
+      }
+    };
+    loadAndMerge();
+  }, []);
+
+  // Calculate actual deficiency counts from mergedDeficiencies
   const deficiencyCounts = {
-    lifeThreadening: inspectionData?.deficiencies?.filter((d: any) =>
-      (d.deficiency.aiSeverity || d.deficiency.severity) === 'Life-Threatening'
-    ).length || 0,
-    severe: inspectionData?.deficiencies?.filter((d: any) =>
-      (d.deficiency.aiSeverity || d.deficiency.severity) === 'Severe'
-    ).length || 0,
-    moderate: inspectionData?.deficiencies?.filter((d: any) =>
-      (d.deficiency.aiSeverity || d.deficiency.severity) === 'Moderate'
-    ).length || 0,
-    low: inspectionData?.deficiencies?.filter((d: any) =>
-      (d.deficiency.aiSeverity || d.deficiency.severity) === 'Low'
-    ).length || 0,
+    lifeThreadening: mergedDeficiencies.filter((d: any) =>
+      (d.deficiency?.aiSeverity || d.deficiency?.severity) === 'Life-Threatening'
+    ).length,
+    severe: mergedDeficiencies.filter((d: any) =>
+      (d.deficiency?.aiSeverity || d.deficiency?.severity) === 'Severe'
+    ).length,
+    moderate: mergedDeficiencies.filter((d: any) =>
+      (d.deficiency?.aiSeverity || d.deficiency?.severity) === 'Moderate'
+    ).length,
+    low: mergedDeficiencies.filter((d: any) =>
+      (d.deficiency?.aiSeverity || d.deficiency?.severity) === 'Low'
+    ).length,
   };
 
   // Calculate scores based on actual deficiencies
-  const totalDeficiencies = inspectionData?.deficiencies?.length || 0;
+  const totalDeficiencies = mergedDeficiencies.length;
   const deductionPoints = (deficiencyCounts.lifeThreadening * 10) +
     (deficiencyCounts.severe * 6) +
     (deficiencyCounts.moderate * 3) +
@@ -71,6 +95,55 @@ const InspectionSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const inspectionId = `697e0d82e115b966d90cc009`;
   const inspectionDate = new Date().toLocaleDateString();
+
+  const handleContinueInspection = async () => {
+    try {
+      const saveKey = `saved_inspection_${property?._id || property?.id || 'unknown'}_${buildingId}`;
+      // Convert local image URIs to base64 so images survive navigation
+      const deficienciesWithImages = await Promise.all(
+        mergedDeficiencies.map(async (defItem: any) => {
+          // If already base64 or a remote URL, keep as-is
+          if (
+            !defItem.imageUri ||
+            defItem.imageUri.startsWith('data:') ||
+            defItem.imageUri.startsWith('http')
+          ) {
+            // Prefer Cloudinary URL as a reliable fallback
+            return { ...defItem, imageUri: defItem.imageUri || defItem.imageUrl || null };
+          }
+          // Try to convert local file to base64
+          if (Platform.OS !== 'web') {
+            try {
+              const fileInfo = await FileSystem.getInfoAsync(defItem.imageUri);
+              if (fileInfo.exists) {
+                const base64 = await FileSystem.readAsStringAsync(defItem.imageUri, {
+                  encoding: FileSystem.EncodingType.Base64,
+                });
+                if (base64 && base64.length > 100) {
+                  return { ...defItem, imageUri: `data:image/jpeg;base64,${base64}` };
+                }
+              }
+            } catch (imgErr) {
+              console.warn('Could not encode image to base64:', imgErr);
+            }
+          }
+          // Fall back to Cloudinary URL if local conversion fails
+          return { ...defItem, imageUri: defItem.imageUrl || null };
+        })
+      );
+      await storeData(saveKey, {
+        deficiencies: deficienciesWithImages,
+        savedAt: new Date().toISOString(),
+      });
+    } catch (e) {
+      console.warn('Could not save inspection data:', e);
+    }
+    navigation.navigate('InspectionCategories', {
+      property,
+      selectedUnits,
+      buildingId,
+    });
+  };
 
   const handlePreviewReport = () => {
     // Generate preview HTML
@@ -85,8 +158,8 @@ const InspectionSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
     
     // Generate deficiencies HTML
     let deficienciesHtml = '';
-    if (inspectionData?.deficiencies && inspectionData.deficiencies.length > 0) {
-      deficienciesHtml = inspectionData.deficiencies.map((def: any, index: number) => {
+    if (mergedDeficiencies.length > 0) {
+      deficienciesHtml = mergedDeficiencies.map((def: any, index: number) => {
         const severity = def.deficiency?.aiSeverity || def.deficiency?.severity || 'Moderate';
         const severityColor = 
           severity === 'Life-Threatening' ? '#DC2626' :
@@ -201,10 +274,10 @@ const InspectionSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
       // Prepare deficiencies array - handle multiple deficiencies
       const deficienciesArray = [];
 
-      if (inspectionData?.deficiencies && Array.isArray(inspectionData.deficiencies)) {
-        // Multiple deficiencies from AI analysis
-        for (let i = 0; i < inspectionData.deficiencies.length; i++) {
-          const defItem = inspectionData.deficiencies[i];
+      if (mergedDeficiencies.length > 0) {
+        // Multiple deficiencies (includes previously saved + newly added)
+        for (let i = 0; i < mergedDeficiencies.length; i++) {
+          const defItem = mergedDeficiencies[i];
 
           // Convert local image to base64 for PDF
           let imageBase64: string | null = null;
@@ -239,11 +312,16 @@ const InspectionSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
             : (inspectionData.location === 'Inside' ? 'Inside' : 'Units');
 
           const isGC = !!(defItem as any).isGeneralComment;
+          // For Inside/Outside (building-level) inspections, do not assign unit numbers
+          // so deficiencies are correctly grouped under the building in the report
+          const defUnit = (inspectionArea === 'Inside' || inspectionArea === 'Outside')
+            ? '-'
+            : (selectedUnits.join(', ') || 'Unit Multiple');
           deficienciesArray.push({
             id: `${i + 1}`,
             deficiencyQRId: defItem.deficiencyQRId || `QR-${Math.floor(10000000 + Math.random() * 90000000)}`,
             building: buildingId || 'B1',
-            unit: selectedUnits.join(', ') || 'Unit Multiple',
+            unit: defUnit,
             room: defItem.location || 'Multiple',
             area: inspectionArea,
             isGeneralComment: isGC,
@@ -299,8 +377,8 @@ const InspectionSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
           inspectedUnits: selectedUnits.length > 0 ? selectedUnits : undefined,
         },
         inspectionData: [
-          { type: 'Building' as const, propertyTotal: 2, sampleSize: 1, totalUnitsInspected: 1 },
-          { type: 'Unit' as const, propertyTotal: property.totalUnits || 10, sampleSize: 1, totalUnitsInspected: 1 },
+          { type: 'Building' as const, propertyTotal: property.buildings || property.totalBuildings || 1, sampleSize: 1, totalUnitsInspected: 1 },
+          { type: 'Unit' as const, propertyTotal: property.units || property.totalUnits || selectedUnits.length || 1, sampleSize: selectedUnits.length || 1, totalUnitsInspected: selectedUnits.length || 1 },
         ],
         occupancyInfo: {
           totalUnits: property.totalUnits || selectedUnits.length,
@@ -364,7 +442,6 @@ const InspectionSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
 
       Alert.alert(successTitle, successMsg, [
         { text: 'Close', style: 'cancel' },
-        { text: 'Continue Inspection', onPress: () => navigation.navigate('LocationInspection', { property, selectedUnits, buildingId, location: inspectionData?.location || 'Outside' }) },
         { text: 'Go to Dashboard', onPress: () => navigation.reset({ index: 0, routes: [{ name: 'Dashboard' as never }] }) },
       ], { cancelable: true });
     } catch (error: any) {
@@ -426,6 +503,14 @@ const InspectionSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
           >
             <Ionicons name="eye-outline" size={20} color="#0E7490" />
             <Text style={styles.previewButtonText}>Preview Report</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.continueButton}
+            onPress={handleContinueInspection}
+          >
+            <Ionicons name="arrow-forward-circle-outline" size={20} color="#FFFFFF" />
+            <Text style={styles.continueButtonText}>Continue Inspection</Text>
           </TouchableOpacity>
         </View>
 
@@ -535,8 +620,8 @@ const InspectionSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
           <View style={styles.deficienciesCard}>
             <Text style={styles.deficienciesTitle}>Recorded Deficiencies</Text>
 
-            {inspectionData?.deficiencies && inspectionData.deficiencies.length > 0 ? (
-              inspectionData.deficiencies.map((defItem: any, index: number) => (
+            {mergedDeficiencies.length > 0 ? (
+              mergedDeficiencies.map((defItem: any, index: number) => (
                 <View key={index} style={[styles.deficiencyDetailCard, index > 0 && { marginTop: 16 }]}>
                   <View style={styles.deficiencyHeader}>
                     <Text style={styles.deficiencyItemName}>{defItem.itemName || inspectionData.itemName}</Text>
@@ -1042,6 +1127,21 @@ const styles = StyleSheet.create({
   },
   previewButtonText: {
     color: '#0E7490',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  continueButton: {
+    backgroundColor: '#16A34A',
+    borderRadius: 12,
+    paddingVertical: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 12,
+  },
+  continueButtonText: {
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
   },
