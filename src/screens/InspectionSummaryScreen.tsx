@@ -39,6 +39,7 @@ const InspectionSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
   const { property, selectedUnits, buildingId, inspectionData } = route.params;
   const [activeTab, setActiveTab] = useState<'summary' | 'deficiencies'>('summary');
   const [exportingPDF, setExportingPDF] = useState(false);
+  const [exportingHTML, setExportingHTML] = useState(false);
   const [previewModalVisible, setPreviewModalVisible] = useState(false);
   const [previewHtml, setPreviewHtml] = useState('');
   const [mergedDeficiencies, setMergedDeficiencies] = useState<any[]>(
@@ -51,12 +52,28 @@ const InspectionSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
       try {
         const saveKey = `saved_inspection_${property?._id || property?.id || 'unknown'}_${buildingId}`;
         const saved = await getData(saveKey);
+
+        // Stamp _area / _unit on incoming deficiencies from the CURRENT session
+        const currentArea: string = inspectionData?.isOutsideInspection
+          ? 'Outside'
+          : (inspectionData?.location === 'Inside' ? 'Inside' : 'Units');
+        const currentUnit = (currentArea === 'Inside' || currentArea === 'Outside')
+          ? '-'
+          : (selectedUnits.join(', ') || 'Unit Multiple');
+
+        const incoming = (inspectionData?.deficiencies || []).map((d: any) => ({
+          ...d,
+          _area: d._area || currentArea,
+          _unit: d._unit !== undefined ? d._unit : currentUnit,
+        }));
+
         if (saved?.deficiencies && Array.isArray(saved.deficiencies) && saved.deficiencies.length > 0) {
-          const incoming = inspectionData?.deficiencies || [];
           // Deduplicate by deficiencyQRId; saved ones first, then new ones not already present
           const existingIds = new Set(saved.deficiencies.map((d: any) => d.deficiencyQRId).filter(Boolean));
           const uniqueNew = incoming.filter((d: any) => !existingIds.has(d.deficiencyQRId));
           setMergedDeficiencies([...saved.deficiencies, ...uniqueNew]);
+        } else if (incoming.length > 0) {
+          setMergedDeficiencies(incoming);
         }
       } catch (e) {
         console.warn('Could not load saved inspection data:', e);
@@ -99,17 +116,29 @@ const InspectionSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
   const handleContinueInspection = async () => {
     try {
       const saveKey = `saved_inspection_${property?._id || property?.id || 'unknown'}_${buildingId}`;
-      // Convert local image URIs to base64 so images survive navigation
+      // Determine the inspectable area for the CURRENT session's deficiencies
+      const currentArea: string = inspectionData.isOutsideInspection
+        ? 'Outside'
+        : (inspectionData.location === 'Inside' ? 'Inside' : 'Units');
+      const currentUnit = (currentArea === 'Inside' || currentArea === 'Outside')
+        ? '-'
+        : (selectedUnits.join(', ') || 'Unit Multiple');
+
+      // Convert local image URIs to base64 so images survive navigation,
+      // and stamp _area / _unit on each deficiency so they survive future merges
       const deficienciesWithImages = await Promise.all(
         mergedDeficiencies.map(async (defItem: any) => {
+          // Keep existing _area if already stamped (from a previous session)
+          const area = defItem._area || currentArea;
+          const unit = defItem._unit !== undefined ? defItem._unit : currentUnit;
+
           // If already base64 or a remote URL, keep as-is
           if (
             !defItem.imageUri ||
             defItem.imageUri.startsWith('data:') ||
             defItem.imageUri.startsWith('http')
           ) {
-            // Prefer Cloudinary URL as a reliable fallback
-            return { ...defItem, imageUri: defItem.imageUri || defItem.imageUrl || null };
+            return { ...defItem, _area: area, _unit: unit, imageUri: defItem.imageUri || defItem.imageUrl || null };
           }
           // Try to convert local file to base64
           if (Platform.OS !== 'web') {
@@ -120,7 +149,7 @@ const InspectionSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
                   encoding: FileSystem.EncodingType.Base64,
                 });
                 if (base64 && base64.length > 100) {
-                  return { ...defItem, imageUri: `data:image/jpeg;base64,${base64}` };
+                  return { ...defItem, _area: area, _unit: unit, imageUri: `data:image/jpeg;base64,${base64}` };
                 }
               }
             } catch (imgErr) {
@@ -128,7 +157,7 @@ const InspectionSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
             }
           }
           // Fall back to Cloudinary URL if local conversion fails
-          return { ...defItem, imageUri: defItem.imageUrl || null };
+          return { ...defItem, _area: area, _unit: unit, imageUri: defItem.imageUrl || null };
         })
       );
       await storeData(saveKey, {
@@ -267,155 +296,155 @@ const InspectionSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
     `;
   };
 
+  // ── Shared helper: build the full reportData object from current state ─────
+  const buildReportData = async () => {
+    const deficienciesArray: any[] = [];
+    const buildingName = property.name || buildingId || 'B1';
+
+    if (mergedDeficiencies.length > 0) {
+      for (let i = 0; i < mergedDeficiencies.length; i++) {
+        const defItem = mergedDeficiencies[i];
+
+        // Convert local image to base64
+        let imageBase64: string | null = null;
+        const cloudinaryUrl = defItem.imageUrl || null;
+
+        if (defItem.imageUri && Platform.OS !== 'web') {
+          try {
+            const fileInfo = await FileSystem.getInfoAsync(defItem.imageUri);
+            if (fileInfo.exists) {
+              const base64 = await FileSystem.readAsStringAsync(defItem.imageUri, {
+                encoding: FileSystem.EncodingType.Base64,
+              });
+              if (base64 && base64.length > 100) {
+                imageBase64 = `data:image/jpeg;base64,${base64}`;
+              }
+            }
+          } catch (imgError) {
+            console.error('Error converting image to base64:', imgError);
+          }
+        }
+
+        const finalImageUri = imageBase64 || cloudinaryUrl || null;
+        // Use per-deficiency saved area (_area) if available (set when continuing inspection),
+        // otherwise fall back to the current session's area from inspectionData.
+        const inspectionArea: string = defItem._area
+          || (inspectionData.isOutsideInspection
+            ? 'Outside'
+            : (inspectionData.location === 'Inside' ? 'Inside' : 'Units'));
+        const isGC = !!(defItem as any).isGeneralComment;
+        // Use per-deficiency saved unit (_unit) if available, otherwise compute for current session
+        const defUnit: string = defItem._unit !== undefined
+          ? defItem._unit
+          : ((inspectionArea === 'Inside' || inspectionArea === 'Outside')
+            ? '-'
+            : (selectedUnits.join(', ') || 'Unit Multiple'));
+
+        deficienciesArray.push({
+          id: `${i + 1}`,
+          deficiencyQRId: defItem.deficiencyQRId || `QR-${Math.floor(10000000 + Math.random() * 90000000)}`,
+          building: buildingName,
+          unit: defUnit,
+          room: defItem.location || 'Multiple',
+          area: inspectionArea,
+          isGeneralComment: isGC,
+          deficiencyName: isGC ? 'General Comment' : (defItem.deficiency.name || 'Deficiency'),
+          nspireCode: isGC ? '-' : (defItem.deficiency.code || 'U-1'),
+          codeReference: isGC ? '' : (defItem.deficiency.codeReference || ''),
+          deficiencyDetails: isGC ? '-' : (defItem.deficiency.detail || 'Damaged or vandalized'),
+          comments: defItem.note || (isGC ? '' : (defItem.deficiency.aiAnalysis || 'AI analyzed')),
+          note: defItem.note || '',
+          deductionPts: isGC ? 0 : 3,
+          repeatIndicator: false,
+          severity: isGC ? '-' : (defItem.deficiency.severity || defItem.deficiency.aiSeverity || 'Moderate'),
+          inspectedDate: inspectionDate,
+          inspectedTime: new Date().toLocaleTimeString(),
+          inspectorId: 'INS-001',
+          imageUri: finalImageUri,
+          status: 'Open' as const,
+        });
+      }
+    }
+
+    const defCountsCalc = {
+      lifeThreadening: deficienciesArray.filter(d => d.severity === 'Life-Threatening').length,
+      severe: deficienciesArray.filter(d => d.severity === 'Severe').length,
+      moderate: deficienciesArray.filter(d => d.severity === 'Moderate').length,
+      low: deficienciesArray.filter(d => d.severity === 'Low').length,
+    };
+    const areaKey = inspectionData.isOutsideInspection ? 'Outside' : (inspectionData.location === 'Inside' ? 'Inside' : 'Units');
+
+    return {
+      reportId: inspectionId,
+      version: '1.0',
+      generatedAt: new Date().toISOString(),
+      metadata: {
+        inspectionNo: inspectionId,
+        inspectionType: 'General NSPIRE' as const,
+        escortName: 'Property Manager',
+        propertyAddress: property.address || '',
+        propertyName: property.name || 'Property',
+        propertyId: property._id || property.id || 'PROP-001',
+        startDate: inspectionDate,
+        startTime: '09:00 AM',
+        endDate: inspectionDate,
+        endTime: '05:00 PM',
+        reportCreatedDate: inspectionDate,
+        preliminaryScore: preliminaryScore,
+        finalScore: finalScore,
+        calculatedScore: calculatedScore,
+        healthSafetyThreshold: 60,
+        physicalConditionThreshold: 60,
+        inspectorName: 'Current User',
+        inspectorId: 'INS-001',
+        buildingName: buildingName,
+        inspectedUnits: selectedUnits.length > 0 ? selectedUnits : undefined,
+      },
+      inspectionData: [
+        { type: 'Building' as const, propertyTotal: property.buildings || property.totalBuildings || 1, sampleSize: 1, totalUnitsInspected: 1 },
+        { type: 'Unit' as const, propertyTotal: property.units || property.totalUnits || selectedUnits.length || 1, sampleSize: selectedUnits.length || 1, totalUnitsInspected: selectedUnits.length || 1 },
+      ],
+      occupancyInfo: {
+        totalUnits: property.totalUnits || selectedUnits.length,
+        occupiedUnits: property.totalUnits || selectedUnits.length,
+        vacantUnits: 0,
+        occupancyRate: 100,
+      },
+      summary: {
+        lifeThreatening: defCountsCalc.lifeThreadening,
+        severe: defCountsCalc.severe,
+        moderate: defCountsCalc.moderate,
+        low: defCountsCalc.low,
+        total: deficienciesArray.length,
+        byBuilding: { [buildingName]: deficienciesArray.length },
+        byCategory: { [areaKey]: deficienciesArray.length },
+        repeatDeficiencies: 0,
+        newDeficiencies: deficienciesArray.length,
+      },
+      categoryBreakdown: [{
+        category: areaKey,
+        nspireSection: 'U-1',
+        deficiencyCount: deficienciesArray.length,
+        totalDeductions: deficienciesArray.length * 3,
+        lifeThreatening: defCountsCalc.lifeThreadening,
+        severe: defCountsCalc.severe,
+        moderate: defCountsCalc.moderate,
+        low: defCountsCalc.low,
+      }],
+      deficiencies: deficienciesArray,
+      generalComments: `${deficienciesArray.length} deficiencies analyzed with AI.`,
+      certification: {
+        certifiedBy: 'Current User',
+        certificationDate: inspectionDate,
+        certificationStatement: 'I certify this inspection was conducted per INSPIRE standards.',
+      },
+    };
+  };
+
   const handleExportPDF = async () => {
     setExportingPDF(true);
-
     try {
-      // Prepare deficiencies array - handle multiple deficiencies
-      const deficienciesArray = [];
-
-      if (mergedDeficiencies.length > 0) {
-        // Multiple deficiencies (includes previously saved + newly added)
-        for (let i = 0; i < mergedDeficiencies.length; i++) {
-          const defItem = mergedDeficiencies[i];
-
-          // Convert local image to base64 for PDF
-          let imageBase64: string | null = null;
-          const cloudinaryUrl = defItem.imageUrl || null;
-          
-          if (defItem.imageUri && Platform.OS !== 'web') {
-            try {
-              // Check if file exists before trying to read
-              const fileInfo = await FileSystem.getInfoAsync(defItem.imageUri);
-              if (fileInfo.exists) {
-                const base64 = await FileSystem.readAsStringAsync(defItem.imageUri, {
-                  encoding: FileSystem.EncodingType.Base64,
-                });
-                if (base64 && base64.length > 100) {
-                  imageBase64 = `data:image/jpeg;base64,${base64}`;
-                  console.log(`Image ${i + 1} converted to base64 (${Math.round(base64.length / 1024)}KB)`);
-                }
-              } else {
-                console.log(`Local image file not found: ${defItem.imageUri.substring(0, 60)}...`);
-              }
-            } catch (imgError) {
-              console.error('Error converting image to base64:', imgError);
-            }
-          }
-          
-          // Use base64 if available, otherwise use Cloudinary URL for the enhanced PDF service to fetch
-          const finalImageUri = imageBase64 || cloudinaryUrl || null;
-
-          // Determine the inspectable area (Outside / Inside / Units)
-          const inspectionArea: string = inspectionData.isOutsideInspection
-            ? 'Outside'
-            : (inspectionData.location === 'Inside' ? 'Inside' : 'Units');
-
-          const isGC = !!(defItem as any).isGeneralComment;
-          // For Inside/Outside (building-level) inspections, do not assign unit numbers
-          // so deficiencies are correctly grouped under the building in the report
-          const defUnit = (inspectionArea === 'Inside' || inspectionArea === 'Outside')
-            ? '-'
-            : (selectedUnits.join(', ') || 'Unit Multiple');
-          deficienciesArray.push({
-            id: `${i + 1}`,
-            deficiencyQRId: defItem.deficiencyQRId || `QR-${Math.floor(10000000 + Math.random() * 90000000)}`,
-            building: buildingId || 'B1',
-            unit: defUnit,
-            room: defItem.location || 'Multiple',
-            area: inspectionArea,
-            isGeneralComment: isGC,
-            deficiencyName: isGC ? 'General Comment' : (defItem.deficiency.name || 'Deficiency'),
-            nspireCode: isGC ? '-' : (defItem.deficiency.code || 'U-1'),
-            codeReference: isGC ? '' : (defItem.deficiency.codeReference || ''),
-            deficiencyDetails: isGC ? '-' : (defItem.deficiency.detail || 'Damaged or vandalized'),
-            comments: defItem.note || (isGC ? '' : (defItem.deficiency.aiAnalysis || 'AI analyzed')),
-            note: defItem.note || '',
-            deductionPts: isGC ? 0 : 3,
-            repeatIndicator: false,
-            severity: isGC ? '-' : (defItem.deficiency.severity || defItem.deficiency.aiSeverity || 'Moderate'),
-            inspectedDate: inspectionDate,
-            inspectedTime: new Date().toLocaleTimeString(),
-            inspectorId: 'INS-001',
-            imageUri: finalImageUri, // base64 data URI or Cloudinary URL
-            status: 'Open' as const,
-          });
-        }
-      }
-
-      const defCountsCalc = {
-        lifeThreadening: deficienciesArray.filter(d => d.severity === 'Life-Threatening').length,
-        severe: deficienciesArray.filter(d => d.severity === 'Severe').length,
-        moderate: deficienciesArray.filter(d => d.severity === 'Moderate').length,
-        low: deficienciesArray.filter(d => d.severity === 'Low').length,
-      };
-
-      const reportData: any = {
-        reportId: inspectionId,
-        version: '1.0',
-        generatedAt: new Date().toISOString(),
-        metadata: {
-          inspectionNo: inspectionId,
-          inspectionType: 'General NSPIRE' as const,
-          escortName: 'Property Manager',
-          propertyAddress: property.address || '',
-          propertyName: property.name || 'Golden Town',
-          propertyId: property._id || property.id || 'PROP-001',
-          startDate: inspectionDate,
-          startTime: '09:00 AM',
-          endDate: inspectionDate,
-          endTime: '05:00 PM',
-          reportCreatedDate: inspectionDate,
-          preliminaryScore: preliminaryScore,
-          finalScore: finalScore,
-          calculatedScore: calculatedScore,
-          healthSafetyThreshold: 60,
-          physicalConditionThreshold: 60,
-          inspectorName: 'Current User',
-          inspectorId: 'INS-001',
-          buildingName: buildingId || undefined,
-          inspectedUnits: selectedUnits.length > 0 ? selectedUnits : undefined,
-        },
-        inspectionData: [
-          { type: 'Building' as const, propertyTotal: property.buildings || property.totalBuildings || 1, sampleSize: 1, totalUnitsInspected: 1 },
-          { type: 'Unit' as const, propertyTotal: property.units || property.totalUnits || selectedUnits.length || 1, sampleSize: selectedUnits.length || 1, totalUnitsInspected: selectedUnits.length || 1 },
-        ],
-        occupancyInfo: {
-          totalUnits: property.totalUnits || selectedUnits.length,
-          occupiedUnits: property.totalUnits || selectedUnits.length,
-          vacantUnits: 0,
-          occupancyRate: 100,
-        },
-        summary: {
-          lifeThreatening: defCountsCalc.lifeThreadening,
-          severe: defCountsCalc.severe,
-          moderate: defCountsCalc.moderate,
-          low: defCountsCalc.low,
-          total: deficienciesArray.length,
-          byBuilding: { [buildingId || 'B1']: deficienciesArray.length },
-          byCategory: { [inspectionData.isOutsideInspection ? 'Outside' : (inspectionData.location === 'Inside' ? 'Inside' : 'Units')]: deficienciesArray.length },
-          repeatDeficiencies: 0,
-          newDeficiencies: deficienciesArray.length,
-        },
-        categoryBreakdown: [{
-          category: inspectionData.isOutsideInspection ? 'Outside' : (inspectionData.location === 'Inside' ? 'Inside' : 'Units'),
-          nspireSection: 'U-1',
-          deficiencyCount: deficienciesArray.length,
-          totalDeductions: deficienciesArray.length * 3,
-          lifeThreatening: defCountsCalc.lifeThreadening,
-          severe: defCountsCalc.severe,
-          moderate: defCountsCalc.moderate,
-          low: defCountsCalc.low,
-        }],
-        deficiencies: deficienciesArray,
-        generalComments: `${deficienciesArray.length} deficiencies analyzed with AI.`,
-        certification: {
-          certifiedBy: 'Current User',
-          certificationDate: inspectionDate,
-          certificationStatement: 'I certify this inspection was conducted per INSPIRE standards.',
-        },
-      };
-
+      const reportData = await buildReportData();
       const result = await enhancedNspirePDFService.generateEnhancedPDF(reportData, {
         includeImages: true,
         imageQuality: 'high',
@@ -437,9 +466,8 @@ const InspectionSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
 
       const successTitle = Platform.OS === 'web' ? 'Report Ready' : 'PDF Downloaded';
       const successMsg = Platform.OS === 'web'
-        ? 'Report opened in a new tab. Use your browser\'s print dialog to save as PDF.'
+        ? "Report opened in a new tab. Use your browser's print dialog to save as PDF."
         : 'Report downloaded successfully!';
-
       Alert.alert(successTitle, successMsg, [
         { text: 'Close', style: 'cancel' },
         { text: 'Go to Dashboard', onPress: () => navigation.reset({ index: 0, routes: [{ name: 'Dashboard' as never }] }) },
@@ -448,6 +476,63 @@ const InspectionSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
       Alert.alert('Error', `Failed to generate PDF: ${error.message || 'Unknown error'}`);
     } finally {
       setExportingPDF(false);
+    }
+  };
+
+  const handleExportHTML = async () => {
+    setExportingHTML(true);
+    try {
+      const reportData = await buildReportData();
+      const htmlContent = enhancedNspirePDFService.generateEnhancedHTMLPreview(reportData, {
+        includeImages: true,
+        imageQuality: 'high',
+        colorCodingSeverity: true,
+        includeSummaryPage: true,
+        includeDetailedDeficiencies: true,
+        includeCertification: true,
+        pageSize: 'letter',
+        orientation: 'portrait',
+      });
+
+      if (Platform.OS === 'web') {
+        // On web: open in a new tab
+        const win = (window as any).open('', '_blank') as Window | null;
+        if (win) {
+          win.document.write(htmlContent);
+          win.document.close();
+        } else {
+          const blob = new Blob([htmlContent], { type: 'text/html' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `NSPIRE-Report-${reportData.metadata.inspectionNo}.html`;
+          a.click();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+        Alert.alert('HTML Report Ready', 'Report opened in a new browser tab.');
+      } else {
+        // On native: save to a temp file and share
+        const fileName = `NSPIRE-Report-${reportData.metadata.inspectionNo || Date.now()}.html`;
+        const filePath = (FileSystem.cacheDirectory || '') + fileName;
+        await FileSystem.writeAsStringAsync(filePath, htmlContent, {
+          encoding: FileSystem.EncodingType.UTF8,
+        });
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(filePath, {
+            mimeType: 'text/html',
+            dialogTitle: 'NSPIRE Inspection Report (HTML)',
+            UTI: 'public.html',
+          });
+        }
+        Alert.alert('HTML Exported', 'HTML report file shared successfully!', [
+          { text: 'Close', style: 'cancel' },
+          { text: 'Go to Dashboard', onPress: () => navigation.reset({ index: 0, routes: [{ name: 'Dashboard' as never }] }) },
+        ], { cancelable: true });
+      }
+    } catch (error: any) {
+      Alert.alert('Error', `Failed to generate HTML: ${error.message || 'Unknown error'}`);
+    } finally {
+      setExportingHTML(false);
     }
   };
 
@@ -493,6 +578,21 @@ const InspectionSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
               <>
                 <Ionicons name="download-outline" size={20} color="#FFFFFF" />
                 <Text style={styles.exportButtonText}>Export PDF</Text>
+              </>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.htmlButton}
+            onPress={handleExportHTML}
+            disabled={exportingHTML}
+          >
+            {exportingHTML ? (
+              <ActivityIndicator color="#0E7490" />
+            ) : (
+              <>
+                <Ionicons name="code-slash-outline" size={20} color="#0E7490" />
+                <Text style={styles.htmlButtonText}>Export HTML</Text>
               </>
             )}
           </TouchableOpacity>
@@ -829,6 +929,22 @@ const styles = StyleSheet.create({
   },
   exportButtonText: {
     color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  htmlButton: {
+    borderWidth: 2,
+    borderColor: '#0E7490',
+    borderRadius: 12,
+    paddingVertical: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 10,
+  },
+  htmlButtonText: {
+    color: '#0E7490',
     fontSize: 16,
     fontWeight: '700',
   },

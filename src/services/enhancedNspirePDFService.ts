@@ -345,25 +345,45 @@ function generateEnhancedDeficiencyTable(deficiencies: DeficiencyEntry[], imageM
     return count > 0;
   });
 
-  // Group deficiencies by building + unit
-  // Inside and Outside inspections are building-level — group under "Building - {building}"
-  // Unit inspections are grouped under "Unit - {unit}"
+  // Group deficiencies by section:
+  // - Inside → "Inside (Building - {building})"
+  // - Outside → "Outside (Building - {building})"
+  // - Units → "Units (Unit - {unit} / Building - {building})"
+  // Inside and Outside sections do NOT merge with unit sections.
   interface GroupedDef { def: DeficiencyEntry; isRepeat: boolean; }
   const groups = new Map<string, GroupedDef[]>();
   deficiencies.forEach((def, idx) => {
     const building = def.building || 'Building A';
     const unit = def.unit && def.unit !== '-' ? def.unit : '';
     const area = def.area || '';
-    const isBuildingLevel = area === 'Inside' || area === 'Outside' || !unit;
-    const groupKey = (def as any).isGeneralComment
-      ? 'General Comment'
-      : (isBuildingLevel ? `Building - ${building}` : `Unit - ${unit}`);
+
+    let groupKey: string;
+    if ((def as any).isGeneralComment) {
+      groupKey = 'General Comment';
+    } else if (area === 'Inside') {
+      groupKey = `Inside (Building - ${building})`;
+    } else if (area === 'Outside') {
+      groupKey = `Outside (Building - ${building})`;
+    } else if (unit) {
+      groupKey = `Units (Unit - ${unit} / Building - ${building})`;
+    } else {
+      groupKey = `Building - ${building}`;
+    }
+
     if (!groups.has(groupKey)) groups.set(groupKey, []);
     groups.get(groupKey)!.push({ def, isRepeat: def.repeatIndicator || repeatFlags[idx] });
   });
 
+  // Sort groups: Inside first, then Outside, then Units (sorted by unit name), then others
+  const sortedGroups = new Map<string, GroupedDef[]>();
+  const insideKeys = Array.from(groups.keys()).filter(k => k.startsWith('Inside'));
+  const outsideKeys = Array.from(groups.keys()).filter(k => k.startsWith('Outside'));
+  const unitKeys = Array.from(groups.keys()).filter(k => k.startsWith('Units')).sort();
+  const otherKeys = Array.from(groups.keys()).filter(k => !k.startsWith('Inside') && !k.startsWith('Outside') && !k.startsWith('Units'));
+  [...insideKeys, ...outsideKeys, ...unitKeys, ...otherKeys].forEach(k => sortedGroups.set(k, groups.get(k)!));
+
   let rows = '';
-  groups.forEach((items, groupKey) => {
+  sortedGroups.forEach((items, groupKey) => {
     rows += `<tr class="gh"><td colspan="7">${esc(groupKey)}</td></tr>\n`;
     items.forEach(({ def, isRepeat }) => {
       // Check if imageUri is already a base64 data URI (use directly) or look up from the preloaded map
