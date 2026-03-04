@@ -840,11 +840,11 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               <Ionicons
                 name="document-text-outline"
                 size={18}
-                color={!selectedDeficiency ? '#9CA3AF' : '#FFFFFF'}
+                color={'#FFFFFF'}
                 style={{ marginRight: 8 }}
               />
               <Text style={[styles.codeRefButtonText, !selectedDeficiency && styles.codeRefButtonTextDisabled]}>
-                CODE OF REFERENCE
+                How to Inspect (IRC, IBU, Local)
               </Text>
             </TouchableOpacity>
             {!selectedDeficiency && (
@@ -1092,64 +1092,64 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         onRequestClose={() => setShowDeficiencyPicker(false)}
       >
         <ModalZoomWrapper>
-        <View style={styles.pickerModalOverlay}>
-          <View style={styles.pickerModalContent}>
-            <View style={styles.pickerHeader}>
-              <Text style={styles.pickerTitle}>
-                {itemHasSubcategories ? 'Select Deficiency Detail' : 'Select Deficiency'}
-              </Text>
-              <TouchableOpacity
-                onPress={() => setShowDeficiencyPicker(false)}
-                style={styles.pickerCloseButton}
-              >
-                <Ionicons name="close" size={24} color="#666666" />
-              </TouchableOpacity>
-            </View>
-            <Text style={styles.pickerSubtitle}>
-              {availableDeficiencies.length} detail{availableDeficiencies.length !== 1 ? 's' : ''} available
-            </Text>
-            <ScrollView style={styles.pickerList} showsVerticalScrollIndicator={true}>
-              {availableDeficiencies.map((deficiency, index) => (
+          <View style={styles.pickerModalOverlay}>
+            <View style={styles.pickerModalContent}>
+              <View style={styles.pickerHeader}>
+                <Text style={styles.pickerTitle}>
+                  {itemHasSubcategories ? 'Select Deficiency Detail' : 'Select Deficiency'}
+                </Text>
                 <TouchableOpacity
-                  key={deficiency.id}
-                  style={[
-                    styles.pickerItem,
-                    selectedDeficiency?.id === deficiency.id && styles.pickerItemSelected
-                  ]}
-                  onPress={() => handleSelectDeficiency(deficiency)}
-                  activeOpacity={0.7}
+                  onPress={() => setShowDeficiencyPicker(false)}
+                  style={styles.pickerCloseButton}
                 >
-                  <View style={styles.pickerItemHeader}>
-                    <Text style={[
-                      styles.pickerItemText,
-                      selectedDeficiency?.id === deficiency.id && styles.pickerItemTextSelected
-                    ]}>
-                      {deficiency.name}
-                    </Text>
-                    {selectedDeficiency?.id === deficiency.id && (
-                      <Ionicons name="checkmark-circle" size={20} color="#0E7490" />
-                    )}
-                  </View>
-                  <Text style={styles.pickerItemDetail} numberOfLines={2}>
-                    {deficiency.detail}
-                  </Text>
-                  <View style={styles.pickerItemMeta}>
-                    <View style={[
-                      styles.severityBadge,
-                      deficiency.severity === 'Life-Threatening' && styles.severityLifeThreatening,
-                      deficiency.severity === 'Severe' && styles.severitySevere,
-                      deficiency.severity === 'Moderate' && styles.severityModerate,
-                      deficiency.severity === 'Low' && styles.severityLow,
-                    ]}>
-                      <Text style={styles.severityText}>{deficiency.severity}</Text>
-                    </View>
-                    <Text style={styles.repairByText}>Repair: {deficiency.repairBy}</Text>
-                  </View>
+                  <Ionicons name="close" size={24} color="#666666" />
                 </TouchableOpacity>
-              ))}
-            </ScrollView>
+              </View>
+              <Text style={styles.pickerSubtitle}>
+                {availableDeficiencies.length} detail{availableDeficiencies.length !== 1 ? 's' : ''} available
+              </Text>
+              <ScrollView style={styles.pickerList} showsVerticalScrollIndicator={true}>
+                {availableDeficiencies.map((deficiency, index) => (
+                  <TouchableOpacity
+                    key={deficiency.id}
+                    style={[
+                      styles.pickerItem,
+                      selectedDeficiency?.id === deficiency.id && styles.pickerItemSelected
+                    ]}
+                    onPress={() => handleSelectDeficiency(deficiency)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.pickerItemHeader}>
+                      <Text style={[
+                        styles.pickerItemText,
+                        selectedDeficiency?.id === deficiency.id && styles.pickerItemTextSelected
+                      ]}>
+                        {deficiency.name}
+                      </Text>
+                      {selectedDeficiency?.id === deficiency.id && (
+                        <Ionicons name="checkmark-circle" size={20} color="#0E7490" />
+                      )}
+                    </View>
+                    <Text style={styles.pickerItemDetail} numberOfLines={2}>
+                      {deficiency.detail}
+                    </Text>
+                    <View style={styles.pickerItemMeta}>
+                      <View style={[
+                        styles.severityBadge,
+                        deficiency.severity === 'Life-Threatening' && styles.severityLifeThreatening,
+                        deficiency.severity === 'Severe' && styles.severitySevere,
+                        deficiency.severity === 'Moderate' && styles.severityModerate,
+                        deficiency.severity === 'Low' && styles.severityLow,
+                      ]}>
+                        <Text style={styles.severityText}>{deficiency.severity}</Text>
+                      </View>
+                      <Text style={styles.repairByText}>Repair: {deficiency.repairBy}</Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
           </View>
-        </View>
         </ModalZoomWrapper>
       </Modal>
 
@@ -1161,30 +1161,30 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         onRequestClose={() => setShowExpandedText(false)}
       >
         <ModalZoomWrapper>
-        <View style={styles.expandedTextOverlay}>
-          <View style={styles.expandedTextContent}>
-            <View style={styles.expandedTextHeader}>
-              <Text style={styles.expandedTextTitle}>{expandedTextTitle}</Text>
+          <View style={styles.expandedTextOverlay}>
+            <View style={styles.expandedTextContent}>
+              <View style={styles.expandedTextHeader}>
+                <Text style={styles.expandedTextTitle}>{expandedTextTitle}</Text>
+                <TouchableOpacity
+                  onPress={() => setShowExpandedText(false)}
+                  style={styles.expandedTextCloseButton}
+                >
+                  <Ionicons name="close" size={24} color="#666666" />
+                </TouchableOpacity>
+              </View>
+              <ScrollView style={styles.expandedTextScrollView} showsVerticalScrollIndicator={true}>
+                <Text style={styles.expandedTextBody} selectable={true}>
+                  {expandedTextContent || 'No content available'}
+                </Text>
+              </ScrollView>
               <TouchableOpacity
+                style={styles.expandedTextDoneButton}
                 onPress={() => setShowExpandedText(false)}
-                style={styles.expandedTextCloseButton}
               >
-                <Ionicons name="close" size={24} color="#666666" />
+                <Text style={styles.expandedTextDoneButtonText}>Done</Text>
               </TouchableOpacity>
             </View>
-            <ScrollView style={styles.expandedTextScrollView} showsVerticalScrollIndicator={true}>
-              <Text style={styles.expandedTextBody} selectable={true}>
-                {expandedTextContent || 'No content available'}
-              </Text>
-            </ScrollView>
-            <TouchableOpacity
-              style={styles.expandedTextDoneButton}
-              onPress={() => setShowExpandedText(false)}
-            >
-              <Text style={styles.expandedTextDoneButtonText}>Done</Text>
-            </TouchableOpacity>
           </View>
-        </View>
         </ModalZoomWrapper>
       </Modal>
 
@@ -1196,50 +1196,50 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         onRequestClose={() => setShowLocationPicker(false)}
       >
         <ModalZoomWrapper>
-        <View style={styles.pickerModalOverlay}>
-          <View style={styles.pickerModalContent}>
-            <View style={styles.pickerHeader}>
-              <Text style={styles.pickerTitle}>Select Location</Text>
-              <TouchableOpacity
-                onPress={() => setShowLocationPicker(false)}
-                style={styles.pickerCloseButton}
-              >
-                <Ionicons name="close" size={24} color="#666666" />
-              </TouchableOpacity>
-            </View>
-            <Text style={styles.pickerSubtitle}>
-              {OUTSIDE_LOCATION_OPTIONS.length} locations available
-            </Text>
-            <ScrollView style={styles.pickerList} showsVerticalScrollIndicator={true}>
-              {OUTSIDE_LOCATION_OPTIONS.map((locationOption, index) => (
+          <View style={styles.pickerModalOverlay}>
+            <View style={styles.pickerModalContent}>
+              <View style={styles.pickerHeader}>
+                <Text style={styles.pickerTitle}>Select Location</Text>
                 <TouchableOpacity
-                  key={index}
-                  style={[
-                    styles.pickerItem,
-                    selectedOutsideLocation === locationOption && styles.pickerItemSelected
-                  ]}
-                  onPress={() => {
-                    setSelectedOutsideLocation(locationOption);
-                    setShowLocationPicker(false);
-                  }}
-                  activeOpacity={0.7}
+                  onPress={() => setShowLocationPicker(false)}
+                  style={styles.pickerCloseButton}
                 >
-                  <View style={styles.pickerItemHeader}>
-                    <Text style={[
-                      styles.pickerItemText,
-                      selectedOutsideLocation === locationOption && styles.pickerItemTextSelected
-                    ]}>
-                      {locationOption}
-                    </Text>
-                    {selectedOutsideLocation === locationOption && (
-                      <Ionicons name="checkmark-circle" size={20} color="#0E7490" />
-                    )}
-                  </View>
+                  <Ionicons name="close" size={24} color="#666666" />
                 </TouchableOpacity>
-              ))}
-            </ScrollView>
+              </View>
+              <Text style={styles.pickerSubtitle}>
+                {OUTSIDE_LOCATION_OPTIONS.length} locations available
+              </Text>
+              <ScrollView style={styles.pickerList} showsVerticalScrollIndicator={true}>
+                {OUTSIDE_LOCATION_OPTIONS.map((locationOption, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={[
+                      styles.pickerItem,
+                      selectedOutsideLocation === locationOption && styles.pickerItemSelected
+                    ]}
+                    onPress={() => {
+                      setSelectedOutsideLocation(locationOption);
+                      setShowLocationPicker(false);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.pickerItemHeader}>
+                      <Text style={[
+                        styles.pickerItemText,
+                        selectedOutsideLocation === locationOption && styles.pickerItemTextSelected
+                      ]}>
+                        {locationOption}
+                      </Text>
+                      {selectedOutsideLocation === locationOption && (
+                        <Ionicons name="checkmark-circle" size={20} color="#0E7490" />
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
           </View>
-        </View>
         </ModalZoomWrapper>
       </Modal>
 
@@ -1251,50 +1251,50 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         onRequestClose={() => setShowInsideLocationPicker(false)}
       >
         <ModalZoomWrapper>
-        <View style={styles.pickerModalOverlay}>
-          <View style={styles.pickerModalContent}>
-            <View style={styles.pickerHeader}>
-              <Text style={styles.pickerTitle}>Select Location</Text>
-              <TouchableOpacity
-                onPress={() => setShowInsideLocationPicker(false)}
-                style={styles.pickerCloseButton}
-              >
-                <Ionicons name="close" size={24} color="#666666" />
-              </TouchableOpacity>
-            </View>
-            <Text style={styles.pickerSubtitle}>
-              {INSIDE_LOCATION_OPTIONS.length} locations available
-            </Text>
-            <ScrollView style={styles.pickerList} showsVerticalScrollIndicator={true}>
-              {INSIDE_LOCATION_OPTIONS.map((locationOption, index) => (
+          <View style={styles.pickerModalOverlay}>
+            <View style={styles.pickerModalContent}>
+              <View style={styles.pickerHeader}>
+                <Text style={styles.pickerTitle}>Select Location</Text>
                 <TouchableOpacity
-                  key={index}
-                  style={[
-                    styles.pickerItem,
-                    selectedInsideLocation === locationOption && styles.pickerItemSelected
-                  ]}
-                  onPress={() => {
-                    setSelectedInsideLocation(locationOption);
-                    setShowInsideLocationPicker(false);
-                  }}
-                  activeOpacity={0.7}
+                  onPress={() => setShowInsideLocationPicker(false)}
+                  style={styles.pickerCloseButton}
                 >
-                  <View style={styles.pickerItemHeader}>
-                    <Text style={[
-                      styles.pickerItemText,
-                      selectedInsideLocation === locationOption && styles.pickerItemTextSelected
-                    ]}>
-                      {locationOption}
-                    </Text>
-                    {selectedInsideLocation === locationOption && (
-                      <Ionicons name="checkmark-circle" size={20} color="#0E7490" />
-                    )}
-                  </View>
+                  <Ionicons name="close" size={24} color="#666666" />
                 </TouchableOpacity>
-              ))}
-            </ScrollView>
+              </View>
+              <Text style={styles.pickerSubtitle}>
+                {INSIDE_LOCATION_OPTIONS.length} locations available
+              </Text>
+              <ScrollView style={styles.pickerList} showsVerticalScrollIndicator={true}>
+                {INSIDE_LOCATION_OPTIONS.map((locationOption, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={[
+                      styles.pickerItem,
+                      selectedInsideLocation === locationOption && styles.pickerItemSelected
+                    ]}
+                    onPress={() => {
+                      setSelectedInsideLocation(locationOption);
+                      setShowInsideLocationPicker(false);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.pickerItemHeader}>
+                      <Text style={[
+                        styles.pickerItemText,
+                        selectedInsideLocation === locationOption && styles.pickerItemTextSelected
+                      ]}>
+                        {locationOption}
+                      </Text>
+                      {selectedInsideLocation === locationOption && (
+                        <Ionicons name="checkmark-circle" size={20} color="#0E7490" />
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
           </View>
-        </View>
         </ModalZoomWrapper>
       </Modal>
 
@@ -1306,50 +1306,50 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         onRequestClose={() => setShowUnitLocationPicker(false)}
       >
         <ModalZoomWrapper>
-        <View style={styles.pickerModalOverlay}>
-          <View style={styles.pickerModalContent}>
-            <View style={styles.pickerHeader}>
-              <Text style={styles.pickerTitle}>Select Location</Text>
-              <TouchableOpacity
-                onPress={() => setShowUnitLocationPicker(false)}
-                style={styles.pickerCloseButton}
-              >
-                <Ionicons name="close" size={24} color="#666666" />
-              </TouchableOpacity>
-            </View>
-            <Text style={styles.pickerSubtitle}>
-              {UNIT_LOCATION_OPTIONS.length} locations available
-            </Text>
-            <ScrollView style={styles.pickerList} showsVerticalScrollIndicator={true}>
-              {UNIT_LOCATION_OPTIONS.map((locationOption, index) => (
+          <View style={styles.pickerModalOverlay}>
+            <View style={styles.pickerModalContent}>
+              <View style={styles.pickerHeader}>
+                <Text style={styles.pickerTitle}>Select Location</Text>
                 <TouchableOpacity
-                  key={index}
-                  style={[
-                    styles.pickerItem,
-                    selectedUnitLocation === locationOption && styles.pickerItemSelected
-                  ]}
-                  onPress={() => {
-                    setSelectedUnitLocation(locationOption);
-                    setShowUnitLocationPicker(false);
-                  }}
-                  activeOpacity={0.7}
+                  onPress={() => setShowUnitLocationPicker(false)}
+                  style={styles.pickerCloseButton}
                 >
-                  <View style={styles.pickerItemHeader}>
-                    <Text style={[
-                      styles.pickerItemText,
-                      selectedUnitLocation === locationOption && styles.pickerItemTextSelected
-                    ]}>
-                      {locationOption}
-                    </Text>
-                    {selectedUnitLocation === locationOption && (
-                      <Ionicons name="checkmark-circle" size={20} color="#0E7490" />
-                    )}
-                  </View>
+                  <Ionicons name="close" size={24} color="#666666" />
                 </TouchableOpacity>
-              ))}
-            </ScrollView>
+              </View>
+              <Text style={styles.pickerSubtitle}>
+                {UNIT_LOCATION_OPTIONS.length} locations available
+              </Text>
+              <ScrollView style={styles.pickerList} showsVerticalScrollIndicator={true}>
+                {UNIT_LOCATION_OPTIONS.map((locationOption, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={[
+                      styles.pickerItem,
+                      selectedUnitLocation === locationOption && styles.pickerItemSelected
+                    ]}
+                    onPress={() => {
+                      setSelectedUnitLocation(locationOption);
+                      setShowUnitLocationPicker(false);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.pickerItemHeader}>
+                      <Text style={[
+                        styles.pickerItemText,
+                        selectedUnitLocation === locationOption && styles.pickerItemTextSelected
+                      ]}>
+                        {locationOption}
+                      </Text>
+                      {selectedUnitLocation === locationOption && (
+                        <Ionicons name="checkmark-circle" size={20} color="#0E7490" />
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
           </View>
-        </View>
         </ModalZoomWrapper>
       </Modal>
 
@@ -1383,56 +1383,56 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         onRequestClose={() => setShowCodeReference(false)}
       >
         <ModalZoomWrapper>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <View style={styles.modalTitleRow}>
-                <Ionicons name="document-text-outline" size={24} color="#0E7490" style={{ marginRight: 8 }} />
-                <Text style={styles.modalTitle}>CODE OF REFERENCE</Text>
-              </View>
-              <View style={styles.codeRefHeaderRight}>
-                {/* Font size controls */}
-                <View style={styles.fontSizePill}>
-                  <TouchableOpacity
-                    style={[styles.fontSizeBtn, codeRefFontSize <= 11 && styles.fontSizeBtnDisabled]}
-                    onPress={() => setCodeRefFontSize(s => Math.max(11, s - 2))}
-                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                  >
-                    <Text style={styles.fontSizeBtnText}>A－</Text>
-                  </TouchableOpacity>
-                  <View style={styles.fontSizeDivider} />
-                  <TouchableOpacity
-                    style={[styles.fontSizeBtn, codeRefFontSize >= 28 && styles.fontSizeBtnDisabled]}
-                    onPress={() => setCodeRefFontSize(s => Math.min(28, s + 2))}
-                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                  >
-                    <Text style={styles.fontSizeBtnText}>A＋</Text>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <View style={styles.modalTitleRow}>
+                  <Ionicons name="document-text-outline" size={24} color="#0E7490" style={{ marginRight: 8 }} />
+                  <Text style={styles.modalTitle}>How to Inspect (IRC, IBU, Local)</Text>
+                </View>
+                <View style={styles.codeRefHeaderRight}>
+                  {/* Font size controls */}
+                  <View style={styles.fontSizePill}>
+                    <TouchableOpacity
+                      style={[styles.fontSizeBtn, codeRefFontSize <= 11 && styles.fontSizeBtnDisabled]}
+                      onPress={() => setCodeRefFontSize(s => Math.max(11, s - 2))}
+                      hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                    >
+                      <Text style={styles.fontSizeBtnText}>A－</Text>
+                    </TouchableOpacity>
+                    <View style={styles.fontSizeDivider} />
+                    <TouchableOpacity
+                      style={[styles.fontSizeBtn, codeRefFontSize >= 28 && styles.fontSizeBtnDisabled]}
+                      onPress={() => setCodeRefFontSize(s => Math.min(28, s + 2))}
+                      hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                    >
+                      <Text style={styles.fontSizeBtnText}>A＋</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <TouchableOpacity onPress={() => { setShowCodeReference(false); setCodeRefFontSize(15); }} style={styles.modalCloseButton}>
+                    <Ionicons name="close" size={24} color="#6B7280" />
                   </TouchableOpacity>
                 </View>
-                <TouchableOpacity onPress={() => { setShowCodeReference(false); setCodeRefFontSize(15); }} style={styles.modalCloseButton}>
-                  <Ionicons name="close" size={24} color="#6B7280" />
+              </View>
+
+              <ScrollView
+                style={styles.modalBody}
+                showsVerticalScrollIndicator={true}
+                contentContainerStyle={{ paddingBottom: 20 }}
+              >
+                <Text style={[styles.codeReferenceText, { fontSize: codeRefFontSize, lineHeight: codeRefFontSize * 1.6 }]}>{codeReferenceContent}</Text>
+              </ScrollView>
+
+              <View style={styles.modalFooter}>
+                <TouchableOpacity
+                  style={styles.modalDoneButton}
+                  onPress={() => setShowCodeReference(false)}
+                >
+                  <Text style={styles.modalDoneButtonText}>CLOSE</Text>
                 </TouchableOpacity>
               </View>
             </View>
-
-            <ScrollView
-              style={styles.modalBody}
-              showsVerticalScrollIndicator={true}
-              contentContainerStyle={{ paddingBottom: 20 }}
-            >
-              <Text style={[styles.codeReferenceText, { fontSize: codeRefFontSize, lineHeight: codeRefFontSize * 1.6 }]}>{codeReferenceContent}</Text>
-            </ScrollView>
-
-            <View style={styles.modalFooter}>
-              <TouchableOpacity
-                style={styles.modalDoneButton}
-                onPress={() => setShowCodeReference(false)}
-              >
-                <Text style={styles.modalDoneButtonText}>CLOSE</Text>
-              </TouchableOpacity>
-            </View>
           </View>
-        </View>
         </ModalZoomWrapper>
       </Modal>
 
@@ -1822,9 +1822,12 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   codeRefButtonDisabled: {
-    backgroundColor: '#F1F5F9',
-    borderWidth: 1.5,
-    borderColor: '#E2E8F0',
+    backgroundColor: '#0E7490',
+    shadowColor: '#0E7490',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   codeRefButtonText: {
     color: '#FFFFFF',
@@ -1833,7 +1836,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   codeRefButtonTextDisabled: {
-    color: '#9CA3AF',
+    color: '#FFFFFF',
   },
   codeRefHintText: {
     marginTop: 8,

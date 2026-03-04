@@ -856,7 +856,7 @@ export default function AddPropertyScreen({
 
           {/* Import Properties from File */}
           <View style={[styles.importSection, { width: '100%', maxWidth: 600, alignSelf: 'center' }]}>
-            <Text style={styles.importTitle}>Import Properties from File</Text>
+            <Text style={styles.importTitle}>Import Properties From File</Text>
             <TouchableOpacity
               style={[styles.dropZone, isProcessingFile && { opacity: 0.7 }]}
               onPress={!isProcessingFile && !uploadedFile ? handleBrowseFiles : undefined}
@@ -1135,7 +1135,7 @@ const styles = StyleSheet.create({
   importTitle: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#0E7490',
+    color: '#DC2626',
     textAlign: 'center',
     marginBottom: 18,
   },

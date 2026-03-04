@@ -194,25 +194,42 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
 
       {/* Select All Section */}
       <View style={styles.selectAllContainer}>
-        <Text style={styles.selectAllLabel}>Quick Select:</Text>
-        <View style={styles.selectAllButtons}>
+        <View style={styles.selectAllRow}>
           <TouchableOpacity
-            style={styles.selectAllButton}
+            style={styles.selectAllItem}
             onPress={() => handleSelectAll('No OD')}
           >
-            <Text style={styles.selectAllButtonText}>All No OD</Text>
+            <Ionicons
+              name={inspectionItems.every((item) => responses[item.id] === 'No OD') ? 'checkbox' : 'square-outline'}
+              size={18}
+              color="#374151"
+              style={{ marginRight: 6 }}
+            />
+            <Text style={styles.selectAllItemText}>All OD</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.selectAllButton, styles.selectAllButtonOD]}
+            style={styles.selectAllItemCenter}
             onPress={() => handleSelectAll('OD')}
           >
-            <Text style={styles.selectAllButtonText}>All OD</Text>
+            <Ionicons
+              name={inspectionItems.every((item) => responses[item.id] === 'OD') ? 'checkbox' : 'square-outline'}
+              size={18}
+              color="#DC2626"
+              style={{ marginRight: 3 }}
+            />
+            <Text style={styles.observeDeficiencyText}>Observe Deficiency</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.selectAllButton, styles.selectAllButtonNA]}
+            style={styles.selectAllItem}
             onPress={() => handleSelectAll('N/A')}
           >
-            <Text style={styles.selectAllButtonText}>All N/A</Text>
+            <Ionicons
+              name={inspectionItems.every((item) => responses[item.id] === 'N/A') ? 'checkbox' : 'square-outline'}
+              size={18}
+              color="#374151"
+              style={{ marginRight: 6 }}
+            />
+            <Text style={styles.selectAllItemText}>All NA</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -225,62 +242,62 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
         {inspectionItems.map((item, index) => {
           const isGeneralComment = item.name.toLowerCase().includes('general comment');
           return (
-          <View key={item.id} style={styles.itemCard}>
-            <View style={styles.itemHeader}>
-              <View style={styles.itemNumberBadge}>
-                <Text style={styles.itemNumberText}>{index + 1}</Text>
-              </View>
-              <Text style={styles.itemName}>{item.name}</Text>
-            </View>
-            {isGeneralComment ? (
-              <TouchableOpacity
-                style={[styles.inspectionButton, responses[item.id] === 'OD' && styles.inspectionButtonDone]}
-                onPress={() => {
-                  setResponses((prev) => ({ ...prev, [item.id]: 'OD' }));
-                  navigation.navigate('DeficiencyDetail', {
-                    property,
-                    selectedUnits,
-                    buildingId,
-                    location,
-                    itemId: item.id,
-                    itemName: item.name,
-                  });
-                }}
-              >
-                <View style={styles.inspectionButtonInner}>
-                  <Ionicons
-                    name={responses[item.id] === 'OD' ? 'checkmark-circle' : 'clipboard-outline'}
-                    size={28}
-                    color={responses[item.id] === 'OD' ? '#FFFFFF' : '#0E7490'}
-                  />
-                  <Text style={[styles.inspectionButtonText, responses[item.id] === 'OD' && styles.inspectionButtonTextDone]}>
-                    {responses[item.id] === 'OD' ? 'Write Comment' : 'Inspection'}
-                  </Text>
+            <View key={item.id} style={styles.itemCard}>
+              <View style={styles.itemHeader}>
+                <View style={styles.itemNumberBadge}>
+                  <Text style={styles.itemNumberText}>{index + 1}</Text>
                 </View>
-              </TouchableOpacity>
-            ) : (
-            <View style={styles.responseButtons}>
-              <TouchableOpacity
-                style={getButtonStyle(item.id, 'No OD')}
-                onPress={() => handleResponse(item.id, item.name, 'No OD')}
-              >
-                <Text style={getButtonTextStyle(item.id, 'No OD')}>No OD</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={getButtonStyle(item.id, 'OD')}
-                onPress={() => handleResponse(item.id, item.name, 'OD')}
-              >
-                <Text style={getButtonTextStyle(item.id, 'OD')}>OD</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={getButtonStyle(item.id, 'N/A')}
-                onPress={() => handleResponse(item.id, item.name, 'N/A')}
-              >
-                <Text style={getButtonTextStyle(item.id, 'N/A')}>N/A</Text>
-              </TouchableOpacity>
+                <Text style={styles.itemName}>{item.name}</Text>
+              </View>
+              {isGeneralComment ? (
+                <TouchableOpacity
+                  style={[styles.inspectionButton, responses[item.id] === 'OD' && styles.inspectionButtonDone]}
+                  onPress={() => {
+                    setResponses((prev) => ({ ...prev, [item.id]: 'OD' }));
+                    navigation.navigate('DeficiencyDetail', {
+                      property,
+                      selectedUnits,
+                      buildingId,
+                      location,
+                      itemId: item.id,
+                      itemName: item.name,
+                    });
+                  }}
+                >
+                  <View style={styles.inspectionButtonInner}>
+                    <Ionicons
+                      name={responses[item.id] === 'OD' ? 'checkmark-circle' : 'clipboard-outline'}
+                      size={28}
+                      color={responses[item.id] === 'OD' ? '#FFFFFF' : '#0E7490'}
+                    />
+                    <Text style={[styles.inspectionButtonText, responses[item.id] === 'OD' && styles.inspectionButtonTextDone]}>
+                      {responses[item.id] === 'OD' ? 'Write Comment' : 'Inspection'}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.responseButtons}>
+                  <TouchableOpacity
+                    style={getButtonStyle(item.id, 'No OD')}
+                    onPress={() => handleResponse(item.id, item.name, 'No OD')}
+                  >
+                    <Text style={getButtonTextStyle(item.id, 'No OD')}>No OD</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={getButtonStyle(item.id, 'OD')}
+                    onPress={() => handleResponse(item.id, item.name, 'OD')}
+                  >
+                    <Text style={getButtonTextStyle(item.id, 'OD')}>OD</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={getButtonStyle(item.id, 'N/A')}
+                    onPress={() => handleResponse(item.id, item.name, 'N/A')}
+                  >
+                    <Text style={getButtonTextStyle(item.id, 'N/A')}>N/A</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
-            )}
-          </View>
           );
         })}
       </ScrollView>
@@ -293,30 +310,30 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
         onRequestClose={() => setShowDeficiencyModal(false)}
       >
         <ModalZoomWrapper>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{selectedItem?.name}</Text>
-              <TouchableOpacity onPress={() => setShowDeficiencyModal(false)}>
-                <Ionicons name="close" size={24} color="#666666" />
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>{selectedItem?.name}</Text>
+                <TouchableOpacity onPress={() => setShowDeficiencyModal(false)}>
+                  <Ionicons name="close" size={24} color="#666666" />
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.emptyState}>
+                <Ionicons name="add-circle-outline" size={80} color="#E5E5E5" />
+                <Text style={styles.emptyStateText}>
+                  No existing deficiency record for this item.
+                </Text>
+              </View>
+
+              <TouchableOpacity
+                style={styles.addNewButton}
+                onPress={handleAddNewDeficiency}
+              >
+                <Text style={styles.addNewButtonText}>ADD NEW</Text>
               </TouchableOpacity>
             </View>
-
-            <View style={styles.emptyState}>
-              <Ionicons name="add-circle-outline" size={80} color="#E5E5E5" />
-              <Text style={styles.emptyStateText}>
-                No existing deficiency record for this item.
-              </Text>
-            </View>
-
-            <TouchableOpacity
-              style={styles.addNewButton}
-              onPress={handleAddNewDeficiency}
-            >
-              <Text style={styles.addNewButtonText}>ADD NEW</Text>
-            </TouchableOpacity>
           </View>
-        </View>
         </ModalZoomWrapper>
       </Modal>
 
@@ -405,37 +422,46 @@ const styles = StyleSheet.create({
   },
   selectAllContainer: {
     backgroundColor: '#FFFFFF',
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#E5E5E5',
-  },
-  selectAllLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1A1A1A',
-    marginBottom: 12,
-  },
-  selectAllButtons: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  selectAllButton: {
-    flex: 1,
-    backgroundColor: '#0E7490',
-    paddingVertical: 10,
-    borderRadius: 8,
     alignItems: 'center',
   },
-  selectAllButtonOD: {
-    backgroundColor: '#EF4444',
+  selectAllRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
+    width: '100%',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    backgroundColor: '#FAFAFA',
   },
-  selectAllButtonNA: {
-    backgroundColor: '#6B7280',
+  selectAllItem: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  selectAllButtonText: {
-    color: '#FFFFFF',
+  selectAllItemCenter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  selectAllItemText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#374151',
+  },
+  observeDeficiencyText: {
     fontSize: 13,
     fontWeight: '600',
+    color: '#DC2626',
+    textAlign: 'center',
   },
   scrollView: {
     flex: 1,
