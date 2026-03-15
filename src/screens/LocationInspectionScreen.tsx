@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { globalInspectionProgress } from '../utils/globalState';
 import {
   View,
   Text,
@@ -37,6 +38,35 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
   const [responses, setResponses] = useState<{ [key: string]: ResponseType }>({});
   const [showDeficiencyModal, setShowDeficiencyModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState<{ id: string; name: string } | null>(null);
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  const safeLocationName = location === 'Unit' ? `Unit_${selectedUnits?.[0] || 'Unknown'}` : location;
+  const saveKey = `inspection_responses_${property?._id || property?.id || 'unknown'}_${buildingId}_${safeLocationName}`;
+
+  // Load responses from global state on mount
+  useEffect(() => {
+    try {
+      const saved = globalInspectionProgress[saveKey];
+      if (saved) {
+        setResponses(saved);
+      }
+    } catch (error) {
+      console.error('Error loading saved responses', error);
+    } finally {
+      setIsLoaded(true);
+    }
+  }, [saveKey]);
+
+  // Save responses to global state whenever they change
+  useEffect(() => {
+    if (isLoaded) {
+      try {
+        globalInspectionProgress[saveKey] = responses;
+      } catch (e) {
+        console.error('Error saving responses', e);
+      }
+    }
+  }, [responses, isLoaded, saveKey]);
 
   // Use appropriate inspection items based on location
   // Outside = OUTSIDE_ITEMS (26), Inside = INSIDE_ITEMS (35), Unit = UNIT_ITEMS (32)
@@ -56,11 +86,17 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
       return;
     }
 
+    // Eagerly set the response regardless so it auto-saves immediately
+    setResponses((prev) => ({
+      ...prev,
+      [itemId]: response,
+    }));
+
     if (response === 'OD') {
       // Show deficiency modal when OD is clicked
       setSelectedItem({ id: itemId, name: itemName });
 
-      if (itemName === 'General Comment') {
+      if (itemName.toLowerCase().includes('general comment')) {
         // Skip modal and go directly to Add New for General Comment
         navigation.navigate('DeficiencyDetail', {
           property,
@@ -73,12 +109,7 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
       } else {
         setShowDeficiencyModal(true);
       }
-    } else {
-      setResponses((prev) => ({
-        ...prev,
-        [itemId]: response,
-      }));
-    }
+    } // removed else block because we already eagerly set the response
   };
 
   const handleDeficiencyRecorded = () => {

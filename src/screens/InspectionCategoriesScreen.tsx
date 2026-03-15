@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import { globalInspectionProgress } from '../utils/globalState';
 import {
   View,
   Text,
@@ -15,7 +17,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../types/navigation';
 import { Ionicons } from '@expo/vector-icons';
-import { OUTSIDE_ITEMS, INSIDE_ITEMS, UNIT_LOCATIONS } from '../data/inspectionData';
+import { OUTSIDE_ITEMS, INSIDE_ITEMS, UNIT_ITEMS, UNIT_LOCATIONS } from '../data/inspectionData';
 
 type InspectionCategoriesScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -37,6 +39,46 @@ const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
   const [buildingName, setBuildingName] = useState(buildingId);
   const [editBuildingModalVisible, setEditBuildingModalVisible] = useState(false);
   const [tempBuildingName, setTempBuildingName] = useState(buildingId);
+
+  const [outsideProgress, setOutsideProgress] = useState(0);
+  const [insideProgress, setInsideProgress] = useState(0);
+  const [unitsProgress, setUnitsProgress] = useState(0);
+
+  useFocusEffect(
+    useCallback(() => {
+      const fetchProgress = () => {
+        try {
+          const propId = property?._id || property?.id || 'unknown';
+
+          // Outside
+          const outKey = `inspection_responses_${propId}_${buildingName}_Outside`;
+          const outData = globalInspectionProgress[outKey];
+          if (outData) setOutsideProgress(Object.keys(outData).length);
+          else setOutsideProgress(0);
+
+          // Inside
+          const inKey = `inspection_responses_${propId}_${buildingName}_Inside`;
+          const inData = globalInspectionProgress[inKey];
+          if (inData) setInsideProgress(Object.keys(inData).length);
+          else setInsideProgress(0);
+
+          // Units
+          let totalUn = 0;
+          if (selectedUnits && selectedUnits.length > 0) {
+            for (const unit of selectedUnits) {
+              const unKey = `inspection_responses_${propId}_${buildingName}_Unit_${unit}`;
+              const unData = globalInspectionProgress[unKey];
+              if (unData) totalUn += Object.keys(unData).length;
+            }
+          }
+          setUnitsProgress(totalUn);
+        } catch (e) {
+          console.error('Failed to load progress', e);
+        }
+      };
+      fetchProgress();
+    }, [property, buildingName, selectedUnits])
+  );
 
   const openBuildingEditModal = () => {
     setTempBuildingName(buildingName);
@@ -82,11 +124,6 @@ const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
     });
   };
 
-  const calculateProgress = (total: number) => {
-    // This would be calculated from actual inspection data
-    return 0;
-  };
-
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
@@ -98,8 +135,8 @@ const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
         <View style={styles.headerRight} />
       </View>
 
-      <ScrollView 
-        style={styles.scrollView} 
+      <ScrollView
+        style={styles.scrollView}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
@@ -176,10 +213,10 @@ const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
               </Text>
               <View style={styles.progressContainer}>
                 <View style={styles.progressBar}>
-                  <View style={[styles.progressFill, { width: '0%' }]} />
+                  <View style={[styles.progressFill, { width: `${Math.min(100, Math.round((outsideProgress / OUTSIDE_ITEMS.length) * 100))}%` }]} />
                 </View>
                 <Text style={styles.progressText}>
-                  0/{OUTSIDE_ITEMS.length} • 0% Complete
+                  {outsideProgress}/{OUTSIDE_ITEMS.length} • {Math.min(100, Math.round((outsideProgress / OUTSIDE_ITEMS.length) * 100))}% Complete
                 </Text>
               </View>
             </View>
@@ -204,10 +241,10 @@ const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
               </Text>
               <View style={styles.progressContainer}>
                 <View style={styles.progressBar}>
-                  <View style={[styles.progressFill, { width: '0%' }]} />
+                  <View style={[styles.progressFill, { width: `${Math.min(100, Math.round((insideProgress / INSIDE_ITEMS.length) * 100))}%` }]} />
                 </View>
                 <Text style={styles.progressText}>
-                  0/{INSIDE_ITEMS.length} • 0% Complete
+                  {insideProgress}/{INSIDE_ITEMS.length} • {Math.min(100, Math.round((insideProgress / INSIDE_ITEMS.length) * 100))}% Complete
                 </Text>
               </View>
             </View>
@@ -232,10 +269,14 @@ const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
               </Text>
               <View style={styles.progressContainer}>
                 <View style={styles.progressBar}>
-                  <View style={[styles.progressFill, { width: '0%' }]} />
+                  {(() => {
+                    const totalPossible = (selectedUnits ? selectedUnits.length : 1) * UNIT_ITEMS.length;
+                    const pct = Math.min(100, Math.round((unitsProgress / totalPossible) * 100)) || 0;
+                    return <View style={[styles.progressFill, { width: `${pct}%` }]} />;
+                  })()}
                 </View>
                 <Text style={styles.progressText}>
-                  0/32 • 0% Complete
+                  {unitsProgress}/{(selectedUnits ? selectedUnits.length : 1) * UNIT_ITEMS.length} • {Math.min(100, Math.round((unitsProgress / ((selectedUnits ? selectedUnits.length : 1) * UNIT_ITEMS.length)) * 100)) || 0}% Complete
                 </Text>
               </View>
             </View>
