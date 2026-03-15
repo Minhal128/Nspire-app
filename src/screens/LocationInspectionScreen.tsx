@@ -205,7 +205,7 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
               color="#374151"
               style={{ marginRight: 6 }}
             />
-            <Text style={styles.selectAllItemText}>All OD</Text>
+            <Text style={styles.selectAllItemText}>All No OD</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.selectAllItemCenter}
@@ -271,7 +271,7 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
                       color={responses[item.id] === 'OD' ? '#FFFFFF' : '#0E7490'}
                     />
                     <Text style={[styles.inspectionButtonText, responses[item.id] === 'OD' && styles.inspectionButtonTextDone]}>
-                      {responses[item.id] === 'OD' ? 'Write Comment' : 'Inspection'}
+                      Write Comment
                     </Text>
                   </View>
                 </TouchableOpacity>

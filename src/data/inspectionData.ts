@@ -66,16 +66,22 @@ export const OUTSIDE_ITEMS: InspectionItem[] = [
 ];
 
 // Inside items generated directly from unitDeficiencyMapping.ts (35 categories)
-export const INSIDE_ITEMS: InspectionItem[] = ALL_UNIT_CATEGORIES.map((cat, index) => ({
-  id: String(index + 1),
-  name: cat.category.replace(/^\d+\.\s*/, '') // Remove number prefix like "1. "
-}));
+export const INSIDE_ITEMS: InspectionItem[] = ALL_UNIT_CATEGORIES.map((cat, index) => {
+  let name = cat.category.replace(/^\d+\.\s*/, ''); // Remove number prefix like "1. "
+  if (name.toLowerCase().includes('general comment')) {
+    name = 'General Comment';
+  }
+  return { id: String(index + 1), name };
+});
 
 // Unit items generated from insideDeficiencyMapping.ts (32 categories)
-export const UNIT_ITEMS: InspectionItem[] = ALL_INSIDE_CATEGORIES.map((cat, index) => ({
-  id: String(index + 1),
-  name: cat.itemName
-}));
+export const UNIT_ITEMS: InspectionItem[] = ALL_INSIDE_CATEGORIES.map((cat, index) => {
+  let name = cat.itemName;
+  if (name.toLowerCase().includes('general comment')) {
+    name = 'General Comment';
+  }
+  return { id: String(index + 1), name };
+});
 
 export interface InspectionResponse {
   itemId: string;

@@ -140,6 +140,8 @@ interface Props {
 const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const { property, selectedUnits, buildingId, location, itemId, itemName } = route.params;
 
+  const isGeneralComment = itemName.toLowerCase().includes('general comment');
+
   // Subcategory state (for items like Door in Outside section)
   const [showSubcategoryPicker, setShowSubcategoryPicker] = useState(false);
   const [availableSubcategories, setAvailableSubcategories] = useState<{ id: string; name: string }[]>([]);
