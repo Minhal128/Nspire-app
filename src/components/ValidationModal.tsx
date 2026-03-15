@@ -8,6 +8,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import ModalZoomWrapper from './ModalZoomWrapper';
 
 interface ValidationModalProps {
   visible: boolean;
@@ -53,6 +54,7 @@ export default function ValidationModal({
       visible={visible}
       onRequestClose={onClose}
     >
+      <ModalZoomWrapper>
       <View style={styles.overlay}>
         <View style={styles.modalContainer}>
           <View style={styles.iconContainer}>
@@ -67,6 +69,7 @@ export default function ValidationModal({
           </TouchableOpacity>
         </View>
       </View>
+      </ModalZoomWrapper>
     </Modal>
   );
 }

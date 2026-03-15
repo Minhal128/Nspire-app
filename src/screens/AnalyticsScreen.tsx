@@ -572,9 +572,18 @@ export default function AnalyticsScreen({ navigation, onMenuPress }: AnalyticsSc
                     </body>
                   </html>
                 `;
-                  const { uri } = await Print.printToFileAsync({ html: htmlContent });
-                  if (await Sharing.isAvailableAsync()) {
-                    await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: 'Analytics Report' });
+                  if (Platform.OS === 'web') {
+                    const win = window.open('', '_blank');
+                    if (win) {
+                      win.document.write(htmlContent);
+                      win.document.close();
+                      setTimeout(() => win.print(), 600);
+                    }
+                  } else {
+                    const { uri } = await Print.printToFileAsync({ html: htmlContent });
+                    if (await Sharing.isAvailableAsync()) {
+                      await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: 'Analytics Report' });
+                    }
                   }
                 } catch (error) {
                   console.error('PDF Export error:', error);

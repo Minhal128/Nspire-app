@@ -28,6 +28,7 @@ import {
   isUnitLocation
 } from '../data/deficiencyMapping';
 import { cloudinaryService } from '../services/cloudinaryService';
+import ModalZoomWrapper from '../components/ModalZoomWrapper';
 import { geminiService } from '../services/openaiService';
 import { ScoringResult, calculateUnitScore, POSSIBLE_SCORE } from '../utils/scoringCalculations';
 import { UNIT_TOTAL_POSSIBLE_POINTS } from '../data/insideDeficiencyMapping';
@@ -181,6 +182,11 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const [showInsideLocationPicker, setShowInsideLocationPicker] = useState(false);
   const [selectedUnitLocation, setSelectedUnitLocation] = useState<string>(UNIT_LOCATION_OPTIONS[0]);
   const [showUnitLocationPicker, setShowUnitLocationPicker] = useState(false);
+
+  // Code Reference modal state
+  const [showCodeReference, setShowCodeReference] = useState(false);
+  const [codeReferenceContent, setCodeReferenceContent] = useState('');
+  const [codeRefFontSize, setCodeRefFontSize] = useState(15);
 
   // Processing modal state
   const [showProcessingModal, setShowProcessingModal] = useState(false);
@@ -427,7 +433,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     setSelectedSubcategory(subcategory);
     // Load deficiencies for selected subcategory
     // Pass location so Inside uses unitDeficiencyMapping data instead of falling through to Outside data
-    const subDeficiencies = getDeficienciesForSubcategory(subcategory.name, location);
+    const subDeficiencies = getDeficienciesForSubcategory(subcategory.name, location, itemName);
     setAvailableDeficiencies(subDeficiencies.deficiencies);
     setShowSubcategoryPicker(false);
     // Reset deficiency selection
@@ -601,9 +607,9 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               }),
             },
             deficiencyQRId: generateDeficiencyQRId(), // Unique QR-XXXXX ID per image
-            imageUrl: uploadResult.secure_url, // Cloudinary URL for storage
+            imageUrl: uploadResult.success ? uploadResult.url : null, // Cloudinary URL for storage
             imageUri: imageUri, // Local URI for display
-            note: note || aiAnalysis.analysis,
+            note: note || '',
             location: isOutsideLocation ? selectedOutsideLocation : location,
             itemName,
             itemId,
@@ -710,104 +716,159 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        {/* DEFICIENCY SELECTED - First dropdown for all items */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>DEFICIENCY SELECTED</Text>
-          {itemHasSubcategories ? (
-            // For items with subcategories: Pick subcategory first
-            <TouchableOpacity
-              style={[styles.dropdown, selectedSubcategory && styles.dropdownSelected]}
-              onPress={() => setShowSubcategoryPicker(true)}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.dropdownText, !selectedSubcategory && styles.placeholderText]} numberOfLines={2}>
-                {selectedSubcategory ? selectedSubcategory.name : '-- Select --'}
-              </Text>
-              <Ionicons name="chevron-down" size={20} color={selectedSubcategory ? "#0E7490" : "#666666"} />
-            </TouchableOpacity>
-          ) : (
-            // For items without subcategories: Pick deficiency directly
-            <>
+        {/* DEFICIENCY SELECTED - First dropdown for all items except General Comment */}
+        {itemName !== 'General Comment' && (
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>DEFICIENCY SELECTED</Text>
+            {itemHasSubcategories ? (
+              // For items with subcategories: Pick subcategory first
               <TouchableOpacity
-                style={[styles.dropdown, selectedDeficiency && styles.dropdownSelected]}
-                onPress={() => setShowDeficiencyPicker(true)}
+                style={[styles.dropdown, selectedSubcategory && styles.dropdownSelected]}
+                onPress={() => setShowSubcategoryPicker(true)}
                 activeOpacity={0.7}
               >
-                <Text style={[styles.dropdownText, !selectedDeficiency && styles.placeholderText]} numberOfLines={2}>
-                  {selectedDeficiency ? selectedDeficiency.name : '-- Select --'}
+                <Text style={[styles.dropdownText, !selectedSubcategory && styles.placeholderText]}>
+                  {selectedSubcategory ? selectedSubcategory.name : '-- Select --'}
                 </Text>
-                <Ionicons name="chevron-down" size={20} color={selectedDeficiency ? "#0E7490" : "#666666"} />
+                <Ionicons name="chevron-down" size={20} color={selectedSubcategory ? "#0E7490" : "#666666"} />
               </TouchableOpacity>
-              {selectedDeficiency && (
-                <TouchableOpacity style={styles.clearButton} onPress={handleClearSelection}>
-                  <Ionicons name="close-circle" size={16} color="#EF4444" />
-                  <Text style={styles.clearButtonText}>Clear Selection</Text>
+            ) : (
+              // For items without subcategories: Pick deficiency directly
+              <>
+                <TouchableOpacity
+                  style={[styles.dropdown, selectedDeficiency && styles.dropdownSelected]}
+                  onPress={() => setShowDeficiencyPicker(true)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.dropdownText, !selectedDeficiency && styles.placeholderText]}>
+                    {selectedDeficiency ? selectedDeficiency.name : '-- Select --'}
+                  </Text>
+                  <Ionicons name="chevron-down" size={20} color={selectedDeficiency ? "#0E7490" : "#666666"} />
                 </TouchableOpacity>
-              )}
-            </>
-          )}
-        </View>
+                {selectedDeficiency && (
+                  <TouchableOpacity style={styles.clearButton} onPress={handleClearSelection}>
+                    <Ionicons name="close-circle" size={16} color="#EF4444" />
+                    <Text style={styles.clearButtonText}>Clear Selection</Text>
+                  </TouchableOpacity>
+                )}
+              </>
+            )}
+          </View>
+        )}
 
         {/* DEFICIENCY DETAIL - For subcategory items: dropdown to pick deficiency; For non-subcategory items: editable display */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>DEFICIENCY DETAIL</Text>
-          {itemHasSubcategories ? (
-            // For items with subcategories: Dropdown to pick deficiency within subcategory
-            <>
-              <TouchableOpacity
-                style={[
-                  styles.dropdown,
-                  selectedDeficiency && styles.dropdownSelected,
-                  !selectedSubcategory && styles.detailBoxDisabled
-                ]}
-                onPress={() => {
-                  if (!selectedSubcategory) {
-                    Alert.alert('Select Deficiency', 'Please select a deficiency first.');
-                    return;
-                  }
-                  setShowDeficiencyPicker(true);
-                }}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.dropdownText, !selectedDeficiency && styles.placeholderText]} numberOfLines={2}>
-                  {selectedDeficiency ? (selectedDeficiency.detail || selectedDeficiency.name) : '-- Select --'}
-                </Text>
-                <Ionicons name="chevron-down" size={20} color={selectedDeficiency ? "#0E7490" : "#666666"} />
-              </TouchableOpacity>
-              {selectedDeficiency && (
-                <TouchableOpacity style={styles.clearButton} onPress={handleClearSelection}>
-                  <Ionicons name="close-circle" size={16} color="#EF4444" />
-                  <Text style={styles.clearButtonText}>Clear Selection</Text>
+        {itemName !== 'General Comment' && (
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>DEFICIENCY DETAIL</Text>
+            {itemHasSubcategories ? (
+              // For items with subcategories: Dropdown to pick deficiency within subcategory
+              <>
+                <TouchableOpacity
+                  style={[
+                    styles.dropdown,
+                    selectedDeficiency && styles.dropdownSelected,
+                    !selectedSubcategory && styles.detailBoxDisabled
+                  ]}
+                  onPress={() => {
+                    if (!selectedSubcategory) {
+                      Alert.alert('Select Deficiency', 'Please select a deficiency first.');
+                      return;
+                    }
+                    setShowDeficiencyPicker(true);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.dropdownText, !selectedDeficiency && styles.placeholderText]}>
+                    {selectedDeficiency ? (selectedDeficiency.detail || selectedDeficiency.name) : '-- Select --'}
+                  </Text>
+                  <Ionicons name="chevron-down" size={20} color={selectedDeficiency ? "#0E7490" : "#666666"} />
                 </TouchableOpacity>
-              )}
-            </>
-          ) : (
-            // For items without subcategories: Editable detail with tap-to-expand
-            <TouchableOpacity
-              style={[styles.criteriaDropdownBox, selectedDeficiency && styles.criteriaDropdownBoxActive]}
-              onPress={() => handleShowExpandedText('Deficiency Detail', selectedDeficiency?.detail || customDeficiencyDetail || '')}
-              activeOpacity={0.8}
-            >
-              <TextInput
-                style={[styles.criteriaDropdownTextEditable, !selectedDeficiency && !customDeficiencyDetail && styles.placeholderText]}
-                placeholder="-- Select deficiency first or type here --"
-                placeholderTextColor="#9CA3AF"
-                value={customDeficiencyDetail || selectedDeficiency?.detail || ''}
-                onChangeText={(text) => {
-                  setCustomDeficiencyDetail(text);
-                  setIsCustomEntry(true);
-                }}
-                multiline
-                numberOfLines={4}
-              />
+                {selectedDeficiency && (
+                  <TouchableOpacity style={styles.clearButton} onPress={handleClearSelection}>
+                    <Ionicons name="close-circle" size={16} color="#EF4444" />
+                    <Text style={styles.clearButtonText}>Clear Selection</Text>
+                  </TouchableOpacity>
+                )}
+              </>
+            ) : (
+              // For items without subcategories: Editable detail with tap-to-expand
               <TouchableOpacity
-                style={styles.expandButton}
+                style={[styles.criteriaDropdownBox, selectedDeficiency && styles.criteriaDropdownBoxActive]}
                 onPress={() => handleShowExpandedText('Deficiency Detail', selectedDeficiency?.detail || customDeficiencyDetail || '')}
+                activeOpacity={0.8}
               >
-                <Ionicons name="expand-outline" size={18} color="#0E7490" />
+                <TextInput
+                  style={[styles.criteriaDropdownTextEditable, !selectedDeficiency && !customDeficiencyDetail && styles.placeholderText]}
+                  placeholder="-- Select deficiency first or type here --"
+                  placeholderTextColor="#9CA3AF"
+                  value={customDeficiencyDetail || selectedDeficiency?.detail || ''}
+                  onChangeText={(text) => {
+                    setCustomDeficiencyDetail(text);
+                    setIsCustomEntry(true);
+                  }}
+                  multiline
+                  numberOfLines={4}
+                />
+                <TouchableOpacity
+                  style={styles.expandButton}
+                  onPress={() => handleShowExpandedText('Deficiency Detail', selectedDeficiency?.detail || customDeficiencyDetail || '')}
+                >
+                  <Ionicons name="expand-outline" size={18} color="#0E7490" />
+                </TouchableOpacity>
               </TouchableOpacity>
+            )}
+
+            {/* CODE OF REFERENCE Button */}
+            <TouchableOpacity
+              style={[
+                styles.codeRefButton,
+                !selectedDeficiency ? styles.codeRefButtonDisabled : styles.codeRefButtonActive,
+                { marginTop: 16 },
+              ]}
+              onPress={() => {
+                if (!selectedDeficiency) {
+                  Alert.alert('Select a Deficiency', 'Please select a deficiency from the dropdown above to view its code reference guidelines.');
+                } else if (selectedDeficiency.codeReference) {
+                  setCodeReferenceContent(selectedDeficiency.codeReference);
+                  setShowCodeReference(true);
+                } else {
+                  Alert.alert('No Reference Available', `No code reference guidelines are available for "${selectedDeficiency.name}".`);
+                }
+              }}
+              activeOpacity={selectedDeficiency ? 0.8 : 1}
+            >
+              <Ionicons
+                name="document-text-outline"
+                size={18}
+                color={'#FFFFFF'}
+                style={{ marginRight: 8 }}
+              />
+              <Text style={[styles.codeRefButtonText, !selectedDeficiency && styles.codeRefButtonTextDisabled]}>
+                How to Inspect (IRC, IBU, Local)
+              </Text>
             </TouchableOpacity>
-          )}
+            {!selectedDeficiency && (
+              <Text style={styles.codeRefHintText}>
+                Select a deficiency above to view inspection guidelines
+              </Text>
+            )}
+          </View>
+        )}
+
+        {/* Note */}
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>NOTE</Text>
+          <View style={styles.textAreaContainer}>
+            <TextInput
+              style={styles.textArea}
+              placeholder="Write your observation..."
+              value={note}
+              onChangeText={setNote}
+              multiline
+              numberOfLines={4}
+              placeholderTextColor="#999999"
+            />
+          </View>
         </View>
 
         {/* PIC Section */}
@@ -849,142 +910,128 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           </View>
         </View>
 
-        {/* Note */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>NOTE</Text>
-          <View style={styles.textAreaContainer}>
-            <TextInput
-              style={styles.textArea}
-              placeholder="Write your observation..."
-              value={note}
-              onChangeText={setNote}
-              multiline
-              numberOfLines={4}
-              placeholderTextColor="#999999"
-            />
-          </View>
-        </View>
-
         {/* Scoring Section - Shows placeholder values until deficiency is selected */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>INSPECTION SCORING</Text>
+        {itemName !== 'General Comment' && (
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>INSPECTION SCORING</Text>
 
-          <View style={styles.scoringCard}>
-            {/* Row 1: Location and Severity */}
-            <View style={styles.scoringRow}>
-              <View style={styles.scoringField}>
-                <Text style={styles.scoringFieldLabel}>Location</Text>
-                {isOutsideLocation ? (
-                  <TouchableOpacity
-                    style={styles.locationDropdown}
-                    onPress={() => setShowLocationPicker(true)}
-                  >
-                    <Text style={styles.locationDropdownText} numberOfLines={1}>
-                      {selectedOutsideLocation}
-                    </Text>
-                    <Ionicons name="chevron-down" size={16} color="#0E7490" />
-                  </TouchableOpacity>
-                ) : isUnit ? (
-                  <TouchableOpacity
-                    style={styles.locationDropdown}
-                    onPress={() => setShowUnitLocationPicker(true)}
-                  >
-                    <Text style={styles.locationDropdownText} numberOfLines={1}>
-                      {selectedUnitLocation}
-                    </Text>
-                    <Ionicons name="chevron-down" size={16} color="#0E7490" />
-                  </TouchableOpacity>
-                ) : (
-                  <TouchableOpacity
-                    style={styles.locationDropdown}
-                    onPress={() => setShowInsideLocationPicker(true)}
-                  >
-                    <Text style={styles.locationDropdownText} numberOfLines={1}>
-                      {selectedInsideLocation}
-                    </Text>
-                    <Ionicons name="chevron-down" size={16} color="#0E7490" />
-                  </TouchableOpacity>
-                )}
-              </View>
-              <View style={styles.scoringField}>
-                <Text style={styles.scoringFieldLabel}>Severity</Text>
-                <Text style={[
-                  styles.scoringFieldValue,
-                  scoringResult?.severity === 'Life-Threatening' && { color: '#DC2626' },
-                  scoringResult?.severity === 'Severe' && { color: '#EA580C' },
-                  scoringResult?.severity === 'Moderate' && { color: '#CA8A04' },
-                  scoringResult?.severity === 'Low' && { color: '#16A34A' },
-                  !scoringResult && { color: '#9CA3AF' },
-                ]}>
-                  {scoringResult?.severity || '--'}
-                </Text>
-              </View>
-            </View>
-
-            {/* Row 2: All Sample and Pts Lost (Raw) - Shows general formula from points field */}
-            <View style={styles.scoringRow}>
-              <View style={styles.scoringField}>
-                <Text style={styles.scoringFieldLabel}>All Sample</Text>
-                <Text style={styles.scoringFieldValue}>{totalSamples}</Text>
-              </View>
-              <View style={styles.scoringField}>
-                <Text style={styles.scoringFieldLabel}>Pts Lost (Raw)</Text>
-                <Text style={[styles.scoringFieldValue, !selectedDeficiency && { color: '#9CA3AF' }]}>
-                  {selectedDeficiency ? getPointsFormula().toFixed(2) : '--'}
-                </Text>
-              </View>
-            </View>
-
-            {/* Row 3: Pts Lost and Possible Score - PTS LOST calculated from formula */}
-            <View style={styles.scoringRow}>
-              <View style={styles.scoringField}>
-                <Text style={styles.scoringFieldLabel}>Pts Lost</Text>
-                <Text style={[styles.scoringFieldValue, !selectedDeficiency && { color: '#9CA3AF' }]}>
-                  {selectedDeficiency ? calculatePtsLost().toFixed(2) : '--'}
-                </Text>
-              </View>
-              <View style={styles.scoringField}>
-                <Text style={styles.scoringFieldLabel}>Possible Score</Text>
-                <Text style={styles.scoringFieldValue}>{getPossibleScore()}</Text>
-              </View>
-            </View>
-
-            {/* Row 4: Max Pts Lost and Score - calculated from formula */}
-            <View style={styles.scoringRow}>
-              <View style={styles.scoringField}>
-                <Text style={styles.scoringFieldLabel}>Max Pts Lost</Text>
-                <Text style={[styles.scoringFieldValue, !selectedDeficiency && { color: '#9CA3AF' }]}>
-                  {selectedDeficiency ? calculatePtsLost().toFixed(2) : '--'}
-                </Text>
-              </View>
-              <View style={styles.scoringField}>
-                <Text style={styles.scoringFieldLabel}>Score</Text>
-                <Text style={[styles.scoringFieldValue, selectedDeficiency ? styles.scoreHighlight : { color: '#9CA3AF' }]}>
-                  {selectedDeficiency ? calculateScore().toFixed(2) : '--'}
-                </Text>
-              </View>
-            </View>
-
-            {/* Row 5: # of Violations */}
-            <View style={styles.scoringRow}>
-              <View style={styles.scoringFieldFull}>
-                <Text style={styles.scoringFieldLabel}># of Violations</Text>
-                <Text style={styles.scoringFieldValue}>{deficiencyCount}</Text>
-              </View>
-            </View>
-
-            {/* Show override indicator for Outside inspections */}
-            {isOutsideLocation && outsideScoringResult?.isDeficiencyOverride && (
+            <View style={styles.scoringCard}>
+              {/* Row 1: Location and Severity */}
               <View style={styles.scoringRow}>
-                <View style={styles.scoringFieldFull}>
-                  <Text style={[styles.scoringFieldLabel, { color: '#0E7490', fontSize: 10 }]}>
-                    * Severity determined by deficiency description override
+                <View style={styles.scoringField}>
+                  <Text style={styles.scoringFieldLabel}>Location</Text>
+                  {isOutsideLocation ? (
+                    <TouchableOpacity
+                      style={styles.locationDropdown}
+                      onPress={() => setShowLocationPicker(true)}
+                    >
+                      <Text style={styles.locationDropdownText} numberOfLines={1}>
+                        {selectedOutsideLocation}
+                      </Text>
+                      <Ionicons name="chevron-down" size={16} color="#0E7490" />
+                    </TouchableOpacity>
+                  ) : isUnit ? (
+                    <TouchableOpacity
+                      style={styles.locationDropdown}
+                      onPress={() => setShowUnitLocationPicker(true)}
+                    >
+                      <Text style={styles.locationDropdownText} numberOfLines={1}>
+                        {selectedUnitLocation}
+                      </Text>
+                      <Ionicons name="chevron-down" size={16} color="#0E7490" />
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity
+                      style={styles.locationDropdown}
+                      onPress={() => setShowInsideLocationPicker(true)}
+                    >
+                      <Text style={styles.locationDropdownText} numberOfLines={1}>
+                        {selectedInsideLocation}
+                      </Text>
+                      <Ionicons name="chevron-down" size={16} color="#0E7490" />
+                    </TouchableOpacity>
+                  )}
+                </View>
+                <View style={styles.scoringField}>
+                  <Text style={styles.scoringFieldLabel}>Severity</Text>
+                  <Text style={[
+                    styles.scoringFieldValue,
+                    scoringResult?.severity === 'Life-Threatening' && { color: '#DC2626' },
+                    scoringResult?.severity === 'Severe' && { color: '#EA580C' },
+                    scoringResult?.severity === 'Moderate' && { color: '#CA8A04' },
+                    scoringResult?.severity === 'Low' && { color: '#16A34A' },
+                    !scoringResult && { color: '#9CA3AF' },
+                  ]}>
+                    {scoringResult?.severity || '--'}
                   </Text>
                 </View>
               </View>
-            )}
+
+              {/* Row 2: All Sample and Pts Lost (Raw) - Shows general formula from points field */}
+              <View style={styles.scoringRow}>
+                <View style={styles.scoringField}>
+                  <Text style={styles.scoringFieldLabel}>All Sample</Text>
+                  <Text style={styles.scoringFieldValue}>{totalSamples}</Text>
+                </View>
+                <View style={styles.scoringField}>
+                  <Text style={styles.scoringFieldLabel}>Pts Lost (Raw)</Text>
+                  <Text style={[styles.scoringFieldValue, !selectedDeficiency && { color: '#9CA3AF' }]}>
+                    {selectedDeficiency ? getPointsFormula().toFixed(2) : '--'}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Row 3: Pts Lost and Possible Score - PTS LOST calculated from formula */}
+              <View style={styles.scoringRow}>
+                <View style={styles.scoringField}>
+                  <Text style={styles.scoringFieldLabel}>Pts Lost</Text>
+                  <Text style={[styles.scoringFieldValue, !selectedDeficiency && { color: '#9CA3AF' }]}>
+                    {selectedDeficiency ? calculatePtsLost().toFixed(2) : '--'}
+                  </Text>
+                </View>
+                <View style={styles.scoringField}>
+                  <Text style={styles.scoringFieldLabel}>Possible Score</Text>
+                  <Text style={styles.scoringFieldValue}>{getPossibleScore()}</Text>
+                </View>
+              </View>
+
+              {/* Row 4: Max Pts Lost and Score - calculated from formula */}
+              <View style={styles.scoringRow}>
+                <View style={styles.scoringField}>
+                  <Text style={styles.scoringFieldLabel}>Max Pts Lost</Text>
+                  <Text style={[styles.scoringFieldValue, !selectedDeficiency && { color: '#9CA3AF' }]}>
+                    {selectedDeficiency ? calculatePtsLost().toFixed(2) : '--'}
+                  </Text>
+                </View>
+                <View style={styles.scoringField}>
+                  <Text style={styles.scoringFieldLabel}>Score</Text>
+                  <Text style={[styles.scoringFieldValue, selectedDeficiency ? styles.scoreHighlight : { color: '#9CA3AF' }]}>
+                    {selectedDeficiency ? calculateScore().toFixed(2) : '--'}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Row 5: # of Violations */}
+              <View style={styles.scoringRow}>
+                <View style={styles.scoringFieldFull}>
+                  <Text style={styles.scoringFieldLabel}># of Violations</Text>
+                  <Text style={styles.scoringFieldValue}>{deficiencyCount}</Text>
+                </View>
+              </View>
+
+              {/* Show override indicator for Outside inspections */}
+              {isOutsideLocation && outsideScoringResult?.isDeficiencyOverride && (
+                <View style={styles.scoringRow}>
+                  <View style={styles.scoringFieldFull}>
+                    <Text style={[styles.scoringFieldLabel, { color: '#0E7490', fontSize: 10 }]}>
+                      * Severity determined by deficiency description override
+                    </Text>
+                  </View>
+                </View>
+              )}
+            </View>
           </View>
-        </View>
+        )}
       </ScrollView>
 
       {/* Subcategory Picker Modal */}
@@ -1044,64 +1091,66 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         transparent={true}
         onRequestClose={() => setShowDeficiencyPicker(false)}
       >
-        <View style={styles.pickerModalOverlay}>
-          <View style={styles.pickerModalContent}>
-            <View style={styles.pickerHeader}>
-              <Text style={styles.pickerTitle}>
-                {itemHasSubcategories ? 'Select Deficiency Detail' : 'Select Deficiency'}
-              </Text>
-              <TouchableOpacity
-                onPress={() => setShowDeficiencyPicker(false)}
-                style={styles.pickerCloseButton}
-              >
-                <Ionicons name="close" size={24} color="#666666" />
-              </TouchableOpacity>
-            </View>
-            <Text style={styles.pickerSubtitle}>
-              {availableDeficiencies.length} detail{availableDeficiencies.length !== 1 ? 's' : ''} available
-            </Text>
-            <ScrollView style={styles.pickerList} showsVerticalScrollIndicator={true}>
-              {availableDeficiencies.map((deficiency, index) => (
+        <ModalZoomWrapper>
+          <View style={styles.pickerModalOverlay}>
+            <View style={styles.pickerModalContent}>
+              <View style={styles.pickerHeader}>
+                <Text style={styles.pickerTitle}>
+                  {itemHasSubcategories ? 'Select Deficiency Detail' : 'Select Deficiency'}
+                </Text>
                 <TouchableOpacity
-                  key={deficiency.id}
-                  style={[
-                    styles.pickerItem,
-                    selectedDeficiency?.id === deficiency.id && styles.pickerItemSelected
-                  ]}
-                  onPress={() => handleSelectDeficiency(deficiency)}
-                  activeOpacity={0.7}
+                  onPress={() => setShowDeficiencyPicker(false)}
+                  style={styles.pickerCloseButton}
                 >
-                  <View style={styles.pickerItemHeader}>
-                    <Text style={[
-                      styles.pickerItemText,
-                      selectedDeficiency?.id === deficiency.id && styles.pickerItemTextSelected
-                    ]}>
-                      {deficiency.name}
-                    </Text>
-                    {selectedDeficiency?.id === deficiency.id && (
-                      <Ionicons name="checkmark-circle" size={20} color="#0E7490" />
-                    )}
-                  </View>
-                  <Text style={styles.pickerItemDetail} numberOfLines={2}>
-                    {deficiency.detail}
-                  </Text>
-                  <View style={styles.pickerItemMeta}>
-                    <View style={[
-                      styles.severityBadge,
-                      deficiency.severity === 'Life-Threatening' && styles.severityLifeThreatening,
-                      deficiency.severity === 'Severe' && styles.severitySevere,
-                      deficiency.severity === 'Moderate' && styles.severityModerate,
-                      deficiency.severity === 'Low' && styles.severityLow,
-                    ]}>
-                      <Text style={styles.severityText}>{deficiency.severity}</Text>
-                    </View>
-                    <Text style={styles.repairByText}>Repair: {deficiency.repairBy}</Text>
-                  </View>
+                  <Ionicons name="close" size={24} color="#666666" />
                 </TouchableOpacity>
-              ))}
-            </ScrollView>
+              </View>
+              <Text style={styles.pickerSubtitle}>
+                {availableDeficiencies.length} detail{availableDeficiencies.length !== 1 ? 's' : ''} available
+              </Text>
+              <ScrollView style={styles.pickerList} showsVerticalScrollIndicator={true}>
+                {availableDeficiencies.map((deficiency, index) => (
+                  <TouchableOpacity
+                    key={deficiency.id}
+                    style={[
+                      styles.pickerItem,
+                      selectedDeficiency?.id === deficiency.id && styles.pickerItemSelected
+                    ]}
+                    onPress={() => handleSelectDeficiency(deficiency)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.pickerItemHeader}>
+                      <Text style={[
+                        styles.pickerItemText,
+                        selectedDeficiency?.id === deficiency.id && styles.pickerItemTextSelected
+                      ]}>
+                        {deficiency.name}
+                      </Text>
+                      {selectedDeficiency?.id === deficiency.id && (
+                        <Ionicons name="checkmark-circle" size={20} color="#0E7490" />
+                      )}
+                    </View>
+                    <Text style={styles.pickerItemDetail} numberOfLines={2}>
+                      {deficiency.detail}
+                    </Text>
+                    <View style={styles.pickerItemMeta}>
+                      <View style={[
+                        styles.severityBadge,
+                        deficiency.severity === 'Life-Threatening' && styles.severityLifeThreatening,
+                        deficiency.severity === 'Severe' && styles.severitySevere,
+                        deficiency.severity === 'Moderate' && styles.severityModerate,
+                        deficiency.severity === 'Low' && styles.severityLow,
+                      ]}>
+                        <Text style={styles.severityText}>{deficiency.severity}</Text>
+                      </View>
+                      <Text style={styles.repairByText}>Repair: {deficiency.repairBy}</Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
           </View>
-        </View>
+        </ModalZoomWrapper>
       </Modal>
 
       {/* Expanded Text Modal - Shows full text when user taps on truncated content */}
@@ -1111,30 +1160,32 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         transparent={true}
         onRequestClose={() => setShowExpandedText(false)}
       >
-        <View style={styles.expandedTextOverlay}>
-          <View style={styles.expandedTextContent}>
-            <View style={styles.expandedTextHeader}>
-              <Text style={styles.expandedTextTitle}>{expandedTextTitle}</Text>
+        <ModalZoomWrapper>
+          <View style={styles.expandedTextOverlay}>
+            <View style={styles.expandedTextContent}>
+              <View style={styles.expandedTextHeader}>
+                <Text style={styles.expandedTextTitle}>{expandedTextTitle}</Text>
+                <TouchableOpacity
+                  onPress={() => setShowExpandedText(false)}
+                  style={styles.expandedTextCloseButton}
+                >
+                  <Ionicons name="close" size={24} color="#666666" />
+                </TouchableOpacity>
+              </View>
+              <ScrollView style={styles.expandedTextScrollView} showsVerticalScrollIndicator={true}>
+                <Text style={styles.expandedTextBody} selectable={true}>
+                  {expandedTextContent || 'No content available'}
+                </Text>
+              </ScrollView>
               <TouchableOpacity
+                style={styles.expandedTextDoneButton}
                 onPress={() => setShowExpandedText(false)}
-                style={styles.expandedTextCloseButton}
               >
-                <Ionicons name="close" size={24} color="#666666" />
+                <Text style={styles.expandedTextDoneButtonText}>Done</Text>
               </TouchableOpacity>
             </View>
-            <ScrollView style={styles.expandedTextScrollView} showsVerticalScrollIndicator={true}>
-              <Text style={styles.expandedTextBody} selectable={true}>
-                {expandedTextContent || 'No content available'}
-              </Text>
-            </ScrollView>
-            <TouchableOpacity
-              style={styles.expandedTextDoneButton}
-              onPress={() => setShowExpandedText(false)}
-            >
-              <Text style={styles.expandedTextDoneButtonText}>Done</Text>
-            </TouchableOpacity>
           </View>
-        </View>
+        </ModalZoomWrapper>
       </Modal>
 
       {/* Outside Location Picker Modal */}
@@ -1144,50 +1195,52 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         transparent={true}
         onRequestClose={() => setShowLocationPicker(false)}
       >
-        <View style={styles.pickerModalOverlay}>
-          <View style={styles.pickerModalContent}>
-            <View style={styles.pickerHeader}>
-              <Text style={styles.pickerTitle}>Select Location</Text>
-              <TouchableOpacity
-                onPress={() => setShowLocationPicker(false)}
-                style={styles.pickerCloseButton}
-              >
-                <Ionicons name="close" size={24} color="#666666" />
-              </TouchableOpacity>
-            </View>
-            <Text style={styles.pickerSubtitle}>
-              {OUTSIDE_LOCATION_OPTIONS.length} locations available
-            </Text>
-            <ScrollView style={styles.pickerList} showsVerticalScrollIndicator={true}>
-              {OUTSIDE_LOCATION_OPTIONS.map((locationOption, index) => (
+        <ModalZoomWrapper>
+          <View style={styles.pickerModalOverlay}>
+            <View style={styles.pickerModalContent}>
+              <View style={styles.pickerHeader}>
+                <Text style={styles.pickerTitle}>Select Location</Text>
                 <TouchableOpacity
-                  key={index}
-                  style={[
-                    styles.pickerItem,
-                    selectedOutsideLocation === locationOption && styles.pickerItemSelected
-                  ]}
-                  onPress={() => {
-                    setSelectedOutsideLocation(locationOption);
-                    setShowLocationPicker(false);
-                  }}
-                  activeOpacity={0.7}
+                  onPress={() => setShowLocationPicker(false)}
+                  style={styles.pickerCloseButton}
                 >
-                  <View style={styles.pickerItemHeader}>
-                    <Text style={[
-                      styles.pickerItemText,
-                      selectedOutsideLocation === locationOption && styles.pickerItemTextSelected
-                    ]}>
-                      {locationOption}
-                    </Text>
-                    {selectedOutsideLocation === locationOption && (
-                      <Ionicons name="checkmark-circle" size={20} color="#0E7490" />
-                    )}
-                  </View>
+                  <Ionicons name="close" size={24} color="#666666" />
                 </TouchableOpacity>
-              ))}
-            </ScrollView>
+              </View>
+              <Text style={styles.pickerSubtitle}>
+                {OUTSIDE_LOCATION_OPTIONS.length} locations available
+              </Text>
+              <ScrollView style={styles.pickerList} showsVerticalScrollIndicator={true}>
+                {OUTSIDE_LOCATION_OPTIONS.map((locationOption, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={[
+                      styles.pickerItem,
+                      selectedOutsideLocation === locationOption && styles.pickerItemSelected
+                    ]}
+                    onPress={() => {
+                      setSelectedOutsideLocation(locationOption);
+                      setShowLocationPicker(false);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.pickerItemHeader}>
+                      <Text style={[
+                        styles.pickerItemText,
+                        selectedOutsideLocation === locationOption && styles.pickerItemTextSelected
+                      ]}>
+                        {locationOption}
+                      </Text>
+                      {selectedOutsideLocation === locationOption && (
+                        <Ionicons name="checkmark-circle" size={20} color="#0E7490" />
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
           </View>
-        </View>
+        </ModalZoomWrapper>
       </Modal>
 
       {/* Inside Location Picker Modal */}
@@ -1197,50 +1250,52 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         transparent={true}
         onRequestClose={() => setShowInsideLocationPicker(false)}
       >
-        <View style={styles.pickerModalOverlay}>
-          <View style={styles.pickerModalContent}>
-            <View style={styles.pickerHeader}>
-              <Text style={styles.pickerTitle}>Select Location</Text>
-              <TouchableOpacity
-                onPress={() => setShowInsideLocationPicker(false)}
-                style={styles.pickerCloseButton}
-              >
-                <Ionicons name="close" size={24} color="#666666" />
-              </TouchableOpacity>
-            </View>
-            <Text style={styles.pickerSubtitle}>
-              {INSIDE_LOCATION_OPTIONS.length} locations available
-            </Text>
-            <ScrollView style={styles.pickerList} showsVerticalScrollIndicator={true}>
-              {INSIDE_LOCATION_OPTIONS.map((locationOption, index) => (
+        <ModalZoomWrapper>
+          <View style={styles.pickerModalOverlay}>
+            <View style={styles.pickerModalContent}>
+              <View style={styles.pickerHeader}>
+                <Text style={styles.pickerTitle}>Select Location</Text>
                 <TouchableOpacity
-                  key={index}
-                  style={[
-                    styles.pickerItem,
-                    selectedInsideLocation === locationOption && styles.pickerItemSelected
-                  ]}
-                  onPress={() => {
-                    setSelectedInsideLocation(locationOption);
-                    setShowInsideLocationPicker(false);
-                  }}
-                  activeOpacity={0.7}
+                  onPress={() => setShowInsideLocationPicker(false)}
+                  style={styles.pickerCloseButton}
                 >
-                  <View style={styles.pickerItemHeader}>
-                    <Text style={[
-                      styles.pickerItemText,
-                      selectedInsideLocation === locationOption && styles.pickerItemTextSelected
-                    ]}>
-                      {locationOption}
-                    </Text>
-                    {selectedInsideLocation === locationOption && (
-                      <Ionicons name="checkmark-circle" size={20} color="#0E7490" />
-                    )}
-                  </View>
+                  <Ionicons name="close" size={24} color="#666666" />
                 </TouchableOpacity>
-              ))}
-            </ScrollView>
+              </View>
+              <Text style={styles.pickerSubtitle}>
+                {INSIDE_LOCATION_OPTIONS.length} locations available
+              </Text>
+              <ScrollView style={styles.pickerList} showsVerticalScrollIndicator={true}>
+                {INSIDE_LOCATION_OPTIONS.map((locationOption, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={[
+                      styles.pickerItem,
+                      selectedInsideLocation === locationOption && styles.pickerItemSelected
+                    ]}
+                    onPress={() => {
+                      setSelectedInsideLocation(locationOption);
+                      setShowInsideLocationPicker(false);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.pickerItemHeader}>
+                      <Text style={[
+                        styles.pickerItemText,
+                        selectedInsideLocation === locationOption && styles.pickerItemTextSelected
+                      ]}>
+                        {locationOption}
+                      </Text>
+                      {selectedInsideLocation === locationOption && (
+                        <Ionicons name="checkmark-circle" size={20} color="#0E7490" />
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
           </View>
-        </View>
+        </ModalZoomWrapper>
       </Modal>
 
       {/* Unit Location Picker Modal */}
@@ -1250,50 +1305,52 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         transparent={true}
         onRequestClose={() => setShowUnitLocationPicker(false)}
       >
-        <View style={styles.pickerModalOverlay}>
-          <View style={styles.pickerModalContent}>
-            <View style={styles.pickerHeader}>
-              <Text style={styles.pickerTitle}>Select Location</Text>
-              <TouchableOpacity
-                onPress={() => setShowUnitLocationPicker(false)}
-                style={styles.pickerCloseButton}
-              >
-                <Ionicons name="close" size={24} color="#666666" />
-              </TouchableOpacity>
-            </View>
-            <Text style={styles.pickerSubtitle}>
-              {UNIT_LOCATION_OPTIONS.length} locations available
-            </Text>
-            <ScrollView style={styles.pickerList} showsVerticalScrollIndicator={true}>
-              {UNIT_LOCATION_OPTIONS.map((locationOption, index) => (
+        <ModalZoomWrapper>
+          <View style={styles.pickerModalOverlay}>
+            <View style={styles.pickerModalContent}>
+              <View style={styles.pickerHeader}>
+                <Text style={styles.pickerTitle}>Select Location</Text>
                 <TouchableOpacity
-                  key={index}
-                  style={[
-                    styles.pickerItem,
-                    selectedUnitLocation === locationOption && styles.pickerItemSelected
-                  ]}
-                  onPress={() => {
-                    setSelectedUnitLocation(locationOption);
-                    setShowUnitLocationPicker(false);
-                  }}
-                  activeOpacity={0.7}
+                  onPress={() => setShowUnitLocationPicker(false)}
+                  style={styles.pickerCloseButton}
                 >
-                  <View style={styles.pickerItemHeader}>
-                    <Text style={[
-                      styles.pickerItemText,
-                      selectedUnitLocation === locationOption && styles.pickerItemTextSelected
-                    ]}>
-                      {locationOption}
-                    </Text>
-                    {selectedUnitLocation === locationOption && (
-                      <Ionicons name="checkmark-circle" size={20} color="#0E7490" />
-                    )}
-                  </View>
+                  <Ionicons name="close" size={24} color="#666666" />
                 </TouchableOpacity>
-              ))}
-            </ScrollView>
+              </View>
+              <Text style={styles.pickerSubtitle}>
+                {UNIT_LOCATION_OPTIONS.length} locations available
+              </Text>
+              <ScrollView style={styles.pickerList} showsVerticalScrollIndicator={true}>
+                {UNIT_LOCATION_OPTIONS.map((locationOption, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={[
+                      styles.pickerItem,
+                      selectedUnitLocation === locationOption && styles.pickerItemSelected
+                    ]}
+                    onPress={() => {
+                      setSelectedUnitLocation(locationOption);
+                      setShowUnitLocationPicker(false);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.pickerItemHeader}>
+                      <Text style={[
+                        styles.pickerItemText,
+                        selectedUnitLocation === locationOption && styles.pickerItemTextSelected
+                      ]}>
+                        {locationOption}
+                      </Text>
+                      {selectedUnitLocation === locationOption && (
+                        <Ionicons name="checkmark-circle" size={20} color="#0E7490" />
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
           </View>
-        </View>
+        </ModalZoomWrapper>
       </Modal>
 
       {/* Processing Modal with 3-second auto-dismiss */}
@@ -1318,6 +1375,67 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         </View>
       </Modal>
 
+      {/* Code Reference Modal */}
+      <Modal
+        visible={showCodeReference}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setShowCodeReference(false)}
+      >
+        <ModalZoomWrapper>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <View style={styles.modalTitleRow}>
+                  <Ionicons name="document-text-outline" size={24} color="#0E7490" style={{ marginRight: 8 }} />
+                  <Text style={styles.modalTitle}>How to Inspect (IRC, IBU, Local)</Text>
+                </View>
+                <View style={styles.codeRefHeaderRight}>
+                  {/* Font size controls */}
+                  <View style={styles.fontSizePill}>
+                    <TouchableOpacity
+                      style={[styles.fontSizeBtn, codeRefFontSize <= 11 && styles.fontSizeBtnDisabled]}
+                      onPress={() => setCodeRefFontSize(s => Math.max(11, s - 2))}
+                      hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                    >
+                      <Text style={styles.fontSizeBtnText}>A－</Text>
+                    </TouchableOpacity>
+                    <View style={styles.fontSizeDivider} />
+                    <TouchableOpacity
+                      style={[styles.fontSizeBtn, codeRefFontSize >= 28 && styles.fontSizeBtnDisabled]}
+                      onPress={() => setCodeRefFontSize(s => Math.min(28, s + 2))}
+                      hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                    >
+                      <Text style={styles.fontSizeBtnText}>A＋</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <TouchableOpacity onPress={() => { setShowCodeReference(false); setCodeRefFontSize(15); }} style={styles.modalCloseButton}>
+                    <Ionicons name="close" size={24} color="#6B7280" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <ScrollView
+                style={styles.modalBody}
+                showsVerticalScrollIndicator={true}
+                contentContainerStyle={{ paddingBottom: 20 }}
+              >
+                <Text style={[styles.codeReferenceText, { fontSize: codeRefFontSize, lineHeight: codeRefFontSize * 1.6 }]}>{codeReferenceContent}</Text>
+              </ScrollView>
+
+              <View style={styles.modalFooter}>
+                <TouchableOpacity
+                  style={styles.modalDoneButton}
+                  onPress={() => setShowCodeReference(false)}
+                >
+                  <Text style={styles.modalDoneButtonText}>CLOSE</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </ModalZoomWrapper>
+      </Modal>
+
       {/* Fixed Bottom Buttons */}
       <View style={styles.footer}>
         <TouchableOpacity
@@ -1330,7 +1448,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           <Text style={styles.proceedButtonText}>PROCEED</Text>
         </TouchableOpacity>
       </View>
-    </SafeAreaView>
+    </SafeAreaView >
   );
 };
 
@@ -1686,6 +1804,47 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.5,
   },
+  codeRefButton: {
+    width: '100%',
+    borderRadius: 50,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
+  codeRefButtonActive: {
+    backgroundColor: '#0E7490',
+    shadowColor: '#0E7490',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  codeRefButtonDisabled: {
+    backgroundColor: '#0E7490',
+    shadowColor: '#0E7490',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  codeRefButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  codeRefButtonTextDisabled: {
+    color: '#FFFFFF',
+  },
+  codeRefHintText: {
+    marginTop: 8,
+    fontSize: 12,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
   pickerModalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -1973,6 +2132,115 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#9CA3AF',
     textAlign: 'center',
+  },
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    width: '100%',
+    maxHeight: '85%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 15,
+    overflow: 'hidden',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  modalTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#111827',
+    letterSpacing: 0.5,
+  },
+  modalCloseButton: {
+    padding: 4,
+  },
+  codeRefHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  fontSizePill: {
+    flexDirection: 'row',
+    backgroundColor: '#F3F4F6',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    overflow: 'hidden',
+  },
+  fontSizeBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fontSizeBtnDisabled: {
+    opacity: 0.30,
+  },
+  fontSizeBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0E7490',
+  },
+  fontSizeDivider: {
+    width: 1,
+    backgroundColor: '#E5E7EB',
+    marginVertical: 4,
+  },
+  modalBody: {
+    paddingHorizontal: 24,
+    paddingTop: 16,
+  },
+  codeReferenceText: {
+    fontSize: 15,
+    color: '#374151',
+    lineHeight: 24,
+    fontWeight: '400',
+  },
+  modalFooter: {
+    padding: 24,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+    backgroundColor: '#F9FAFB',
+  },
+  modalDoneButton: {
+    backgroundColor: '#0E7490',
+    borderRadius: 16,
+    paddingVertical: 16,
+    alignItems: 'center',
+    shadowColor: '#0E7490',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  modalDoneButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: 1,
   },
 });
 

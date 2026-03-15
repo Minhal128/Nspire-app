@@ -19,10 +19,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import { Country, State, City, ICountry, IState, ICity } from 'country-state-city';
 import Sidebar from '../components/Sidebar';
+import ModalZoomWrapper from '../components/ModalZoomWrapper';
 import IOSPickerModal from '../components/IOSPickerModal';
-import { 
-  authService, 
-  inspectionService, 
+import {
+  authService,
+  inspectionService,
   propertyService,
   generateRandomUnitSample,
   isRandomSelectionAvailable
@@ -264,7 +265,7 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
     // Also check if property country matches selected country name or code
     const selectedCountryName = countries.find(c => c.isoCode === selectedCountry)?.name;
     const propertyCountry = (property as any).country?.toLowerCase();
-    const matchesCountry = !selectedCountry || 
+    const matchesCountry = !selectedCountry ||
       !propertyCountry || // If property has no country, don't exclude it
       propertyCountry === selectedCountryName?.toLowerCase() ||
       propertyCountry === selectedCountry?.toLowerCase() ||
@@ -358,7 +359,7 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
 
   const handleSaveEditProperty = async () => {
     if (!selectedProperty?._id) return;
-    
+
     if (!editPropertyName.trim() || !editAddress.trim() || !editCity.trim() || !editState.trim()) {
       Alert.alert('Error', 'Please fill in all required fields');
       return;
@@ -379,7 +380,7 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
       const response = await propertyService.updateProperty(selectedProperty._id, updatedData);
       if (response.success) {
         // Update local state
-        setProperties(prev => prev.map(p => 
+        setProperties(prev => prev.map(p =>
           p._id === selectedProperty._id ? { ...p, ...updatedData } : p
         ));
         setEditModalVisible(false);
@@ -629,7 +630,7 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
               style={styles.addButton}
               onPress={() => navigation.navigate('AddProperty')}
             >
-              <Text style={styles.addButtonText}>Add Property</Text>
+              <Text style={styles.addButtonText}>Add New Property</Text>
             </TouchableOpacity>
           </View>
 
@@ -803,7 +804,7 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
         transparent={true}
         onRequestClose={() => setEditModalVisible(false)}
       >
-        <KeyboardAvoidingView 
+        <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.editModalOverlay}
         >
@@ -930,80 +931,82 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
         transparent={true}
         onRequestClose={() => setInspectionModalVisible(false)}
       >
-        <View style={styles.inspectionModalOverlay}>
-          <View style={styles.inspectionModalContent}>
-            <View style={styles.inspectionModalHeader}>
-              <Text style={styles.inspectionModalTitle}>Ready for Inspection</Text>
-              <TouchableOpacity onPress={() => setInspectionModalVisible(false)}>
-                <Ionicons name="close" size={24} color="#1F2937" />
-              </TouchableOpacity>
-            </View>
-
-            <Text style={styles.inspectionPropertyName}>{selectedProperty?.name}</Text>
-            <Text style={styles.totalUnitsText}>
-              Total Units: <Text style={styles.totalUnitsValue}>{selectedProperty?.units || 1}</Text>
-            </Text>
-
-            <Text style={styles.coverageLabel}>Select Inspection Coverage</Text>
-            
-            {COVERAGE_OPTIONS.map((option) => (
-              <TouchableOpacity
-                key={option.value}
-                style={[
-                  styles.coverageOption,
-                  selectedCoverage === option.value && styles.coverageOptionSelected
-                ]}
-                onPress={() => handleCoverageChange(option.value)}
-              >
-                <View style={styles.coverageRadio}>
-                  {selectedCoverage === option.value && <View style={styles.coverageRadioInner} />}
-                </View>
-                <View style={styles.coverageTextContainer}>
-                  <Text style={[
-                    styles.coverageOptionText,
-                    selectedCoverage === option.value && styles.coverageOptionTextSelected
-                  ]}>
-                    {option.label}
-                  </Text>
-                  <Text style={styles.coverageDescription}>{option.description}</Text>
-                </View>
-              </TouchableOpacity>
-            ))}
-
-            <View style={styles.calculationResult}>
-              <Text style={styles.calculationLabel}>Units to Inspect:</Text>
-              <Text style={styles.calculationValue}>{calculatedUnits}</Text>
-            </View>
-
-            {selectedUnits.length > 0 && (
-              <View style={styles.selectedUnitsList}>
-                <Text style={styles.selectedUnitsLabel}>Selected Units:</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                  <View style={styles.unitChips}>
-                    {selectedUnits.slice(0, 5).map((unit, index) => (
-                      <View key={index} style={styles.unitChip}>
-                        <Text style={styles.unitChipText}>{unit}</Text>
-                      </View>
-                    ))}
-                    {selectedUnits.length > 5 && (
-                      <View style={styles.unitChip}>
-                        <Text style={styles.unitChipText}>+{selectedUnits.length - 5} more</Text>
-                      </View>
-                    )}
-                  </View>
-                </ScrollView>
+        <ModalZoomWrapper>
+          <View style={styles.inspectionModalOverlay}>
+            <View style={styles.inspectionModalContent}>
+              <View style={styles.inspectionModalHeader}>
+                <Text style={styles.inspectionModalTitle}>Ready for Inspection</Text>
+                <TouchableOpacity onPress={() => setInspectionModalVisible(false)}>
+                  <Ionicons name="close" size={24} color="#1F2937" />
+                </TouchableOpacity>
               </View>
-            )}
 
-            <TouchableOpacity
-              style={styles.startInspectionButton}
-              onPress={handleStartInspection}
-            >
-              <Ionicons name="camera" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
-              <Text style={styles.startInspectionButtonText}>Start AI Inspection</Text>
-            </TouchableOpacity>
+              <Text style={styles.inspectionPropertyName}>{selectedProperty?.name}</Text>
+              <Text style={styles.totalUnitsText}>
+                Total Units: <Text style={styles.totalUnitsValue}>{selectedProperty?.units || 1}</Text>
+              </Text>
+
+              <Text style={styles.coverageLabel}>Select Inspection Coverage</Text>
+
+              {COVERAGE_OPTIONS.map((option) => (
+                <TouchableOpacity
+                  key={option.value}
+                  style={[
+                    styles.coverageOption,
+                    selectedCoverage === option.value && styles.coverageOptionSelected
+                  ]}
+                  onPress={() => handleCoverageChange(option.value)}
+                >
+                  <View style={styles.coverageRadio}>
+                    {selectedCoverage === option.value && <View style={styles.coverageRadioInner} />}
+                  </View>
+                  <View style={styles.coverageTextContainer}>
+                    <Text style={[
+                      styles.coverageOptionText,
+                      selectedCoverage === option.value && styles.coverageOptionTextSelected
+                    ]}>
+                      {option.label}
+                    </Text>
+                    <Text style={styles.coverageDescription}>{option.description}</Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+
+              <View style={styles.calculationResult}>
+                <Text style={styles.calculationLabel}>Units to Inspect:</Text>
+                <Text style={styles.calculationValue}>{calculatedUnits}</Text>
+              </View>
+
+              {selectedUnits.length > 0 && (
+                <View style={styles.selectedUnitsList}>
+                  <Text style={styles.selectedUnitsLabel}>Selected Units:</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                    <View style={styles.unitChips}>
+                      {selectedUnits.slice(0, 5).map((unit, index) => (
+                        <View key={index} style={styles.unitChip}>
+                          <Text style={styles.unitChipText}>{unit}</Text>
+                        </View>
+                      ))}
+                      {selectedUnits.length > 5 && (
+                        <View style={styles.unitChip}>
+                          <Text style={styles.unitChipText}>+{selectedUnits.length - 5} more</Text>
+                        </View>
+                      )}
+                    </View>
+                  </ScrollView>
+                </View>
+              )}
+
+              <TouchableOpacity
+                style={styles.startInspectionButton}
+                onPress={handleStartInspection}
+              >
+                <Ionicons name="camera" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
+                <Text style={styles.startInspectionButtonText}>Start AI Inspection</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
+        </ModalZoomWrapper>
       </Modal>
     </>
   );
@@ -1059,7 +1062,7 @@ const styles = StyleSheet.create({
   addButtonText: {
     color: '#FFFFFF',
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   searchContainer: {
     paddingHorizontal: 20,

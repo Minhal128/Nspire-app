@@ -188,6 +188,22 @@ export default function SignInScreen({ navigation, route }: SignInScreenProps) {
       // Get selected portal from route params (most reliable) or fallback to storage/default
       const selectedPortal = userType || await AsyncStorage.getItem('selectedPortal') || 'Inspector';
 
+      // If a Clerk session already exists, skip OAuth and use it directly
+      const existingSession = client?.activeSessions?.[0] ?? (client?.sessions?.length ? client.sessions[client.sessions.length - 1] : null);
+      if (existingSession) {
+        console.log('Active session found — skipping OAuth, using existing session');
+        const user = existingSession.user;
+        const email = user?.primaryEmailAddress?.emailAddress
+          || user?.emailAddresses?.[0]?.emailAddress
+          || existingSession.publicUserData?.identifier
+          || '';
+        const fullName = user?.firstName || user?.fullName || '';
+        if (email) {
+          handleSocialLoginBackend(email, fullName, selectedPortal, 'google');
+          return;
+        }
+      }
+
       // Create redirect URI for Expo
       const redirectUrl = Linking.createURL('/oauth-callback');
       console.log('OAuth redirect URL:', redirectUrl);
@@ -286,10 +302,43 @@ export default function SignInScreen({ navigation, route }: SignInScreenProps) {
       if (errorMessage.includes('cancelled') || errorMessage.includes('canceled')) {
         // User cancelled - don't show error
         console.log('User cancelled Google sign in');
+        setLoading(false);
+      } else if (errorMessage.toLowerCase().includes('already signed in')) {
+        // User has an active Clerk session — use it directly instead of re-authenticating
+        console.log('Already signed in — recovering from existing Clerk session');
+        try {
+          const selectedPortal = userType || await AsyncStorage.getItem('selectedPortal') || 'Inspector';
+          const existingSession = client?.activeSessions?.[0] ?? client?.sessions?.[client.sessions.length - 1];
+          if (existingSession) {
+            // Ensure this session is the active one
+            try { await (client as any).setActive?.({ session: existingSession.id }); } catch (_) {}
+
+            const user = existingSession.user;
+            const email = user?.primaryEmailAddress?.emailAddress
+              || user?.emailAddresses?.[0]?.emailAddress
+              || existingSession.publicUserData?.identifier
+              || '';
+            const fullName = user?.firstName || user?.fullName || '';
+
+            if (email) {
+              handleSocialLoginBackend(email, fullName, selectedPortal, 'google');
+            } else {
+              Alert.alert('Session Found', 'You appear to be already signed in. Please restart the app.');
+              setLoading(false);
+            }
+          } else {
+            Alert.alert('Google Sign In Error', 'A session already exists. Please restart the app and try again.');
+            setLoading(false);
+          }
+        } catch (sessionErr) {
+          console.error('Failed to recover existing session:', sessionErr);
+          Alert.alert('Google Sign In Error', 'A session already exists. Please restart the app and try again.');
+          setLoading(false);
+        }
       } else {
         Alert.alert('Google Sign In Error', errorMessage);
+        setLoading(false);
       }
-      setLoading(false);
     }
   };
 

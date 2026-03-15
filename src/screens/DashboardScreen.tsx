@@ -23,6 +23,7 @@ import { Picker } from "@react-native-picker/picker";
 import { Country, State, City, IState } from 'country-state-city';
 import { DashboardScreenNavigationProp } from "../types/navigation";
 import Sidebar from "../components/Sidebar";
+import ModalZoomWrapper from "../components/ModalZoomWrapper";
 import {
   propertyService,
   authService,
@@ -540,6 +541,7 @@ export default function DashboardScreen({
         transparent={true}
         onRequestClose={() => setInspectionModalVisible(false)}
       >
+        <ModalZoomWrapper>
         <View style={styles.inspectionModalOverlay}>
           <View style={styles.inspectionModalContent}>
             <View style={styles.inspectionModalHeader}>
@@ -614,6 +616,7 @@ export default function DashboardScreen({
             </TouchableOpacity>
           </View>
         </View>
+        </ModalZoomWrapper>
       </Modal>
 
       {/* Sidebar Modal */}
@@ -647,6 +650,7 @@ export default function DashboardScreen({
         transparent={true}
         onRequestClose={handleCloseActionModal}
       >
+        <ModalZoomWrapper>
         <View style={styles.actionModalOverlay}>
           <Pressable
             style={styles.actionModalBackdrop}
@@ -688,6 +692,7 @@ export default function DashboardScreen({
             </TouchableOpacity>
           </Pressable>
         </View>
+        </ModalZoomWrapper>
       </Modal>
 
       <SafeAreaView style={styles.container}>

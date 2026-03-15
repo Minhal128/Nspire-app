@@ -14,6 +14,7 @@
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
+import { Platform } from 'react-native';
 import { INSPIRE_LOGO_BASE64 } from '../constants/inspireLogo';
 import {
   NSPIREInspectionReport,
@@ -66,6 +67,14 @@ function esc(str: string): string {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+/** Build a clickable data URI link showing the short NSPIRE code; clicking opens a clean HTML page with the full codeReference text */
+function makeCodeRefLink(nspireCode: string, codeReference?: string): string {
+  const shortCode = esc(nspireCode || '-');
+  if (!codeReference) return shortCode;
+  const url = `https://inspirebackend-eight.vercel.app/api/code-ref?code=${encodeURIComponent(nspireCode)}&ref=${encodeURIComponent(codeReference)}`;
+  return `<a href="${url}" style="color:#0E7490;font-weight:600;text-decoration:underline;">${shortCode}</a>`;
+}
+
 /** Per-image fetch timeout (8 seconds) */
 const IMAGE_FETCH_TIMEOUT = 8000;
 
@@ -110,18 +119,23 @@ async function preloadDeficiencyImages(deficiencies: DeficiencyEntry[]): Promise
         imageMap.set(def.imageUri, def.imageUri);
       } else if (def.imageUri.startsWith('http://') || def.imageUri.startsWith('https://')) {
         uniqueUrls.add(def.imageUri);
-      } else if (def.imageUri.startsWith('file://') || def.imageUri.startsWith('/')) {
-        // Local file URI - try to convert to base64
-        try {
-          const filePath = def.imageUri.startsWith('file://') ? def.imageUri : def.imageUri;
-          const b64 = await FileSystem.readAsStringAsync(filePath, { encoding: FileSystem.EncodingType.Base64 });
-          if (b64 && b64.length > 100) {
-            const ext = def.imageUri.toLowerCase().includes('.png') ? 'png' : 'jpeg';
-            imageMap.set(def.imageUri, `data:image/${ext};base64,${b64}`);
+      } else if (!Platform.OS || Platform.OS !== 'web') {
+        if (def.imageUri.startsWith('file://') || def.imageUri.startsWith('/')) {
+          // Local file URI - try to convert to base64 (native only)
+          try {
+            const filePath = def.imageUri.startsWith('file://') ? def.imageUri : def.imageUri;
+            const b64 = await FileSystem.readAsStringAsync(filePath, { encoding: FileSystem.EncodingType.Base64 });
+            if (b64 && b64.length > 100) {
+              const ext = def.imageUri.toLowerCase().includes('.png') ? 'png' : 'jpeg';
+              imageMap.set(def.imageUri, `data:image/${ext};base64,${b64}`);
+            }
+          } catch (e) {
+            console.warn('Failed to read local image file:', def.imageUri, e);
           }
-        } catch (e) {
-          console.warn('Failed to read local image file:', def.imageUri, e);
         }
+      } else {
+        // Web: use the imageUri directly (could be a blob URL or existing data URI)
+        imageMap.set(def.imageUri, def.imageUri);
       }
     }
   }
@@ -233,8 +247,23 @@ function generateEnhancedSummaryPage(
   categoryBreakdown: CategoryBreakdown[],
   metadata: InspectionMetadata,
   inspectionData: InspectionDataRow[],
-  occupancyInfo: OccupancyInfo
+  occupancyInfo: OccupancyInfo,
+  deficiencies?: DeficiencyEntry[]
 ): string {
+  // Compute per-area counts dynamically from deficiencies
+  const defs = deficiencies || [];
+  const insideDefs = defs.filter(d => d.area === 'Inside');
+  const outsideDefs = defs.filter(d => d.area === 'Outside');
+  const unitsDefs = defs.filter(d => d.area !== 'Inside' && d.area !== 'Outside');
+  const countBySev = (arr: DeficiencyEntry[]) => ({
+    lt: arr.filter(d => d.severity === 'Life-Threatening').length,
+    sv: arr.filter(d => d.severity === 'Severe').length,
+    md: arr.filter(d => d.severity === 'Moderate').length,
+    lw: arr.filter(d => d.severity === 'Low').length,
+  });
+  const iC = countBySev(insideDefs);
+  const oC = countBySev(outsideDefs);
+  const uC = countBySev(unitsDefs);
   return `
 <div class="scores-section avoid-break">
   <table class="scores-table"><tr>
@@ -284,9 +313,9 @@ function generateEnhancedSummaryPage(
       <tr><th class="la">Inspectable Area</th><th>Life-Threatening</th><th>Severe</th><th>Moderate</th><th>Low</th></tr>
     </thead>
     <tbody>
-      <tr><td class="la">Inside</td><td>${summary.lifeThreatening}</td><td>${summary.severe}</td><td>${summary.moderate}</td><td>${summary.low}</td></tr>
-      <tr><td class="la">Outside</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
-      <tr><td class="la">Units</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+      <tr><td class="la">Inside</td><td>${iC.lt}</td><td>${iC.sv}</td><td>${iC.md}</td><td>${iC.lw}</td></tr>
+      <tr><td class="la">Outside</td><td>${oC.lt}</td><td>${oC.sv}</td><td>${oC.md}</td><td>${oC.lw}</td></tr>
+      <tr><td class="la">Units</td><td>${uC.lt}</td><td>${uC.sv}</td><td>${uC.md}</td><td>${uC.lw}</td></tr>
     </tbody>
   </table>
 </div>`;
@@ -316,22 +345,47 @@ function generateEnhancedDeficiencyTable(deficiencies: DeficiencyEntry[], imageM
     return count > 0;
   });
 
-  // Group deficiencies by building + unit
+  // Group deficiencies by section:
+  // - Inside → "Inside (Building - {building})"
+  // - Outside → "Outside (Building - {building})"
+  // - Units → "Units (Unit - {unit} / Building - {building})"
+  // Inside and Outside sections do NOT merge with unit sections.
   interface GroupedDef { def: DeficiencyEntry; isRepeat: boolean; }
   const groups = new Map<string, GroupedDef[]>();
   deficiencies.forEach((def, idx) => {
     const building = def.building || 'Building A';
-    const unit = def.unit || '';
-    const groupKey = unit ? `Unit - ${unit}` : `Building - ${building}`;
+    const unit = def.unit && def.unit !== '-' ? def.unit : '';
+    const area = def.area || '';
+
+    let groupKey: string;
+    if ((def as any).isGeneralComment) {
+      groupKey = 'General Comment';
+    } else if (area === 'Inside') {
+      groupKey = `Inside (Building - ${building})`;
+    } else if (area === 'Outside') {
+      groupKey = `Outside (Building - ${building})`;
+    } else if (unit) {
+      groupKey = `Units (Unit - ${unit} / Building - ${building})`;
+    } else {
+      groupKey = `Building - ${building}`;
+    }
+
     if (!groups.has(groupKey)) groups.set(groupKey, []);
     groups.get(groupKey)!.push({ def, isRepeat: def.repeatIndicator || repeatFlags[idx] });
   });
 
+  // Sort groups: Inside first, then Outside, then Units (sorted by unit name), then others
+  const sortedGroups = new Map<string, GroupedDef[]>();
+  const insideKeys = Array.from(groups.keys()).filter(k => k.startsWith('Inside'));
+  const outsideKeys = Array.from(groups.keys()).filter(k => k.startsWith('Outside'));
+  const unitKeys = Array.from(groups.keys()).filter(k => k.startsWith('Units')).sort();
+  const otherKeys = Array.from(groups.keys()).filter(k => !k.startsWith('Inside') && !k.startsWith('Outside') && !k.startsWith('Units'));
+  [...insideKeys, ...outsideKeys, ...unitKeys, ...otherKeys].forEach(k => sortedGroups.set(k, groups.get(k)!));
+
   let rows = '';
-  groups.forEach((items, groupKey) => {
+  sortedGroups.forEach((items, groupKey) => {
     rows += `<tr class="gh"><td colspan="7">${esc(groupKey)}</td></tr>\n`;
     items.forEach(({ def, isRepeat }) => {
-      const comments = cleanJsonComments(def.comments);
       // Check if imageUri is already a base64 data URI (use directly) or look up from the preloaded map
       let imgSrc = '';
       if (def.imageUri) {
@@ -346,14 +400,15 @@ function generateEnhancedDeficiencyTable(deficiencies: DeficiencyEntry[], imageM
       const imgCell = imgSrc
         ? `<img src="${imgSrc}" style="width:80px;height:60px;object-fit:cover;border:1px solid #000;display:block;margin:0 auto" />`
         : `<div class="ip">Photo</div>`;
+      const isGC = !!(def as any).isGeneralComment;
       rows += `<tr class="avoid-break">
-<td class="la">${esc(def.deficiencyDetails || 'No details available')}</td>
-<td class="la"><div class="dn">${esc(def.deficiencyQRId || 'QR-00000000')}</div></td>
-<td class="la">${esc(comments) || '-'}</td>
+<td class="la">${isGC ? '-' : esc(def.deficiencyDetails || 'No details available')}</td>
+<td class="la" style="text-align:center;vertical-align:middle;">${isGC ? '-' : makeCodeRefLink(def.nspireCode, def.codeReference)}</td>
 <td>${imgCell}</td>
-<td>${def.deductionPts}</td>
-<td>${isRepeat ? 'Repeat' : 'Not Repeat'}</td>
-<td>${esc(def.severity)}</td>
+<td>${isGC ? '-' : def.deductionPts}</td>
+<td>${isGC ? '-' : (isRepeat ? 'Repeat' : 'Not Repeat')}</td>
+<td>${isGC ? '-' : esc(def.severity)}</td>
+<td class="la">${esc(def.note || '-')}</td>
 </tr>\n`;
     });
   });
@@ -364,13 +419,13 @@ function generateEnhancedDeficiencyTable(deficiencies: DeficiencyEntry[], imageM
   <table class="dt">
     <thead>
       <tr>
-        <th style="width:18%">Deficiency Details</th>
-        <th style="width:10%">Deficiency Name</th>
-        <th style="width:18%">Comments</th>
-        <th style="width:14%">Deficiency Picture</th>
-        <th style="width:8%">Deduction Pts.</th>
-        <th style="width:10%">Repeat Indicator</th>
-        <th style="width:8%">Severity</th>
+        <th style="width:22%">Deficiency Details</th>
+        <th style="width:10%">Code of Reference</th>
+        <th style="width:16%">Deficiency Picture</th>
+        <th style="width:9%">Deduction Pts.</th>
+        <th style="width:11%">Repeat Indicator</th>
+        <th style="width:9%">Severity</th>
+        <th style="width:13%">Note</th>
       </tr>
     </thead>
     <tbody>
@@ -448,7 +503,7 @@ export function generateEnhancedNSPIREReportHTML(
   options: PDFGenerationOptions = DEFAULT_PDF_OPTIONS,
   imageMap: Map<string, string> = new Map()
 ): string {
-  return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>NSPIRE Report</title><style>${generateEnhancedStyles()}</style></head><body><div class="report-container">${generateEnhancedHeader(report.metadata)}${options.includeSummaryPage ? generateEnhancedSummaryPage(report.summary, report.categoryBreakdown, report.metadata, report.inspectionData, report.occupancyInfo) : ''}${options.includeDetailedDeficiencies ? generateEnhancedDeficiencyTable(report.deficiencies, imageMap) : ''}${generateCertificatesTable()}${options.includeCertification && report.certification ? generateEnhancedCertificationSection(report.certification) : ''}${generateEnhancedFooter(options)}</div></body></html>`;
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>NSPIRE Report</title><style>${generateEnhancedStyles()}</style></head><body><div class="report-container">${generateEnhancedHeader(report.metadata)}${options.includeSummaryPage ? generateEnhancedSummaryPage(report.summary, report.categoryBreakdown, report.metadata, report.inspectionData, report.occupancyInfo, report.deficiencies) : ''}${options.includeDetailedDeficiencies ? generateEnhancedDeficiencyTable(report.deficiencies, imageMap) : ''}${generateCertificatesTable()}${options.includeCertification && report.certification ? generateEnhancedCertificationSection(report.certification) : ''}${generateEnhancedFooter(options)}</div></body></html>`;
 }
 
 /**
@@ -463,6 +518,35 @@ class EnhancedNSPIREPDFReportService {
     report: NSPIREInspectionReport,
     options: PDFGenerationOptions = DEFAULT_PDF_OPTIONS
   ): Promise<{ uri: string; success: boolean; error?: string }> {
+    // ── Web: open HTML in a new browser tab and trigger the print dialog ──────
+    if (Platform.OS === 'web') {
+      try {
+        const imageMap = await preloadDeficiencyImages(report.deficiencies || []);
+        const html = generateEnhancedNSPIREReportHTML(report, options, imageMap);
+        const win = (window as any).open('', '_blank') as Window | null;
+        if (win) {
+          win.document.write(html);
+          win.document.close();
+          // Give browser time to render before triggering the print dialog
+          setTimeout(() => win.print(), 600);
+        } else {
+          // Fallback: create a download link
+          const blob = new Blob([html], { type: 'text/html' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `NSPIRE-Report-${report.metadata.inspectionNo || Date.now()}.html`;
+          a.click();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+        return { uri: '', success: true };
+      } catch (error: any) {
+        console.error('Web PDF/Print Error:', error);
+        return { uri: '', success: false, error: error.message || 'Failed to open print dialog' };
+      }
+    }
+
+    // ── Native: generate PDF file via expo-print ──────────────────────────────
     try {
       console.log('Starting Enhanced NSPIRE PDF generation...');
       console.log('Report data:', {

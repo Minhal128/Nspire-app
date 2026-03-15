@@ -75,11 +75,10 @@ const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   const handleUnitsPress = () => {
-    navigation.navigate('LocationInspection', {
+    navigation.navigate('PropertyInfo', {
       property,
       selectedUnits,
       buildingId: buildingName,
-      location: 'Unit',
     });
   };
 
@@ -113,9 +112,7 @@ const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
               <Ionicons name="pencil-outline" size={16} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
-          <Text style={styles.unitsInfo}>
-            Units Under {buildingName}: {selectedUnits.join(', ')}
-          </Text>
+          {/* Only show building name, no unit names */}
         </View>
 
         {/* Edit Building Name Modal */}

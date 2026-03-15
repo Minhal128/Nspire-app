@@ -9,6 +9,7 @@ import {
   Alert,
   Share,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Print from 'expo-print';
@@ -238,23 +239,33 @@ Notes: ${report.notes}
       
       // Generate PDF from HTML
       const html = generatePdfHtml();
-      const { uri } = await Print.printToFileAsync({
-        html,
-        base64: false,
-      });
-
-      // Check if sharing is available
-      const isAvailable = await Sharing.isAvailableAsync();
-      
-      if (isAvailable) {
-        await Sharing.shareAsync(uri, {
-          mimeType: 'application/pdf',
-          dialogTitle: 'Save Inspection Report',
-          UTI: 'com.adobe.pdf',
-        });
-        Alert.alert('Success', 'PDF report generated successfully!');
+      if (Platform.OS === 'web') {
+        const win = window.open('', '_blank');
+        if (win) {
+          win.document.write(html);
+          win.document.close();
+          setTimeout(() => win.print(), 600);
+        }
+        Alert.alert('Success', 'Report opened in a new tab. Use the print dialog to save as PDF.');
       } else {
-        Alert.alert('Success', `PDF saved to: ${uri}`);
+        const { uri } = await Print.printToFileAsync({
+          html,
+          base64: false,
+        });
+
+        // Check if sharing is available
+        const isAvailable = await Sharing.isAvailableAsync();
+        
+        if (isAvailable) {
+          await Sharing.shareAsync(uri, {
+            mimeType: 'application/pdf',
+            dialogTitle: 'Save Inspection Report',
+            UTI: 'com.adobe.pdf',
+          });
+          Alert.alert('Success', 'PDF report generated successfully!');
+        } else {
+          Alert.alert('Success', `PDF saved to: ${uri}`);
+        }
       }
     } catch (error) {
       console.error('PDF generation error:', error);

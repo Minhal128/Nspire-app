@@ -11,12 +11,16 @@ import {
   hasInsideSubcategories,
   getInsideCategorySubcategories,
   getInsideSubcategoryDeficiencies as getUnitSubcategoryDeficiencies,
+  getInsideSubcategoryDeficienciesByParent,
 } from './unitDeficiencyMapping';
 
 // Import Outside deficiencies for Outside inspections (correct NSPIRE values)
 import {
   getOutsideDeficienciesByCategory,
   ALL_OUTSIDE_DEFICIENCIES,
+  ELECTRICAL_SERVICE_PANEL_DATA,
+  SITE_DRAINAGE_DATA,
+  DRAIN_DRAIN_DATA,
 } from './outsideDeficiencyMapping';
 
 // Import Inside deficiencies for Inside inspections (Unit locations use this - 32 categories)
@@ -100,6 +104,7 @@ export interface DeficiencyOption {
   repairBy: string;
   points: string;
   code?: string;
+  codeReference?: string;
 }
 
 export interface ItemDeficiencies {
@@ -119,7 +124,33 @@ export const ADDRESS_SIGNAGE_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '4.5/n',
-      code: 'ADDR-01'
+      code: 'ADDR-01',
+      codeReference: `🔍 1. Identification & Applicability
+• IRC §R319.1 – Address identification for emergency response
+• Includes: Building number and street name, Unit identifiers (if applicable)
+• Monument signs, wall-mounted signs, post-mounted signs
+• NSPIRE Scope: Evaluates visibility, legibility, physical condition, and mounting of signage
+
+🧱 2. Structural Integrity
+Inspect for physical damage or missing components:
+• Cracks, holes, rust, fading, graffiti, missing letters/numbers, loose mounting
+
+🔧 3. Visibility & Legibility
+• Distance check: Confirm address is readable from street or fire lane
+• Contrast check: Ensure text contrasts with background (e.g., black on white)
+• Obstruction check: Remove vegetation, debris, or objects blocking signage
+• Font size: Minimum 4″ high numerals for emergency visibility
+
+🧼 4. Sanitation & Environmental Safety
+• Inspect for: mold, bird droppings, or pest nests on or around signage
+• Check for graffiti, fading, or weather damage
+• IBU Overlay: May require washable surfaces, sealed enclosures, or pest-resistant materials
+
+🧠 5. Accessibility & Local Requirements
+• Height & placement: Signage must be mounted at a visible height (typically 4–6 ft AFF)
+• Lighting: Required if signage is not visible at night
+• Multilingual or tactile signage: May be required in accessible buildings
+• IBU Overlay: May require visual contrast, ADA-compliant font, or audible identifiers`
     }
   ]
 };
@@ -136,7 +167,30 @@ export const CHIMNEY_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Life-Threatening',
       repairBy: '24 Hrs.',
       points: '49.60/n',
-      code: 'CHIM-01'
+      code: 'CHIM-01',
+      codeReference: `🔍 Step 1: Identify Chimney Type and Applicability
+• Locate all visually accessible chimneys connected to: Fireplaces, Wood-burning appliances, Fuel-burning heating systems (if vented via chimney)
+
+🧱 Step 2: Assess Structural Integrity
+Inspect for signs of damage, instability, or missing components:
+• Cracks, spalling, leaning, loose bricks, missing caps, deteriorated flashing
+• IRC §R1003.9 requires chimneys to extend ≥2′ above any part of the building within 10′
+
+🔧 Step 3: Evaluate Functional Adequacy
+• Flue continuity: Check for visible gaps, misalignment, or obstructions
+• Smoke path: Ensure the chimney is not blocked or collapsed
+• Cap integrity: Must prevent rain, debris, and pests from entering
+
+🧼 Step 4: Check Sanitation & Environmental Safety
+• Look for:
+• Creosote stains, soot, or bird nests at the flue opening
+• Water damage, mold, or pest activity around the chimney base or flashing
+• IBU Overlay: May require pest-proof caps, sealed masonry, or corrosion-resistant flashing
+
+🧠 Step 5: Verify Accessibility & Local Compliance
+• Inspection access: Chimney must be observable from ground or safe vantage point
+• Height compliance: Confirm chimney meets IRC and CBC elevation standards
+• IBU Overlay: May require seismic anchorage, fire-rated clearances, or compliant signage if chimney serves shared amenities`
     },
     {
       id: 'chim_2',
@@ -146,7 +200,30 @@ export const CHIMNEY_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Life-Threatening',
       repairBy: '24 Hrs.',
       points: '49.60/n',
-      code: 'CHIM-02'
+      code: 'CHIM-02',
+      codeReference: `🔍 Step 1: Identify Chimney Type and Applicability
+• Locate all visually accessible chimneys connected to: Fireplaces, Wood-burning appliances, Fuel-burning heating systems (if vented via chimney)
+
+🧱 Step 2: Assess Structural Integrity
+Inspect for signs of damage, instability, or missing components:
+• Cracks, spalling, leaning, loose bricks, missing caps, deteriorated flashing
+• IRC §R1003.9 requires chimneys to extend ≥2′ above any part of the building within 10′
+
+🔧 Step 3: Evaluate Functional Adequacy
+• Flue continuity: Check for visible gaps, misalignment, or obstructions
+• Smoke path: Ensure the chimney is not blocked or collapsed
+• Cap integrity: Must prevent rain, debris, and pests from entering
+
+🧼 Step 4: Check Sanitation & Environmental Safety
+• Look for:
+• Creosote stains, soot, or bird nests at the flue opening
+• Water damage, mold, or pest activity around the chimney base or flashing
+• IBU Overlay: May require pest-proof caps, sealed masonry, or corrosion-resistant flashing
+
+🧠 Step 5: Verify Accessibility & Local Compliance
+• Inspection access: Chimney must be observable from ground or safe vantage point
+• Height compliance: Confirm chimney meets IRC and CBC elevation standards
+• IBU Overlay: May require seismic anchorage, fire-rated clearances, or compliant signage if chimney serves shared amenities`
     }
   ]
 };
@@ -163,7 +240,31 @@ export const DRYER_VENT_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Life-Threatening',
       repairBy: '24 Hrs.',
       points: '49.60/n',
-      code: 'DRYER-01'
+      code: 'DRYER-01',
+      codeReference: `🔍 Step 1: Locate and Identify the Exterior Vent
+• Find the dryer exhaust termination point on the building's exterior wall
+• Confirm it is connected to a mechanical dryer system, not a ductless or condensing unit (which are exempt)
+• Note whether the vent is wall-mounted, soffit-mounted, or roof-terminated
+
+🧱 Step 2: Assess Structural Integrity
+Inspect for damage, missing components, or improper installation:
+• Damaged louvers, crushed duct, disconnected sections, missing caps
+• IRC (2021) §M1502 – Dryer exhaust systems must discharge outdoors and meet termination requirements
+
+🔧 Step 3: Evaluate Functional Adequacy
+• Airflow check: Run the dryer and feel for warm air discharge at the vent
+• Lint accumulation: Look for lint buildup around the vent—indicates restricted airflow
+
+🧼 Step 4: Check Sanitation & Environmental Safety
+• Inspect for:
+• Mold, mildew, or pest nests around the vent opening
+• Water intrusion or staining on the wall below the vent
+• IBU Overlay: May require pest-proof vent caps, corrosion-resistant materials, and sealed penetrations
+
+🧠 Step 5: Verify Accessibility & Local Compliance
+• Height & reachability: Vent must be accessible for cleaning and inspection
+• Clearance: Must terminate ≥3 ft from any window, door, or air intake (IRC §M1502.3)
+• IBU Overlay: May require compliant access paths or signage in shared laundry areas`
     },
     {
       id: 'dryer_2',
@@ -173,7 +274,31 @@ export const DRYER_VENT_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Low',
       repairBy: '30 Day',
       points: '2.00/n',
-      code: 'DRYER-02'
+      code: 'DRYER-02',
+      codeReference: `🔍 Step 1: Locate and Identify the Exterior Vent
+• Find the dryer exhaust termination point on the building's exterior wall
+• Confirm it is connected to a mechanical dryer system, not a ductless or condensing unit (which are exempt)
+• Note whether the vent is wall-mounted, soffit-mounted, or roof-terminated
+
+🧱 Step 2: Assess Structural Integrity
+Inspect for damage, missing components, or improper installation:
+• Damaged louvers, crushed duct, disconnected sections, missing caps
+• IRC (2021) §M1502 – Dryer exhaust systems must discharge outdoors and meet termination requirements
+
+🔧 Step 3: Evaluate Functional Adequacy
+• Airflow check: Run the dryer and feel for warm air discharge at the vent
+• Lint accumulation: Look for lint buildup around the vent—indicates restricted airflow
+
+🧼 Step 4: Check Sanitation & Environmental Safety
+• Inspect for:
+• Mold, mildew, or pest nests around the vent opening
+• Water intrusion or staining on the wall below the vent
+• IBU Overlay: May require pest-proof vent caps, corrosion-resistant materials, and sealed penetrations
+
+🧠 Step 5: Verify Accessibility & Local Compliance
+• Height & reachability: Vent must be accessible for cleaning and inspection
+• Clearance: Must terminate ≥3 ft from any window, door, or air intake (IRC §M1502.3)
+• IBU Overlay: May require compliant access paths or signage in shared laundry areas`
     },
     {
       id: 'dryer_3',
@@ -183,7 +308,31 @@ export const DRYER_VENT_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Life-Threatening',
       repairBy: '24 Hrs.',
       points: '49.60/n',
-      code: 'DRYER-03'
+      code: 'DRYER-03',
+      codeReference: `🔍 Step 1: Locate and Identify the Exterior Vent
+• Find the dryer exhaust termination point on the building's exterior wall
+• Confirm it is connected to a mechanical dryer system, not a ductless or condensing unit (which are exempt)
+• Note whether the vent is wall-mounted, soffit-mounted, or roof-terminated
+
+🧱 Step 2: Assess Structural Integrity
+Inspect for damage, missing components, or improper installation:
+• Damaged louvers, crushed duct, disconnected sections, missing caps
+• IRC (2021) §M1502 – Dryer exhaust systems must discharge outdoors and meet termination requirements
+
+🔧 Step 3: Evaluate Functional Adequacy
+• Airflow check: Run the dryer and feel for warm air discharge at the vent
+• Lint accumulation: Look for lint buildup around the vent—indicates restricted airflow
+
+🧼 Step 4: Check Sanitation & Environmental Safety
+• Inspect for:
+• Mold, mildew, or pest nests around the vent opening
+• Water intrusion or staining on the wall below the vent
+• IBU Overlay: May require pest-proof vent caps, corrosion-resistant materials, and sealed penetrations
+
+🧠 Step 5: Verify Accessibility & Local Compliance
+• Height & reachability: Vent must be accessible for cleaning and inspection
+• Clearance: Must terminate ≥3 ft from any window, door, or air intake (IRC §M1502.3)
+• IBU Overlay: May require compliant access paths or signage in shared laundry areas`
     }
   ]
 };
@@ -206,7 +355,36 @@ export const DOOR_GENERAL_STANDARD_OUTSIDE: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '4.5/n',
-      code: 'DOOR-GEN-STD-01'
+      code: 'DOOR-GEN-STD-01',
+      codeReference: `🚪 Exterior Door – General (Non-Entry) Visual Assessment
+Codes Referenced:
+• IRC (2021) §R311.2 – Means of egress and door operability
+• NSPIRE Standard v2.1 – Door: General HUD Standard
+• IBU overlays – CBC Chapters 10, 11B, and 12; Ventura County Habitability Ordinance
+
+🔍 Step 1: Identify Applicable Doors
+• Locate exterior doors that:
+• Do not serve as primary unit entries
+• Are not fire-rated
+• Provide access to storage closets, mechanical rooms, laundry enclosures, or utility spaces
+
+🧱 Step 2: Assess Structural Integrity
+Inspect for physical damage or missing components:
+• Door panel, frame, hinges, threshold, hardware
+
+🔧 Step 3: Evaluate Operability & Security
+• Open/close test: Door must open and close smoothly without obstruction
+• Latch test: Door must latch securely and remain closed when shut
+• Lock test: Confirm locking mechanism functions properly (if applicable)
+
+🧼 Step 4: Check Sanitation & Environmental Safety
+• Inspect for:
+• Mold, mildew, or pest droppings around the door frame and threshold
+• Water intrusion or staining on adjacent walls or flooring
+• IBU Overlay: May require sealed thresholds, pest-proof sweeps, and moisture-resistant finishes
+
+🧠 Step 5: Verify Accessibility & Local Compliance
+• Cross-reference: Note IRC §R311.2, NSPIRE deficiency ID, and IBU overlay`
     }
   ]
 };
@@ -223,7 +401,35 @@ export const GARAGE_DOOR_OUTSIDE: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '4.5/n',
-      code: 'GARAGE-OUT-01'
+      code: 'GARAGE-OUT-01',
+      codeReference: `🔍 Step 1: Identify Garage Door Type and Applicability
+• Locate all exterior garage doors used for:
+• Resident or staff vehicle access
+• Storage or maintenance enclosures
+• Confirm door is mechanically operable, not sealed or decorative
+• Note whether door is manual or automatic, and whether it serves shared or private use
+
+🧱 Step 2: Assess Structural Integrity
+Inspect for damage, instability, or missing components:
+• Door panel, Track & rollers, Spring and cables, Frame and mounting, wind resistance label
+• IRC requires garage doors to meet wind load and structural performance standards (§R612.13)
+
+🔧 Step 3: Evaluate Operability & Safety
+• Open/close test: Door must operate smoothly without excessive force
+• Auto-reverse test (if motorized): Door must reverse when obstructed
+• Manual override: Confirm emergency release is accessible and functional
+
+🧼 Step 4: Check Sanitation & Environmental Safety
+• Inspect for:
+• Mold, mildew, or pest droppings around the door base and tracks
+• Water intrusion or staining on adjacent walls or flooring
+• IBU Overlay: May require sealed thresholds, pest-proof sweeps, and corrosion-resistant hardware
+
+🧠 Step 5: Verify Accessibility & Local Compliance
+• Clearance: Door must provide unobstructed access for vehicles and mobility devices
+• Control height: Wall-mounted openers must be ≤48″ AFF
+• Signage: Shared garage areas may require tactile or multilingual signage
+• IBU Overlay: May require ADA-compliant access paths, visual contrast, or audible alerts`
     },
     {
       id: 'garage_out_2',
@@ -233,7 +439,35 @@ export const GARAGE_DOOR_OUTSIDE: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '4.5/n',
-      code: 'GARAGE-OUT-02'
+      code: 'GARAGE-OUT-02',
+      codeReference: `🔍 Step 1: Identify Garage Door Type and Applicability
+• Locate all exterior garage doors used for:
+• Resident or staff vehicle access
+• Storage or maintenance enclosures
+• Confirm door is mechanically operable, not sealed or decorative
+• Note whether door is manual or automatic, and whether it serves shared or private use
+
+🧱 Step 2: Assess Structural Integrity
+Inspect for damage, instability, or missing components:
+• Door panel, Track & rollers, Spring and cables, Frame and mounting, wind resistance label
+• IRC requires garage doors to meet wind load and structural performance standards (§R612.13)
+
+🔧 Step 3: Evaluate Operability & Safety
+• Open/close test: Door must operate smoothly without excessive force
+• Auto-reverse test (if motorized): Door must reverse when obstructed
+• Manual override: Confirm emergency release is accessible and functional
+
+🧼 Step 4: Check Sanitation & Environmental Safety
+• Inspect for:
+• Mold, mildew, or pest droppings around the door base and tracks
+• Water intrusion or staining on adjacent walls or flooring
+• IBU Overlay: May require sealed thresholds, pest-proof sweeps, and corrosion-resistant hardware
+
+🧠 Step 5: Verify Accessibility & Local Compliance
+• Clearance: Door must provide unobstructed access for vehicles and mobility devices
+• Control height: Wall-mounted openers must be ≤48″ AFF
+• Signage: Shared garage areas may require tactile or multilingual signage
+• IBU Overlay: May require ADA-compliant access paths, visual contrast, or audible alerts`
     }
   ]
 };
@@ -264,7 +498,33 @@ export const DRAIN_DRAIN_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '4.5/n',
-      code: 'DRAIN-01'
+      code: 'DRAIN-01',
+      codeReference: `🔍 Step 1: Locate and Identify Drainage Components
+• Identify all surface and subsurface site drains near:
+• Building foundations
+• Walkways, patios, driveways, and parking areas
+• Retention basins, culverts, French drains, or curbing systems
+• Confirm drains are intended to redirect water away from structures and pedestrian paths
+
+🧱 Step 2: Assess Structural Integrity
+Inspect for physical damage, missing components, or unsafe conditions:
+• Drain cover/grate, Drain body, Surrounding surface, Foundation exposure
+
+🔧 Step 3: Evaluate Functional Adequacy
+• Water flow test (if safe): Pour water near the drain and observe the flow direction
+• Standing water check: Look for pooling above or near the drain inlet
+• Obstruction check: Confirm drain is free of debris, sediment, or vegetation
+
+🧼 Step 4: Check Sanitation & Environmental Safety
+• Inspect for:
+• Mold, algae, or pest nests in or around the drain
+• Odors or signs of sewage backup
+• IBU Overlay: May require pest-proof grates, sealed joints, and stormwater separation from sanitary systems
+
+🧠 Step 5: Verify Accessibility & Local Compliance
+• Cover security: Grates must be flush and secured to prevent trip hazards
+• Pathway clearance: Drains must not obstruct accessible routes or egress paths
+• IBU Overlay: May require compliant slope transitions, tactile warnings, or visual contrast near accessible walkways`
     }
   ]
 };
@@ -281,7 +541,29 @@ export const SITE_DRAINAGE_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '4.5/n',
-      code: 'SITE-DRAIN-01'
+      code: 'SITE-DRAIN-01',
+      codeReference: `🔍 Step 1: Locate and Identify Drainage Components
+• 	Identify all surface and subsurface site drains near:
+• 	Building foundations
+• 	Walkways, patios, driveways, and parking areas
+• 	Retention basins, culverts, French drains, or curbing systems
+• 	Confirm drains are intended to redirect water away from structures and pedestrian paths
+🧱 Step 2: Assess Structural Integrity
+Inspect for physical damage, missing components, or unsafe conditions:
+Drain cover/grate, Drain body, Surrounding surface, and Foundation exposure
+🔧 Step 3: Evaluate Functional Adequacy
+• 	Water flow test (if safe): Pour water near the drain and observe the flow direction
+• 	Standing water check: Look for pooling above or near the drain inlet
+• 	Obstruction check: Confirm drain is free of debris, sediment, or vegetation
+🧼 Step 4: Check Sanitation & Environmental Safety
+• 	Inspect for:
+• 	Mold, algae, or pest nests in or around the drain
+• 	Odors or signs of sewage backup
+• 	IBU Overlay: May require pest-proof grates, sealed joints, and stormwater separation from sanitary systems
+🧠 Step 5: Verify Accessibility & Local Compliance
+• 	Cover security: Grates must be flush and secured to prevent trip hazards
+• 	Pathway clearance: Drains must not obstruct accessible routes or egress paths
+• 	IBU Overlay: May require compliant slope transitions, tactile warnings, or visual contrast near accessible walkways`
     },
     {
       id: 'site_drain_2',
@@ -291,7 +573,11 @@ export const SITE_DRAINAGE_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '4.5/n',
-      code: 'SITE-DRAIN-02'
+      code: 'SITE-DRAIN-02',
+      codeReference: `🔍 Same inspection protocol as DRAIN-OUT-01 with focus on:
+• Missing or loose grates
+• Trip hazards from raised or damaged grates
+• Safety concerns at collection points`
     },
     {
       id: 'site_drain_3',
@@ -301,7 +587,11 @@ export const SITE_DRAINAGE_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Low',
       repairBy: '30 Day',
       points: '2.00/n',
-      code: 'SITE-DRAIN-03'
+      code: 'SITE-DRAIN-03',
+      codeReference: `🔍 Same inspection protocol as DRAIN-OUT-01 with focus on:
+• Blocked outflow pipes
+• Standing water at drainage entrance points
+• Evidence of poor drainage during rain events`
     }
   ]
 };
@@ -331,7 +621,34 @@ export const ELECTRICAL_CONDUCTOR_OUTLET_SWITCH: ItemDeficiencies = {
       severity: 'Life-Threatening',
       repairBy: '24 Hrs.',
       points: '24.8/n',
-      code: 'ELEC-COS-01'
+      code: 'ELEC-COS-01',
+      codeReference: `🔍 Step 1: Identify Exterior Electrical Components
+• Locate all electrical outlets, switches, and exposed conductors on:
+• Exterior walls, patios, balconies, garages, and utility enclosures
+• Exterior Common areas such as laundry rooms, storage closets, and maintenance zones
+• Confirm components are permanently installed and accessible for inspection
+
+🧱 Step 2: Assess Structural Integrity
+Inspect for damage, exposure, or improper installation:
+• Outlet/switch cover, Electrical box, Conductors/wiring, GFCI protection
+
+🔧 Step 3: Test Operability & Safety
+• Outlet test: Use a UL-listed outlet tester to verify:
+• Proper wiring and grounding
+• Switch test: Toggle each switch to confirm it controls connected lighting or equipment
+
+🧼 Step 4: Check Sanitation & Environmental Safety
+• Inspect for:
+• Mold, corrosion, or pest activity around boxes and conduit
+• Water intrusion or staining near electrical components
+• IBU Overlay: May require weatherproof covers, sealed conduit, and pest-resistant enclosures
+
+🧠 Step 5: Verify Accessibility & Local Compliance
+• Mounting height: Switches and outlets must be reachable (≤48″ AFF for ADA compliance)
+• Weatherproofing: Exterior outlets must have in-use covers rated for wet locations
+• Labeling: Disconnects and breakers must be clearly marked
+• IBU Overlay: May require tactile indicators, visual contrast, or lockable covers in shared-use areas
+• IRC (2021) §E3901–E3903 – Electrical outlets, switches, and conductors`
     },
     {
       id: 'elec_cos_2',
@@ -341,7 +658,30 @@ export const ELECTRICAL_CONDUCTOR_OUTLET_SWITCH: ItemDeficiencies = {
       severity: 'Severe',
       repairBy: '24 Hrs.',
       points: '12.20/n',
-      code: 'ELEC-COS-02'
+      code: 'ELEC-COS-02',
+      codeReference: `🔍 Step 1: Identify Exterior Electrical Components
+• 	Locate all electrical outlets, switches, and exposed conductors on:
+• 	Exterior walls, patios, balconies, garages, and utility enclosures
+• 	Exterior Common areas such as laundry rooms, storage closets, and maintenance zones
+• 	Confirm components are permanently installed and accessible for inspection
+🧱 Step 2: Assess Structural Integrity
+Inspect for damage, exposure, or improper installation:
+Outlet/switch cover, Electrical box, Conductors/wiring, GFCI protection
+🔧 Step 3: Test Operability & Safety
+• 	Outlet test: Use a UL-listed outlet tester to verify:
+• 	Proper wiring and grounding
+• 	Switch test: Toggle each switch to confirm it controls connected lighting or equipment
+🧼 Step 4: Check Sanitation & Environmental Safety
+• 	Inspect for:
+• 	Mold, corrosion, or pest activity around boxes and conduit
+• 	Water intrusion or staining near electrical components
+• 	IBU Overlay: May require weatherproof covers, sealed conduit, and pest-resistant enclosures
+🧠 Step 5: Verify Accessibility & Local Compliance
+• 	Mounting height: Switches and outlets must be reachable (≤48″ AFF for ADA compliance)
+• 	Weatherproofing: Exterior outlets must have in-use covers rated for wet locations
+• 	Labeling: Disconnects and breakers must be clearly marked
+• 	IBU Overlay: May require tactile indicators, visual contrast, or lockable covers in shared-use areas
+• 	IRC (2021) §E3901–E3903 – Electrical outlets, switches, and conductors`
     },
     {
       id: 'elec_cos_3',
@@ -351,7 +691,30 @@ export const ELECTRICAL_CONDUCTOR_OUTLET_SWITCH: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '4.5/n',
-      code: 'ELEC-COS-03'
+      code: 'ELEC-COS-03',
+      codeReference: `🔍 Step 1: Identify Exterior Electrical Components
+• 	Locate all electrical outlets, switches, and exposed conductors on:
+• 	Exterior walls, patios, balconies, garages, and utility enclosures
+• 	Exterior Common areas such as laundry rooms, storage closets, and maintenance zones
+• 	Confirm components are permanently installed and accessible for inspection
+🧱 Step 2: Assess Structural Integrity
+Inspect for damage, exposure, or improper installation:
+Outlet/switch cover, Electrical box, Conductors/wiring, GFCI protection
+🔧 Step 3: Test Operability & Safety
+• 	Outlet test: Use a UL-listed outlet tester to verify:
+• 	Proper wiring and grounding
+• 	Switch test: Toggle each switch to confirm it controls connected lighting or equipment
+🧼 Step 4: Check Sanitation & Environmental Safety
+• 	Inspect for:
+• 	Mold, corrosion, or pest activity around boxes and conduit
+• 	Water intrusion or staining near electrical components
+• 	IBU Overlay: May require weatherproof covers, sealed conduit, and pest-resistant enclosures
+🧠 Step 5: Verify Accessibility & Local Compliance
+• 	Mounting height: Switches and outlets must be reachable (≤48″ AFF for ADA compliance)
+• 	Weatherproofing: Exterior outlets must have in-use covers rated for wet locations
+• 	Labeling: Disconnects and breakers must be clearly marked
+• 	IBU Overlay: May require tactile indicators, visual contrast, or lockable covers in shared-use areas
+• 	IRC (2021) §E3901–E3903 – Electrical outlets, switches, and conductors`
     }
   ]
 };
@@ -368,7 +731,38 @@ export const ELECTRICAL_AFCI_OUTLET: ItemDeficiencies = {
       severity: 'Severe',
       repairBy: '24 Hrs.',
       points: '12.20/n',
-      code: 'ELEC-AFCI-01'
+      code: 'ELEC-AFCI-01',
+      codeReference: `🔍 Step 1: Identify Applicable Devices
+• Locate all exterior electrical outlets and breakers that:
+• Are installed in damp or wet locations (e.g., patios, garages, balconies, utility enclosures)
+• Are within 6 feet of a water source
+• Are part of lighting, HVAC, or appliance circuits requiring AFCI or GFCI protection
+• Confirm whether protection is provided via:
+• GFCI outlet or GFCI breaker
+• AFCI outlet or AFCI breaker
+
+🧱 Step 2: Assess Structural Integrity
+Inspect for damage, exposure, or missing components:
+• Outlet/breaker faceplate, Test/reset buttons, Wiring/conductors, Weatherproof cover
+
+🔧 Step 3: Perform Functional Testing
+• Test GFCI outlet or breaker: Press TEST button → confirm power interruption
+• Press RESET button → confirm restoration
+• Test AFCI outlet or breaker: Press TEST button → confirm arc fault trip
+• Reset manually or via panel
+• Use a UL-listed circuit tester if buttons are inaccessible or unclear
+
+🧼 Step 4: Check Sanitation & Environmental Safety
+• Inspect for:
+• Corrosion, mold, or pest activity around outlet or panel
+• Water intrusion or staining near electrical enclosures
+• IBU Overlay: May require sealed conduit, pest-proof boxes, and corrosion-resistant hardware
+
+🧠 Step 5: Verify Accessibility & Local Compliance
+• Mounting height: ≤48″ AFF for accessibility compliance
+• Weatherproofing: Exterior outlets must have in-use covers rated for wet locations
+• Labeling: Breakers must be clearly marked for AFCI/GFCI protection
+• IBU Overlay: May require tactile indicators, visual contrast, or lockable covers in shared-use areas`
     }
   ]
 };
@@ -385,7 +779,35 @@ export const ELECTRICAL_UNPROTECTED_OUTLET: ItemDeficiencies = {
       severity: 'Severe',
       repairBy: '24 Hrs.',
       points: '12.20/n',
-      code: 'ELEC-UNPROT-01'
+      code: 'ELEC-UNPROT-01',
+      codeReference: `🔍 Step 1: Identify Applicable Devices
+• 	Locate all exterior electrical outlets and breakers that:
+• 	Are installed in damp or wet locations (e.g., patios, garages, balconies, utility enclosures)
+• 	Are within 6 feet of a water source
+• 	Are part of lighting, HVAC, or appliance circuits requiring AFCI or GFCI protection
+• 	Confirm whether protection is provided via:
+• 	GFCI outlet or GFCI breaker
+• 	AFCI outlet or AFCI breaker
+🧱 Step 2: Assess Structural Integrity
+Inspect for damage, exposure, or missing components:
+Outlet/breaker faceplate, Test/reset buttons, Wiring/conductors, Weatherproof cover
+🔧 Step 3: Perform Functional Testing
+• 	Test GFCI outlet or breaker: Press TEST button → confirm power interruption
+• 	Press RESET button → confirm restoration
+• 	Test AFCI outlet or breaker: Press TEST button → confirm arc fault trip
+• 	Reset manually or via panel
+• 	Use a UL-listed circuit tester if buttons are inaccessible or unclear
+• 	NSPIRE Deficiency 3: Missing GFCI protection within 6 ft of water source = Severe
+🧼 Step 4: Check Sanitation & Environmental Safety
+• 	Inspect for:
+• 	Corrosion, mold, or pest activity around outlet or panel
+• 	Water intrusion or staining near electrical enclosures
+• 	IBU Overlay: May require sealed conduit, pest-proof boxes, and corrosion-resistant hardware
+🧠 Step 5: Verify Accessibility & Local Compliance
+• 	Mounting height: ≤48″ AFF for accessibility compliance
+• 	Weatherproofing: Exterior outlets must have in-use covers rated for wet locations
+• 	Labeling: Breakers must be clearly marked for AFCI/GFCI protection
+• 	IBU Overlay: May require tactile indicators, visual contrast, or lockable covers in shared-use areas`
     }
   ]
 };
@@ -402,7 +824,35 @@ export const ELECTRICAL_GFCI_OUTLET: ItemDeficiencies = {
       severity: 'Severe',
       repairBy: '24 Hrs.',
       points: '12.20/n',
-      code: 'ELEC-GFCI-01'
+      code: 'ELEC-GFCI-01',
+      codeReference: `🔍 Step 1: Identify Applicable Devices
+• 	Locate all exterior electrical outlets and breakers that:
+• 	Are installed in damp or wet locations (e.g., patios, garages, balconies, utility enclosures)
+• 	Are within 6 feet of a water source
+• 	Are part of lighting, HVAC, or appliance circuits requiring AFCI or GFCI protection
+• 	Confirm whether protection is provided via:
+• 	GFCI outlet or GFCI breaker
+• 	AFCI outlet or AFCI breaker
+🧱 Step 2: Assess Structural Integrity
+Inspect for damage, exposure, or missing components:
+Outlet/breaker faceplate, Test/reset buttons, Wiring/conductors, Weatherproof cover
+🔧 Step 3: Perform Functional Testing
+• 	Test GFCI outlet or breaker: Press TEST button → confirm power interruption
+• 	Press RESET button → confirm restoration
+• 	Test AFCI outlet or breaker: Press TEST button → confirm arc fault trip
+• 	Reset manually or via panel
+• 	Use a UL-listed circuit tester if buttons are inaccessible or unclear
+• 	NSPIRE Deficiency 3: Missing GFCI protection within 6 ft of water source = Severe
+🧼 Step 4: Check Sanitation & Environmental Safety
+• 	Inspect for:
+• 	Corrosion, mold, or pest activity around outlet or panel
+• 	Water intrusion or staining near electrical enclosures
+• 	IBU Overlay: May require sealed conduit, pest-proof boxes, and corrosion-resistant hardware
+🧠 Step 5: Verify Accessibility & Local Compliance
+• 	Mounting height: ≤48″ AFF for accessibility compliance
+• 	Weatherproofing: Exterior outlets must have in-use covers rated for wet locations
+• 	Labeling: Breakers must be clearly marked for AFCI/GFCI protection
+• 	IBU Overlay: May require tactile indicators, visual contrast, or lockable covers in shared-use areas`
     }
   ]
 };
@@ -419,7 +869,34 @@ export const ELECTRICAL_SERVICE_PANEL_OUTSIDE: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '4.5/n',
-      code: 'ESP-OUT-01'
+      code: 'ESP-OUT-01',
+      codeReference: `🔍 Step 1: Locate and Identify Panel Type
+• Identify main service panels typically grouped near:
+• Exterior meter banks
+• Utility closets or mechanical enclosures
+• Confirm panel serves multiple units and is accessible for inspection
+• Note presence of subpanels inside units (if applicable) and ensure proper feeder separation
+
+🧱 Step 2: Assess Structural Integrity
+Inspect for physical damage, exposure, or unsafe conditions:
+• Panel enclosure, Mounting, Locking mechanism, Live conductors
+
+🔧 Step 3: Evaluate Functional Adequacy
+• Breaker test: Visually confirm breakers are seated and not tripped (do not reset tripped breakers)
+• Main disconnect: Must be clearly labeled and accessible
+• Grounding & bonding: Look for proper ground rod connection and neutral/EGC separation
+
+🧼 Step 4: Check Sanitation & Environmental Safety
+• Inspect for:
+• Corrosion, mold, or pest activity inside or around panel
+• Water intrusion or staining on enclosure or adjacent wall
+• IBU Overlay: May require sealed conduit, pest-proof enclosures, and corrosion-resistant hardware
+
+🧠 Step 5: Verify Accessibility & Local Compliance
+• Working clearance: Minimum 30″ wide × 36″ deep clear space in front of panel (CEC §110.26)
+• Mounting height: Panel handles must be ≤6′7″ AFF
+• Labeling: All breakers must be clearly marked for unit or system served
+• IBU Overlay: May require tactile signage, lockable access, and ADA-compliant reach ranges in shared areas`
     },
     {
       id: 'esp_out_2',
@@ -429,7 +906,11 @@ export const ELECTRICAL_SERVICE_PANEL_OUTSIDE: ItemDeficiencies = {
       severity: 'Severe',
       repairBy: '24 Hrs.',
       points: '12.20/n',
-      code: 'ESP-OUT-02'
+      code: 'ESP-OUT-02',
+      codeReference: `🔍 Same inspection protocol as ELEC-OUT-05 with focus on:
+• Contamination of protection devices
+• Signs of infestation, paint, or rust
+• Integrity of breakers and fuses`
     },
     {
       id: 'esp_out_3',
@@ -439,7 +920,11 @@ export const ELECTRICAL_SERVICE_PANEL_OUTSIDE: ItemDeficiencies = {
       severity: 'Life-Threatening',
       repairBy: '24 Hrs.',
       points: '24.8/n',
-      code: 'ESP-OUT-03'
+      code: 'ESP-OUT-03',
+      codeReference: `🔍 Same inspection protocol as ELEC-OUT-05 with focus on:
+• Visible damage to protection devices
+• Risk of failure to interrupt circuit
+• Critical safety inspection of fuses and breakers`
     }
   ]
 };
@@ -472,7 +957,33 @@ export const EXIT_SIGN_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Life-Threatening',
       repairBy: '24 Hrs.',
       points: '24.8/n',
-      code: 'EXIT-SIGN-01'
+      code: 'EXIT-SIGN-01',
+      codeReference: `🧭 Step 1: Identify Exit Sign Locations
+Inspect all permanently installed exit signs that mark emergency egress routes.
+NSPIRE does not require exit signs in every building, but if one is present or evidence of prior installation exists, it must be inspected.
+
+🔍 Step 2: Visual Condition Assessment
+• Legibility: The word "EXIT" must be clearly visible from all approach angles.
+• Obstruction: Ensure no furniture, signage, or decorations block the sign.
+• Contrast: Letters must contrast with the background (typically red or green on white).
+
+🧪 Step 3: Functional Testing
+• Visibility Check: Confirm the sign is clearly visible from all approach angles
+• Illumination Test: If the sign is powered, press the test button (if present) to verify battery backup
+• If no button, confirm the sign is lit via AC power or photoluminescence
+• Mounting Check: Ensure the sign is securely affixed to the wall or ceiling
+• Obstruction Scan: Look for any objects blocking the sign or its visibility
+• Combination units (exit sign + emergency light) must be inspected as two separate items.
+
+📏 Step 4: Accessibility /Code Compliance & IBU Overlay
+• Height & Placement: Signs must be mounted high enough to be visible but not obstructive
+• Visual Clarity: Letters must be ≥6″ high with a stroke width ≥¾″
+• Contrast & Illumination: Must be readable by residents with low vision
+• Directional Arrows: Required if the exit path is not straight ahead
+
+⚒️ Step 5: IRC Fire Safety Requirements
+• IRC (2021) §R311.4, §R315 – Means of egress and emergency escape
+• Fire separation walls must not block exit signage or access`
     }
   ]
 };
@@ -484,12 +995,42 @@ export const FIRE_ESCAPE_DEFICIENCIES: ItemDeficiencies = {
     {
       id: 'fire_esc_1',
       name: 'Fire escape component is damaged, or missing.',
-      detail: 'A stair, ladder, platform, guardrail, or handrail is deficient if it is visibly damaged or missing in a way that affects its functionality or intended safety.',
+      detail: 'Fire escape  component is damaged, or missing',
       criteria: 'A stair, ladder, platform, guardrail, or handrail is deficient if it is visibly damaged or missing in a way that affects its functionality or intended safety.',
       severity: 'Life-Threatening',
       repairBy: '24 Hrs.',
       points: '24.8/n',
-      code: 'FIRE-ESC-01'
+      code: 'FIRE-ESC-01',
+      codeReference: `🧭 Step 1: Exterior Fire Escape & Ladder Inspection Protocol
+Applies to: Multifamily buildings >4 stories
+Codes Referenced: IRC, IBC/IBU, NSPIRE
+Focus: Life safety, structural integrity, egress functionality
+
+🔍 Step 2: Structural Component Checklist
+Inspect each element for damage, deterioration, or absence:
+• Stairs/Ladders, Platforms, Guardrails, Handrails, Anchors/Supports
+• NSPIRE defines any missing or damaged fire escape component as a life-threatening deficiency
+
+🧪 Step 3: Egress & Access Evaluation
+• Verify clear access from windows or doors to the fire escape.
+• Check for obstructions: AC units, furniture, debris.
+• Confirm operability of windows/doors leading to escape.
+• If blocked, refer to NSPIRE's Egress Standard.
+
+📏 Step 4: Code Compliance Highlights
+IRC / IBC Requirements:
+• IBC 1009.3: Fire escapes permitted only for existing buildings.
+• IBC 1011.5.2: Tread depth ≥ 11″, riser height ≤ 7″.
+• IBC 1011.11: Handrails required on both sides if >4 risers.
+• IBC 1015.2: Guardrails ≥ 42″ height, openings <4″.
+• IRC R311.7: Exterior stairs must be structurally sound and weather-resistant.
+• For buildings over 4 stories, IBC/IBU takes precedence over IRC for fire escape design and retrofit standards.
+
+⚒️ Step 5: Material & Weathering Assessment
+• Metal: Inspect for rust, flaking paint, metal fatigue.
+• Wood (if present): Check for rot, splintering, termite damage.
+• Fasteners: Look for missing bolts, loose welds, or compromised joints.
+• Counterbalanced or drop ladders: Confirm smooth operation and locking mechanisms.`
     }
   ]
 };
@@ -501,12 +1042,37 @@ export const FIRE_EXTINGUISHER_DEFICIENCIES: ItemDeficiencies = {
     {
       id: 'fire_ext_1',
       name: 'A fire extinguisher is damaged or missing.',
-      detail: 'A fire extinguisher is deficient if it is visibly damaged or missing, including cases where prior installation is evident but the unit is no longer present or complete.',
+      detail: 'A fire extinguisher is damaged or missing. A stair, ladder, platform, guardrail, or handrail is deficient if it is visibly damaged or missing in a way that affects its functionality or intended safety',
       criteria: 'A fire extinguisher is deficient if it is visibly damaged or missing, including cases where prior installation is evident but the unit is no longer present or complete.',
       severity: 'Life-Threatening',
       repairBy: '24 Hrs.',
       points: '24.8/n',
-      code: 'FIRE-EXT-01'
+      code: 'FIRE-EXT-01',
+      codeReference: `🧭 Step 1: Identify Fire Extinguisher Locations
+Inspect all property-owned extinguishers.
+
+🔍 Step 2: Visual Condition Assessment
+All deficiencies must be corrected within 24 hours under NSPIRE's life-threatening category.
+
+🧪 Step 3: Functional & Compliance Checks
+• Pressure Gauge Check: Confirm needle is in the green zone
+• Inspection Tag Review: Verify tag is present, legible, and dated within the last 12 months
+• Mounting Check: Ensure extinguisher is securely mounted in bracket or cabinet
+• Physical Condition Scan: Look for rust, dents, broken hoses, or missing pins
+• Accessibility Check: Confirm extinguisher is visible, reachable, and not blocked
+• Disposable extinguishers must be replaced if older than 12 years from the manufacture date.
+
+📏 Step 4: Accessibility Compliance (IBU/ADA)
+• Mounting Height: Top of extinguisher ≤48″ AFF if <40 lbs; ≤42″ if >40 lbs
+• Reachability: Must be reachable without tight grasping or bending
+• Clear Floor Space: Minimum 30″x48″ in front of extinguisher
+• Label Visibility: Operating instructions must be readable
+
+⚒️ Step 5: IRC Fire Safety Requirements
+• IRC Section R313.1: Fire extinguishers must be accessible and maintained in working order
+• NFPA 10 Reference: Extinguishers must be inspected monthly and serviced annually
+• IRC R315.2: Extinguishers must not obstruct egress or emergency equipment
+• IRC aligns with NFPA standards for extinguisher placement, maintenance, and visibility`
     },
     {
       id: 'fire_ext_2',
@@ -516,17 +1082,73 @@ export const FIRE_EXTINGUISHER_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Life-Threatening',
       repairBy: '24 Hrs.',
       points: '24.8/n',
-      code: 'FIRE-EXT-02'
+      code: 'FIRE-EXT-02',
+      codeReference: `🧭 Step 1: Identify Fire Extinguisher Locations
+Inspect all property-owned extinguishers.
+
+🔍 Step 2: Visual Condition Assessment
+All deficiencies must be corrected within 24 hours under NSPIRE's life-threatening category.
+
+🧪 Step 3: Functional & Compliance Checks
+• 	Pressure Gauge Check: Confirm needle is in the green zone
+• 	Inspection Tag Review: Verify tag is present, legible, and dated within the last 12 months
+• 	Mounting Check: 	Ensure extinguisher is securely mounted in bracket or cabinet
+• 	Physical Condition Scan: Look for rust, dents, broken hoses, or missing pins
+• 	Accessibility Check: Confirm extinguisher is visible, reachable, and not blocked
+Disposable extinguishers must be replaced if older than 12 years from the manufacture date.
+
+📏 Step 4: Accessibility Compliance (IBU/ADA)
+• 	Mounting Height: Top of extinguisher ≤48" AFF if <40 lbs; ≤42" if >40 lbs
+• 	Reachability: Must be reachable without tight grasping or bending
+• 	Clear Floor Space: Minimum 30"x48" in front of extinguisher
+• 	Label Visibility: Operating instructions must be readable
+
+⚒️ Step 5: IRC Fire Safety Requirements
+• 	IRC Section R313.1:
+• 	Fire extinguishers must be accessible and maintained in working order
+• 	NFPA 10 Reference:
+• 	Extinguishers must be inspected monthly and serviced annually
+• 	IRC R315.2:
+• 	Extinguishers must not obstruct egress or emergency equipment
+IRC aligns with NFPA standards for extinguisher placement, maintenance, and visibility`
     },
     {
       id: 'fire_ext_3',
       name: 'The fire extinguisher tag is missing or illegible or expired.',
-      detail: 'The date on the service tag of any fire extinguisher has exceeded one year. OR The fire extinguisher tag is missing or illegible. OR A non-chargeable or disposable fire extinguisher is more than 12 years old (based on manufacture date).',
+      detail: 'The fire extinguisher tag is missing or illegible or expired.',
       criteria: 'The date on the service tag of any fire extinguisher has exceeded one year. OR The fire extinguisher tag is missing or illegible. OR A non-chargeable or disposable fire extinguisher is more than 12 years old (based on manufacture date).',
       severity: 'Life-Threatening',
       repairBy: '24 Hrs.',
       points: '24.8/n',
-      code: 'FIRE-EXT-03'
+      code: 'FIRE-EXT-03',
+      codeReference: `🧭 Step 1: Identify Fire Extinguisher Locations
+Inspect all property-owned extinguishers.
+
+🔍 Step 2: Visual Condition Assessment
+All deficiencies must be corrected within 24 hours under NSPIRE's life-threatening category.
+
+🧪 Step 3: Functional & Compliance Checks
+• 	Pressure Gauge Check: Confirm needle is in the green zone
+• 	Inspection Tag Review: Verify tag is present, legible, and dated within the last 12 months
+• 	Mounting Check: 	Ensure extinguisher is securely mounted in bracket or cabinet
+• 	Physical Condition Scan: Look for rust, dents, broken hoses, or missing pins
+• 	Accessibility Check: Confirm extinguisher is visible, reachable, and not blocked
+Disposable extinguishers must be replaced if older than 12 years from the manufacture date.
+
+📏 Step 4: Accessibility Compliance (IBU/ADA)
+• 	Mounting Height: Top of extinguisher ≤48" AFF if <40 lbs; ≤42" if >40 lbs
+• 	Reachability: Must be reachable without tight grasping or bending
+• 	Clear Floor Space: Minimum 30"x48" in front of extinguisher
+• 	Label Visibility: Operating instructions must be readable
+
+⚒️ Step 5: IRC Fire Safety Requirements
+• 	IRC Section R313.1:
+• 	Fire extinguishers must be accessible and maintained in working order
+• 	NFPA 10 Reference:
+• 	Extinguishers must be inspected monthly and serviced annually
+• 	IRC R315.2:
+• 	Extinguishers must not obstruct egress or emergency equipment
+IRC aligns with NFPA standards for extinguisher placement, maintenance, and visibility`
     }
   ]
 };
@@ -538,12 +1160,33 @@ export const FLAMMABLE_COMBUSTIBLE_DEFICIENCIES: ItemDeficiencies = {
     {
       id: 'flam_1',
       name: 'The flammable or combustible material is on or within 3 feet of an ignition source.',
-      detail: 'Flammable or combustible materials are deficient if placed within 3 feet of thermal comfort appliances or fuel-burning water heaters, if improperly stored near ignition sources, or if chemicals are improperly stored in general.',
+      detail: 'The flammable or combustible material is on or within 3 feet of an ignition source.',
       criteria: 'Flammable or combustible materials are deficient if placed within 3 feet of thermal comfort appliances or fuel-burning water heaters, if improperly stored near ignition sources, or if chemicals are improperly stored in general.',
       severity: 'Life-Threatening',
       repairBy: '24 Hrs.',
       points: '24.8/n',
-      code: 'FLAM-01'
+      code: 'FLAM-01',
+      codeReference: `🧭 Step 1: Identify Inspectable Locations
+Inspect all shared-use areas where flammable or combustible materials may be stored or used.
+
+🔍 Step 2: Visual Condition Assessment
+• Look for: Paints, solvents, gasoline, propane, kerosene, butane, nail polish remover, charcoal lighter fluid, oxygen tanks, cleaning chemicals
+• Packaging: Must be original, sealed, and intact
+
+🧪 Step 3: Inspection Technique
+• Proximity Check: Measure or estimate distance between flammable items and ignition sources (must be ≥3 feet)
+• Container Check: Confirm chemicals are in original, sealed containers and stored safely
+• Label Review: Look for flammable or combustible warnings on spray cans, solvents, or fuels
+• Ventilation & Access: Ensure storage areas are ventilated and not obstructing egress or equipment
+
+📏 Step 4: Accessibility & IBU Local Requirement
+• Access height: Typically ≤5 feet AFF for unobstructed reach.
+• Signage: Required in some jurisdictions—check for label or directional arrow.
+• IBU Local Codes: May require annual servicing logs, seismic bracing, or multilingual signage
+
+⚒️ Step 5: IRC Fire Safety Requirements
+• IRC (2021) §R302.1–R302.5 – Fire-resistant construction and ignition separation
+• IBU overlays – Local fire code, hazardous materials storage, and emergency response protocols`
     }
   ]
 };
@@ -560,7 +1203,36 @@ export const SPRINKLER_ASSEMBLY_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Life-Threatening',
       repairBy: '24 Hrs.',
       points: '24.8/n',
-      code: 'SPRINK-01'
+      code: 'SPRINK-01',
+      codeReference: `🧭 Step 1: Identify Sprinkler Assembly Components
+• Verify system presence: Sprinkler assemblies are only inspected if installed
+
+🔍 Step 2: Visual Condition Assessment
+• Obstruction within 18″ of sprinkler head
+• Sprinkler head encased or covered
+• Missing or damaged escutcheon ring
+• Concealed cover plate glued or sealed
+• Foreign material covering >75% of head or bulb
+• Evidence of corrosion on sprinkler components
+
+🧪 Step 3: Inspection Technique
+• Distance Check: Measure clearance around sprinkler heads (≥18 inches required)
+• Surface Scan: Look for paint, rust, or debris on the head and escutcheon
+• Mounting Check: Confirm escutcheon rings are flush and intact
+• Cover Plate Test: Ensure concealed plates are not glued, painted, or sealed
+• Corrosion Check: Inspect for rust on functional components (not just trim)
+• Use a flashlight and measuring tape for an accurate assessment. Do not touch or test the sprinkler head directly.
+
+📏 Step 4: Accessibility & Visibility
+• Height: Typically mounted ≥80″ AFF for visibility and reach
+• Labeling: If part of a monitored system, confirm zone ID and panel integration
+• IBU Overlay: May require multilingual signage or maintenance records
+• Sprinkler heads must be visible and not disguised
+
+⚒️ Step 5: IRC Fire Safety Requirements
+• IRC P2904.1–P2904.6: Sprinkler systems must meet NFPA 13D standards for residential buildings
+• IRC R315.2: Sprinklers must not interfere with smoke or CO alarms
+• IBU overlays – Local fire, seismic, and life-safety code`
     },
     {
       id: 'sprink_2',
@@ -570,7 +1242,30 @@ export const SPRINKLER_ASSEMBLY_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Life-Threatening',
       repairBy: '24 Hrs.',
       points: '24.8/n',
-      code: 'SPRINK-02'
+      code: 'SPRINK-02',
+      codeReference: `🧭 Step 1: Identify Sprinkler Assembly Components
+• 	Verify system presence: Sprinkler assemblies are only inspected if installed
+
+🔍 Step 2: Visual Condition Assessment
+Obstruction within 18" of sprinkler head, Sprinkler head encased or covered, missing or damaged escutcheon ring, concealed cover plate glued or sealed, foreign material covering >75% of head or bulb, and evidence of corrosion on sprinkler components
+
+🧪 Step 3: Inspection Technique
+• 	Distance Check: Measure clearance around sprinkler heads (≥18 inches required)
+• 	Surface Scan: Look for paint, rust, or debris on the head and escutcheon
+• 	Mounting Check: Confirm escutcheon rings are flush and intact
+• 	Cover Plate Test: 	Ensure concealed plates are not glued, painted, or sealed
+• 	Corrosion Check: 	Inspect for rust on functional components (not just trim)
+Use a flashlight and measuring tape for an accurate assessment. Do not touch or test the sprinkler head directly.
+
+📏 Step 4: Accessibility & Visibility
+• Height: Typically mounted ≥80" AFF for visibility and reach
+• Labeling: If part of a monitored system, confirm zone ID and panel integration
+• IBU Overlay: May require multilingual signage or maintenance records, Sprinkler heads must be visible and not disguised
+
+⚒️ Step 5: IRC Fire Safety Requirements
+• 	IRC P2904.1–P2904.6: Sprinkler systems must meet NFPA 13D standards for residential buildings
+• 	IRC R315.2: Sprinklers must not interfere with smoke or CO alarms
+• 	IBU overlays – Local fire, seismic, and life-safety code`
     },
     {
       id: 'sprink_3',
@@ -580,7 +1275,30 @@ export const SPRINKLER_ASSEMBLY_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Life-Threatening',
       repairBy: '24 Hrs.',
       points: '24.8/n',
-      code: 'SPRINK-03'
+      code: 'SPRINK-03',
+      codeReference: `🧭 Step 1: Identify Sprinkler Assembly Components
+• 	Verify system presence: Sprinkler assemblies are only inspected if installed
+
+🔍 Step 2: Visual Condition Assessment
+Obstruction within 18" of sprinkler head, Sprinkler head encased or covered, missing or damaged escutcheon ring, concealed cover plate glued or sealed, foreign material covering >75% of head or bulb, and evidence of corrosion on sprinkler components
+
+🧪 Step 3: Inspection Technique
+• 	Distance Check: Measure clearance around sprinkler heads (≥18 inches required)
+• 	Surface Scan: Look for paint, rust, or debris on the head and escutcheon
+• 	Mounting Check: Confirm escutcheon rings are flush and intact
+• 	Cover Plate Test: 	Ensure concealed plates are not glued, painted, or sealed
+• 	Corrosion Check: 	Inspect for rust on functional components (not just trim)
+Use a flashlight and measuring tape for an accurate assessment. Do not touch or test the sprinkler head directly.
+
+📏 Step 4: Accessibility & Visibility
+• Height: Typically mounted ≥80" AFF for visibility and reach
+• Labeling: If part of a monitored system, confirm zone ID and panel integration
+• IBU Overlay: May require multilingual signage or maintenance records, Sprinkler heads must be visible and not disguised
+
+⚒️ Step 5: IRC Fire Safety Requirements
+• 	IRC P2904.1–P2904.6: Sprinkler systems must meet NFPA 13D standards for residential buildings
+• 	IRC R315.2: Sprinklers must not interfere with smoke or CO alarms
+• 	IBU overlays – Local fire, seismic, and life-safety code`
     },
     {
       id: 'sprink_4',
@@ -590,7 +1308,30 @@ export const SPRINKLER_ASSEMBLY_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Life-Threatening',
       repairBy: '24 Hrs.',
       points: '24.8/n',
-      code: 'SPRINK-04'
+      code: 'SPRINK-04',
+      codeReference: `🧭 Step 1: Identify Sprinkler Assembly Components
+• 	Verify system presence: Sprinkler assemblies are only inspected if installed
+
+🔍 Step 2: Visual Condition Assessment
+Obstruction within 18" of sprinkler head, Sprinkler head encased or covered, missing or damaged escutcheon ring, concealed cover plate glued or sealed, foreign material covering >75% of head or bulb, and evidence of corrosion on sprinkler components
+
+🧪 Step 3: Inspection Technique
+• 	Distance Check: Measure clearance around sprinkler heads (≥18 inches required)
+• 	Surface Scan: Look for paint, rust, or debris on the head and escutcheon
+• 	Mounting Check: Confirm escutcheon rings are flush and intact
+• 	Cover Plate Test: 	Ensure concealed plates are not glued, painted, or sealed
+• 	Corrosion Check: 	Inspect for rust on functional components (not just trim)
+Use a flashlight and measuring tape for an accurate assessment. Do not touch or test the sprinkler head directly.
+
+📏 Step 4: Accessibility & Visibility
+• Height: Typically mounted ≥80" AFF for visibility and reach
+• Labeling: If part of a monitored system, confirm zone ID and panel integration
+• IBU Overlay: May require multilingual signage or maintenance records, Sprinkler heads must be visible and not disguised
+
+⚒️ Step 5: IRC Fire Safety Requirements
+• 	IRC P2904.1–P2904.6: Sprinkler systems must meet NFPA 13D standards for residential buildings
+• 	IRC R315.2: Sprinklers must not interfere with smoke or CO alarms
+• 	IBU overlays – Local fire, seismic, and life-safety code`
     }
   ]
 };
@@ -623,7 +1364,34 @@ export const RAT_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '4.5/n',
-      code: 'RAT-01'
+      code: 'RAT-01',
+      codeReference: `🔍 Step 1: Identify High-Risk Zones
+Focus inspection on exterior areas where rats are likely to nest or travel:
+• Trash enclosures and dumpsters
+• Utility closets, crawl space vents, and foundation gaps
+• Dense vegetation, fence lines, and retaining walls
+• Parking lot perimeters and storm drains
+
+🧱 Step 2: Assess Structural Entry Points
+Inspect for physical vulnerabilities that allow rat access:
+• Foundation gaps, Door sweeps, Wall penetrations, Vent covers
+
+🧼 Step 3: Inspect for Sanitation Hazards
+• Droppings: Shiny, black, ½–¾″ long; often near trash, walls, or corners
+• Grease trails: Dark smears along walls or pipes from repeated rat movement
+• Urine odor: Strong ammonia-like smell in enclosed or shaded areas
+• Chewed materials: Plastic bags, insulation, cardboard, or food containers
+
+🧠 Step 4: Verify Accessibility & Resident Safety
+• Pathway clearance: Ensure rat traps or bait stations do not obstruct accessible routes
+• Signage: If pest control is active, ensure warning signs are posted
+• IBU Overlay: May require tactile signage, visual contrast, and safe placement of pest control devices near accessible paths
+
+🔧 Step 5: Evaluate Mitigation Measures
+• Traps & bait stations: Must be professionally placed, secured, and labeled
+• Trash containment: Lids must close fully; bins must be clean and rodent-proof
+• Vegetation control: Trim overgrowth and remove debris piles near building edges
+• NSPIRE Deficiency: Presence of rats or rat droppings = Severe (30-day correction)`
     }
   ]
 };
@@ -640,7 +1408,34 @@ export const LITTER_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Low',
       repairBy: '30 Day',
       points: '2.00/n',
-      code: 'LITTER-01'
+      code: 'LITTER-01',
+      codeReference: `🔍 Step 1: Identify Inspection Zones
+Focus on high-traffic and high-risk exterior areas:
+• Building perimeters and walkways
+• Parking lots and drive aisles
+• Trash enclosures and recycling stations
+• Landscaping beds, fence lines, and utility pads
+• Common gathering areas (e.g., benches, mailboxes)
+
+🧱 Step 2: Assess Structural Impact
+While litter is primarily a sanitation issue, inspect for signs of structural or environmental degradation:
+• Drainage grates, Foundation edges, Fence lines, Walkways
+
+🧼 Step 3: Quantify Litter Presence
+• IRC §R306.1 – Sanitary drainage and site cleanliness
+Use NSPIRE thresholds for citation:
+• Small items: 10 or more discarded items (e.g., wrappers, cigarette butts, paper) in a 100 ft² area = Low severity
+• Large items: 1 improperly discarded bulky item (e.g., mattress, appliance, furniture) = Low severity
+
+🧠 Step 4: Evaluate Accessibility & Resident Impact
+• Pathway clearance: Litter must not obstruct accessible routes or egress paths
+• Visual contrast: Trash near tactile signage or ADA paths may reduce visibility
+• IBU Overlay: May require enhanced maintenance protocols in accessible zones and signage for proper disposal
+
+🔧 Step 5: Review Mitigation Measures
+• Trash bins: Must be present, covered, and not overflowing
+• Collection schedule: Confirm regular pickup and designated bulk item zones
+• Resident education: Look for posted disposal instructions or signage`
     }
   ]
 };
@@ -657,7 +1452,35 @@ export const SHARP_EDGES_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Severe',
       repairBy: '24 Hrs.',
       points: '12.20/n',
-      code: 'SHARP-01'
+      code: 'SHARP-01',
+      codeReference: `🔍 Step 1: Identify Inspection Zones
+Focus on normal paths of travel and resident-accessible exterior areas:
+• Walkways, ramps, and stairwells
+• Parking areas and curbs
+• Fences, gates, and railing systems
+• Playground equipment, benches, and utility enclosures
+• Trash enclosures and mechanical pads
+
+🧱 Step 2: Assess Structural Integrity
+Inspect for physical damage or protrusions that pose a cutting hazard:
+• Metal edges, Broken fixture, Exposed fasteners, Damaged fencing
+
+🔧 Step 3: Evaluate Risk & Accessibility
+• Touch test: Without applying force, gently assess whether the edge could cut or puncture skin
+• Height check: Sharp edges within 24″–72″ AFF pose the greatest risk to adults and children
+• Path proximity: Edges within 36″ of walkways or ramps are considered high-risk
+
+🧼 Step 4: Check Sanitation & Environmental Safety
+• Inspect for:
+• Blood stains, pest nests, or mold near damaged surfaces
+• Trash or debris concealing sharp objects
+• IBU Overlay: May require sealed surfaces, pest-proof enclosures, and immediate removal of hazardous debris
+
+🧠 Step 5: Verify Accessibility & Local Compliance
+• Accessible routes: Sharp edges must not obstruct or endanger disability-compliant paths
+• IRC §R301.1 requires exterior components to be safe for occupants and resistant to injury hazards
+• Play areas & benches: Must meet local safety standards for public use
+• IBU Overlay: May require tactile warnings, visual contrast, or protective guards in accessible zones`
     }
   ]
 };
@@ -674,7 +1497,36 @@ export const TRIP_HAZARD_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '4.5/n',
-      code: 'TRIP-01'
+      code: 'TRIP-01',
+      codeReference: `🔍 Step 1: Identify Inspection Zones
+Focus on normal paths of travel and resident-accessible exterior areas:
+• Walkways, ramps, and sidewalks
+• Parking lot transitions and curb cuts
+• Entry paths to units, mailboxes, laundry, and trash enclosures
+• Common areas like patios, benches, and play zones
+
+🧱 Step 2: Assess Surface Conditions
+Inspect for physical irregularities that meet NSPIRE thresholds:
+• Concrete/asphalt, Pavers/tiles, Transitions, Utility covers
+
+🧼 Step 3: Check Sanitation & Environmental Safety
+• Inspect for:
+• Debris, vegetation, or litter concealing trip hazards
+• Water pooling or erosion that undermines walking surfaces
+• IBU Overlay: May require sealed joints, slip-resistant surfaces, and pest-resistant landscaping near walkways
+
+🧠 Step 4: Verify Accessibility & Local Compliance
+• Slope & surface: Must be firm, stable, and slip-resistant
+• Cross-slope: ≤2% for accessible routes
+• Edge protection: Required at elevated surfaces ≥4″ without guardrails
+• IBU Overlay: May require tactile warnings, visual contrast
+
+📏 Step 5: Measure and Confirm Deficiency
+• Use a ruler or measuring tool to confirm:
+• Vertical displacement ≥¾″
+• Horizontal separation ≥2″
+• Document whether the hazard is unintended (not part of engineered design)
+• Cross-reference: Note IRC §R311.3, NSPIRE Trip Hazard Standard, and IBU overlays`
     }
   ]
 };
@@ -706,7 +1558,8 @@ export const LIGHTING_AUXILIARY_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Severe',
       repairBy: '24 Hrs.',
       points: '12.20/n',
-      code: 'LIGHT-AUX-01'
+      code: 'LIGHT-AUX-01',
+      codeReference: `🔍 Step 1: Identify Lighting Zones\nInspect all permanently installed lighting fixtures in:\n• \tEntryways and exit doors\n• \tWalkways, ramps, and stairs\n• \tParking lots and drive aisles\n• \tTrash enclosures and mailboxes\n• \tCommon areas and recreational zones\n🧱 Step 2: Assess Structural Integrity of Fixtures\nInspect for physical damage, improper installation, or missing components:\nFixture housing, Mounting hardware, Lens or cover, Wiring/conduit\n🔧 Step 3: Test Functionality & Illumination\n• \tPower test: Confirm fixture turns on via switch, timer, or sensor\n• \tBrightness check: Ensure adequate illumination for safe navigation\n• \tCoverage: Verify lighting reaches all critical areas (e.g., stairs, ramps, curb cuts)\n🧼 Step 4: Check Sanitation & Environmental Safety\n• \tInspect for:\n• \tPest nests, mold, or water intrusion inside fixtures\n• \tDebris or vegetation obstructing light output\n• \tIBU Overlay: May require sealed housings, pest-resistant materials, and corrosion-proof hardware\n🧠 Step 5: Verify Accessibility & Local Compliance\n• \tMounting height: Fixtures must not obstruct accessible routes or signage\n• \tControl access: Switches must be reachable (≤48″ AFF) and labeled\n• \tVisual contrast: Lighting must support visibility for tactile and directional signage\n• \tIBU Overlay: May require disabilty-compliant illumination levels and emergency backup lighting in shared-use zones\nIRC §R303.8 requires illumination at exterior egress doors for safety and accessibility\n📸 Step 6: Document & Report`
     }
   ]
 };
@@ -723,7 +1576,8 @@ export const LIGHTING_EXTERIOR_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '4.5/n',
-      code: 'LIGHT-EXT-01'
+      code: 'LIGHT-EXT-01',
+      codeReference: `🔍 Step 1: Identify Lighting Zones\nInspect all permanently installed lighting fixtures in:\n• \tEntryways and exit doors\n• \tWalkways, ramps, and stairs\n• \tParking lots and drive aisles\n• \tTrash enclosures and mailboxes\n• \tCommon areas and recreational zones\n🧱 Step 2: Assess Structural Integrity of Fixtures\nInspect for physical damage, improper installation, or missing components:\nFixture housing, Mounting hardware, Lens or cover, Wiring/conduit\n🔧 Step 3: Test Functionality & Illumination\n• \tPower test: Confirm fixture turns on via switch, timer, or sensor\n• \tBrightness check: Ensure adequate illumination for safe navigation\n• \tCoverage: Verify lighting reaches all critical areas (e.g., stairs, ramps, curb cuts)\n🧼 Step 4: Check Sanitation & Environmental Safety\n• \tInspect for:\n• \tPest nests, mold, or water intrusion inside fixtures\n• \tDebris or vegetation obstructing light output\n• \tIBU Overlay: May require sealed housings, pest-resistant materials, and corrosion-proof hardware\n🧠 Step 5: Verify Accessibility & Local Compliance\n• \tMounting height: Fixtures must not obstruct accessible routes or signage\n• \tControl access: Switches must be reachable (≤48″ AFF) and labeled\n• \tVisual contrast: Lighting must support visibility for tactile and directional signage\n• \tIBU Overlay: May require disabilty-compliant illumination levels and emergency backup lighting in shared-use zones\nIRC §R303.8 requires illumination at exterior egress doors for safety and accessibility\n📸 Step 6: Document & Report`
     }
   ]
 };
@@ -753,7 +1607,8 @@ export const PARKING_LOT_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '4.5/n',
-      code: 'PARK-LOT-01'
+      code: 'PARK-LOT-01',
+      codeReference: `🔍 Step 1: Identify Inspection Zones\nFocus on all vehicle-accessible and pedestrian-adjacent surfaces:\n• \tParking lots (resident, visitor, accessible spaces)\n• \tDriveways (private access lanes, shared approaches)\n• \tPrivate roads (internal circulation routes)\n• \tCurbing, gutters, and expansion joints\n• \tUtility access covers and drainage grates\n🧱 Step 2: Assess Structural Integrity\nInspect for surface damage, instability, or obstruction:\nSurface condition, Cracks or heaving, Obstructions, Curbing & joints\n• \tIRC §R309.1–R309.2 – Driveway and garage access requirements\n🧼 Step 3: Check Sanitation & Environmental Safety\n• \tInspect for:\n• \tOil stains, litter, or standing water\n• \tMold, algae, or pest activity near drainage zones\n• \tTrash overflow or illegal dumping in parking areas\n• \tIBU Overlay: May require sealed surfaces, pest-resistant enclosures, and proper drainage grading\n🧠 Step 4: Verify Accessibility & Local Compliance\n• \tAccessible parking: Must include van-accessible spaces with proper signage and striping\n• \tPathway transitions: Curb ramps must be flush and slip-resistant\n• \tDriveway slope: Must not exceed 1:12 for accessible routes\n• \tIBU Overlay: May require tactile warnings, visual contrast, and disability-compliant signage\n🔧 Step 5: Evaluate Lighting, Signage & Wayfinding\n• \tLighting: Confirm fixtures are operational and provide adequate coverage\n• \tSignage: Verify directional, speed limit, and accessible parking signs are present and legible\n• \tGate access: Ensure automatic or manual gates are functional and safe for pedestrian use`
     },
     {
       id: 'park_lot_2',
@@ -763,7 +1618,8 @@ export const PARKING_LOT_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '4.5/n',
-      code: 'PARK-LOT-02'
+      code: 'PARK-LOT-02',
+      codeReference: `🔍 Step 1: Identify Inspection Zones\nFocus on all vehicle-accessible and pedestrian-adjacent surfaces:\n• \tParking lots (resident, visitor, accessible spaces)\n• \tDriveways (private access lanes, shared approaches)\n• \tPrivate roads (internal circulation routes)\n• \tCurbing, gutters, and expansion joints\n• \tUtility access covers and drainage grates\n🧱 Step 2: Assess Structural Integrity\nInspect for surface damage, instability, or obstruction:\nSurface condition, Cracks or heaving, Obstructions, Curbing & joints\n• \tIRC §R309.1–R309.2 – Driveway and garage access requirements\n🧼 Step 3: Check Sanitation & Environmental Safety\n• \tInspect for:\n• \tOil stains, litter, or standing water\n• \tMold, algae, or pest activity near drainage zones\n• \tTrash overflow or illegal dumping in parking areas\n• \tIBU Overlay: May require sealed surfaces, pest-resistant enclosures, and proper drainage grading\n🧠 Step 4: Verify Accessibility & Local Compliance\n• \tAccessible parking: Must include van-accessible spaces with proper signage and striping\n• \tPathway transitions: Curb ramps must be flush and slip-resistant\n• \tDriveway slope: Must not exceed 1:12 for accessible routes\n• \tIBU Overlay: May require tactile warnings, visual contrast, and disability-compliant signage\n🔧 Step 5: Evaluate Lighting, Signage & Wayfinding\n• \tLighting: Confirm fixtures are operational and provide adequate coverage\n• \tSignage: Verify directional, speed limit, and accessible parking signs are present and legible\n• \tGate access: Ensure automatic or manual gates are functional and safe for pedestrian use`
     }
   ]
 };
@@ -780,7 +1636,8 @@ export const PRIVATE_ROADS_DRIVEWAYS_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Severe',
       repairBy: '24 Hrs.',
       points: '12.20/n',
-      code: 'PRIV-ROAD-01'
+      code: 'PRIV-ROAD-01',
+      codeReference: `🔍 Step 1: Identify Inspection Zones\nFocus on all vehicle-accessible and pedestrian-adjacent surfaces:\n• \tParking lots (resident, visitor, accessible spaces)\n• \tDriveways (private access lanes, shared approaches)\n• \tPrivate roads (internal circulation routes)\n• \tCurbing, gutters, and expansion joints\n• \tUtility access covers and drainage grates\n🧱 Step 2: Assess Structural Integrity\nInspect for surface damage, instability, or obstruction:\nSurface condition, Cracks or heaving, Obstructions, Curbing & joints\n• \tIRC §R309.1–R309.2 – Driveway and garage access requirements\n🧼 Step 3: Check Sanitation & Environmental Safety\n• \tInspect for:\n• \tOil stains, litter, or standing water\n• \tMold, algae, or pest activity near drainage zones\n• \tTrash overflow or illegal dumping in parking areas\n• \tIBU Overlay: May require sealed surfaces, pest-resistant enclosures, and proper drainage grading\n🧠 Step 4: Verify Accessibility & Local Compliance\n• \tAccessible parking: Must include van-accessible spaces with proper signage and striping\n• \tPathway transitions: Curb ramps must be flush and slip-resistant\n• \tDriveway slope: Must not exceed 1:12 for accessible routes\n• \tIBU Overlay: May require tactile warnings, visual contrast, and disability-compliant signage\n🔧 Step 5: Evaluate Lighting, Signage & Wayfinding\n• \tLighting: Confirm fixtures are operational and provide adequate coverage\n• \tSignage: Verify directional, speed limit, and accessible parking signs are present and legible\n• \tGate access: Ensure automatic or manual gates are functional and safe for pedestrian use`
     },
     {
       id: 'priv_road_2',
@@ -790,7 +1647,8 @@ export const PRIVATE_ROADS_DRIVEWAYS_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '4.5/n',
-      code: 'PRIV-ROAD-02'
+      code: 'PRIV-ROAD-02',
+      codeReference: `🔍 Step 1: Identify Inspection Zones\nFocus on all vehicle-accessible and pedestrian-adjacent surfaces:\n• \tParking lots (resident, visitor, accessible spaces)\n• \tDriveways (private access lanes, shared approaches)\n• \tPrivate roads (internal circulation routes)\n• \tCurbing, gutters, and expansion joints\n• \tUtility access covers and drainage grates\n🧱 Step 2: Assess Structural Integrity\nInspect for surface damage, instability, or obstruction:\nSurface condition, Cracks or heaving, Obstructions, Curbing & joints\n• \tIRC §R309.1–R309.2 – Driveway and garage access requirements\n🧼 Step 3: Check Sanitation & Environmental Safety\n• \tInspect for:\n• \tOil stains, litter, or standing water\n• \tMold, algae, or pest activity near drainage zones\n• \tTrash overflow or illegal dumping in parking areas\n• \tIBU Overlay: May require sealed surfaces, pest-resistant enclosures, and proper drainage grading\n🧠 Step 4: Verify Accessibility & Local Compliance\n• \tAccessible parking: Must include van-accessible spaces with proper signage and striping\n• \tPathway transitions: Curb ramps must be flush and slip-resistant\n• \tDriveway slope: Must not exceed 1:12 for accessible routes\n• \tIBU Overlay: May require tactile warnings, visual contrast, and disability-compliant signage\n🔧 Step 5: Evaluate Lighting, Signage & Wayfinding\n• \tLighting: Confirm fixtures are operational and provide adequate coverage\n• \tSignage: Verify directional, speed limit, and accessible parking signs are present and legible\n• \tGate access: Ensure automatic or manual gates are functional and safe for pedestrian use`
     }
   ]
 };
@@ -820,7 +1678,8 @@ export const GUARDRAIL_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Life-Threatening',
       repairBy: '24 Hrs.',
       points: '24.8/n',
-      code: 'GUARD-01'
+      code: 'GUARD-01',
+      codeReference: `🔍 Step 1: Identify Guardrail Locations\nInspect all elevated walking surfaces accessible to residents or staff:\n• \tBalconies, decks, porches\n• \tExterior stair landings and ramps\n• \tRetaining walls with adjacent walkways\n• \tRooftop terraces or utility platforms\n• \tAccessible paths with drop-offs >30″\n🧱 Step 2: Assess Structural Integrity\nInspect for missing, damaged, or unstable components:\nGuardrail missing, Top/mid rail, Posts & anchors, Balusters/pickets, Height compliance\n• \tCross-reference: Note IRC §R312.1, NSPIRE Guardrail Standard, and IBU overlays\n🔧 Step 3: Perform Stability & Safety Tests\n• \tPush/pull test: Apply moderate force to top rail and posts to check for movement\n• \tGap check: Measure spacing between vertical elements (must be ≤4″)\n• \tHeight check: Use tape measure to confirm rail height from walking surface\n🧼 Step 4: Check Sanitation & Environmental Safety\n• \tInspect for:\n• \tRust, mold, or pest nests on or around guardrail components\n• \tWater damage or algae on adjacent walking surfaces\n• \tIBU Overlay: May require sealed joints, pest-resistant materials, and corrosion-proof finishes\n🧠 Step 5: Verify Accessibility & Local Compliance\n• \tHandrail integration: If guardrail doubles as handrail, must meet local disability Act\n• \tVisual contrast: Guardrails must be distinguishable from surroundings for low-vision users\n• \tEdge protection: Required at accessible ramps and elevated paths without curbs\n• \tIBU Overlay: May require tactile warnings, ADA-compliant grip surfaces, and extended landings`
     },
     {
       id: 'guard_2',
@@ -830,7 +1689,8 @@ export const GUARDRAIL_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Life-Threatening',
       repairBy: '24 Hrs.',
       points: '24.8/n',
-      code: 'GUARD-02'
+      code: 'GUARD-02',
+      codeReference: `🔍 Step 1: Identify Guardrail Locations\nInspect all elevated walking surfaces accessible to residents or staff:\n• \tBalconies, decks, porches\n• \tExterior stair landings and ramps\n• \tRetaining walls with adjacent walkways\n• \tRooftop terraces or utility platforms\n• \tAccessible paths with drop-offs >30″\n🧱 Step 2: Assess Structural Integrity\nInspect for missing, damaged, or unstable components:\nGuardrail missing, Top/mid rail, Posts & anchors, Balusters/pickets, Height compliance\n• \tCross-reference: Note IRC §R312.1, NSPIRE Guardrail Standard, and IBU overlays\n🔧 Step 3: Perform Stability & Safety Tests\n• \tPush/pull test: Apply moderate force to top rail and posts to check for movement\n• \tGap check: Measure spacing between vertical elements (must be ≤4″)\n• \tHeight check: Use tape measure to confirm rail height from walking surface\n🧼 Step 4: Check Sanitation & Environmental Safety\n• \tInspect for:\n• \tRust, mold, or pest nests on or around guardrail components\n• \tWater damage or algae on adjacent walking surfaces\n• \tIBU Overlay: May require sealed joints, pest-resistant materials, and corrosion-proof finishes\n🧠 Step 5: Verify Accessibility & Local Compliance\n• \tHandrail integration: If guardrail doubles as handrail, must meet local disability Act\n• \tVisual contrast: Guardrails must be distinguishable from surroundings for low-vision users\n• \tEdge protection: Required at accessible ramps and elevated paths without curbs\n• \tIBU Overlay: May require tactile warnings, ADA-compliant grip surfaces, and extended landings`
     }
   ]
 };
@@ -847,7 +1707,8 @@ export const HANDRAIL_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '4.5/n',
-      code: 'HAND-01'
+      code: 'HAND-01',
+      codeReference: `🔍 Step 1: Identify Railing Locations\nInspect all exterior railings that serve:\n• \tStairs, ramps, and elevated walkways\n• \tBalconies, porches, and decks\n• \tAccessible paths with elevation changes\n• \tRetaining walls or drop-offs adjacent to pedestrian routes\n🧱 Step 2: Assess Structural Integrity\nInspect for damage, instability, or missing components:\nRailing structure, Mounting hardware, Top rail, Vertical supports, Height compliance\n• \tCross-reference: Note IRC §R311.7.8, NSPIRE Guardrail Standard, and IBU overlays\n🔧 Step 3: Perform Safety & Functionality Checks\n• \tStability test: Apply moderate force to top rail and posts—should not wobble or shift\n• \tHeight check: Measure from walking surface to top of rail\n• \tSpacing check: Ensure vertical elements are ≤4″ apart to prevent entrapment\n🧼 Step 4: Check Sanitation & Environmental Safety\n• \tInspect for:\n• \tRust, mold, or pest nests on or around railing components\n• \tWater damage or algae on adjacent walking surfaces\n• \tIBU Overlay: May require sealed joints, pest-resistant materials, and corrosion-proof finishes\n🧠 Step 5: Verify Accessibility & Local Compliance\n• \tHandrail grip: Must be graspable and continuous\n• \tEdge protection: Required at ramps and elevated surfaces without curbs\n• \tVisual contrast: Railings must be distinguishable for low-vision users\n• \tIBU Overlay: May require tactile warnings, disability-compliant grip surfaces, and extended landings`
     },
     {
       id: 'hand_2',
@@ -857,27 +1718,30 @@ export const HANDRAIL_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '4.5/n',
-      code: 'HAND-02'
+      code: 'HAND-02',
+      codeReference: `🔍 Step 1: Identify Railing Locations\nInspect all exterior railings that serve:\n• \tStairs, ramps, and elevated walkways\n• \tBalconies, porches, and decks\n• \tAccessible paths with elevation changes\n• \tRetaining walls or drop-offs adjacent to pedestrian routes\n🧱 Step 2: Assess Structural Integrity\nInspect for damage, instability, or missing components:\nRailing structure, Mounting hardware, Top rail, Vertical supports, Height compliance\n• \tCross-reference: Note IRC §R311.7.8, NSPIRE Guardrail Standard, and IBU overlays\n🔧 Step 3: Perform Safety & Functionality Checks\n• \tStability test: Apply moderate force to top rail and posts—should not wobble or shift\n• \tHeight check: Measure from walking surface to top of rail\n• \tSpacing check: Ensure vertical elements are ≤4″ apart to prevent entrapment\n🧼 Step 4: Check Sanitation & Environmental Safety\n• \tInspect for:\n• \tRust, mold, or pest nests on or around railing components\n• \tWater damage or algae on adjacent walking surfaces\n• \tIBU Overlay: May require sealed joints, pest-resistant materials, and corrosion-proof finishes\n🧠 Step 5: Verify Accessibility & Local Compliance\n• \tHandrail grip: Must be graspable and continuous\n• \tEdge protection: Required at ramps and elevated surfaces without curbs\n• \tVisual contrast: Railings must be distinguishable for low-vision users\n• \tIBU Overlay: May require tactile warnings, disability-compliant grip surfaces, and extended landings`
     },
     {
       id: 'hand_3',
       name: 'Handrail is not installed where required.',
-      detail: '4 or more stair risers are present, and a handrail is not installed. OR A ramp has a rise greater than 6 inches or a horizontal projection greater than 72 inches and a handrail is not installed on both sides.',
+      detail: 'Handrail is not installed where required.',
       criteria: '4 or more stair risers are present, and a handrail is not installed. OR A ramp has a rise greater than 6 inches or a horizontal projection greater than 72 inches and a handrail is not installed on both sides.',
       severity: 'Severe',
       repairBy: '24 Hrs.',
       points: '12.20/n',
-      code: 'HAND-03'
+      code: 'HAND-03',
+      codeReference: `🔍 Step 1: Identify Railing Locations\nInspect all exterior railings that serve:\n• \tStairs, ramps, and elevated walkways\n• \tBalconies, porches, and decks\n• \tAccessible paths with elevation changes\n• \tRetaining walls or drop-offs adjacent to pedestrian routes\n🧱 Step 2: Assess Structural Integrity\nInspect for damage, instability, or missing components:\nRailing structure, Mounting hardware, Top rail, Vertical supports, Height compliance\n• \tCross-reference: Note IRC §R311.7.8, NSPIRE Guardrail Standard, and IBU overlays\n🔧 Step 3: Perform Safety & Functionality Checks\n• \tStability test: Apply moderate force to top rail and posts—should not wobble or shift\n• \tHeight check: Measure from walking surface to top of rail\n• \tSpacing check: Ensure vertical elements are ≤4″ apart to prevent entrapment\n🧼 Step 4: Check Sanitation & Environmental Safety\n• \tInspect for:\n• \tRust, mold, or pest nests on or around railing components\n• \tWater damage or algae on adjacent walking surfaces\n• \tIBU Overlay: May require sealed joints, pest-resistant materials, and corrosion-proof finishes\n🧠 Step 5: Verify Accessibility & Local Compliance\n• \tHandrail grip: Must be graspable and continuous\n• \tEdge protection: Required at ramps and elevated surfaces without curbs\n• \tVisual contrast: Railings must be distinguishable for low-vision users\n• \tIBU Overlay: May require tactile warnings, disability-compliant grip surfaces, and extended landings`
     },
     {
       id: 'hand_4',
       name: 'Handrail is not secured.',
-      detail: 'There is movement in the anchors of the handrail.',
+      detail: 'Handrail is not secured. There is movement in the anchors of the handrail.',
       criteria: 'There is movement in the anchors of the handrail.',
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '4.5/n',
-      code: 'HAND-04'
+      code: 'HAND-04',
+      codeReference: `🔍 Step 1: Identify Railing Locations\nInspect all exterior railings that serve:\n• \tStairs, ramps, and elevated walkways\n• \tBalconies, porches, and decks\n• \tAccessible paths with elevation changes\n• \tRetaining walls or drop-offs adjacent to pedestrian routes\n🧱 Step 2: Assess Structural Integrity\nInspect for damage, instability, or missing components:\nRailing structure, Mounting hardware, Top rail, Vertical supports, Height compliance\n• \tCross-reference: Note IRC §R311.7.8, NSPIRE Guardrail Standard, and IBU overlays\n🔧 Step 3: Perform Safety & Functionality Checks\n• \tStability test: Apply moderate force to top rail and posts—should not wobble or shift\n• \tHeight check: Measure from walking surface to top of rail\n• \tSpacing check: Ensure vertical elements are ≤4″ apart to prevent entrapment\n🧼 Step 4: Check Sanitation & Environmental Safety\n• \tInspect for:\n• \tRust, mold, or pest nests on or around railing components\n• \tWater damage or algae on adjacent walking surfaces\n• \tIBU Overlay: May require sealed joints, pest-resistant materials, and corrosion-proof finishes\n🧠 Step 5: Verify Accessibility & Local Compliance\n• \tHandrail grip: Must be graspable and continuous\n• \tEdge protection: Required at ramps and elevated surfaces without curbs\n• \tVisual contrast: Railings must be distinguishable for low-vision users\n• \tIBU Overlay: May require tactile warnings, disability-compliant grip surfaces, and extended landings`
     }
   ]
 };
@@ -907,7 +1771,8 @@ export const RETAINING_WALL_SUBCATEGORY: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '4.5/n',
-      code: 'RET-WALL-01'
+      code: 'RET-WALL-01',
+      codeReference: `🔍 Step 1: Identify Inspection Zones\nFocus on all exterior-facing vertical structures:\n• \tRetaining walls supporting soil or grade transitions\n• \tExterior walls enclosing habitable spaces\n• \tFreestanding walls adjacent to walkways, parking, or landscaping\n• \tWalls with penetrations (windows, doors, vents, utility lines)\n🧱 Step 2: Assess Structural Integrity\nInspect for signs of failure, movement, or deterioration:\nWall surface, Retaining wall, Mortar joints, Wall cladding, Drainage weep holes\nIRC §R606.1.1 requires masonry walls to be structurally sound and properly reinforced, Mandates engineered design for retaining walls >4′\n🔧 Step 3: Evaluate Functional Stability\n• \tPlumb check: Use visual reference or level to assess vertical alignment\n• \tCrack mapping: Document location, length, and width of structural cracks\n• \tDrainage check: Confirm retaining walls have functional weep holes or drainage paths\n🧼 Step 4: Check Sanitation & Environmental Safety\n• \tInspect for:\n• \tMold, mildew, or pest nests in wall cavities or behind cladding\n• \tWater stains, efflorescence, or algae indicating moisture intrusion\n• \tTrash or vegetation accumulating near wall bases or joints\n• \tIBU Overlay: May require sealed penetrations, pest-proof barriers, and moisture-resistant finishes\n🧠 Step 5: Verify Accessibility & Local Compliance\n• \tAccessible routes: Walls must not obstruct ADA paths or egress zones\n• \tVisual contrast: Required for wall edges near walkways or ramps\n• \tEdge protection: Required at retaining walls adjacent to pedestrian routes\n• \tIBU Overlay: May require tactile warnings, disability-compliant transitions, and safe access to wall-mounted features`
     },
     {
       id: 'ret_wall_2',
@@ -917,7 +1782,8 @@ export const RETAINING_WALL_SUBCATEGORY: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '4.5/n',
-      code: 'RET-WALL-02'
+      code: 'RET-WALL-02',
+      codeReference: `🔍 Step 1: Identify Inspection Zones\nFocus on all exterior-facing vertical structures:\n• \tRetaining walls supporting soil or grade transitions\n• \tExterior walls enclosing habitable spaces\n• \tFreestanding walls adjacent to walkways, parking, or landscaping\n• \tWalls with penetrations (windows, doors, vents, utility lines)\n🧱 Step 2: Assess Structural Integrity\nInspect for signs of failure, movement, or deterioration:\nWall surface, Retaining wall, Mortar joints, Wall cladding, Drainage weep holes\nIRC §R606.1.1 requires masonry walls to be structurally sound and properly reinforced, Mandates engineered design for retaining walls >4′\n🔧 Step 3: Evaluate Functional Stability\n• \tPlumb check: Use visual reference or level to assess vertical alignment\n• \tCrack mapping: Document location, length, and width of structural cracks\n• \tDrainage check: Confirm retaining walls have functional weep holes or drainage paths\n🧼 Step 4: Check Sanitation & Environmental Safety\n• \tInspect for:\n• \tMold, mildew, or pest nests in wall cavities or behind cladding\n• \tWater stains, efflorescence, or algae indicating moisture intrusion\n• \tTrash or vegetation accumulating near wall bases or joints\n• \tIBU Overlay: May require sealed penetrations, pest-proof barriers, and moisture-resistant finishes\n🧠 Step 5: Verify Accessibility & Local Compliance\n• \tAccessible routes: Walls must not obstruct ADA paths or egress zones\n• \tVisual contrast: Required for wall edges near walkways or ramps\n• \tEdge protection: Required at retaining walls adjacent to pedestrian routes\n• \tIBU Overlay: May require tactile warnings, disability-compliant transitions, and safe access to wall-mounted features`
     }
   ]
 };
@@ -934,7 +1800,8 @@ export const WALL_EXTERIOR_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '4.5/n',
-      code: 'WALL-EXT-01'
+      code: 'WALL-EXT-01',
+      codeReference: `🔍 Step 1: Identify Inspection Zones\nFocus on all exterior-facing vertical structures:\n• \tRetaining walls supporting soil or grade transitions\n• \tExterior walls enclosing habitable spaces\n• \tFreestanding walls adjacent to walkways, parking, or landscaping\n• \tWalls with penetrations (windows, doors, vents, utility lines)\n🧱 Step 2: Assess Structural Integrity\nInspect for signs of failure, movement, or deterioration:\nWall surface, Retaining wall, Mortar joints, Wall cladding, Drainage weep holes\nIRC §R606.1.1 requires masonry walls to be structurally sound and properly reinforced, Mandates engineered design for retaining walls >4′\n🔧 Step 3: Evaluate Functional Stability\n• \tPlumb check: Use visual reference or level to assess vertical alignment\n• \tCrack mapping: Document location, length, and width of structural cracks\n• \tDrainage check: Confirm retaining walls have functional weep holes or drainage paths\n🧼 Step 4: Check Sanitation & Environmental Safety\n• \tInspect for:\n• \tMold, mildew, or pest nests in wall cavities or behind cladding\n• \tWater stains, efflorescence, or algae indicating moisture intrusion\n• \tTrash or vegetation accumulating near wall bases or joints\n• \tIBU Overlay: May require sealed penetrations, pest-proof barriers, and moisture-resistant finishes\n🧠 Step 5: Verify Accessibility & Local Compliance\n• \tAccessible routes: Walls must not obstruct ADA paths or egress zones\n• \tVisual contrast: Required for wall edges near walkways or ramps\n• \tEdge protection: Required at retaining walls adjacent to pedestrian routes\n• \tIBU Overlay: May require tactile warnings, disability-compliant transitions, and safe access to wall-mounted features`
     },
     {
       id: 'wall_ext_2',
@@ -944,7 +1811,8 @@ export const WALL_EXTERIOR_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '4.5/n',
-      code: 'WALL-EXT-02'
+      code: 'WALL-EXT-02',
+      codeReference: `🔍 Step 1: Identify Inspection Zones\nFocus on all exterior-facing vertical structures:\n• \tRetaining walls supporting soil or grade transitions\n• \tExterior walls enclosing habitable spaces\n• \tFreestanding walls adjacent to walkways, parking, or landscaping\n• \tWalls with penetrations (windows, doors, vents, utility lines)\n🧱 Step 2: Assess Structural Integrity\nInspect for signs of failure, movement, or deterioration:\nWall surface, Retaining wall, Mortar joints, Wall cladding, Drainage weep holes\nIRC §R606.1.1 requires masonry walls to be structurally sound and properly reinforced, Mandates engineered design for retaining walls >4′\n🔧 Step 3: Evaluate Functional Stability\n• \tPlumb check: Use visual reference or level to assess vertical alignment\n• \tCrack mapping: Document location, length, and width of structural cracks\n• \tDrainage check: Confirm retaining walls have functional weep holes or drainage paths\n🧼 Step 4: Check Sanitation & Environmental Safety\n• \tInspect for:\n• \tMold, mildew, or pest nests in wall cavities or behind cladding\n• \tWater stains, efflorescence, or algae indicating moisture intrusion\n• \tTrash or vegetation accumulating near wall bases or joints\n• \tIBU Overlay: May require sealed penetrations, pest-proof barriers, and moisture-resistant finishes\n🧠 Step 5: Verify Accessibility & Local Compliance\n• \tAccessible routes: Walls must not obstruct ADA paths or egress zones\n• \tVisual contrast: Required for wall edges near walkways or ramps\n• \tEdge protection: Required at retaining walls adjacent to pedestrian routes\n• \tIBU Overlay: May require tactile warnings, disability-compliant transitions, and safe access to wall-mounted features`
     },
     {
       id: 'wall_ext_3',
@@ -954,7 +1822,8 @@ export const WALL_EXTERIOR_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '4.5/n',
-      code: 'WALL-EXT-03'
+      code: 'WALL-EXT-03',
+      codeReference: `🔍 Step 1: Identify Inspection Zones\nFocus on all exterior-facing vertical structures:\n• \tRetaining walls supporting soil or grade transitions\n• \tExterior walls enclosing habitable spaces\n• \tFreestanding walls adjacent to walkways, parking, or landscaping\n• \tWalls with penetrations (windows, doors, vents, utility lines)\n🧱 Step 2: Assess Structural Integrity\nInspect for signs of failure, movement, or deterioration:\nWall surface, Retaining wall, Mortar joints, Wall cladding, Drainage weep holes\nIRC §R606.1.1 requires masonry walls to be structurally sound and properly reinforced, Mandates engineered design for retaining walls >4′\n🔧 Step 3: Evaluate Functional Stability\n• \tPlumb check: Use visual reference or level to assess vertical alignment\n• \tCrack mapping: Document location, length, and width of structural cracks\n• \tDrainage check: Confirm retaining walls have functional weep holes or drainage paths\n🧼 Step 4: Check Sanitation & Environmental Safety\n• \tInspect for:\n• \tMold, mildew, or pest nests in wall cavities or behind cladding\n• \tWater stains, efflorescence, or algae indicating moisture intrusion\n• \tTrash or vegetation accumulating near wall bases or joints\n• \tIBU Overlay: May require sealed penetrations, pest-proof barriers, and moisture-resistant finishes\n🧠 Step 5: Verify Accessibility & Local Compliance\n• \tAccessible routes: Walls must not obstruct ADA paths or egress zones\n• \tVisual contrast: Required for wall edges near walkways or ramps\n• \tEdge protection: Required at retaining walls adjacent to pedestrian routes\n• \tIBU Overlay: May require tactile warnings, disability-compliant transitions, and safe access to wall-mounted features`
     }
   ]
 };
@@ -976,7 +1845,8 @@ export const DOOR_ENTRY_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
-      code: 'DOOR-ENTRY-01'
+      code: 'DOOR-ENTRY-01',
+      codeReference: "hello"
     },
     {
       id: 'door_entry_2',
@@ -986,7 +1856,8 @@ export const DOOR_ENTRY_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
-      code: 'DOOR-ENTRY-02'
+      code: 'DOOR-ENTRY-02',
+      codeReference: "hello"
     },
     {
       id: 'door_entry_3',
@@ -996,7 +1867,8 @@ export const DOOR_ENTRY_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
-      code: 'DOOR-ENTRY-03'
+      code: 'DOOR-ENTRY-03',
+      codeReference: "hello"
     },
     {
       id: 'door_entry_4',
@@ -1006,7 +1878,8 @@ export const DOOR_ENTRY_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
-      code: 'DOOR-ENTRY-04'
+      code: 'DOOR-ENTRY-04',
+      codeReference: "hello"
     },
     {
       id: 'door_entry_5',
@@ -1016,7 +1889,8 @@ export const DOOR_ENTRY_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Severe',
       repairBy: '24 Hrs.',
       points: '14.8/n',
-      code: 'DOOR-ENTRY-05'
+      code: 'DOOR-ENTRY-05',
+      codeReference: "hello"
     },
     {
       id: 'door_entry_6',
@@ -1026,7 +1900,8 @@ export const DOOR_ENTRY_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
-      code: 'DOOR-ENTRY-06'
+      code: 'DOOR-ENTRY-06',
+      codeReference: "hello"
     }
   ]
 };
@@ -1043,7 +1918,8 @@ export const DOOR_FIRE_LABELED_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Life-Threatening',
       repairBy: '24Hrs',
       points: '30/n',
-      code: 'DOOR-FIRE-01'
+      code: 'DOOR-FIRE-01',
+      codeReference: "hello"
     },
     {
       id: 'door_fire_2',
@@ -1053,7 +1929,8 @@ export const DOOR_FIRE_LABELED_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Life-Threatening',
       repairBy: '24Hrs',
       points: '30/n',
-      code: 'DOOR-FIRE-02'
+      code: 'DOOR-FIRE-02',
+      codeReference: "hello"
     },
     {
       id: 'door_fire_3',
@@ -1063,7 +1940,8 @@ export const DOOR_FIRE_LABELED_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Life-Threatening',
       repairBy: '24Hrs',
       points: '30/n',
-      code: 'DOOR-FIRE-03'
+      code: 'DOOR-FIRE-03',
+      codeReference: "hello"
     },
     {
       id: 'door_fire_4',
@@ -1073,7 +1951,8 @@ export const DOOR_FIRE_LABELED_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Life-Threatening',
       repairBy: '24Hrs',
       points: '30/n',
-      code: 'DOOR-FIRE-04'
+      code: 'DOOR-FIRE-04',
+      codeReference: "hello"
     },
     {
       id: 'door_fire_5',
@@ -1083,7 +1962,8 @@ export const DOOR_FIRE_LABELED_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Severe',
       repairBy: '24 Hrs.',
       points: '14.8/n',
-      code: 'DOOR-FIRE-05'
+      code: 'DOOR-FIRE-05',
+      codeReference: "hello"
     },
     {
       id: 'door_fire_6',
@@ -1093,7 +1973,8 @@ export const DOOR_FIRE_LABELED_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Life-Threatening',
       repairBy: '24Hrs',
       points: '30/n',
-      code: 'DOOR-FIRE-06'
+      code: 'DOOR-FIRE-06',
+      codeReference: "hello"
     },
     {
       id: 'door_fire_7',
@@ -1103,7 +1984,8 @@ export const DOOR_FIRE_LABELED_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
-      code: 'DOOR-FIRE-07'
+      code: 'DOOR-FIRE-07',
+      codeReference: "hello"
     }
   ]
 };
@@ -1120,7 +2002,8 @@ export const DOOR_GENERAL_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
-      code: 'DOOR-GEN-01'
+      code: 'DOOR-GEN-01',
+      codeReference: "hello"
     },
     {
       id: 'door_gen_2',
@@ -1130,7 +2013,8 @@ export const DOOR_GENERAL_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
-      code: 'DOOR-GEN-02'
+      code: 'DOOR-GEN-02',
+      codeReference: "hello"
     },
     {
       id: 'door_gen_3',
@@ -1140,7 +2024,8 @@ export const DOOR_GENERAL_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Low',
       repairBy: '60 Day',
       points: '2.40/n',
-      code: 'DOOR-GEN-03'
+      code: 'DOOR-GEN-03',
+      codeReference: "hello"
     }
   ]
 };
@@ -1157,7 +2042,8 @@ export const GARAGE_DOOR_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
-      code: 'GARAGE-01'
+      code: 'GARAGE-01',
+      codeReference: "hello"
     },
     {
       id: 'garage_2',
@@ -1167,7 +2053,8 @@ export const GARAGE_DOOR_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
-      code: 'GARAGE-02'
+      code: 'GARAGE-02',
+      codeReference: "hello"
     }
   ]
 };
@@ -1184,7 +2071,31 @@ export const EGRESS_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Life-Threatening',
       repairBy: '24 Hrs.',
       points: '24.8/n',
-      code: 'EGRESS-01'
+      code: 'EGRESS-OUT-01',
+      codeReference: `🔍 Step 1: Verify Accessibility & Local Compliance
+• Slope & surface: Egress paths must be firm, stable, and slip-resistant
+• Door hardware: Must be operable without tight grasping or twisting
+• Visual contrast: Required for stair edges and exit signage
+• IBU Overlay: May require tactile signage, audible alerts, or extended landings for accessible units
+
+🧱 Step 2: Assess Structural Integrity
+Inspect for damage, instability, or obstruction:
+• Exit doors, Pathways, Stairwells/fire escapes, Handrails/guardrails
+
+🔧 Step 3: Evaluate Operability & Clearance
+• Door test: Ensure all exterior exit doors open easily without keys or tools
+• Pathway check: Confirm minimum 36″ clear width for accessible egress routes
+• Obstruction scan: Look for trash bins, furniture, vegetation, or resident items blocking exits
+
+💡 Step 4: Inspect Lighting & Signage
+• Exit signs: Must be visible and illuminated at night or in low-light conditions
+• Emergency lighting: Should activate during a power failure
+• NSPIRE Deficiency: Missing or nonfunctional signage/lighting = Moderate
+
+🧼 Step 5: Check Sanitation & Environmental Safety
+• Inspect for:
+• Water pooling or erosion that may impede safe exit
+• IBU Overlay: May require slip-resistant surfaces, sealed transitions, and pest-proof lighting fixtures`
     }
   ]
 };
@@ -1201,7 +2112,8 @@ export const ELECTRICAL_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Life-Threatening',
       repairBy: '24 Hrs.',
       points: '24.8/n',
-      code: 'ELEC-01'
+      code: 'ELEC-01',
+      codeReference: "hello"
     },
     {
       id: 'elec_2',
@@ -1211,7 +2123,8 @@ export const ELECTRICAL_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Severe',
       repairBy: '24 Hrs.',
       points: '12.20/n',
-      code: 'ELEC-02'
+      code: 'ELEC-02',
+      codeReference: "hello"
     },
     {
       id: 'elec_3',
@@ -1221,7 +2134,8 @@ export const ELECTRICAL_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '4.5/n',
-      code: 'ELEC-03'
+      code: 'ELEC-03',
+      codeReference: "hello"
     },
     {
       id: 'elec_4',
@@ -1231,7 +2145,8 @@ export const ELECTRICAL_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Life-Threatening',
       repairBy: '24 Hrs.',
       points: '24.8/n',
-      code: 'ELEC-04'
+      code: 'ELEC-04',
+      codeReference: "hello"
     },
     {
       id: 'elec_5',
@@ -1241,7 +2156,8 @@ export const ELECTRICAL_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Life-Threatening',
       repairBy: '24 Hrs.',
       points: '24.8/n',
-      code: 'ELEC-05'
+      code: 'ELEC-05',
+      codeReference: "hello"
     },
     {
       id: 'elec_6',
@@ -1251,7 +2167,8 @@ export const ELECTRICAL_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '4.5/n',
-      code: 'ELEC-06'
+      code: 'ELEC-06',
+      codeReference: "hello"
     },
     {
       id: 'elec_7',
@@ -1261,7 +2178,8 @@ export const ELECTRICAL_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Severe',
       repairBy: '24 Hrs.',
       points: '12.20/n',
-      code: 'ELEC-07'
+      code: 'ELEC-07',
+      codeReference: "hello"
     }
   ]
 };
@@ -1278,7 +2196,8 @@ export const ELECTRICAL_SERVICE_PANEL_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '4.5/n',
-      code: 'ESP-01'
+      code: 'ESP-01',
+      codeReference: "hello"
     },
     {
       id: 'esp_2',
@@ -1288,7 +2207,8 @@ export const ELECTRICAL_SERVICE_PANEL_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '4.5/n',
-      code: 'ESP-02'
+      code: 'ESP-02',
+      codeReference: "hello"
     },
     {
       id: 'esp_3',
@@ -1298,7 +2218,8 @@ export const ELECTRICAL_SERVICE_PANEL_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Severe',
       repairBy: '24 Hrs.',
       points: '12.20/n',
-      code: 'ESP-03'
+      code: 'ESP-03',
+      codeReference: "hello"
     }
   ]
 };
@@ -1321,7 +2242,32 @@ export const FENCE_AND_GATE_OUTSIDE: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '4.5/n',
-      code: 'FENCE-01'
+      code: 'FENCE-01',
+      codeReference: `🔍 Step 1: Identify Fence/Gate Type and Applicability
+• 	Required: Applies to fences and gates that:
+• 	Form a security perimeter around parking areas or utility zones
+• 	Prevent access to hazardous areas (e.g., drop-offs, retention basins, equipment yards)
+• 	Excluded: Decorative or landscape fencing not intended for security or access control
+
+🧱 Step 2: Assess Structural Integrity
+Inspect for damage, instability, or missing components:
+Fence panels/posts, Gate frame/hardware, Latch/lock mechanism, Foundation/footings
+🔧 Step 3: Evaluate Operability & Safety
+• 	Gate test:
+• 	Open gate fully and confirm smooth movement
+• 	Close gate and verify latch/lock engages securely
+• 	Attempt to open gate without engaging latch—should remain closed
+🧼 Step 4: Check Sanitation & Environmental Safety
+• 	Inspect for:
+• 	Trash, pest nests, or mold around posts and base
+• 	Water pooling or erosion near fence footings
+• 	IBU Overlay: May require pest-resistant materials, sealed joints, and corrosion-proof hardware
+🧠 Step 5: Verify Accessibility & Local Compliance
+• 	Clear width: Gates used by pedestrians must provide ≥32″ clear opening (CBC §11B-404.2.3)
+• 	Handle height: ≤48″ AFF 
+• 	Surface transitions: Pathways leading to gates must be firm, stable, and slip-resistant
+• 	IBU Overlay: May require tactile signage, visual contrast, or automatic closers in accessible zones
+`
     },
     {
       id: 'fence_2',
@@ -1331,7 +2277,32 @@ export const FENCE_AND_GATE_OUTSIDE: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '4.5/n',
-      code: 'FENCE-02'
+      code: 'FENCE-02',
+      codeReference: `🔍 Step 1: Identify Fence/Gate Type and Applicability
+• 	Required: Applies to fences and gates that:
+• 	Form a security perimeter around parking areas or utility zones
+• 	Prevent access to hazardous areas (e.g., drop-offs, retention basins, equipment yards)
+• 	Excluded: Decorative or landscape fencing not intended for security or access control
+
+🧱 Step 2: Assess Structural Integrity
+Inspect for damage, instability, or missing components:
+Fence panels/posts, Gate frame/hardware, Latch/lock mechanism, Foundation/footings
+🔧 Step 3: Evaluate Operability & Safety
+• 	Gate test:
+• 	Open gate fully and confirm smooth movement
+• 	Close gate and verify latch/lock engages securely
+• 	Attempt to open gate without engaging latch—should remain closed
+🧼 Step 4: Check Sanitation & Environmental Safety
+• 	Inspect for:
+• 	Trash, pest nests, or mold around posts and base
+• 	Water pooling or erosion near fence footings
+• 	IBU Overlay: May require pest-resistant materials, sealed joints, and corrosion-proof hardware
+🧠 Step 5: Verify Accessibility & Local Compliance
+• 	Clear width: Gates used by pedestrians must provide ≥32″ clear opening (CBC §11B-404.2.3)
+• 	Handle height: ≤48″ AFF 
+• 	Surface transitions: Pathways leading to gates must be firm, stable, and slip-resistant
+• 	IBU Overlay: May require tactile signage, visual contrast, or automatic closers in accessible zones
+`
     },
     {
       id: 'fence_3',
@@ -1341,7 +2312,32 @@ export const FENCE_AND_GATE_OUTSIDE: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '4.5/n',
-      code: 'FENCE-03'
+      code: 'FENCE-03',
+      codeReference: `🔍 Step 1: Identify Fence/Gate Type and Applicability
+• 	Required: Applies to fences and gates that:
+• 	Form a security perimeter around parking areas or utility zones
+• 	Prevent access to hazardous areas (e.g., drop-offs, retention basins, equipment yards)
+• 	Excluded: Decorative or landscape fencing not intended for security or access control
+
+🧱 Step 2: Assess Structural Integrity
+Inspect for damage, instability, or missing components:
+Fence panels/posts, Gate frame/hardware, Latch/lock mechanism, Foundation/footings
+🔧 Step 3: Evaluate Operability & Safety
+• 	Gate test:
+• 	Open gate fully and confirm smooth movement
+• 	Close gate and verify latch/lock engages securely
+• 	Attempt to open gate without engaging latch—should remain closed
+🧼 Step 4: Check Sanitation & Environmental Safety
+• 	Inspect for:
+• 	Trash, pest nests, or mold around posts and base
+• 	Water pooling or erosion near fence footings
+• 	IBU Overlay: May require pest-resistant materials, sealed joints, and corrosion-proof hardware
+🧠 Step 5: Verify Accessibility & Local Compliance
+• 	Clear width: Gates used by pedestrians must provide ≥32″ clear opening (CBC §11B-404.2.3)
+• 	Handle height: ≤48″ AFF 
+• 	Surface transitions: Pathways leading to gates must be firm, stable, and slip-resistant
+• 	IBU Overlay: May require tactile signage, visual contrast, or automatic closers in accessible zones
+`
     }
   ]
 };
@@ -1363,7 +2359,30 @@ export const FIRE_SAFETY_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Life-Threatening',
       repairBy: '24 Hrs.',
       points: '24.8/n',
-      code: 'FIRE-01'
+      code: 'FIRE-01',
+      codeReference: `🧭 Step 1: Identify Exit Sign Locations
+Inspect all permanently installed exit signs that mark emergency egress routes.
+NSPIRE does not require exit signs in every building, but if one is present or evidence of prior installation exists, it must be inspected.
+🔍 Step 2: Visual Condition Assessment
+• 	Legibility: The word “EXIT” must be clearly visible from all approach angles.
+• 	Obstruction: Ensure no furniture, signage, or decorations block the sign.
+• 	Contrast: Letters must contrast with the background (typically red or green on white).
+🧪 Step 3: Functional Testing
+• 	Visibility Check: Confirm the sign is clearly visible from all approach angles
+• 	Illumination Test: If the sign is powered, press the test button (if present) to verify battery backup
+• 	If no button, confirm the sign is lit via AC power or photoluminescence
+• 	Mounting Check:
+• 	Ensure the sign is securely affixed to the wall or ceiling
+• 	Obstruction Scan: Look for any objects blocking the sign or its visibility
+Combination units (exit sign + emergency light) must be inspected as two separate items.
+📏 Step 4: Accessibility /Code Compliance & IBU Overlay
+• 	Height & Placement: Signs must be mounted high enough to be visible but not obstructive
+• 	Visual Clarity: Letters must be ≥6" high with a stroke width ≥¾"
+• 	Contrast & Illumination: Must be readable by residents with low vision
+• 	Directional Arrows: Required if the exit path is not straight ahead
+⚒️ Step 5: IRC Fire Safety Requirements
+• 	• 	IRC (2021) §R311.4, §R315 – Means of egress and emergency escape
+• 	Fire separation walls must not block exit signage or access`
     },
     {
       id: 'fire_2',
@@ -1373,7 +2392,35 @@ export const FIRE_SAFETY_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Life-Threatening',
       repairBy: '24 Hrs.',
       points: '24.8/n',
-      code: 'FIRE-02'
+      code: 'FIRE-02',
+      codeReference: `🧭 Step 1:  Exterior Fire Escape & Ladder Inspection Protocol
+Applies to: Multifamily buildings >4 stories
+Codes Referenced: IRC, IBC/IBU , NSPIRE 
+Focus: Life safety, structural integrity, egress functionality
+🔍 Step 2:  Structural Component Checklist
+Inspect each element for damage, deterioration, or absence:
+Stairs/Ladders, Platforms, Guardrails, Handrails, Anchors/Supports
+🛠 NSPIRE defines any missing or damaged fire escape component as a life-threatening deficiency 
+🧪 Step 3: Egress & Access Evaluation
+• 	Verify clear access from windows or doors to the fire escape.
+• 	Check for obstructions: AC units, furniture, debris.
+• 	Confirm operability of windows/doors leading to escape.
+• 	If blocked, refer to NSPIRE’s Egress Standard.
+📏 Step 4: Code Compliance Highlights
+IRC / IBC Requirements:
+• 	IBC 1009.3: Fire escapes permitted only for existing buildings.
+• 	IBC 1011.5.2: Tread depth ≥ 11", riser height ≤ 7".
+• 	IBC 1011.11: Handrails required on both sides if >4 risers.
+• 	IBC 1015.2: Guardrails ≥ 42" height, openings <4".
+• 	IRC R311.7: Exterior stairs must be structurally sound and weather-resistant.
+🔍 For buildings over 4 stories, IBC/IBU takes precedence over IRC for fire escape design and retrofit standards.
+
+⚒️ Step 5:  Material & Weathering Assessment
+• 	Metal: Inspect for rust, flaking paint, metal fatigue.
+• 	Wood (if present): Check for rot, splintering, termite damage.
+• 	Fasteners: Look for missing bolts, loose welds, or compromised joints.
+• 	Counterbalanced or drop ladders: Confirm smooth operation and locking mechanisms.
+`
     },
     {
       id: 'fire_3',
@@ -1383,7 +2430,8 @@ export const FIRE_SAFETY_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Life-Threatening',
       repairBy: '24 Hrs.',
       points: '24.8/n',
-      code: 'FIRE-03'
+      code: 'FIRE-03',
+      codeReference: "hello"
     },
     {
       id: 'fire_4',
@@ -1393,7 +2441,8 @@ export const FIRE_SAFETY_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Life-Threatening',
       repairBy: '24 Hrs.',
       points: '24.8/n',
-      code: 'FIRE-04'
+      code: 'FIRE-04',
+      codeReference: "hello"
     },
     {
       id: 'fire_5',
@@ -1403,7 +2452,8 @@ export const FIRE_SAFETY_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Life-Threatening',
       repairBy: '24 Hrs.',
       points: '24.8/n',
-      code: 'FIRE-05'
+      code: 'FIRE-05',
+      codeReference: "hello"
     },
     {
       id: 'fire_6',
@@ -1413,7 +2463,8 @@ export const FIRE_SAFETY_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Life-Threatening',
       repairBy: '24 Hrs.',
       points: '24.8/n',
-      code: 'FIRE-06'
+      code: 'FIRE-06',
+      codeReference: "hello"
     },
     {
       id: 'fire_7',
@@ -1423,7 +2474,8 @@ export const FIRE_SAFETY_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Life-Threatening',
       repairBy: '24 Hrs.',
       points: '24.8/n',
-      code: 'FIRE-07'
+      code: 'FIRE-07',
+      codeReference: "hello"
     },
     {
       id: 'fire_8',
@@ -1433,7 +2485,8 @@ export const FIRE_SAFETY_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Life-Threatening',
       repairBy: '24 Hrs.',
       points: '24.8/n',
-      code: 'FIRE-08'
+      code: 'FIRE-08',
+      codeReference: "hello"
     },
     {
       id: 'fire_9',
@@ -1443,7 +2496,8 @@ export const FIRE_SAFETY_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Life-Threatening',
       repairBy: '24 Hrs.',
       points: '24.8/n',
-      code: 'FIRE-09'
+      code: 'FIRE-09',
+      codeReference: "hello"
     },
     {
       id: 'fire_10',
@@ -1453,7 +2507,8 @@ export const FIRE_SAFETY_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Life-Threatening',
       repairBy: '24 Hrs.',
       points: '24.8/n',
-      code: 'FIRE-10'
+      code: 'FIRE-10',
+      codeReference: "hello"
     }
   ]
 };
@@ -1470,7 +2525,33 @@ export const FOUNDATION_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '4.5/n',
-      code: 'FOUND-01'
+      code: 'FOUND-01',
+      codeReference: `🔍 Step 1: Identify Foundation Exposure Zones
+• 	Locate all visible portions of the foundation adjacent to:
+• 	Parking lots, driveways, walkways, and retaining walls
+• 	Utility enclosures, trash areas, and mechanical pads
+• 	Confirm visibility of:
+• 	Footings, stem walls, slab edges, crawl space vents, and grade transitions
+
+🧱 Step 2: Assess Structural Integrity
+Inspect for signs of failure, movement, or deterioration:
+Foundation wall, Stem wall or footing, Slab edge, Retaining wall
+
+🔧 Step 3: Evaluate Drainage & Surface Grading
+• 	Grade check: Confirm slope ≥6" fall within first 10′ from foundation (IRC §R401.3)
+• 	Drainage path: Ensure water flows away from foundation and does not pond
+• 	NSPIRE Deficiency: Standing water or erosion exposing footings = Moderate to Severe
+
+🧼 Step 4: Check Sanitation & Environmental Safety
+• 	Inspect for:
+• 	Mold, mildew, or pest activity near foundation vents or slab edges
+• 	Efflorescence or rust stains indicating moisture intrusion
+• 	IBU Overlay: May require sealed penetrations, pest-proof vent covers, and moisture-resistant coatings
+
+🧠 Step 5: Verify Accessibility & Local Compliance
+• 	Pathway transitions: Ensure accessible routes adjacent to foundation are stable and slip-resistant
+• 	Foundation vents: Must be secure and not obstruct accessible paths
+• 	IBU Overlay: May require tactile warnings or visual contrast near grade changes and exposed edges`
     },
     {
       id: 'found_2',
@@ -1480,7 +2561,33 @@ export const FOUNDATION_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '4.5/n',
-      code: 'FOUND-02'
+      code: 'FOUND-02',
+      codeReference: `🔍 Step 1: Identify Foundation Exposure Zones
+• 	Locate all visible portions of the foundation adjacent to:
+• 	Parking lots, driveways, walkways, and retaining walls
+• 	Utility enclosures, trash areas, and mechanical pads
+• 	Confirm visibility of:
+• 	Footings, stem walls, slab edges, crawl space vents, and grade transitions
+
+🧱 Step 2: Assess Structural Integrity
+Inspect for signs of failure, movement, or deterioration:
+Foundation wall, Stem wall or footing, Slab edge, Retaining wall
+
+🔧 Step 3: Evaluate Drainage & Surface Grading
+• 	Grade check: Confirm slope ≥6" fall within first 10′ from foundation (IRC §R401.3)
+• 	Drainage path: Ensure water flows away from foundation and does not pond
+• 	NSPIRE Deficiency: Standing water or erosion exposing footings = Moderate to Severe
+
+🧼 Step 4: Check Sanitation & Environmental Safety
+• 	Inspect for:
+• 	Mold, mildew, or pest activity near foundation vents or slab edges
+• 	Efflorescence or rust stains indicating moisture intrusion
+• 	IBU Overlay: May require sealed penetrations, pest-proof vent covers, and moisture-resistant coatings
+
+🧠 Step 5: Verify Accessibility & Local Compliance
+• 	Pathway transitions: Ensure accessible routes adjacent to foundation are stable and slip-resistant
+• 	Foundation vents: Must be secure and not obstruct accessible paths
+• 	IBU Overlay: May require tactile warnings or visual contrast near grade changes and exposed edges`
     },
     {
       id: 'found_3',
@@ -1490,7 +2597,33 @@ export const FOUNDATION_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '4.5/n',
-      code: 'FOUND-03'
+      code: 'FOUND-03',
+      codeReference: `🔍 Step 1: Identify Foundation Exposure Zones
+• 	Locate all visible portions of the foundation adjacent to:
+• 	Parking lots, driveways, walkways, and retaining walls
+• 	Utility enclosures, trash areas, and mechanical pads
+• 	Confirm visibility of:
+• 	Footings, stem walls, slab edges, crawl space vents, and grade transitions
+
+🧱 Step 2: Assess Structural Integrity
+Inspect for signs of failure, movement, or deterioration:
+Foundation wall, Stem wall or footing, Slab edge, Retaining wall
+
+🔧 Step 3: Evaluate Drainage & Surface Grading
+• 	Grade check: Confirm slope ≥6" fall within first 10′ from foundation (IRC §R401.3)
+• 	Drainage path: Ensure water flows away from foundation and does not pond
+• 	NSPIRE Deficiency: Standing water or erosion exposing footings = Moderate to Severe
+
+🧼 Step 4: Check Sanitation & Environmental Safety
+• 	Inspect for:
+• 	Mold, mildew, or pest activity near foundation vents or slab edges
+• 	Efflorescence or rust stains indicating moisture intrusion
+• 	IBU Overlay: May require sealed penetrations, pest-proof vent covers, and moisture-resistant coatings
+
+🧠 Step 5: Verify Accessibility & Local Compliance
+• 	Pathway transitions: Ensure accessible routes adjacent to foundation are stable and slip-resistant
+• 	Foundation vents: Must be secure and not obstruct accessible paths
+• 	IBU Overlay: May require tactile warnings or visual contrast near grade changes and exposed edges`
     },
     {
       id: 'found_4',
@@ -1500,7 +2633,33 @@ export const FOUNDATION_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '4.5/n',
-      code: 'FOUND-04'
+      code: 'FOUND-04',
+      codeReference: `🔍 Step 1: Identify Foundation Exposure Zones
+• 	Locate all visible portions of the foundation adjacent to:
+• 	Parking lots, driveways, walkways, and retaining walls
+• 	Utility enclosures, trash areas, and mechanical pads
+• 	Confirm visibility of:
+• 	Footings, stem walls, slab edges, crawl space vents, and grade transitions
+
+🧱 Step 2: Assess Structural Integrity
+Inspect for signs of failure, movement, or deterioration:
+Foundation wall, Stem wall or footing, Slab edge, Retaining wall
+
+🔧 Step 3: Evaluate Drainage & Surface Grading
+• 	Grade check: Confirm slope ≥6" fall within first 10′ from foundation (IRC §R401.3)
+• 	Drainage path: Ensure water flows away from foundation and does not pond
+• 	NSPIRE Deficiency: Standing water or erosion exposing footings = Moderate to Severe
+
+🧼 Step 4: Check Sanitation & Environmental Safety
+• 	Inspect for:
+• 	Mold, mildew, or pest activity near foundation vents or slab edges
+• 	Efflorescence or rust stains indicating moisture intrusion
+• 	IBU Overlay: May require sealed penetrations, pest-proof vent covers, and moisture-resistant coatings
+
+🧠 Step 5: Verify Accessibility & Local Compliance
+• 	Pathway transitions: Ensure accessible routes adjacent to foundation are stable and slip-resistant
+• 	Foundation vents: Must be secure and not obstruct accessible paths
+• 	IBU Overlay: May require tactile warnings or visual contrast near grade changes and exposed edges`
     }
   ]
 };
@@ -1517,7 +2676,8 @@ export const HAZARD_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '4.5/n',
-      code: 'HAZ-01'
+      code: 'HAZ-01',
+      codeReference: "hello"
     },
     {
       id: 'hazard_2',
@@ -1527,7 +2687,8 @@ export const HAZARD_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Low',
       repairBy: '30 Day',
       points: '2.00/n',
-      code: 'HAZ-02'
+      code: 'HAZ-02',
+      codeReference: "hello"
     },
     {
       id: 'hazard_3',
@@ -1537,7 +2698,8 @@ export const HAZARD_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Severe',
       repairBy: '24 Hrs.',
       points: '12.20/n',
-      code: 'HAZ-03'
+      code: 'HAZ-03',
+      codeReference: "hello"
     },
     {
       id: 'hazard_4',
@@ -1547,7 +2709,8 @@ export const HAZARD_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '4.5/n',
-      code: 'HAZ-04'
+      code: 'HAZ-04',
+      codeReference: "hello"
     }
   ]
 };
@@ -1564,7 +2727,35 @@ export const HVAC_OUTSIDE_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Life-Threatening',
       repairBy: '24 Hrs.',
       points: '24.8/n',
-      code: 'HVAC-OUT-01'
+      code: 'HVAC-OUT-01',
+      codeReference: `🔍 Step 1: Identify Exterior HVAC Units
+Locate all permanently installed heating and cooling equipment outside the building:
+• 	Central air conditioning condensers
+• 	Heat pumps and mini-split outdoor units
+• 	Combustion-based heating units (e.g., rooftop furnaces)
+• 	Utility enclosures or mechanical pads
+
+🧱 Step 2: Assess Structural Integrity
+Inspect for damage, instability, or missing components:
+Unit housing, Mounting base, Refrigerant lines, Electrical conduit, Exhaust vents
+
+🔧 Step 3: Evaluate Functional Adequacy
+• 	Cooling test: Place hand near condenser fan—confirm airflow and vibration
+• 	Heating test (if applicable): Confirm exhaust vent is warm and unobstructed
+• 	Thermostat linkage: Verify visible control wiring is intact and protected
+• 	Exposed live wiring = Life-Threatening (24-hour correction)
+
+🧼 Step 4: Check Sanitation & Environmental Safety
+• 	Inspect for:
+• 	Pest nests, mold, or debris inside or around units
+• 	Water pooling or vegetation obstructing airflow
+• 	IBU Overlay: May require pest-proof grilles, sealed penetrations, and corrosion-resistant materials
+
+🧠 Step 5: Verify Accessibility & Local Compliance
+• 	Clearance: Maintain minimum 30" working space around units (CMC §304.3)
+• 	Elevation: Units must be above grade to prevent water damage
+• 	Labeling: Equipment must be clearly marked with model, fuel type, and disconnect location
+• 	IBU Overlay: May require disability-compliant access paths, tactile signage, and safe service access in shared-use zones`
     }
   ]
 };
@@ -1581,7 +2772,8 @@ export const HVAC_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
-      code: 'HVAC-01'
+      code: 'HVAC-01',
+      codeReference: "hello"
     },
     {
       id: 'hvac_2',
@@ -1591,7 +2783,8 @@ export const HVAC_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Life-Threatening',
       repairBy: '24Hrs',
       points: '30/n',
-      code: 'HVAC-02'
+      code: 'HVAC-02',
+      codeReference: "hello"
     },
     {
       id: 'hvac_3',
@@ -1601,7 +2794,8 @@ export const HVAC_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Life-Threatening',
       repairBy: '24Hrs',
       points: '30/n',
-      code: 'HVAC-03'
+      code: 'HVAC-03',
+      codeReference: "hello"
     },
     {
       id: 'hvac_4',
@@ -1611,7 +2805,8 @@ export const HVAC_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Life-Threatening',
       repairBy: '24Hrs',
       points: '30/n',
-      code: 'HVAC-04'
+      code: 'HVAC-04',
+      codeReference: "hello"
     },
     {
       id: 'hvac_5',
@@ -1621,7 +2816,8 @@ export const HVAC_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
-      code: 'HVAC-05'
+      code: 'HVAC-05',
+      codeReference: "hello"
     },
     {
       id: 'hvac_6',
@@ -1631,7 +2827,8 @@ export const HVAC_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Life-Threatening',
       repairBy: '24Hrs',
       points: '30/n',
-      code: 'HVAC-06'
+      code: 'HVAC-06',
+      codeReference: "hello"
     },
     {
       id: 'hvac_7',
@@ -1641,7 +2838,8 @@ export const HVAC_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Life-Threatening',
       repairBy: '24Hrs',
       points: '30/n',
-      code: 'HVAC-07'
+      code: 'HVAC-07',
+      codeReference: "hello"
     }
   ]
 };
@@ -1658,7 +2856,46 @@ export const LEAK_GAS_OIL_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Life-Threatening',
       repairBy: '24 Hrs.',
       points: '24.8/n',
-      code: 'LEAK-GAS-01'
+      code: 'LEAK-GAS-01',
+      codeReference: `🔍 Step 1: Identify Inspection Zones
+Focus on exterior areas where gas or oil systems are present:
+• 	Gas meters and regulators
+• 	Fuel piping and appliance connectors
+• 	Oil tanks or fuel storage containers
+• 	Combustion appliance exhaust vents
+• 	Mechanical pads and utility enclosures
+
+🧱 Step 2: Assess Structural Integrity of Fuel System Components
+Inspect for physical damage, corrosion, or improper installation:
+• 	Gas meters and regulators
+• 	Fuel piping and appliance connectors
+• 	Oil tanks or fuel storage containers
+• 	Combustion appliance exhaust vents
+• 	Mechanical pads and utility enclosures
+
+🔧 Step 3: Detect Signs of Active or Potential Leaks
+Use visual and sensory cues to identify hazards:
+• 	Gas leaks:
+• 	Smell of sulfur or “rotten eggs” (mercaptan additive)
+• 	Dead vegetation near buried lines
+• 	Hissing sounds from fittings or valves
+• 	Oil leaks:
+• 	Visible pooling or staining on concrete or soil
+• 	Strong petroleum odor
+• 	Discoloration or sheen on nearby surfaces
+
+🧼 Step 4: Check Sanitation & Environmental Safety
+• 	Inspect for:
+• 	Oil-soaked soil or vegetation
+• 	Gas line corrosion near irrigation systems or drainage paths
+• 	Improper disposal or containment of fuel residues
+• 	IBU Overlay: May require spill containment, corrosion-resistant materials, and sealed penetrations
+
+🧠 Step 5: Verify Accessibility & Local Compliance
+• 	Shutoff valves: Must be accessible and clearly marked (IRC §G2420.1.3)
+• 	Labeling: Fuel systems must be labeled with type, source, and emergency contact
+• 	Clearance: Maintain minimum working space around fuel systems (CMC §304.3)
+• 	IBU Overlay: May require ADA-compliant access paths, tactile signage, and safe service access in shared-use zones`
     }
   ]
 };
@@ -1675,7 +2912,8 @@ export const LEAK_SEWAGE_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Severe',
       repairBy: '24 Hrs.',
       points: '12.20/n',
-      code: 'LEAK-SEW-01'
+      code: 'LEAK-SEW-01',
+      codeReference: `🔍 Step 1: Identify Inspection Zones\nFocus on exterior areas where sewage infrastructure is exposed or vulnerable:\n• \tSewer cleanouts and lateral connections\n• \tManholes and inspection ports\n• \tDrainage lines near parking lots, trash enclosures, and utility pads\n• \tCrawl space vents and foundation edges\n• \tRetention basins or sump pump discharge zones\n🧱 Step 2: Assess Structural Integrity of System Components\nInspect for damage, displacement, or improper installation:\nSewer cleanout caps, Pipe joints & fitting, Manhole covers, Foundation penetrations\n🧼 Step 3: Detect Signs of Active or Residual Leakage\nUse visual and sensory cues to identify hazards:\n• \tWet soil or pooling near sewer lines or cleanouts\n• \tToilet paper, sludge, or effluent visible on ground surface\n• \tStrong sewage odor in localized areas\n• \tGrease or biofilm on walls or pavement near discharge points\n• \tPest activity (flies, rodents) concentrated around suspected leak zones\n🧠 Step 4: Verify Accessibility & Local Compliance\n• \tCleanout access: Must be unobstructed and reachable for service\n• \tSurface transitions: No trip hazards or obstructions near sewer infrastructure\n• \tSignage: If active repair or mitigation is underway, warning signs must be posted\n• \tIBU Overlay: May require diability-compliant access paths, sealed penetrations, and pest-resistant enclosures\n🔧 Step 5: Evaluate Mitigation Measures\n• \tContainment: Check for temporary barriers, sandbags, or spill trays\n• \tRepair status: Look for exposed tools, open trenches, or active work zones\n• \tDocumentation: Confirm presence of work orders or service tags if repairs are in progress\nIRC §P2603.2.1 requires protection of piping from physical damage; §P3005.2 mandates proper slope and joint integrity`
     },
     {
       id: 'leak_sew_2',
@@ -1685,7 +2923,8 @@ export const LEAK_SEWAGE_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '4.5/n',
-      code: 'LEAK-SEW-02'
+      code: 'LEAK-SEW-02',
+      codeReference: `🔍 Step 1: Identify Inspection Zones\nFocus on exterior areas where sewage infrastructure is exposed or vulnerable:\n• \tSewer cleanouts and lateral connections\n• \tManholes and inspection ports\n• \tDrainage lines near parking lots, trash enclosures, and utility pads\n• \tCrawl space vents and foundation edges\n• \tRetention basins or sump pump discharge zones\n🧱 Step 2: Assess Structural Integrity of System Components\nInspect for damage, displacement, or improper installation:\nSewer cleanout caps, Pipe joints & fitting, Manhole covers, Foundation penetrations\n🧼 Step 3: Detect Signs of Active or Residual Leakage\nUse visual and sensory cues to identify hazards:\n• \tWet soil or pooling near sewer lines or cleanouts\n• \tToilet paper, sludge, or effluent visible on ground surface\n• \tStrong sewage odor in localized areas\n• \tGrease or biofilm on walls or pavement near discharge points\n• \tPest activity (flies, rodents) concentrated around suspected leak zones\n🧠 Step 4: Verify Accessibility & Local Compliance\n• \tCleanout access: Must be unobstructed and reachable for service\n• \tSurface transitions: No trip hazards or obstructions near sewer infrastructure\n• \tSignage: If active repair or mitigation is underway, warning signs must be posted\n• \tIBU Overlay: May require diability-compliant access paths, sealed penetrations, and pest-resistant enclosures\n🔧 Step 5: Evaluate Mitigation Measures\n• \tContainment: Check for temporary barriers, sandbags, or spill trays\n• \tRepair status: Look for exposed tools, open trenches, or active work zones\n• \tDocumentation: Confirm presence of work orders or service tags if repairs are in progress\nIRC §P2603.2.1 requires protection of piping from physical damage; §P3005.2 mandates proper slope and joint integrity`
     },
     {
       id: 'leak_sew_3',
@@ -1695,7 +2934,8 @@ export const LEAK_SEWAGE_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '4.5/n',
-      code: 'LEAK-SEW-03'
+      code: 'LEAK-SEW-03',
+      codeReference: `🔍 Step 1: Identify Inspection Zones\nFocus on exterior areas where sewage infrastructure is exposed or vulnerable:\n• \tSewer cleanouts and lateral connections\n• \tManholes and inspection ports\n• \tDrainage lines near parking lots, trash enclosures, and utility pads\n• \tCrawl space vents and foundation edges\n• \tRetention basins or sump pump discharge zones\n🧱 Step 2: Assess Structural Integrity of System Components\nInspect for damage, displacement, or improper installation:\nSewer cleanout caps, Pipe joints & fitting, Manhole covers, Foundation penetrations\n🧼 Step 3: Detect Signs of Active or Residual Leakage\nUse visual and sensory cues to identify hazards:\n• \tWet soil or pooling near sewer lines or cleanouts\n• \tToilet paper, sludge, or effluent visible on ground surface\n• \tStrong sewage odor in localized areas\n• \tGrease or biofilm on walls or pavement near discharge points\n• \tPest activity (flies, rodents) concentrated around suspected leak zones\n🧠 Step 4: Verify Accessibility & Local Compliance\n• \tCleanout access: Must be unobstructed and reachable for service\n• \tSurface transitions: No trip hazards or obstructions near sewer infrastructure\n• \tSignage: If active repair or mitigation is underway, warning signs must be posted\n• \tIBU Overlay: May require diability-compliant access paths, sealed penetrations, and pest-resistant enclosures\n🔧 Step 5: Evaluate Mitigation Measures\n• \tContainment: Check for temporary barriers, sandbags, or spill trays\n• \tRepair status: Look for exposed tools, open trenches, or active work zones\n• \tDocumentation: Confirm presence of work orders or service tags if repairs are in progress\nIRC §P2603.2.1 requires protection of piping from physical damage; §P3005.2 mandates proper slope and joint integrity`
     },
     {
       id: 'leak_sew_4',
@@ -1705,7 +2945,8 @@ export const LEAK_SEWAGE_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Severe',
       repairBy: '24 Hrs.',
       points: '12.20/n',
-      code: 'LEAK-SEW-04'
+      code: 'LEAK-SEW-04',
+      codeReference: `🔍 Step 1: Identify Inspection Zones\nFocus on exterior areas where sewage infrastructure is exposed or vulnerable:\n• \tSewer cleanouts and lateral connections\n• \tManholes and inspection ports\n• \tDrainage lines near parking lots, trash enclosures, and utility pads\n• \tCrawl space vents and foundation edges\n• \tRetention basins or sump pump discharge zones\n🧱 Step 2: Assess Structural Integrity of System Components\nInspect for damage, displacement, or improper installation:\nSewer cleanout caps, Pipe joints & fitting, Manhole covers, Foundation penetrations\n🧼 Step 3: Detect Signs of Active or Residual Leakage\nUse visual and sensory cues to identify hazards:\n• \tWet soil or pooling near sewer lines or cleanouts\n• \tToilet paper, sludge, or effluent visible on ground surface\n• \tStrong sewage odor in localized areas\n• \tGrease or biofilm on walls or pavement near discharge points\n• \tPest activity (flies, rodents) concentrated around suspected leak zones\n🧠 Step 4: Verify Accessibility & Local Compliance\n• \tCleanout access: Must be unobstructed and reachable for service\n• \tSurface transitions: No trip hazards or obstructions near sewer infrastructure\n• \tSignage: If active repair or mitigation is underway, warning signs must be posted\n• \tIBU Overlay: May require diability-compliant access paths, sealed penetrations, and pest-resistant enclosures\n🔧 Step 5: Evaluate Mitigation Measures\n• \tContainment: Check for temporary barriers, sandbags, or spill trays\n• \tRepair status: Look for exposed tools, open trenches, or active work zones\n• \tDocumentation: Confirm presence of work orders or service tags if repairs are in progress\nIRC §P2603.2.1 requires protection of piping from physical damage; §P3005.2 mandates proper slope and joint integrity`
     }
   ]
 };
@@ -1722,7 +2963,8 @@ export const LEAK_WATER_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Low',
       repairBy: '30 Day',
       points: '2.00/n',
-      code: 'LEAK-WATER-01'
+      code: 'LEAK-WATER-01',
+      codeReference: `🔍 Step 1: Identify High-Risk Zones\nFocus on exterior areas where water intrusion or plumbing leaks are most likely:\n• \tHose bibs, irrigation lines, and exposed plumbing\n• \tExterior walls, windows, and door thresholds\n• \tRoof edges, gutters, and downspouts\n• \tUtility enclosures, water heaters, and sprinkler assemblies\n• \tCrawl space vents and foundation edges\n🧱 Step 2: Assess Structural Integrity\nInspect for damage or deterioration caused by water exposure:\nWall cladding, Foundation, Pipe fitting, Sprinkler assembly\n🔧 Step 3: Detect Active or Residual Leaks\nUse visual and sensory cues to identify water-related hazards:\n• \tActive leaks: Dripping, spraying, or flowing water from any component\n• \tResidual signs: Water stains, efflorescence, rust streaks, or algae growth\n• \tOdor check: Musty or damp smells near walls or utility enclosures\n🧼 Step 4: Check Sanitation & Environmental Safety\n• \tInspect for:\n• \tStanding water near walkways, foundations, or trash areas\n• \tMold, mildew, or pest activity around leak zones\n• \tSlip hazards from wet surfaces or algae buildup\n• \tIBU Overlay: May require sealed penetrations, pest-proof enclosures, and moisture-resistant finishes\n🧠 Step 5: Verify Accessibility & Local Compliance\n• \tAccessible routes: Water must not obstruct diability-compliant paths\n• \tThresholds and ramps: Must remain dry, firm, and slip-resistant\n• \tSignage: If leak mitigation is active, warning signs must be posted\n• \tIBU Overlay: May require tactile warnings, visual contrast, and safe detours around leak zones\nIRC §R703.1 requires exterior walls to resist water penetration and protect structural framing`
     },
     {
       id: 'leak_water_2',
@@ -1732,7 +2974,8 @@ export const LEAK_WATER_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Low',
       repairBy: '30 Day',
       points: '2.00/n',
-      code: 'LEAK-WATER-02'
+      code: 'LEAK-WATER-02',
+      codeReference: `🔍 Step 1: Identify High-Risk Zones\nFocus on exterior areas where water intrusion or plumbing leaks are most likely:\n• \tHose bibs, irrigation lines, and exposed plumbing\n• \tExterior walls, windows, and door thresholds\n• \tRoof edges, gutters, and downspouts\n• \tUtility enclosures, water heaters, and sprinkler assemblies\n• \tCrawl space vents and foundation edges\n🧱 Step 2: Assess Structural Integrity\nInspect for damage or deterioration caused by water exposure:\nWall cladding, Foundation, Pipe fitting, Sprinkler assembly\n🔧 Step 3: Detect Active or Residual Leaks\nUse visual and sensory cues to identify water-related hazards:\n• \tActive leaks: Dripping, spraying, or flowing water from any component\n• \tResidual signs: Water stains, efflorescence, rust streaks, or algae growth\n• \tOdor check: Musty or damp smells near walls or utility enclosures\n🧼 Step 4: Check Sanitation & Environmental Safety\n• \tInspect for:\n• \tStanding water near walkways, foundations, or trash areas\n• \tMold, mildew, or pest activity around leak zones\n• \tSlip hazards from wet surfaces or algae buildup\n• \tIBU Overlay: May require sealed penetrations, pest-proof enclosures, and moisture-resistant finishes\n🧠 Step 5: Verify Accessibility & Local Compliance\n• \tAccessible routes: Water must not obstruct diability-compliant paths\n• \tThresholds and ramps: Must remain dry, firm, and slip-resistant\n• \tSignage: If leak mitigation is active, warning signs must be posted\n• \tIBU Overlay: May require tactile warnings, visual contrast, and safe detours around leak zones\nIRC §R703.1 requires exterior walls to resist water penetration and protect structural framing`
     }
   ]
 };
@@ -1749,7 +2992,8 @@ export const LIGHTING_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Severe',
       repairBy: '24 Hrs.',
       points: '12.20/n',
-      code: 'LIGHT-01'
+      code: 'LIGHT-01',
+      codeReference: `🔍 Step 1: Identify Lighting Zones\nInspect all permanently installed lighting fixtures in:\n• \tEntryways and exit doors\n• \tWalkways, ramps, and stairs\n• \tParking lots and drive aisles\n• \tTrash enclosures and mailboxes\n• \tCommon areas and recreational zones\n🧱 Step 2: Assess Structural Integrity of Fixtures\nInspect for physical damage, improper installation, or missing components:\nFixture housing, Mounting hardware, Lens or cover, Wiring/conduit\n🔧 Step 3: Test Functionality & Illumination\n• \tPower test: Confirm fixture turns on via switch, timer, or sensor\n• \tBrightness check: Ensure adequate illumination for safe navigation\n• \tCoverage: Verify lighting reaches all critical areas (e.g., stairs, ramps, curb cuts)\n🧼 Step 4: Check Sanitation & Environmental Safety\n• \tInspect for:\n• \tPest nests, mold, or water intrusion inside fixtures\n• \tDebris or vegetation obstructing light output\n• \tIBU Overlay: May require sealed housings, pest-resistant materials, and corrosion-proof hardware\n🧠 Step 5: Verify Accessibility & Local Compliance\n• \tMounting height: Fixtures must not obstruct accessible routes or signage\n• \tControl access: Switches must be reachable (≤48″ AFF) and labeled\n• \tVisual contrast: Lighting must support visibility for tactile and directional signage\n• \tIBU Overlay: May require disabilty-compliant illumination levels and emergency backup lighting in shared-use zones\nIRC §R303.8 requires illumination at exterior egress doors for safety and accessibility\n📸 Step 6: Document & Report`
     },
     {
       id: 'light_2',
@@ -1759,7 +3003,8 @@ export const LIGHTING_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
-      code: 'LIGHT-02'
+      code: 'LIGHT-02',
+      codeReference: `🔍 Step 1: Identify Lighting Zones\nInspect all permanently installed lighting fixtures in:\n• \tEntryways and exit doors\n• \tWalkways, ramps, and stairs\n• \tParking lots and drive aisles\n• \tTrash enclosures and mailboxes\n• \tCommon areas and recreational zones\n🧱 Step 2: Assess Structural Integrity of Fixtures\nInspect for physical damage, improper installation, or missing components:\nFixture housing, Mounting hardware, Lens or cover, Wiring/conduit\n🔧 Step 3: Test Functionality & Illumination\n• \tPower test: Confirm fixture turns on via switch, timer, or sensor\n• \tBrightness check: Ensure adequate illumination for safe navigation\n• \tCoverage: Verify lighting reaches all critical areas (e.g., stairs, ramps, curb cuts)\n🧼 Step 4: Check Sanitation & Environmental Safety\n• \tInspect for:\n• \tPest nests, mold, or water intrusion inside fixtures\n• \tDebris or vegetation obstructing light output\n• \tIBU Overlay: May require sealed housings, pest-resistant materials, and corrosion-proof hardware\n🧠 Step 5: Verify Accessibility & Local Compliance\n• \tMounting height: Fixtures must not obstruct accessible routes or signage\n• \tControl access: Switches must be reachable (≤48″ AFF) and labeled\n• \tVisual contrast: Lighting must support visibility for tactile and directional signage\n• \tIBU Overlay: May require disabilty-compliant illumination levels and emergency backup lighting in shared-use zones\nIRC §R303.8 requires illumination at exterior egress doors for safety and accessibility\n📸 Step 6: Document & Report`
     },
     {
       id: 'light_3',
@@ -1769,7 +3014,8 @@ export const LIGHTING_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
-      code: 'LIGHT-03'
+      code: 'LIGHT-03',
+      codeReference: `🔍 Step 1: Identify Lighting Zones\nInspect all permanently installed lighting fixtures in:\n• \tEntryways and exit doors\n• \tWalkways, ramps, and stairs\n• \tParking lots and drive aisles\n• \tTrash enclosures and mailboxes\n• \tCommon areas and recreational zones\n🧱 Step 2: Assess Structural Integrity of Fixtures\nInspect for physical damage, improper installation, or missing components:\nFixture housing, Mounting hardware, Lens or cover, Wiring/conduit\n🔧 Step 3: Test Functionality & Illumination\n• \tPower test: Confirm fixture turns on via switch, timer, or sensor\n• \tBrightness check: Ensure adequate illumination for safe navigation\n• \tCoverage: Verify lighting reaches all critical areas (e.g., stairs, ramps, curb cuts)\n🧼 Step 4: Check Sanitation & Environmental Safety\n• \tInspect for:\n• \tPest nests, mold, or water intrusion inside fixtures\n• \tDebris or vegetation obstructing light output\n• \tIBU Overlay: May require sealed housings, pest-resistant materials, and corrosion-proof hardware\n🧠 Step 5: Verify Accessibility & Local Compliance\n• \tMounting height: Fixtures must not obstruct accessible routes or signage\n• \tControl access: Switches must be reachable (≤48″ AFF) and labeled\n• \tVisual contrast: Lighting must support visibility for tactile and directional signage\n• \tIBU Overlay: May require disabilty-compliant illumination levels and emergency backup lighting in shared-use zones\nIRC §R303.8 requires illumination at exterior egress doors for safety and accessibility\n📸 Step 6: Document & Report`
     },
     {
       id: 'light_4',
@@ -1779,7 +3025,8 @@ export const LIGHTING_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
-      code: 'LIGHT-04'
+      code: 'LIGHT-04',
+      codeReference: `🔍 Step 1: Identify Lighting Zones\nInspect all permanently installed lighting fixtures in:\n• \tEntryways and exit doors\n• \tWalkways, ramps, and stairs\n• \tParking lots and drive aisles\n• \tTrash enclosures and mailboxes\n• \tCommon areas and recreational zones\n🧱 Step 2: Assess Structural Integrity of Fixtures\nInspect for physical damage, improper installation, or missing components:\nFixture housing, Mounting hardware, Lens or cover, Wiring/conduit\n🔧 Step 3: Test Functionality & Illumination\n• \tPower test: Confirm fixture turns on via switch, timer, or sensor\n• \tBrightness check: Ensure adequate illumination for safe navigation\n• \tCoverage: Verify lighting reaches all critical areas (e.g., stairs, ramps, curb cuts)\n🧼 Step 4: Check Sanitation & Environmental Safety\n• \tInspect for:\n• \tPest nests, mold, or water intrusion inside fixtures\n• \tDebris or vegetation obstructing light output\n• \tIBU Overlay: May require sealed housings, pest-resistant materials, and corrosion-proof hardware\n🧠 Step 5: Verify Accessibility & Local Compliance\n• \tMounting height: Fixtures must not obstruct accessible routes or signage\n• \tControl access: Switches must be reachable (≤48″ AFF) and labeled\n• \tVisual contrast: Lighting must support visibility for tactile and directional signage\n• \tIBU Overlay: May require disabilty-compliant illumination levels and emergency backup lighting in shared-use zones\nIRC §R303.8 requires illumination at exterior egress doors for safety and accessibility\n📸 Step 6: Document & Report`
     }
   ]
 };
@@ -1796,7 +3043,8 @@ export const PARKING_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '4.5/n',
-      code: 'PARK-01'
+      code: 'PARK-01',
+      codeReference: `🔍 Step 1: Identify Inspection Zones\nFocus on all vehicle-accessible and pedestrian-adjacent surfaces:\n• \tParking lots (resident, visitor, accessible spaces)\n• \tDriveways (private access lanes, shared approaches)\n• \tPrivate roads (internal circulation routes)\n• \tCurbing, gutters, and expansion joints\n• \tUtility access covers and drainage grates\n🧱 Step 2: Assess Structural Integrity\nInspect for surface damage, instability, or obstruction:\nSurface condition, Cracks or heaving, Obstructions, Curbing & joints\n• \tIRC §R309.1–R309.2 – Driveway and garage access requirements\n🧼 Step 3: Check Sanitation & Environmental Safety\n• \tInspect for:\n• \tOil stains, litter, or standing water\n• \tMold, algae, or pest activity near drainage zones\n• \tTrash overflow or illegal dumping in parking areas\n• \tIBU Overlay: May require sealed surfaces, pest-resistant enclosures, and proper drainage grading\n🧠 Step 4: Verify Accessibility & Local Compliance\n• \tAccessible parking: Must include van-accessible spaces with proper signage and striping\n• \tPathway transitions: Curb ramps must be flush and slip-resistant\n• \tDriveway slope: Must not exceed 1:12 for accessible routes\n• \tIBU Overlay: May require tactile warnings, visual contrast, and disability-compliant signage\n🔧 Step 5: Evaluate Lighting, Signage & Wayfinding\n• \tLighting: Confirm fixtures are operational and provide adequate coverage\n• \tSignage: Verify directional, speed limit, and accessible parking signs are present and legible\n• \tGate access: Ensure automatic or manual gates are functional and safe for pedestrian use`
     },
     {
       id: 'park_2',
@@ -1806,7 +3054,8 @@ export const PARKING_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '4.5/n',
-      code: 'PARK-02'
+      code: 'PARK-02',
+      codeReference: `🔍 Step 1: Identify Inspection Zones\nFocus on all vehicle-accessible and pedestrian-adjacent surfaces:\n• \tParking lots (resident, visitor, accessible spaces)\n• \tDriveways (private access lanes, shared approaches)\n• \tPrivate roads (internal circulation routes)\n• \tCurbing, gutters, and expansion joints\n• \tUtility access covers and drainage grates\n🧱 Step 2: Assess Structural Integrity\nInspect for surface damage, instability, or obstruction:\nSurface condition, Cracks or heaving, Obstructions, Curbing & joints\n• \tIRC §R309.1–R309.2 – Driveway and garage access requirements\n🧼 Step 3: Check Sanitation & Environmental Safety\n• \tInspect for:\n• \tOil stains, litter, or standing water\n• \tMold, algae, or pest activity near drainage zones\n• \tTrash overflow or illegal dumping in parking areas\n• \tIBU Overlay: May require sealed surfaces, pest-resistant enclosures, and proper drainage grading\n🧠 Step 4: Verify Accessibility & Local Compliance\n• \tAccessible parking: Must include van-accessible spaces with proper signage and striping\n• \tPathway transitions: Curb ramps must be flush and slip-resistant\n• \tDriveway slope: Must not exceed 1:12 for accessible routes\n• \tIBU Overlay: May require tactile warnings, visual contrast, and disability-compliant signage\n🔧 Step 5: Evaluate Lighting, Signage & Wayfinding\n• \tLighting: Confirm fixtures are operational and provide adequate coverage\n• \tSignage: Verify directional, speed limit, and accessible parking signs are present and legible\n• \tGate access: Ensure automatic or manual gates are functional and safe for pedestrian use`
     },
     {
       id: 'park_3',
@@ -1816,7 +3065,8 @@ export const PARKING_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Severe',
       repairBy: '24 Hrs.',
       points: '12.20/n',
-      code: 'PARK-03'
+      code: 'PARK-03',
+      codeReference: `🔍 Step 1: Identify Inspection Zones\nFocus on all vehicle-accessible and pedestrian-adjacent surfaces:\n• \tParking lots (resident, visitor, accessible spaces)\n• \tDriveways (private access lanes, shared approaches)\n• \tPrivate roads (internal circulation routes)\n• \tCurbing, gutters, and expansion joints\n• \tUtility access covers and drainage grates\n🧱 Step 2: Assess Structural Integrity\nInspect for surface damage, instability, or obstruction:\nSurface condition, Cracks or heaving, Obstructions, Curbing & joints\n• \tIRC §R309.1–R309.2 – Driveway and garage access requirements\n🧼 Step 3: Check Sanitation & Environmental Safety\n• \tInspect for:\n• \tOil stains, litter, or standing water\n• \tMold, algae, or pest activity near drainage zones\n• \tTrash overflow or illegal dumping in parking areas\n• \tIBU Overlay: May require sealed surfaces, pest-resistant enclosures, and proper drainage grading\n🧠 Step 4: Verify Accessibility & Local Compliance\n• \tAccessible parking: Must include van-accessible spaces with proper signage and striping\n• \tPathway transitions: Curb ramps must be flush and slip-resistant\n• \tDriveway slope: Must not exceed 1:12 for accessible routes\n• \tIBU Overlay: May require tactile warnings, visual contrast, and disability-compliant signage\n🔧 Step 5: Evaluate Lighting, Signage & Wayfinding\n• \tLighting: Confirm fixtures are operational and provide adequate coverage\n• \tSignage: Verify directional, speed limit, and accessible parking signs are present and legible\n• \tGate access: Ensure automatic or manual gates are functional and safe for pedestrian use`
     },
     {
       id: 'park_4',
@@ -1826,7 +3076,8 @@ export const PARKING_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '4.5/n',
-      code: 'PARK-04'
+      code: 'PARK-04',
+      codeReference: `🔍 Step 1: Identify Inspection Zones\nFocus on all vehicle-accessible and pedestrian-adjacent surfaces:\n• \tParking lots (resident, visitor, accessible spaces)\n• \tDriveways (private access lanes, shared approaches)\n• \tPrivate roads (internal circulation routes)\n• \tCurbing, gutters, and expansion joints\n• \tUtility access covers and drainage grates\n🧱 Step 2: Assess Structural Integrity\nInspect for surface damage, instability, or obstruction:\nSurface condition, Cracks or heaving, Obstructions, Curbing & joints\n• \tIRC §R309.1–R309.2 – Driveway and garage access requirements\n🧼 Step 3: Check Sanitation & Environmental Safety\n• \tInspect for:\n• \tOil stains, litter, or standing water\n• \tMold, algae, or pest activity near drainage zones\n• \tTrash overflow or illegal dumping in parking areas\n• \tIBU Overlay: May require sealed surfaces, pest-resistant enclosures, and proper drainage grading\n🧠 Step 4: Verify Accessibility & Local Compliance\n• \tAccessible parking: Must include van-accessible spaces with proper signage and striping\n• \tPathway transitions: Curb ramps must be flush and slip-resistant\n• \tDriveway slope: Must not exceed 1:12 for accessible routes\n• \tIBU Overlay: May require tactile warnings, visual contrast, and disability-compliant signage\n🔧 Step 5: Evaluate Lighting, Signage & Wayfinding\n• \tLighting: Confirm fixtures are operational and provide adequate coverage\n• \tSignage: Verify directional, speed limit, and accessible parking signs are present and legible\n• \tGate access: Ensure automatic or manual gates are functional and safe for pedestrian use`
     }
   ]
 };
@@ -1843,7 +3094,8 @@ export const PAINT_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '4.5/n',
-      code: 'PAINT-01'
+      code: 'PAINT-01',
+      codeReference: `🔍 Step 1: Determine Applicability\n• \tConfirm year of construction:\n• \tIf pre-1978, presume all painted exterior surfaces may contain lead unless certified testing proves otherwise\n• \tIdentify painted exterior components:\n• \tSiding, trim, fascia, soffits, railings, fencing, doors, windows, decks, and staircases\n🧱 Step 2: Assess Paint Condition\nInspect for deterioration, friction, or impact damage:\nLarge surfaces, Small components, Friction surfaces,\nCross-reference: Note IRC §R703.1, NSPIRE lead paint standard, inspection protocol, and IBU overlays\n🧼 Step 3: Check Sanitation & Environmental Safety\n• \tLook for:\n• \tPaint chips or dust on soil, walkways, or window wells\n• \tWater damage or mold accelerating paint deterioration\n• \tPest activity around damaged painted surfaces\n• \tIBU Overlay: May require containment, soil testing, and pest-proofing near deteriorated paint zones\n🧠 Step 4: Verify Accessibility & Local Compliance\n• \tAccessible routes: Deteriorated paint must not obstruct or contaminate diability paths\n• \tVisual contrast: Paint loss must not impair visibility of signage or tactile indicators\n• \tIBU Overlay: May require protective barriers, signage, and safe detours during remediation\n🧪 Step 5: Confirm Testing or Presumption\n• \tIf available, review:\n• \tXRF testing reports or paint chip analysis from certified inspectors\n• \tRisk assessments or abatement records\n• \tIf no documentation exists, presume lead-based paint`
     },
     {
       id: 'paint_2',
@@ -1853,7 +3105,8 @@ export const PAINT_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Severe',
       repairBy: '24 Hrs.',
       points: '12.20/n',
-      code: 'PAINT-02'
+      code: 'PAINT-02',
+      codeReference: `🔍 Step 1: Determine Applicability\n• \tConfirm year of construction:\n• \tIf pre-1978, presume all painted exterior surfaces may contain lead unless certified testing proves otherwise\n• \tIdentify painted exterior components:\n• \tSiding, trim, fascia, soffits, railings, fencing, doors, windows, decks, and staircases\n🧱 Step 2: Assess Paint Condition\nInspect for deterioration, friction, or impact damage:\nLarge surfaces, Small components, Friction surfaces,\nCross-reference: Note IRC §R703.1, NSPIRE lead paint standard, inspection protocol, and IBU overlays\n🧼 Step 3: Check Sanitation & Environmental Safety\n• \tLook for:\n• \tPaint chips or dust on soil, walkways, or window wells\n• \tWater damage or mold accelerating paint deterioration\n• \tPest activity around damaged painted surfaces\n• \tIBU Overlay: May require containment, soil testing, and pest-proofing near deteriorated paint zones\n🧠 Step 4: Verify Accessibility & Local Compliance\n• \tAccessible routes: Deteriorated paint must not obstruct or contaminate diability paths\n• \tVisual contrast: Paint loss must not impair visibility of signage or tactile indicators\n• \tIBU Overlay: May require protective barriers, signage, and safe detours during remediation\n🧪 Step 5: Confirm Testing or Presumption\n• \tIf available, review:\n• \tXRF testing reports or paint chip analysis from certified inspectors\n• \tRisk assessments or abatement records\n• \tIf no documentation exists, presume lead-based paint`
     }
   ]
 };
@@ -1870,7 +3123,8 @@ export const RAILINGS_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Life-Threatening',
       repairBy: '24 Hrs.',
       points: '24.8/n',
-      code: 'RAIL-01'
+      code: 'RAIL-01',
+      codeReference: "hello"
     },
     {
       id: 'rail_2',
@@ -1880,7 +3134,8 @@ export const RAILINGS_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '4.5/n',
-      code: 'RAIL-02'
+      code: 'RAIL-02',
+      codeReference: "hello"
     },
     {
       id: 'rail_3',
@@ -1890,7 +3145,8 @@ export const RAILINGS_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '4.5/n',
-      code: 'RAIL-03'
+      code: 'RAIL-03',
+      codeReference: "hello"
     },
     {
       id: 'rail_4',
@@ -1900,7 +3156,8 @@ export const RAILINGS_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '4.5/n',
-      code: 'RAIL-04'
+      code: 'RAIL-04',
+      codeReference: "hello"
     },
     {
       id: 'rail_5',
@@ -1910,7 +3167,8 @@ export const RAILINGS_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Severe',
       repairBy: '24 Hrs.',
       points: '12.20/n',
-      code: 'RAIL-05'
+      code: 'RAIL-05',
+      codeReference: "hello"
     },
     {
       id: 'rail_6',
@@ -1920,7 +3178,8 @@ export const RAILINGS_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '4.5/n',
-      code: 'RAIL-06'
+      code: 'RAIL-06',
+      codeReference: "hello"
     }
   ]
 };
@@ -1937,7 +3196,31 @@ export const ROOF_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '4.5/n',
-      code: 'ROOF-01'
+      code: 'ROOF-01',
+      codeReference: `🔍 Step 1: Identify Roofing & Drainage Components
+• Locate all exterior roof surfaces, gutter systems, and drainage elements:
+• Primary roof covering, Gutters, downspouts, and extensions, Roof drains, scuppers, and overflows, Fascia and soffit areas
+• Confirm components are intended to redirect water away from structures and pedestrian paths
+
+🧱 Step 2: Assess Structural Integrity
+Inspect for damage, deterioration, or missing components:
+• Roofing material, Gutter/downspout assembly, Drainage inlets/outlets, Fasteners and flashing
+
+🔧 Step 3: Evaluate Functional Adequacy
+• Water flow test (if safe): Pour water into gutters/drains and observe flow and discharge
+• Standing water check: Look for pooling on roof surfaces or in gutters indicative of blockage
+• Obstruction scan: Confirm systems are free of debris, leaves, sediment, or vegetation
+
+🧼 Step 4: Check Sanitation & Environmental Safety
+• Inspect for:
+• Mold, algae, or pest nests in gutters or around drain inlets
+• Water stains or erosion on adjacent walls or foundations
+• IBU Overlay: May require pest-proof grates, sealed joints, and overflow protection
+
+🧠 Step 5: Verify Accessibility & Local Compliance
+• Discharge placement: Downspouts must not discharge onto accessible routes or egress paths
+• Component security: Gutters and fascia must be securely affixed to prevent overhead hazards
+• IBU Overlay: May require compliant slope transitions, tactile warnings, or visual contrast near roof-level walkways`
     },
     {
       id: 'roof_2',
@@ -1947,7 +3230,11 @@ export const ROOF_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '4.5/n',
-      code: 'ROOF-02'
+      code: 'ROOF-02',
+      codeReference: `🔍 Same inspection protocol as ROOF-OUT-01 with focus on:
+• Identify unintentional holes of any size
+• Check intentional holes for proper venting or screens
+• Document location and size of penetrations`
     },
     {
       id: 'roof_3',
@@ -1957,7 +3244,11 @@ export const ROOF_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '4.5/n',
-      code: 'ROOF-03'
+      code: 'ROOF-03',
+      codeReference: `🔍 Same inspection protocol as ROOF-OUT-01 with focus on:
+• Structural damage to roof components
+• Component instability
+• Potential for cascading failures`
     },
     {
       id: 'roof_4',
@@ -1967,7 +3258,11 @@ export const ROOF_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '4.5/n',
-      code: 'ROOF-04'
+      code: 'ROOF-04',
+      codeReference: `🔍 Same inspection protocol as ROOF-OUT-01 with focus on:
+• Measure ponding area (≥25 sq ft)
+• Location not near drain/scupper
+• Document drainage issues`
     },
     {
       id: 'roof_5',
@@ -1977,7 +3272,11 @@ export const ROOF_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '4.5/n',
-      code: 'ROOF-05'
+      code: 'ROOF-05',
+      codeReference: `🔍 Same inspection protocol as ROOF-OUT-01 with focus on:
+• Exposed substrate under roofing material
+• Document location and extent
+• Potential for water infiltration`
     }
   ]
 };
@@ -1994,7 +3293,37 @@ export const SIDEWALK_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '4.5/n',
-      code: 'SIDE-01'
+      code: 'SIDE-01',
+      codeReference: `🔍 Step 1: Identify Inspection Zones
+Focus on all pedestrian-accessible exterior surfaces:
+• Sidewalks and paved walkways
+• Ramps and landings
+• Curb transitions and flared sides
+• Paths leading to unit entries, mailboxes, trash enclosures, and parking areas
+
+🧱 Step 2: Assess Structural Integrity
+Inspect for damage, instability, or unsafe dimensional changes:
+• Surface cracks, Heaving/settlement, Loose materials, Ramp slope, Missing guardrails
+• IRC §R311.7–R311.8 – Stairways, ramps, and walking surfaces
+
+🧼 Step 3: Check Sanitation & Environmental Safety
+• Inspect for:
+• Trash, debris, or vegetation obstructing the path
+• Standing water, mold, or algae creating slip hazards
+• Pest activity near shaded or overgrown areas
+• IBU Overlay: May require sealed joints, pest-resistant landscaping, and proper drainage grading
+
+🧠 Step 4: Verify Accessibility & Local Compliance
+• Clear width: Minimum 36″ unobstructed
+• Vertical clearance: ≥80″ from walking surface (UFAS standard)
+• Surface finish: Firm, stable, and slip-resistant
+• Edge protection: Required at ramps and elevated walkways without curbs
+• IBU Overlay: May require tactile warnings, visual contrast, and disability-compliant transitions
+
+🔧 Step 5: Evaluate Functional Adequacy
+• Obstruction check: Look for fixed objects, vehicles, or overgrowth blocking path
+• Ramp landing: Confirm level landings at top and bottom of ramps
+• Handrails: Required on ramps with rise >6″; must be continuous and graspable`
     },
     {
       id: 'side_2',
@@ -2004,7 +3333,8 @@ export const SIDEWALK_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '4.5/n',
-      code: 'SIDE-02'
+      code: 'SIDE-02',
+      codeReference: `🔍 Step 1: Identify Inspection Zones\nFocus on all pedestrian-accessible exterior surfaces:\n• \tSidewalks and paved walkways\n• \tRamps and landings\n• \tCurb transitions and flared sides\n• \tPaths leading to unit entries, mailboxes, trash enclosures, and parking areas\n🧱 Step 2: Assess Structural Integrity\nInspect for damage, instability, or unsafe dimensional changes:\nSurface cracks, Heaving/settlement, Loose materials, Ramp slope, Missing guardrails\n• \tIRC §R311.7–R311.8 – Stairways, ramps, and walking surfaces\n🧼 Step 3: Check Sanitation & Environmental Safety\n• \tInspect for:\n• \tTrash, debris, or vegetation obstructing the path\n• \tStanding water, mold, or algae creating slip hazards\n• \tPest activity near shaded or overgrown areas\n• \tIBU Overlay: May require sealed joints, pest-resistant landscaping, and proper drainage grading\n🧠 Step 4: Verify Accessibility & Local Compliance\n• \tClear width: Minimum 36″ unobstructed\n• \tVertical clearance: ≥80″ from walking surface (UFAS standard)\n• \tSurface finish: Firm, stable, and slip-resistant\n• \tEdge protection: Required at ramps and elevated walkways without curbs\n• \tIBU Overlay: May require tactile warnings, visual contrast, and diability-compliant transitions\n🔧 Step 5: Evaluate Functional Adequacy\n• \tObstruction check: Look for fixed objects, vehicles, or overgrowth blocking path\n• \tRamp landing: Confirm level landings at top and bottom of ramps\n• \tHandrails: Required on ramps with rise >6″; must be continuous and graspable`
     }
   ]
 };
@@ -2021,7 +3351,36 @@ export const STAIRS_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '4.5/n',
-      code: 'STAIR-01'
+      code: 'STAIR-01',
+      codeReference: `🔍 Step 1: Identify Inspection Zones
+Focus on all exterior stairways and steps that:
+• Serve unit entries, common areas, or accessible paths
+• Connect walkways, parking lots, patios, or elevated landings
+• Include stair flights, landings, and transitions to ramps or sidewalks
+
+🧱 Step 2: Assess Structural Integrity
+Inspect for damage, instability, or missing components:
+• Treads & risers, Stringers, Landings, Guardrails, Handrails
+
+🔧 Step 3: Evaluate Safety & Functionality
+• Stability test: Apply moderate pressure to treads, risers, and railings
+• Height check: Measure riser and tread dimensions for consistency
+• Handrail check: Confirm graspable profile, continuous length, and proper mounting
+• IRC §R311.7.5 requires risers ≤7¾″ and treads ≥10″ with ≤⅜″ variation across the flight height (34–38″ AFF)
+• IRC requires stairways serving buildings to meet dimensional and safety standards unless exempted for non-habitable areas
+
+🧼 Step 4: Check Sanitation & Environmental Safety
+• Inspect for:
+• Mold, algae, or pest nests on or under steps
+• Trash, debris, or vegetation obstructing stairways
+• Water pooling or erosion at stair base or landings
+• IBU Overlay: May require sealed surfaces, pest-resistant materials, and slip-resistant finishes
+
+🧠 Step 5: Verify Accessibility & Local Compliance
+• Clear width: Minimum 36″ unobstructed
+• Edge protection: Required at open sides of stairways and landings
+• Visual contrast: Required for nosings and landings for low-vision users
+• IBU Overlay: May require tactile warnings, disability compliant handrails, and extended landings`
     },
     {
       id: 'stair_2',
@@ -2031,7 +3390,8 @@ export const STAIRS_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '4.5/n',
-      code: 'STAIR-02'
+      code: 'STAIR-02',
+      codeReference: `🔍 Step 1: Identify Inspection Zones\nFocus on all exterior stairways and steps that:\n• \tServe unit entries, common areas, or accessible paths\n• \tConnect walkways, parking lots, patios, or elevated landings\n• \tInclude stair flights, landings, and transitions to ramps or sidewalks\n🧱 Step 2: Assess Structural Integrity\nInspect for damage, instability, or missing components:\nTreads & risers, Stringers, Landings, Guardrails, Handrails\n🔧 Step 3: Evaluate Safety & Functionality\n• \tStability test: Apply moderate pressure to treads, risers, and railings\n• \tHeight check: Measure riser and tread dimensions for consistency\n• \tHandrail check: Confirm graspable profile, continuous length, and proper mounting IRC §R311.7.5 requires risers ≤7¾″ and treads ≥10″ with ≤⅞″ variation across the flight height (34–38″ AFF), IRC requires stairways serving buildings to meet dimensional and safety standards unless exempted for non-habitable areas\n🧼 Step 4: Check Sanitation & Environmental Safety\n• \tInspect for:\n• \tMold, algae, or pest nests on or under steps\n• \tTrash, debris, or vegetation obstructing stairways\n• \tWater pooling or erosion at stair base or landings\n• \tIBU Overlay: May require sealed surfaces, pest-resistant materials, and slip-resistant finishes\n🧠 Step 5: Verify Accessibility & Local Compliance\n• \tClear width: Minimum 36″ unobstructed\n• \tEdge protection: Required at open sides of stairways and landings\n• \tVisual contrast: Required for nosings and landings for low-vision users\n• \tIBU Overlay: May require tactile warnings, disabilty compliant handrails, and extended landings`
     },
     {
       id: 'stair_3',
@@ -2041,7 +3401,8 @@ export const STAIRS_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '4.5/n',
-      code: 'STAIR-03'
+      code: 'STAIR-03',
+      codeReference: `🔍 Step 1: Identify Inspection Zones\nFocus on all exterior stairways and steps that:\n• \tServe unit entries, common areas, or accessible paths\n• \tConnect walkways, parking lots, patios, or elevated landings\n• \tInclude stair flights, landings, and transitions to ramps or sidewalks\n🧱 Step 2: Assess Structural Integrity\nInspect for damage, instability, or missing components:\nTreads & risers, Stringers, Landings, Guardrails, Handrails\n🔧 Step 3: Evaluate Safety & Functionality\n• \tStability test: Apply moderate pressure to treads, risers, and railings\n• \tHeight check: Measure riser and tread dimensions for consistency\n• \tHandrail check: Confirm graspable profile, continuous length, and proper mounting IRC §R311.7.5 requires risers ≤7¾″ and treads ≥10″ with ≤⅞″ variation across the flight height (34–38″ AFF), IRC requires stairways serving buildings to meet dimensional and safety standards unless exempted for non-habitable areas\n🧼 Step 4: Check Sanitation & Environmental Safety\n• \tInspect for:\n• \tMold, algae, or pest nests on or under steps\n• \tTrash, debris, or vegetation obstructing stairways\n• \tWater pooling or erosion at stair base or landings\n• \tIBU Overlay: May require sealed surfaces, pest-resistant materials, and slip-resistant finishes\n🧠 Step 5: Verify Accessibility & Local Compliance\n• \tClear width: Minimum 36″ unobstructed\n• \tEdge protection: Required at open sides of stairways and landings\n• \tVisual contrast: Required for nosings and landings for low-vision users\n• \tIBU Overlay: May require tactile warnings, disabilty compliant handrails, and extended landings`
     }
   ]
 };
@@ -2058,7 +3419,38 @@ export const STRUCTURAL_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Life-Threatening',
       repairBy: '24 Hrs.',
       points: '24.8/n',
-      code: 'STRUCT-01'
+      code: 'STRUCT-01',
+      codeReference: `🔍 Step 1: Identify Structural Elements for Inspection
+Focus on all exterior-facing structural components:
+• Load-bearing walls and framing
+• Foundation walls and footings
+• Exterior cladding (stucco, siding, masonry)
+• Structural columns, beams, and supports
+• Parapets, balconies, and cantilevered elements
+• Roof-to-wall connections and overhangs
+
+🧱 Step 2: Assess Structural Integrity
+Inspect for signs of failure, movement, or deterioration:
+• Wall surfaces, Foundation, Columns & beams, Cladding, Structural joints
+• IRC §R301.1 requires buildings to safely support loads and resist environmental forces
+
+🔧 Step 3: Evaluate Functional Stability
+• Plumb check: Use visual reference or level to assess vertical alignment of walls and columns
+• Crack mapping: Document location, length, and width of structural cracks
+• Load path review: Confirm visible supports are continuous and not compromised
+
+🧼 Step 4: Check Sanitation & Environmental Safety
+• Inspect for:
+• Mold, mildew, or pest nests in wall cavities or under cladding
+• Water stains, efflorescence, or algae indicating moisture intrusion
+• Trash or vegetation accumulating near structural elements
+• IBU Overlay: May require sealed penetrations, pest-proof barriers, and moisture-resistant finishes
+
+🧠 Step 5: Verify Accessibility & Local Compliance
+• Accessible routes: Structural elements must not obstruct any paths or egress zones
+• Visual contrast: Required for structural edges near walkways or ramps
+• Edge protection: Required at elevated platforms and balconies
+• IBU Overlay: May require tactile warnings, disability-compliant transitions, and safe access to structural service zones`
     }
   ]
 };
@@ -2075,7 +3467,37 @@ export const RETAINING_WALL_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '4.5/n',
-      code: 'RET-01'
+      code: 'RET-01',
+      codeReference: `🔍 Step 1: Identify Inspection Zones
+Focus on all exterior-facing vertical structures:
+• Retaining walls supporting soil or grade transitions
+• Exterior walls enclosing habitable spaces
+• Freestanding walls adjacent to walkways, parking, or landscaping
+• Walls with penetrations (windows, doors, vents, utility lines)
+
+🧱 Step 2: Assess Structural Integrity
+Inspect for signs of failure, movement, or deterioration:
+• Wall surface, Retaining wall, Mortar joints, Wall cladding, Drainage weep holes
+• IRC §R606.1.1 requires masonry walls to be structurally sound and properly reinforced
+• Mandates engineered design for retaining walls >4′
+
+🔧 Step 3: Evaluate Functional Stability
+• Plumb check: Use visual reference or level to assess vertical alignment
+• Crack mapping: Document location, length, and width of structural cracks
+• Drainage check: Confirm retaining walls have functional weep holes or drainage paths
+
+🧼 Step 4: Check Sanitation & Environmental Safety
+• Inspect for:
+• Mold, mildew, or pest nests in wall cavities or behind cladding
+• Water stains, efflorescence, or algae indicating moisture intrusion
+• Trash or vegetation accumulating near wall bases or joints
+• IBU Overlay: May require sealed penetrations, pest-proof barriers, and moisture-resistant finishes
+
+🧠 Step 5: Verify Accessibility & Local Compliance
+• Accessible routes: Walls must not obstruct ADA paths or egress zones
+• Visual contrast: Required for wall edges near walkways or ramps
+• Edge protection: Required at retaining walls adjacent to pedestrian routes
+• IBU Overlay: May require tactile warnings, disability-compliant transitions, and safe access to wall-mounted features`
     },
     {
       id: 'ret_2',
@@ -2085,7 +3507,8 @@ export const RETAINING_WALL_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '4.5/n',
-      code: 'RET-02'
+      code: 'RET-02',
+      codeReference: `🔍 Step 1: Identify Inspection Zones\nFocus on all exterior-facing vertical structures:\n• \tRetaining walls supporting soil or grade transitions\n• \tExterior walls enclosing habitable spaces\n• \tFreestanding walls adjacent to walkways, parking, or landscaping\n• \tWalls with penetrations (windows, doors, vents, utility lines)\n🧱 Step 2: Assess Structural Integrity\nInspect for signs of failure, movement, or deterioration:\nWall surface, Retaining wall, Mortar joints, Wall cladding, Drainage weep holes\nIRC §R606.1.1 requires masonry walls to be structurally sound and properly reinforced, Mandates engineered design for retaining walls >4′\n🔧 Step 3: Evaluate Functional Stability\n• \tPlumb check: Use visual reference or level to assess vertical alignment\n• \tCrack mapping: Document location, length, and width of structural cracks\n• \tDrainage check: Confirm retaining walls have functional weep holes or drainage paths\n🧼 Step 4: Check Sanitation & Environmental Safety\n• \tInspect for:\n• \tMold, mildew, or pest nests in wall cavities or behind cladding\n• \tWater stains, efflorescence, or algae indicating moisture intrusion\n• \tTrash or vegetation accumulating near wall bases or joints\n• \tIBU Overlay: May require sealed penetrations, pest-proof barriers, and moisture-resistant finishes\n🧠 Step 5: Verify Accessibility & Local Compliance\n• \tAccessible routes: Walls must not obstruct ADA paths or egress zones\n• \tVisual contrast: Required for wall edges near walkways or ramps\n• \tEdge protection: Required at retaining walls adjacent to pedestrian routes\n• \tIBU Overlay: May require tactile warnings, disability-compliant transitions, and safe access to wall-mounted features`
     },
     {
       id: 'ret_3',
@@ -2095,7 +3518,8 @@ export const RETAINING_WALL_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '4.5/n',
-      code: 'RET-03'
+      code: 'RET-03',
+      codeReference: `🔍 Step 1: Identify Inspection Zones\nFocus on all exterior-facing vertical structures:\n• \tRetaining walls supporting soil or grade transitions\n• \tExterior walls enclosing habitable spaces\n• \tFreestanding walls adjacent to walkways, parking, or landscaping\n• \tWalls with penetrations (windows, doors, vents, utility lines)\n🧱 Step 2: Assess Structural Integrity\nInspect for signs of failure, movement, or deterioration:\nWall surface, Retaining wall, Mortar joints, Wall cladding, Drainage weep holes\nIRC §R606.1.1 requires masonry walls to be structurally sound and properly reinforced, Mandates engineered design for retaining walls >4′\n🔧 Step 3: Evaluate Functional Stability\n• \tPlumb check: Use visual reference or level to assess vertical alignment\n• \tCrack mapping: Document location, length, and width of structural cracks\n• \tDrainage check: Confirm retaining walls have functional weep holes or drainage paths\n🧼 Step 4: Check Sanitation & Environmental Safety\n• \tInspect for:\n• \tMold, mildew, or pest nests in wall cavities or behind cladding\n• \tWater stains, efflorescence, or algae indicating moisture intrusion\n• \tTrash or vegetation accumulating near wall bases or joints\n• \tIBU Overlay: May require sealed penetrations, pest-proof barriers, and moisture-resistant finishes\n🧠 Step 5: Verify Accessibility & Local Compliance\n• \tAccessible routes: Walls must not obstruct ADA paths or egress zones\n• \tVisual contrast: Required for wall edges near walkways or ramps\n• \tEdge protection: Required at retaining walls adjacent to pedestrian routes\n• \tIBU Overlay: May require tactile warnings, disability-compliant transitions, and safe access to wall-mounted features`
     },
     {
       id: 'ret_4',
@@ -2105,7 +3529,8 @@ export const RETAINING_WALL_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '4.5/n',
-      code: 'RET-04'
+      code: 'RET-04',
+      codeReference: `🔍 Step 1: Identify Inspection Zones\nFocus on all exterior-facing vertical structures:\n• \tRetaining walls supporting soil or grade transitions\n• \tExterior walls enclosing habitable spaces\n• \tFreestanding walls adjacent to walkways, parking, or landscaping\n• \tWalls with penetrations (windows, doors, vents, utility lines)\n🧱 Step 2: Assess Structural Integrity\nInspect for signs of failure, movement, or deterioration:\nWall surface, Retaining wall, Mortar joints, Wall cladding, Drainage weep holes\nIRC §R606.1.1 requires masonry walls to be structurally sound and properly reinforced, Mandates engineered design for retaining walls >4′\n🔧 Step 3: Evaluate Functional Stability\n• \tPlumb check: Use visual reference or level to assess vertical alignment\n• \tCrack mapping: Document location, length, and width of structural cracks\n• \tDrainage check: Confirm retaining walls have functional weep holes or drainage paths\n🧼 Step 4: Check Sanitation & Environmental Safety\n• \tInspect for:\n• \tMold, mildew, or pest nests in wall cavities or behind cladding\n• \tWater stains, efflorescence, or algae indicating moisture intrusion\n• \tTrash or vegetation accumulating near wall bases or joints\n• \tIBU Overlay: May require sealed penetrations, pest-proof barriers, and moisture-resistant finishes\n🧠 Step 5: Verify Accessibility & Local Compliance\n• \tAccessible routes: Walls must not obstruct ADA paths or egress zones\n• \tVisual contrast: Required for wall edges near walkways or ramps\n• \tEdge protection: Required at retaining walls adjacent to pedestrian routes\n• \tIBU Overlay: May require tactile warnings, disability-compliant transitions, and safe access to wall-mounted features`
     },
     {
       id: 'ret_5',
@@ -2115,7 +3540,8 @@ export const RETAINING_WALL_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '4.5/n',
-      code: 'RET-05'
+      code: 'RET-05',
+      codeReference: `🔍 Step 1: Identify Inspection Zones\nFocus on all exterior-facing vertical structures:\n• \tRetaining walls supporting soil or grade transitions\n• \tExterior walls enclosing habitable spaces\n• \tFreestanding walls adjacent to walkways, parking, or landscaping\n• \tWalls with penetrations (windows, doors, vents, utility lines)\n🧱 Step 2: Assess Structural Integrity\nInspect for signs of failure, movement, or deterioration:\nWall surface, Retaining wall, Mortar joints, Wall cladding, Drainage weep holes\nIRC §R606.1.1 requires masonry walls to be structurally sound and properly reinforced, Mandates engineered design for retaining walls >4′\n🔧 Step 3: Evaluate Functional Stability\n• \tPlumb check: Use visual reference or level to assess vertical alignment\n• \tCrack mapping: Document location, length, and width of structural cracks\n• \tDrainage check: Confirm retaining walls have functional weep holes or drainage paths\n🧼 Step 4: Check Sanitation & Environmental Safety\n• \tInspect for:\n• \tMold, mildew, or pest nests in wall cavities or behind cladding\n• \tWater stains, efflorescence, or algae indicating moisture intrusion\n• \tTrash or vegetation accumulating near wall bases or joints\n• \tIBU Overlay: May require sealed penetrations, pest-proof barriers, and moisture-resistant finishes\n🧠 Step 5: Verify Accessibility & Local Compliance\n• \tAccessible routes: Walls must not obstruct ADA paths or egress zones\n• \tVisual contrast: Required for wall edges near walkways or ramps\n• \tEdge protection: Required at retaining walls adjacent to pedestrian routes\n• \tIBU Overlay: May require tactile warnings, disability-compliant transitions, and safe access to wall-mounted features`
     }
   ]
 };
@@ -2132,7 +3558,37 @@ export const WATER_HEATER_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Life-Threatening',
       repairBy: '24 Hrs.',
       points: '24.8/n',
-      code: 'WH-01'
+      code: 'WH-01',
+      codeReference: `🔍 Step 1: Identify Water Heater Type & Location
+• Confirm unit is a permanently installed water heater (gas, electric, or heat pump)
+• Located in:
+• Exterior closets or enclosures
+• Utility alcoves or mechanical pads
+• Rooftop or ground-mounted service areas
+• Verify accessibility for inspection, servicing, and replacement per IRC §P2801.4
+
+🧱 Step 2: Assess Structural Integrity
+Inspect for damage, instability, or missing components:
+• Tank or housing, Mounting base, Pipe connections, T&P relief valve, Expansion tank
+• IRC §P2801.3 requires installation per manufacturer specs and §P2804 mandates pressure relief protection
+
+🔧 Step 3: Evaluate Functional Safety
+• Leak check: Look for active dripping from fittings, tank seams, or relief valve
+• T&P valve test: Confirm discharge pipe is present, directed downward, and terminates within 6″ of grade
+• Drain pan: Required if leakage could cause damage; must be properly sized and drained (IRC §P2801.6)
+
+🧼 Step 4: Check Sanitation & Environmental Safety
+• Inspect for:
+• Mold, algae, or pest activity around enclosure or base
+• Water stains or corrosion on adjacent walls or slab
+• Trash or vegetation obstructing access or airflow
+• IBU Overlay: May require sealed penetrations, pest-proof enclosures, and moisture-resistant finishes
+
+🧠 Step 5: Verify Accessibility & Local Compliance
+• Service access: Minimum 30″ clear working space
+• Height & reach: Controls and shutoffs must be reachable (≤48″ AFF for ADA compliance)
+• Labeling: Unit must be marked with fuel type, capacity, and emergency shutoff location
+• IBU Overlay: May require tactile signage, lockable access doors, and disability-compliant paths to shared-use equipment`
     },
     {
       id: 'wh_2',
@@ -2142,7 +3598,8 @@ export const WATER_HEATER_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Life-Threatening',
       repairBy: '24 Hrs.',
       points: '24.8/n',
-      code: 'WH-02'
+      code: 'WH-02',
+      codeReference: `🔍 Step 1: Identify Water Heater Type & Location\n• \tConfirm unit is a permanently installed water heater (gas, electric, or heat pump)\n• \tLocated in:\n• \tExterior closets or enclosures\n• \tUtility alcoves or mechanical pads\n• \tRooftop or ground-mounted service areas\n• \tVerify accessibility for inspection, servicing, and replacement per IRC §P2801.4\n🧱 Step 2: Assess Structural Integrity\nInspect for damage, instability, or missing components:\nTank or housing, Mounting base, Pipe connections, T&P relief valve, Expansion tank\nIRC §P2801.3 requires installation per manufacturer specs and §P2804 mandates pressure relief protection\n🔧 Step 3: Evaluate Functional Safety\n• \tLeak check: Look for active dripping from fittings, tank seams, or relief valve\n• \tT&P valve test: Confirm discharge pipe is present, directed downward, and terminates within 6″ of grade\n• \tDrain pan: Required if leakage could cause damage; must be properly sized and drained (IRC §P2801.6)\n🧼 Step 4: Check Sanitation & Environmental Safety\n• \tInspect for:\n• \tMold, algae, or pest activity around enclosure or base\n• \tWater stains or corrosion on adjacent walls or slab\n• \tTrash or vegetation obstructing access or airflow\n• \tIBU Overlay: May require sealed penetrations, pest-proof enclosures, and moisture-resistant finishes\n🧠 Step 5: Verify Accessibility & Local Compliance\n• \tService access: Minimum 30″ clear working space\n• \tHeight & reach: Controls and shutoffs must be reachable (≤48″ AFF for ADA compliance)\n• \tLabeling: Unit must be marked with fuel type, capacity, and emergency shutoff location\n• \tIBU Overlay: May require tactile signage, lockable access doors, and disability-compliant paths to shared-use equipment`
     },
     {
       id: 'wh_3',
@@ -2152,7 +3609,8 @@ export const WATER_HEATER_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Severe',
       repairBy: '24 Hrs.',
       points: '12.20/n',
-      code: 'WH-03'
+      code: 'WH-03',
+      codeReference: `🔍 Step 1: Identify Water Heater Type & Location\n• \tConfirm unit is a permanently installed water heater (gas, electric, or heat pump)\n• \tLocated in:\n• \tExterior closets or enclosures\n• \tUtility alcoves or mechanical pads\n• \tRooftop or ground-mounted service areas\n• \tVerify accessibility for inspection, servicing, and replacement per IRC §P2801.4\n🧱 Step 2: Assess Structural Integrity\nInspect for damage, instability, or missing components:\nTank or housing, Mounting base, Pipe connections, T&P relief valve, Expansion tank\nIRC §P2801.3 requires installation per manufacturer specs and §P2804 mandates pressure relief protection\n🔧 Step 3: Evaluate Functional Safety\n• \tLeak check: Look for active dripping from fittings, tank seams, or relief valve\n• \tT&P valve test: Confirm discharge pipe is present, directed downward, and terminates within 6″ of grade\n• \tDrain pan: Required if leakage could cause damage; must be properly sized and drained (IRC §P2801.6)\n🧼 Step 4: Check Sanitation & Environmental Safety\n• \tInspect for:\n• \tMold, algae, or pest activity around enclosure or base\n• \tWater stains or corrosion on adjacent walls or slab\n• \tTrash or vegetation obstructing access or airflow\n• \tIBU Overlay: May require sealed penetrations, pest-proof enclosures, and moisture-resistant finishes\n🧠 Step 5: Verify Accessibility & Local Compliance\n• \tService access: Minimum 30″ clear working space\n• \tHeight & reach: Controls and shutoffs must be reachable (≤48″ AFF for ADA compliance)\n• \tLabeling: Unit must be marked with fuel type, capacity, and emergency shutoff location\n• \tIBU Overlay: May require tactile signage, lockable access doors, and disability-compliant paths to shared-use equipment`
     },
     {
       id: 'wh_4',
@@ -2162,7 +3620,8 @@ export const WATER_HEATER_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '4.5/n',
-      code: 'WH-04'
+      code: 'WH-04',
+      codeReference: `🔍 Step 1: Identify Water Heater Type & Location\n• \tConfirm unit is a permanently installed water heater (gas, electric, or heat pump)\n• \tLocated in:\n• \tExterior closets or enclosures\n• \tUtility alcoves or mechanical pads\n• \tRooftop or ground-mounted service areas\n• \tVerify accessibility for inspection, servicing, and replacement per IRC §P2801.4\n🧱 Step 2: Assess Structural Integrity\nInspect for damage, instability, or missing components:\nTank or housing, Mounting base, Pipe connections, T&P relief valve, Expansion tank\nIRC §P2801.3 requires installation per manufacturer specs and §P2804 mandates pressure relief protection\n🔧 Step 3: Evaluate Functional Safety\n• \tLeak check: Look for active dripping from fittings, tank seams, or relief valve\n• \tT&P valve test: Confirm discharge pipe is present, directed downward, and terminates within 6″ of grade\n• \tDrain pan: Required if leakage could cause damage; must be properly sized and drained (IRC §P2801.6)\n🧼 Step 4: Check Sanitation & Environmental Safety\n• \tInspect for:\n• \tMold, algae, or pest activity around enclosure or base\n• \tWater stains or corrosion on adjacent walls or slab\n• \tTrash or vegetation obstructing access or airflow\n• \tIBU Overlay: May require sealed penetrations, pest-proof enclosures, and moisture-resistant finishes\n🧠 Step 5: Verify Accessibility & Local Compliance\n• \tService access: Minimum 30″ clear working space\n• \tHeight & reach: Controls and shutoffs must be reachable (≤48″ AFF for ADA compliance)\n• \tLabeling: Unit must be marked with fuel type, capacity, and emergency shutoff location\n• \tIBU Overlay: May require tactile signage, lockable access doors, and disability-compliant paths to shared-use equipment`
     }
   ]
 };
@@ -2179,7 +3638,8 @@ export const GENERAL_COMMENT_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Low',
       repairBy: '60 Day',
       points: '2.40/n',
-      code: 'GEN-01'
+      code: 'GEN-01',
+      codeReference: 'General observation or comment about property condition - for informational purposes only. No specific code reference required.'
     }
   ]
 };
@@ -2202,7 +3662,8 @@ export const CALL_FOR_AID_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Severe',
       repairBy: '24 Hrs.',
       points: '14.8/n',
-      code: 'CFA-01'
+      code: 'CFA-01',
+      codeReference: "hello"
     },
     {
       id: 'cfa_2',
@@ -2212,7 +3673,8 @@ export const CALL_FOR_AID_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
-      code: 'CFA-02'
+      code: 'CFA-02',
+      codeReference: "hello"
     }
   ]
 };
@@ -2229,7 +3691,8 @@ export const CARBON_MONOXIDE_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Life-Threatening',
       repairBy: '24Hrs',
       points: '30/n',
-      code: 'CO-01'
+      code: 'CO-01',
+      codeReference: "hello"
     },
     {
       id: 'co_2',
@@ -2239,7 +3702,8 @@ export const CARBON_MONOXIDE_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Life-Threatening',
       repairBy: '24Hrs',
       points: '30/n',
-      code: 'CO-02'
+      code: 'CO-02',
+      codeReference: "hello"
     },
     {
       id: 'co_3',
@@ -2249,7 +3713,8 @@ export const CARBON_MONOXIDE_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
-      code: 'CO-03'
+      code: 'CO-03',
+      codeReference: "hello"
     }
   ]
 };
@@ -2268,7 +3733,8 @@ export const CHIMNEY_INSIDE_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Life-Threatening',
       repairBy: '24Hrs',
       points: '30/n',
-      code: 'CHIM-IN-01'
+      code: 'CHIM-IN-01',
+      codeReference: "hello"
     }
   ]
 };
@@ -2285,7 +3751,8 @@ export const DRYER_VENT_INSIDE_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
-      code: 'DRYER-IN-01'
+      code: 'DRYER-IN-01',
+      codeReference: "hello"
     },
     {
       id: 'dryer_in_2',
@@ -2295,7 +3762,8 @@ export const DRYER_VENT_INSIDE_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
-      code: 'DRYER-IN-02'
+      code: 'DRYER-IN-02',
+      codeReference: "hello"
     },
     {
       id: 'dryer_in_3',
@@ -2305,7 +3773,8 @@ export const DRYER_VENT_INSIDE_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
-      code: 'DRYER-IN-03'
+      code: 'DRYER-IN-03',
+      codeReference: "hello"
     }
   ]
 };
@@ -2322,7 +3791,8 @@ export const DOOR_INSIDE_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Life-Threatening',
       repairBy: '24Hrs',
       points: '30/n',
-      code: 'DOOR-IN-01'
+      code: 'DOOR-IN-01',
+      codeReference: "hello"
     },
     {
       id: 'door_in_2',
@@ -2332,7 +3802,8 @@ export const DOOR_INSIDE_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
-      code: 'DOOR-IN-02'
+      code: 'DOOR-IN-02',
+      codeReference: "hello"
     },
     {
       id: 'door_in_3',
@@ -2342,7 +3813,8 @@ export const DOOR_INSIDE_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Life-Threatening',
       repairBy: '24Hrs',
       points: '30/n',
-      code: 'DOOR-IN-03'
+      code: 'DOOR-IN-03',
+      codeReference: "hello"
     }
   ]
 };
@@ -2359,7 +3831,8 @@ export const DRAINAGE_INSIDE_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
-      code: 'DRAIN-IN-01'
+      code: 'DRAIN-IN-01',
+      codeReference: "hello"
     }
   ]
 };
@@ -2376,7 +3849,8 @@ export const EGRESS_INSIDE_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Life-Threatening',
       repairBy: '24Hrs',
       points: '30/n',
-      code: 'EGRESS-IN-01'
+      code: 'EGRESS-IN-01',
+      codeReference: "hello"
     }
   ]
 };
@@ -2393,7 +3867,8 @@ export const ELECTRICAL_INSIDE_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Life-Threatening',
       repairBy: '24Hrs',
       points: '30/n',
-      code: 'ELEC-IN-01'
+      code: 'ELEC-IN-01',
+      codeReference: "hello"
     },
     {
       id: 'elec_in_2',
@@ -2403,7 +3878,8 @@ export const ELECTRICAL_INSIDE_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
-      code: 'ELEC-IN-02'
+      code: 'ELEC-IN-02',
+      codeReference: "hello"
     },
     {
       id: 'elec_in_3',
@@ -2413,7 +3889,8 @@ export const ELECTRICAL_INSIDE_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Severe',
       repairBy: '24 Hrs.',
       points: '14.8/n',
-      code: 'ELEC-IN-03'
+      code: 'ELEC-IN-03',
+      codeReference: "hello"
     }
   ]
 };
@@ -2430,7 +3907,8 @@ export const ELEVATOR_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
-      code: 'ELEV-01'
+      code: 'ELEV-01',
+      codeReference: "hello"
     },
     {
       id: 'elev_2',
@@ -2440,7 +3918,8 @@ export const ELEVATOR_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Severe',
       repairBy: '24 Hrs.',
       points: '14.8/n',
-      code: 'ELEV-02'
+      code: 'ELEV-02',
+      codeReference: "hello"
     },
     {
       id: 'elev_3',
@@ -2450,7 +3929,8 @@ export const ELEVATOR_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Life-Threatening',
       repairBy: '24Hrs',
       points: '30/n',
-      code: 'ELEV-03'
+      code: 'ELEV-03',
+      codeReference: "hello"
     }
   ]
 };
@@ -2467,7 +3947,8 @@ export const FIRE_SAFETY_INSIDE_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Life-Threatening',
       repairBy: '24Hrs',
       points: '30/n',
-      code: 'FIRE-IN-01'
+      code: 'FIRE-IN-01',
+      codeReference: "hello"
     },
     {
       id: 'fire_in_2',
@@ -2477,7 +3958,8 @@ export const FIRE_SAFETY_INSIDE_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Severe',
       repairBy: '24 Hrs.',
       points: '14.8/n',
-      code: 'FIRE-IN-02'
+      code: 'FIRE-IN-02',
+      codeReference: "hello"
     },
     {
       id: 'fire_in_3',
@@ -2487,7 +3969,8 @@ export const FIRE_SAFETY_INSIDE_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Life-Threatening',
       repairBy: '24Hrs',
       points: '30/n',
-      code: 'FIRE-IN-03'
+      code: 'FIRE-IN-03',
+      codeReference: "hello"
     }
   ]
 };
@@ -2504,7 +3987,8 @@ export const FLOOR_INSIDE_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Severe',
       repairBy: '24 Hrs.',
       points: '14.8/n',
-      code: 'FLOOR-01'
+      code: 'FLOOR-01',
+      codeReference: "hello"
     },
     {
       id: 'floor_2',
@@ -2514,7 +3998,8 @@ export const FLOOR_INSIDE_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
-      code: 'FLOOR-02'
+      code: 'FLOOR-02',
+      codeReference: "hello"
     }
   ]
 };
@@ -2531,7 +4016,8 @@ export const FOUNDATION_INSIDE_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Severe',
       repairBy: '24 Hrs.',
       points: '14.8/n',
-      code: 'FOUND-IN-01'
+      code: 'FOUND-IN-01',
+      codeReference: "hello"
     },
     {
       id: 'found_in_2',
@@ -2541,7 +4027,8 @@ export const FOUNDATION_INSIDE_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
-      code: 'FOUND-IN-02'
+      code: 'FOUND-IN-02',
+      codeReference: "hello"
     }
   ]
 };
@@ -2558,7 +4045,8 @@ export const GRAB_BAR_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
-      code: 'GRAB-01'
+      code: 'GRAB-01',
+      codeReference: "hello"
     }
   ]
 };
@@ -2575,7 +4063,8 @@ export const HAZARD_INSIDE_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Severe',
       repairBy: '24 Hrs.',
       points: '14.8/n',
-      code: 'HAZ-IN-01'
+      code: 'HAZ-IN-01',
+      codeReference: "hello"
     },
     {
       id: 'haz_in_2',
@@ -2585,7 +4074,8 @@ export const HAZARD_INSIDE_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Life-Threatening',
       repairBy: '24Hrs',
       points: '30/n',
-      code: 'HAZ-IN-02'
+      code: 'HAZ-IN-02',
+      codeReference: "hello"
     }
   ]
 };
@@ -2602,7 +4092,8 @@ export const BATHROOM_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
-      code: 'BATH-01'
+      code: 'BATH-01',
+      codeReference: "hello"
     },
     {
       id: 'bath_2',
@@ -2612,7 +4103,8 @@ export const BATHROOM_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Low',
       repairBy: '60 Day',
       points: '2.40/n',
-      code: 'BATH-02'
+      code: 'BATH-02',
+      codeReference: "hello"
     },
     {
       id: 'bath_3',
@@ -2622,7 +4114,8 @@ export const BATHROOM_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Severe',
       repairBy: '24Hrs',
       points: '14.8/n',
-      code: 'BATH-03'
+      code: 'BATH-03',
+      codeReference: "hello"
     }
   ]
 };
@@ -2638,7 +4131,8 @@ export const TOILET_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
-      code: 'TOILET-01'
+      code: 'TOILET-01',
+      codeReference: "hello"
     },
     {
       id: 'toilet_2',
@@ -2648,7 +4142,8 @@ export const TOILET_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Severe',
       repairBy: '24 Hrs.',
       points: '14.8/n',
-      code: 'TOILET-02'
+      code: 'TOILET-02',
+      codeReference: "hello"
     },
     {
       id: 'toilet_3',
@@ -2658,7 +4153,8 @@ export const TOILET_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Life-Threatening',
       repairBy: '24Hrs',
       points: '30/n',
-      code: 'TOILET-03'
+      code: 'TOILET-03',
+      codeReference: "hello"
     },
     {
       id: 'toilet_4',
@@ -2668,7 +4164,8 @@ export const TOILET_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
-      code: 'TOILET-04'
+      code: 'TOILET-04',
+      codeReference: "hello"
     }
   ]
 };
@@ -2684,7 +4181,8 @@ export const SINK_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
-      code: 'SINK-01'
+      code: 'SINK-01',
+      codeReference: "hello"
     },
     {
       id: 'sink_2',
@@ -2694,7 +4192,8 @@ export const SINK_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
-      code: 'SINK-02'
+      code: 'SINK-02',
+      codeReference: "hello"
     },
     {
       id: 'sink_3',
@@ -2704,7 +4203,8 @@ export const SINK_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
-      code: 'SINK-03'
+      code: 'SINK-03',
+      codeReference: "hello"
     },
     {
       id: 'sink_4',
@@ -2714,7 +4214,8 @@ export const SINK_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Low',
       repairBy: '60 Day',
       points: '2.40/n',
-      code: 'SINK-04'
+      code: 'SINK-04',
+      codeReference: "hello"
     }
   ]
 };
@@ -2730,7 +4231,8 @@ export const MOLD_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
-      code: 'MOLD-01'
+      code: 'MOLD-01',
+      codeReference: "hello"
     },
     {
       id: 'mold_2',
@@ -2740,7 +4242,8 @@ export const MOLD_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Life-Threatening',
       repairBy: '24Hrs',
       points: '30/n',
-      code: 'MOLD-02'
+      code: 'MOLD-02',
+      codeReference: "hello"
     },
     {
       id: 'mold_3',
@@ -2750,7 +4253,8 @@ export const MOLD_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Severe',
       repairBy: '24 Hrs.',
       points: '14.8/n',
-      code: 'MOLD-03'
+      code: 'MOLD-03',
+      codeReference: "hello"
     },
     {
       id: 'mold_4',
@@ -2760,7 +4264,8 @@ export const MOLD_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
-      code: 'MOLD-04'
+      code: 'MOLD-04',
+      codeReference: "hello"
     }
   ]
 };
@@ -2776,7 +4281,8 @@ export const WINDOW_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
-      code: 'WINDOW-01'
+      code: 'WINDOW-01',
+      codeReference: "hello"
     },
     {
       id: 'window_2',
@@ -2786,7 +4292,8 @@ export const WINDOW_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Severe',
       repairBy: '24 Hrs.',
       points: '14.8/n',
-      code: 'WINDOW-02'
+      code: 'WINDOW-02',
+      codeReference: "hello"
     },
     {
       id: 'window_3',
@@ -2796,7 +4303,8 @@ export const WINDOW_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Low',
       repairBy: '60 Day',
       points: '2.40/n',
-      code: 'WINDOW-03'
+      code: 'WINDOW-03',
+      codeReference: "hello"
     }
   ]
 };
@@ -2812,7 +4320,8 @@ export const FLOOR_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
-      code: 'FLOOR-01'
+      code: 'FLOOR-01',
+      codeReference: "hello"
     },
     {
       id: 'floor_2',
@@ -2822,7 +4331,8 @@ export const FLOOR_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Severe',
       repairBy: '24 Hrs.',
       points: '14.8/n',
-      code: 'FLOOR-02'
+      code: 'FLOOR-02',
+      codeReference: "hello"
     },
     {
       id: 'floor_3',
@@ -2832,7 +4342,8 @@ export const FLOOR_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Life-Threatening',
       repairBy: '24Hrs',
       points: '30/n',
-      code: 'FLOOR-03'
+      code: 'FLOOR-03',
+      codeReference: "hello"
     }
   ]
 };
@@ -2848,7 +4359,8 @@ export const WALL_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
-      code: 'WALL-01'
+      code: 'WALL-01',
+      codeReference: "hello"
     },
     {
       id: 'wall_2',
@@ -2858,7 +4370,8 @@ export const WALL_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Severe',
       repairBy: '24 Hrs.',
       points: '14.8/n',
-      code: 'WALL-02'
+      code: 'WALL-02',
+      codeReference: "hello"
     }
   ]
 };
@@ -2874,7 +4387,8 @@ export const CEILING_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
-      code: 'CEILING-01'
+      code: 'CEILING-01',
+      codeReference: "hello"
     },
     {
       id: 'ceiling_2',
@@ -2884,7 +4398,8 @@ export const CEILING_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Severe',
       repairBy: '24 Hrs.',
       points: '14.8/n',
-      code: 'CEILING-02'
+      code: 'CEILING-02',
+      codeReference: "hello"
     }
   ]
 };
@@ -2900,7 +4415,8 @@ export const KITCHEN_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
-      code: 'KITCHEN-01'
+      code: 'KITCHEN-01',
+      codeReference: "hello"
     },
     {
       id: 'kitchen_2',
@@ -2910,7 +4426,8 @@ export const KITCHEN_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
-      code: 'KITCHEN-02'
+      code: 'KITCHEN-02',
+      codeReference: "hello"
     },
     {
       id: 'kitchen_3',
@@ -2920,7 +4437,8 @@ export const KITCHEN_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Life-Threatening',
       repairBy: '24Hrs',
       points: '30/n',
-      code: 'KITCHEN-03'
+      code: 'KITCHEN-03',
+      codeReference: "hello"
     },
     {
       id: 'kitchen_4',
@@ -2930,7 +4448,8 @@ export const KITCHEN_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Severe',
       repairBy: '24 Hrs.',
       points: '14.8/n',
-      code: 'KITCHEN-04'
+      code: 'KITCHEN-04',
+      codeReference: "hello"
     },
     {
       id: 'kitchen_5',
@@ -2940,7 +4459,8 @@ export const KITCHEN_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
-      code: 'KITCHEN-05'
+      code: 'KITCHEN-05',
+      codeReference: "hello"
     },
     {
       id: 'kitchen_6',
@@ -2950,7 +4470,8 @@ export const KITCHEN_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Severe',
       repairBy: '24 Hrs.',
       points: '14.8/n',
-      code: 'KITCHEN-06'
+      code: 'KITCHEN-06',
+      codeReference: "hello"
     },
     {
       id: 'kitchen_7',
@@ -2960,7 +4481,8 @@ export const KITCHEN_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
-      code: 'KITCHEN-07'
+      code: 'KITCHEN-07',
+      codeReference: "hello"
     },
     {
       id: 'kitchen_8',
@@ -2970,7 +4492,8 @@ export const KITCHEN_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Life-Threatening',
       repairBy: '24Hrs',
       points: '30/n',
-      code: 'KITCHEN-08'
+      code: 'KITCHEN-08',
+      codeReference: "hello"
     },
     {
       id: 'kitchen_9',
@@ -2980,7 +4503,8 @@ export const KITCHEN_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Severe',
       repairBy: '24 Hrs.',
       points: '14.8/n',
-      code: 'KITCHEN-09'
+      code: 'KITCHEN-09',
+      codeReference: "hello"
     },
     {
       id: 'kitchen_10',
@@ -2990,7 +4514,8 @@ export const KITCHEN_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
-      code: 'KITCHEN-10'
+      code: 'KITCHEN-10',
+      codeReference: "hello"
     },
     {
       id: 'kitchen_11',
@@ -3000,7 +4525,8 @@ export const KITCHEN_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
-      code: 'KITCHEN-11'
+      code: 'KITCHEN-11',
+      codeReference: "hello"
     },
     {
       id: 'kitchen_12',
@@ -3010,7 +4536,8 @@ export const KITCHEN_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Severe',
       repairBy: '24 Hrs.',
       points: '14.8/n',
-      code: 'KITCHEN-12'
+      code: 'KITCHEN-12',
+      codeReference: "hello"
     },
     {
       id: 'kitchen_13',
@@ -3020,7 +4547,8 @@ export const KITCHEN_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
-      code: 'KITCHEN-13'
+      code: 'KITCHEN-13',
+      codeReference: "hello"
     },
     {
       id: 'kitchen_14',
@@ -3030,7 +4558,8 @@ export const KITCHEN_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
-      code: 'KITCHEN-14'
+      code: 'KITCHEN-14',
+      codeReference: "hello"
     },
     {
       id: 'kitchen_15',
@@ -3040,7 +4569,8 @@ export const KITCHEN_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
-      code: 'KITCHEN-15'
+      code: 'KITCHEN-15',
+      codeReference: "hello"
     },
     {
       id: 'kitchen_16',
@@ -3050,7 +4580,8 @@ export const KITCHEN_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
-      code: 'KITCHEN-16'
+      code: 'KITCHEN-16',
+      codeReference: "hello"
     },
     {
       id: 'kitchen_17',
@@ -3060,7 +4591,8 @@ export const KITCHEN_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Low',
       repairBy: '60 Day',
       points: '2.40/n',
-      code: 'KITCHEN-17'
+      code: 'KITCHEN-17',
+      codeReference: "hello"
     },
     {
       id: 'kitchen_18',
@@ -3070,7 +4602,8 @@ export const KITCHEN_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Low',
       repairBy: '60 Day',
       points: '2.40/n',
-      code: 'KITCHEN-18'
+      code: 'KITCHEN-18',
+      codeReference: "hello"
     },
     {
       id: 'kitchen_19',
@@ -3080,7 +4613,8 @@ export const KITCHEN_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
-      code: 'KITCHEN-19'
+      code: 'KITCHEN-19',
+      codeReference: "hello"
     },
     {
       id: 'kitchen_20',
@@ -3090,7 +4624,8 @@ export const KITCHEN_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
-      code: 'KITCHEN-20'
+      code: 'KITCHEN-20',
+      codeReference: "hello"
     },
     {
       id: 'kitchen_21',
@@ -3100,7 +4635,8 @@ export const KITCHEN_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
-      code: 'KITCHEN-21'
+      code: 'KITCHEN-21',
+      codeReference: "hello"
     },
     {
       id: 'kitchen_22',
@@ -3110,7 +4646,8 @@ export const KITCHEN_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
-      code: 'KITCHEN-22'
+      code: 'KITCHEN-22',
+      codeReference: "hello"
     }
   ]
 };
@@ -3126,7 +4663,8 @@ export const RESTROOM_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Severe',
       repairBy: '24 Hrs.',
       points: '14.8/n',
-      code: 'REST-01'
+      code: 'REST-01',
+      codeReference: "hello"
     },
     {
       id: 'rest_2',
@@ -3136,7 +4674,8 @@ export const RESTROOM_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
-      code: 'REST-02'
+      code: 'REST-02',
+      codeReference: "hello"
     }
   ]
 };
@@ -3152,7 +4691,8 @@ export const VENTILATION_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
-      code: 'VENT-01'
+      code: 'VENT-01',
+      codeReference: "hello"
     },
     {
       id: 'vent_2',
@@ -3162,7 +4702,8 @@ export const VENTILATION_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Moderate',
       repairBy: '30 Day',
       points: '5.5/n',
-      code: 'VENT-02'
+      code: 'VENT-02',
+      codeReference: "hello"
     }
   ]
 };
@@ -3178,7 +4719,8 @@ export const CABINET_STORAGE_DEFICIENCIES: ItemDeficiencies = {
       severity: 'Low',
       repairBy: '60 Day',
       points: '2.40/n',
-      code: 'CAB-01'
+      code: 'CAB-01',
+      codeReference: "hello"
     }
   ]
 };
@@ -3198,15 +4740,14 @@ export const getDeficienciesForItem = (itemName: string, locationType?: string):
   const isUnit = isUnitLocation(locationType || '');
 
   // ==========================================
-  // UNIT INSPECTIONS - Use Inside mapping file (32 categories for dwelling rooms)
+  // UNIT INSPECTIONS - Use insideDeficiencyMapping.ts ONLY (32 categories for dwelling rooms)
   // ==========================================
   if (isUnit) {
     const insideResult = getAllInsideDeficienciesForItem(cleanedName);
     if (insideResult) {
-      // Flatten subcategories if present
       let allDeficiencies: DeficiencyOption[] = [];
       if (insideResult.subcategories) {
-        allDeficiencies = insideResult.subcategories.flatMap(sub => 
+        allDeficiencies = insideResult.subcategories.flatMap(sub =>
           sub.deficiencies.map(d => ({
             id: d.id,
             name: d.name,
@@ -3216,6 +4757,7 @@ export const getDeficienciesForItem = (itemName: string, locationType?: string):
             repairBy: d.repairBy,
             points: d.points,
             code: d.code || '',
+            codeReference: (d as any).codeReference,
           }))
         );
       } else if (insideResult.deficiencies) {
@@ -3228,6 +4770,7 @@ export const getDeficienciesForItem = (itemName: string, locationType?: string):
           repairBy: d.repairBy,
           points: d.points,
           code: d.code || '',
+          codeReference: (d as any).codeReference,
         }));
       }
       return {
@@ -3235,11 +4778,12 @@ export const getDeficienciesForItem = (itemName: string, locationType?: string):
         deficiencies: allDeficiencies
       };
     }
+    // Never fall through to outside data for unit rooms
+    return { itemName: itemName, deficiencies: GENERAL_COMMENT_DEFICIENCIES.deficiencies };
   }
 
   // ==========================================
-  // OUTSIDE INSPECTIONS - Use dedicated Outside mapping with correct NSPIRE values
-  // Outside has different severity/points values than Inside/Unit
+  // OUTSIDE INSPECTIONS - Use outsideDeficiencyMapping.ts ONLY
   // ==========================================
   if (isOutside) {
     const outsideResult = getOutsideDeficienciesByCategory(cleanedName);
@@ -3249,7 +4793,7 @@ export const getDeficienciesForItem = (itemName: string, locationType?: string):
   }
 
   // ==========================================
-  // INSIDE INSPECTIONS - Use Unit mapping file (35 categories)
+  // INSIDE INSPECTIONS - Use unitDeficiencyMapping.ts ONLY (35 categories)
   // ==========================================
   if (isInside) {
     const unitResult = getUnitDeficienciesByCategory(cleanedName);
@@ -3265,9 +4809,39 @@ export const getDeficienciesForItem = (itemName: string, locationType?: string):
           repairBy: d.repairBy,
           points: d.points,
           code: d.code || '',
+          codeReference: d.codeReference,
         }))
       };
     }
+    // Try subcategory lookup as fallback before giving up
+    const subResult = getUnitSubcategoryDeficiencies(cleanedName);
+    if (subResult) {
+      return {
+        itemName: subResult.itemName,
+        deficiencies: subResult.deficiencies.map(d => ({
+          id: d.id,
+          name: d.name,
+          detail: d.detail,
+          criteria: d.criteria,
+          severity: d.severity,
+          repairBy: d.repairBy,
+          points: d.points,
+          code: d.code || '',
+          codeReference: (d as any).codeReference || undefined,
+        }))
+      };
+    }
+    // Never fall through to outside data for inside rooms
+    return { itemName: itemName, deficiencies: GENERAL_COMMENT_DEFICIENCIES.deficiencies };
+  }
+
+  // ==========================================
+  // DEFAULT FALLBACK: Use outsideDeficiencyMapping.ts as single source of truth
+  // This ensures any updates made in outsideDeficiencyMapping.ts are reflected here automatically
+  // ==========================================
+  const outsideFallback = getOutsideDeficienciesByCategory(cleanedName);
+  if (outsideFallback) {
+    return outsideFallback;
   }
 
   // Exact matches first - specific door types before generic door
@@ -3498,155 +5072,202 @@ export const getSubcategoriesForItem = (itemName: string, locationType?: string)
 };
 
 // Helper function to get deficiencies for a subcategory
-export const getDeficienciesForSubcategory = (subcategoryName: string): ItemDeficiencies => {
+export const getDeficienciesForSubcategory = (subcategoryName: string, locationType?: string, parentCategory?: string): ItemDeficiencies => {
   const normalizedName = subcategoryName.toLowerCase();
-
-  // Door subcategories
-  if (normalizedName.includes('door - general standard') || normalizedName === 'door - general standard') {
-    return DOOR_GENERAL_STANDARD_OUTSIDE;
-  }
-  if (normalizedName === 'garage door' || normalizedName.includes('garage door')) {
-    return GARAGE_DOOR_OUTSIDE;
-  }
-
-  // Drain subcategories
-  if (normalizedName === 'drain') {
-    return DRAIN_DRAIN_DEFICIENCIES;
-  }
-  if (normalizedName === 'site drainage' || normalizedName.includes('site drainage')) {
-    return SITE_DRAINAGE_DEFICIENCIES;
-  }
-
-  // Electrical subcategories
-  if (normalizedName === 'electrical - conductor, outlet, and switch' || normalizedName.includes('electrical - conductor')) {
-    return ELECTRICAL_CONDUCTOR_OUTLET_SWITCH;
-  }
-  if (normalizedName.includes('afci outlet') || normalizedName.includes('afci breaker')) {
-    return ELECTRICAL_AFCI_OUTLET;
-  }
-  if (normalizedName.includes('unprotected outlet')) {
-    return ELECTRICAL_UNPROTECTED_OUTLET;
-  }
-  if (normalizedName.includes('gfci outlet') || normalizedName.includes('gfci breaker')) {
-    return ELECTRICAL_GFCI_OUTLET;
-  }
-  if (normalizedName === 'electrical service panel' || normalizedName.includes('service panel')) {
-    return ELECTRICAL_SERVICE_PANEL_OUTSIDE;
-  }
-
-  // Fire Safety subcategories
-  if (normalizedName === 'exit sign' || normalizedName.includes('exit sign')) {
-    return EXIT_SIGN_DEFICIENCIES;
-  }
-  if (normalizedName === 'fire escape' || normalizedName.includes('fire escape')) {
-    return FIRE_ESCAPE_DEFICIENCIES;
-  }
-  if (normalizedName === 'fire extinguisher' || normalizedName.includes('fire extinguisher')) {
-    return FIRE_EXTINGUISHER_DEFICIENCIES;
-  }
-  if (normalizedName.includes('flammable') || normalizedName.includes('combustible')) {
-    return FLAMMABLE_COMBUSTIBLE_DEFICIENCIES;
-  }
-  if (normalizedName.includes('sprinkler')) {
-    return SPRINKLER_ASSEMBLY_DEFICIENCIES;
-  }
-
-  // Fencing/Gate subcategories
-  if (normalizedName === 'fence and gate' || normalizedName.includes('fence')) {
-    return FENCE_AND_GATE_OUTSIDE;
-  }
-
-  // Hazard subcategories
-  if (normalizedName === 'rat') {
-    return RAT_DEFICIENCIES;
-  }
-  if (normalizedName === 'litter') {
-    return LITTER_DEFICIENCIES;
-  }
-  if (normalizedName === 'sharp edges' || normalizedName.includes('sharp')) {
-    return SHARP_EDGES_DEFICIENCIES;
-  }
-  if (normalizedName === 'trip hazard' || normalizedName.includes('trip')) {
-    return TRIP_HAZARD_DEFICIENCIES;
-  }
-
-  // Lighting subcategories
-  if (normalizedName.includes('auxiliary')) {
-    return LIGHTING_AUXILIARY_DEFICIENCIES;
-  }
-  if (normalizedName === 'lighting - exterior' || normalizedName.includes('lighting - exterior')) {
-    return LIGHTING_EXTERIOR_DEFICIENCIES;
-  }
-
-  // Parking subcategories
-  if (normalizedName === 'parking lot' || normalizedName.includes('parking lot')) {
-    return PARKING_LOT_DEFICIENCIES;
-  }
-  if (normalizedName.includes('private roads') || normalizedName.includes('driveways')) {
-    return PRIVATE_ROADS_DRIVEWAYS_DEFICIENCIES;
-  }
-
-  // Railings subcategories
-  if (normalizedName === 'guardrail' || normalizedName.includes('guardrail')) {
-    return GUARDRAIL_DEFICIENCIES;
-  }
-  if (normalizedName === 'handrail' || normalizedName.includes('handrail')) {
-    return HANDRAIL_DEFICIENCIES;
-  }
-
-  // Retaining Wall subcategories
-  if (normalizedName === 'retaining wall') {
-    return RETAINING_WALL_SUBCATEGORY;
-  }
-  if (normalizedName === 'wall - exterior' || normalizedName.includes('wall - exterior')) {
-    return WALL_EXTERIOR_DEFICIENCIES;
-  }
+  const isOutside = locationType?.toLowerCase() === 'outside';
+  const isUnit = isUnitLocation(locationType || '');
+  const isInside = locationType?.toLowerCase() === 'inside';
 
   // ==========================================
-  // INSIDE SUBCATEGORIES - Search all Inside categories for matching subcategory
-  // This handles Inside inspection subcategories like Railings > Guardrail, Railings > Handrail
+  // UNIT LOCATIONS — Always use insideDeficiencyMapping subcategories
+  // Must run BEFORE all other checks so unit rooms (Bedroom, Bathroom, etc.)
+  // never accidentally fall through to Outside or Inside-building subcategory data.
   // ==========================================
-  const insideSubcatResult = getUnitSubcategoryDeficiencies(subcategoryName);
-  if (insideSubcatResult) {
-    return {
-      itemName: insideSubcatResult.itemName,
-      deficiencies: insideSubcatResult.deficiencies.map(d => ({
-        id: d.id,
-        name: d.name,
-        detail: d.detail,
-        criteria: d.criteria,
-        severity: d.severity,
-        repairBy: d.repairBy,
-        points: d.points,
-        code: d.code || '',
-      }))
-    };
-  }
-
-  // ==========================================
-  // UNIT SUBCATEGORIES - Search all Unit categories for matching subcategory
-  // This handles Unit inspection subcategories like Bathroom > Bathtub and Shower
-  // ==========================================
-  for (const category of ALL_INSIDE_CATEGORIES) {
-    if (category.subcategories) {
-      const matchingSubcat = category.subcategories.find(
-        sub => sub.name.toLowerCase() === normalizedName
+  if (isUnit) {
+    // If parentCategory is provided, search within that category first (precise match)
+    if (parentCategory) {
+      const cleanedParent = parentCategory.replace(/^\d+\.\s*/, '');
+      const parentCat = ALL_INSIDE_CATEGORIES.find(
+        cat => cat.itemName.toLowerCase() === cleanedParent.toLowerCase()
       );
-      if (matchingSubcat) {
-        return {
-          itemName: matchingSubcat.name,
-          deficiencies: matchingSubcat.deficiencies.map(d => ({
-            id: d.id,
-            name: d.name,
-            detail: d.detail,
-            criteria: d.criteria,
-            severity: d.severity,
-            repairBy: d.repairBy,
-            points: d.points,
-            code: d.code || '',
-          }))
-        };
+      if (parentCat?.subcategories) {
+        const matchingSubcat = parentCat.subcategories.find(
+          sub => sub.name.toLowerCase() === normalizedName
+        );
+        if (matchingSubcat) {
+          return {
+            itemName: matchingSubcat.name,
+            deficiencies: matchingSubcat.deficiencies.map(d => ({
+              id: d.id,
+              name: d.name,
+              detail: d.detail,
+              criteria: d.criteria,
+              severity: d.severity,
+              repairBy: d.repairBy,
+              points: d.points,
+              code: d.code || '',
+              codeReference: d.codeReference,
+            }))
+          };
+        }
       }
+    }
+    // Fallback: search all categories
+    for (const category of ALL_INSIDE_CATEGORIES) {
+      if (category.subcategories) {
+        const matchingSubcat = category.subcategories.find(
+          sub => sub.name.toLowerCase() === normalizedName
+        );
+        if (matchingSubcat) {
+          return {
+            itemName: matchingSubcat.name,
+            deficiencies: matchingSubcat.deficiencies.map(d => ({
+              id: d.id,
+              name: d.name,
+              detail: d.detail,
+              criteria: d.criteria,
+              severity: d.severity,
+              repairBy: d.repairBy,
+              points: d.points,
+              code: d.code || '',
+              codeReference: d.codeReference,
+            }))
+          };
+        }
+      }
+    }
+  }
+
+  // ==========================================
+  // INSIDE LOCATIONS — Always use unitDeficiencyMapping subcategories
+  // Must run BEFORE all hardcoded Outside checks so Inside building locations
+  // (Halls/Corridors, Laundry Room, etc.) never use Outside data.
+  // ==========================================
+  if (isInside) {
+    // Prefer parent-aware lookup to avoid false positives from same-named items in different categories
+    const preciseResult = parentCategory ? getInsideSubcategoryDeficienciesByParent(parentCategory, subcategoryName) : null;
+    const insideResult = preciseResult ?? getUnitSubcategoryDeficiencies(subcategoryName);
+    if (insideResult) {
+      return {
+        itemName: insideResult.itemName,
+        deficiencies: insideResult.deficiencies.map(d => ({
+          id: d.id,
+          name: d.name,
+          detail: d.detail,
+          criteria: d.criteria,
+          severity: d.severity,
+          repairBy: d.repairBy,
+          points: d.points,
+          code: d.code || '',
+          codeReference: (d as any).codeReference || undefined,
+        }))
+      };
+    }
+  }
+
+  // ==========================================
+  // OUTSIDE LOCATIONS — Use outsideDeficiencyMapping hardcoded subcategory data
+  // ==========================================
+  if (isOutside) {
+    // Door subcategories
+    if (normalizedName.includes('door - general standard') || normalizedName === 'door - general standard') {
+      return DOOR_GENERAL_STANDARD_OUTSIDE;
+    }
+    if (normalizedName === 'garage door' || normalizedName.includes('garage door')) {
+      return GARAGE_DOOR_OUTSIDE;
+    }
+
+    // Drain subcategories
+    if (normalizedName === 'drain') {
+      return DRAIN_DRAIN_DATA;
+    }
+    if (normalizedName === 'site drainage' || normalizedName.includes('site drainage')) {
+      return SITE_DRAINAGE_DATA;
+    }
+
+    // Electrical subcategories
+    if (normalizedName === 'electrical - conductor, outlet, and switch' || normalizedName.includes('electrical - conductor')) {
+      return ELECTRICAL_CONDUCTOR_OUTLET_SWITCH;
+    }
+    if (normalizedName.includes('afci outlet') || normalizedName.includes('afci breaker')) {
+      return ELECTRICAL_AFCI_OUTLET;
+    }
+    if (normalizedName.includes('unprotected outlet')) {
+      return ELECTRICAL_UNPROTECTED_OUTLET;
+    }
+    if (normalizedName.includes('gfci outlet') || normalizedName.includes('gfci breaker')) {
+      return ELECTRICAL_GFCI_OUTLET;
+    }
+    if (normalizedName === 'electrical service panel' || normalizedName.includes('service panel')) {
+      return ELECTRICAL_SERVICE_PANEL_DATA;
+    }
+
+    // Fire Safety subcategories
+    if (normalizedName === 'exit sign' || normalizedName.includes('exit sign')) {
+      return EXIT_SIGN_DEFICIENCIES;
+    }
+    if (normalizedName === 'fire escape' || normalizedName.includes('fire escape')) {
+      return FIRE_ESCAPE_DEFICIENCIES;
+    }
+    if (normalizedName === 'fire extinguisher' || normalizedName.includes('fire extinguisher')) {
+      return FIRE_EXTINGUISHER_DEFICIENCIES;
+    }
+    if (normalizedName.includes('flammable') || normalizedName.includes('combustible')) {
+      return FLAMMABLE_COMBUSTIBLE_DEFICIENCIES;
+    }
+    if (normalizedName.includes('sprinkler')) {
+      return SPRINKLER_ASSEMBLY_DEFICIENCIES;
+    }
+
+    // Fencing/Gate subcategories
+    if (normalizedName === 'fence and gate' || normalizedName.includes('fence')) {
+      return FENCE_AND_GATE_OUTSIDE;
+    }
+
+    // Hazard subcategories
+    if (normalizedName === 'rat') {
+      return RAT_DEFICIENCIES;
+    }
+    if (normalizedName === 'litter') {
+      return LITTER_DEFICIENCIES;
+    }
+    if (normalizedName === 'sharp edges' || normalizedName.includes('sharp')) {
+      return SHARP_EDGES_DEFICIENCIES;
+    }
+    if (normalizedName === 'trip hazard' || normalizedName.includes('trip')) {
+      return TRIP_HAZARD_DEFICIENCIES;
+    }
+
+    // Lighting subcategories
+    if (normalizedName.includes('auxiliary')) {
+      return LIGHTING_AUXILIARY_DEFICIENCIES;
+    }
+    if (normalizedName === 'lighting - exterior' || normalizedName.includes('lighting - exterior')) {
+      return LIGHTING_EXTERIOR_DEFICIENCIES;
+    }
+
+    // Parking subcategories
+    if (normalizedName === 'parking lot' || normalizedName.includes('parking lot')) {
+      return PARKING_LOT_DEFICIENCIES;
+    }
+    if (normalizedName.includes('private roads') || normalizedName.includes('driveways')) {
+      return PRIVATE_ROADS_DRIVEWAYS_DEFICIENCIES;
+    }
+
+    // Railings subcategories
+    if (normalizedName === 'guardrail' || normalizedName.includes('guardrail')) {
+      return GUARDRAIL_DEFICIENCIES;
+    }
+    if (normalizedName === 'handrail' || normalizedName.includes('handrail')) {
+      return HANDRAIL_DEFICIENCIES;
+    }
+
+    // Retaining Wall subcategories
+    if (normalizedName === 'retaining wall') {
+      return RETAINING_WALL_SUBCATEGORY;
+    }
+    if (normalizedName === 'wall - exterior' || normalizedName.includes('wall - exterior')) {
+      return WALL_EXTERIOR_DEFICIENCIES;
     }
   }
 
