@@ -47,6 +47,8 @@ const PropertyInfoScreen: React.FC<Props> = ({ navigation, route }) => {
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [tempUnitNames, setTempUnitNames] = useState<string[]>(selectedUnits);
 
+  const [refreshTick, setRefreshTick] = useState(0);
+
   // Load completed units from storage on mount and when returning from inspection
   const loadCompletedUnits = useCallback(async () => {
     try {
@@ -77,6 +79,7 @@ const PropertyInfoScreen: React.FC<Props> = ({ navigation, route }) => {
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       loadCompletedUnits();
+      setRefreshTick(tick => tick + 1);
     });
     return unsubscribe;
   }, [navigation, loadCompletedUnits]);

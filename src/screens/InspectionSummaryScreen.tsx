@@ -50,7 +50,7 @@ const InspectionSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
   useEffect(() => {
     const loadAndMerge = async () => {
       try {
-        const saveKey = `saved_inspection_${property?._id || property?.id || 'unknown'}_${buildingId}`;
+        const saveKey = `saved_inspection_${property?._id || property?.id || property?.propertyId || 'unknown'}_${buildingId}`;
         const saved = await getData(saveKey);
 
         // Stamp _area / _unit on incoming deficiencies from the CURRENT session

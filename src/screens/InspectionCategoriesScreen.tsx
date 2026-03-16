@@ -48,7 +48,7 @@ const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
     useCallback(() => {
       const fetchProgress = () => {
         try {
-          const propId = property?._id || property?.id || 'unknown';
+          const propId = property?._id || property?.id || property?.propertyId || 'unknown';
 
           // Outside
           const outKey = `inspection_responses_${propId}_${buildingName}_Outside`;

@@ -41,7 +41,7 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
   const [isLoaded, setIsLoaded] = useState(false);
 
   const safeLocationName = location === 'Unit' ? `Unit_${currentUnit || selectedUnits?.[0] || 'Unknown'}` : location;
-  const saveKey = `inspection_responses_${property?._id || property?.id || 'unknown'}_${buildingId}_${safeLocationName}`;
+  const saveKey = `inspection_responses_${property?._id || property?.id || property?.propertyId || 'unknown'}_${buildingId}_${safeLocationName}`;
 
   // Load responses from global state on mount
   useEffect(() => {
@@ -161,8 +161,20 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
         {
           text: 'OK',
           onPress: () => {
-            // Navigate back to previous screen
-            navigation.goBack();
+            // Navigate back to the correct parent screen
+            if (location === 'Unit' || isUnitLocation) {
+              navigation.navigate('PropertyInfo', {
+                property,
+                selectedUnits,
+                buildingId,
+              });
+            } else {
+              navigation.navigate('InspectionCategories', {
+                property,
+                selectedUnits,
+                buildingId,
+              });
+            }
           },
         },
       ]
