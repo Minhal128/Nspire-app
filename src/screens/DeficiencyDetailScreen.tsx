@@ -138,7 +138,7 @@ interface Props {
 }
 
 const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
-  const { property, selectedUnits, buildingId, location, itemId, itemName } = route.params;
+  const { property, selectedUnits, currentUnit, buildingId, location, itemId, itemName } = route.params;
 
   const isGeneralComment = itemName.toLowerCase().includes('general comment');
 
@@ -676,7 +676,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           isOutsideInspection: isOutsideLocation,
           outsideLocation: isOutsideLocation ? selectedOutsideLocation : undefined,
         },
-        currentUnit: selectedUnits[0] || undefined,
+        currentUnit: currentUnit || selectedUnits[0] || undefined,
         allUnits: selectedUnits,
       });
 

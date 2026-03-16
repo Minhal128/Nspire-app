@@ -34,13 +34,13 @@ interface Props {
 type ResponseType = 'No OD' | 'OD' | 'N/A';
 
 const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
-  const { property, selectedUnits, buildingId, location } = route.params;
+  const { property, selectedUnits, buildingId, location, currentUnit } = route.params;
   const [responses, setResponses] = useState<{ [key: string]: ResponseType }>({});
   const [showDeficiencyModal, setShowDeficiencyModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState<{ id: string; name: string } | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  const safeLocationName = location === 'Unit' ? `Unit_${selectedUnits?.[0] || 'Unknown'}` : location;
+  const safeLocationName = location === 'Unit' ? `Unit_${currentUnit || selectedUnits?.[0] || 'Unknown'}` : location;
   const saveKey = `inspection_responses_${property?._id || property?.id || 'unknown'}_${buildingId}_${safeLocationName}`;
 
   // Load responses from global state on mount
@@ -56,17 +56,6 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
       setIsLoaded(true);
     }
   }, [saveKey]);
-
-  // Save responses to global state whenever they change
-  useEffect(() => {
-    if (isLoaded) {
-      try {
-        globalInspectionProgress[saveKey] = responses;
-      } catch (e) {
-        console.error('Error saving responses', e);
-      }
-    }
-  }, [responses, isLoaded, saveKey]);
 
   // Use appropriate inspection items based on location
   // Outside = OUTSIDE_ITEMS (26), Inside = INSIDE_ITEMS (35), Unit = UNIT_ITEMS (32)
@@ -87,10 +76,18 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
     }
 
     // Eagerly set the response regardless so it auto-saves immediately
-    setResponses((prev) => ({
-      ...prev,
+    const updatedResponses = {
+      ...responses,
       [itemId]: response,
-    }));
+    };
+    setResponses(updatedResponses);
+
+    // Save to global state so it's there when we return from DeficiencyDetail
+    try {
+      globalInspectionProgress[saveKey] = updatedResponses;
+    } catch (e) {
+      console.error('Error saving updated responses', e);
+    }
 
     if (response === 'OD') {
       // Show deficiency modal when OD is clicked
@@ -101,6 +98,7 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
         navigation.navigate('DeficiencyDetail', {
           property,
           selectedUnits,
+          currentUnit,
           buildingId,
           location,
           itemId,
@@ -115,10 +113,17 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
   const handleDeficiencyRecorded = () => {
     // Mark the item as OD after deficiency is recorded
     if (selectedItem) {
-      setResponses((prev) => ({
-        ...prev,
-        [selectedItem.id]: 'OD',
-      }));
+      const updatedResponses = {
+        ...responses,
+        [selectedItem.id]: 'OD' as ResponseType,
+      };
+      setResponses(updatedResponses);
+
+      try {
+        globalInspectionProgress[saveKey] = updatedResponses;
+      } catch (e) {
+        console.error('Error saving recorded deficiency response', e);
+      }
     }
     setShowDeficiencyModal(false);
   };
@@ -129,6 +134,7 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
       navigation.navigate('DeficiencyDetail', {
         property,
         selectedUnits,
+        currentUnit,
         buildingId,
         location,
         itemId: selectedItem.id,
@@ -138,6 +144,16 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   const handleSaveProgress = () => {
+    try {
+      if (Object.keys(responses).length > 0) {
+        globalInspectionProgress[saveKey] = responses;
+      } else {
+        delete globalInspectionProgress[saveKey];
+      }
+    } catch (e) {
+      console.error('Error saving responses', e);
+    }
+
     Alert.alert(
       'Progress Saved',
       'Your inspection progress has been saved successfully.',
@@ -145,11 +161,8 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
         {
           text: 'OK',
           onPress: () => {
-            // Navigate back to Dashboard
-            navigation.reset({
-              index: 0,
-              routes: [{ name: 'Dashboard' as never }],
-            });
+            // Navigate back to previous screen
+            navigation.goBack();
           },
         },
       ]
@@ -202,7 +215,7 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
           <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
         </TouchableOpacity>
         <View style={styles.headerContent}>
-          <Text style={styles.headerTitle}>{location}</Text>
+          <Text style={styles.headerTitle}>{location === 'Unit' && currentUnit ? currentUnit : location}</Text>
           <Text style={styles.headerSubtitle}>
             Building {buildingId} • {selectedUnits.length} Units
           </Text>
@@ -284,10 +297,15 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
                 <TouchableOpacity
                   style={[styles.inspectionButton, responses[item.id] === 'OD' && styles.inspectionButtonDone]}
                   onPress={() => {
-                    setResponses((prev) => ({ ...prev, [item.id]: 'OD' }));
+                    const updatedResponses = { ...responses, [item.id]: 'OD' as ResponseType };
+                    setResponses(updatedResponses);
+
+                    try { globalInspectionProgress[saveKey] = updatedResponses; } catch (e) { }
+
                     navigation.navigate('DeficiencyDetail', {
                       property,
                       selectedUnits,
+                      currentUnit,
                       buildingId,
                       location,
                       itemId: item.id,

@@ -29,7 +29,7 @@ export type RootStackParamList = {
   PropertyInfo: { property: any; selectedUnits: string[]; completedUnits?: string[]; buildingId?: string };
   InspectionCategories: { property: any; selectedUnits: string[]; buildingId: string; currentUnit?: string };
   UnitLocations: { property: any; selectedUnits: string[]; buildingId: string };
-  LocationInspection: { property: any; selectedUnits: string[]; buildingId: string; location: string };
+  LocationInspection: { property: any; selectedUnits: string[]; buildingId: string; location: string; currentUnit?: string };
   DeficiencyDetail: { 
     property: any; 
     selectedUnits: string[]; 
@@ -37,6 +37,7 @@ export type RootStackParamList = {
     location: string; 
     itemId: string;
     itemName: string;
+    currentUnit?: string;
   };
   InspectionSummary: {
     property: any;

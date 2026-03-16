@@ -36,7 +36,7 @@ interface Props {
 const { width, height } = Dimensions.get('window');
 
 const InspectionSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
-  const { property, selectedUnits, buildingId, inspectionData } = route.params;
+  const { property, selectedUnits, buildingId, inspectionData, currentUnit } = route.params;
   const [activeTab, setActiveTab] = useState<'summary' | 'deficiencies'>('summary');
   const [exportingPDF, setExportingPDF] = useState(false);
   const [exportingHTML, setExportingHTML] = useState(false);
@@ -167,10 +167,18 @@ const InspectionSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
     } catch (e) {
       console.warn('Could not save inspection data:', e);
     }
-    navigation.navigate('InspectionCategories', {
+
+    const currentArea = inspectionData?.isOutsideInspection
+      ? 'Outside'
+      : (inspectionData?.location === 'Inside' ? 'Inside' : 'Unit');
+
+    // Go back to the specific location inspection screen to continue answering items
+    navigation.navigate('LocationInspection', {
       property,
       selectedUnits,
       buildingId,
+      location: currentArea,
+      currentUnit,
     });
   };
 
@@ -184,17 +192,17 @@ const InspectionSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
   const generatePreviewHtml = (): string => {
     const propertyName = property.name || 'Property';
     const propertyAddress = property.address || '';
-    
+
     // Generate deficiencies HTML
     let deficienciesHtml = '';
     if (mergedDeficiencies.length > 0) {
       deficienciesHtml = mergedDeficiencies.map((def: any, index: number) => {
         const severity = def.deficiency?.aiSeverity || def.deficiency?.severity || 'Moderate';
-        const severityColor = 
+        const severityColor =
           severity === 'Life-Threatening' ? '#DC2626' :
-          severity === 'Severe' ? '#F97316' :
-          severity === 'Moderate' ? '#EAB308' : '#84CC16';
-        
+            severity === 'Severe' ? '#F97316' :
+              severity === 'Moderate' ? '#EAB308' : '#84CC16';
+
         return `
           <div style="background: #f8f9fa; border-radius: 8px; padding: 16px; margin-bottom: 12px; border-left: 4px solid ${severityColor};">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">

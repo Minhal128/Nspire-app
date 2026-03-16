@@ -89,136 +89,136 @@ const ScoringModal: React.FC<ScoringModalProps> = ({
             onRequestClose={onClose}
         >
             <ModalZoomWrapper>
-            <View style={styles.modalOverlay}>
-                <View style={styles.modalContent}>
-                    {/* Header */}
-                    <View style={styles.header}>
-                        <View style={styles.headerTitleContainer}>
-                            <Text style={styles.headerTitle} numberOfLines={1}>
-                                {itemName}
-                            </Text>
-                            <Text style={styles.headerSubtitle}>{location}</Text>
-                        </View>
-                        <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-                            <Ionicons name="close" size={24} color="#666666" />
-                        </TouchableOpacity>
-                    </View>
-
-                    <ScrollView
-                        style={styles.scrollContent}
-                        showsVerticalScrollIndicator={false}
-                    >
-                        {/* Location and Severity Row */}
-                        <View style={styles.row}>
-                            <View style={styles.halfField}>
-                                <Text style={styles.fieldLabel}>Location</Text>
-                                <View style={styles.readOnlyField}>
-                                    <Text style={styles.readOnlyText}>{location}</Text>
-                                </View>
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        {/* Header */}
+                        <View style={styles.header}>
+                            <View style={styles.headerTitleContainer}>
+                                <Text style={styles.headerTitle} numberOfLines={1}>
+                                    {itemName}
+                                </Text>
+                                <Text style={styles.headerSubtitle}>{location}</Text>
                             </View>
-                            <View style={styles.halfField}>
-                                <Text style={styles.fieldLabel}>Severity</Text>
-                                <View style={[styles.readOnlyField, { backgroundColor: severityColor }]}>
-                                    <Text style={[styles.readOnlyText, styles.whiteText]}>{severity}</Text>
-                                </View>
-                            </View>
+                            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+                                <Ionicons name="close" size={24} color="#666666" />
+                            </TouchableOpacity>
                         </View>
 
-                        {/* All Sample and Pts Lost (Raw) Row */}
-                        <View style={styles.row}>
-                            <View style={styles.halfField}>
-                                <Text style={styles.fieldLabel}>All Sample</Text>
-                                <View style={styles.readOnlyField}>
-                                    <Text style={styles.readOnlyText}>{scoringResult?.allSample || totalSamples}</Text>
+                        <ScrollView
+                            style={styles.scrollContent}
+                            showsVerticalScrollIndicator={false}
+                        >
+                            {/* Location and Severity Row */}
+                            <View style={styles.row}>
+                                <View style={styles.halfField}>
+                                    <Text style={styles.fieldLabel}>Location</Text>
+                                    <View style={styles.readOnlyField}>
+                                        <Text style={styles.readOnlyText}>{location}</Text>
+                                    </View>
+                                </View>
+                                <View style={styles.halfField}>
+                                    <Text style={styles.fieldLabel}>Severity</Text>
+                                    <View style={[styles.readOnlyField, { backgroundColor: severityColor }]}>
+                                        <Text style={[styles.readOnlyText, styles.whiteText]}>{severity}</Text>
+                                    </View>
                                 </View>
                             </View>
-                            <View style={styles.halfField}>
-                                <Text style={styles.fieldLabel}>Pts Lost (Raw)</Text>
-                                <View style={styles.readOnlyField}>
-                                    <Text style={styles.readOnlyText}>{scoringResult?.ptsLostRaw?.toFixed(2) || '0.00'}</Text>
-                                </View>
-                            </View>
-                        </View>
 
-                        {/* Pts Lost and Possible Score Row */}
-                        <View style={styles.row}>
-                            <View style={styles.halfField}>
-                                <Text style={styles.fieldLabel}>Pts Lost</Text>
-                                <View style={styles.readOnlyField}>
-                                    <Text style={styles.readOnlyText}>{scoringResult?.ptsLost?.toFixed(2) || '0.00'}</Text>
+                            {/* All Sample and Pts Lost (Raw) Row */}
+                            <View style={styles.row}>
+                                <View style={styles.halfField}>
+                                    <Text style={styles.fieldLabel}>All Sample</Text>
+                                    <View style={styles.readOnlyField}>
+                                        <Text style={styles.readOnlyText}>{scoringResult?.allSample || totalSamples}</Text>
+                                    </View>
+                                </View>
+                                <View style={styles.halfField}>
+                                    <Text style={styles.fieldLabel}>Pts Lost (Raw)</Text>
+                                    <View style={styles.readOnlyField}>
+                                        <Text style={styles.readOnlyText}>{scoringResult?.ptsLostRaw?.toFixed(2) || '0.00'}</Text>
+                                    </View>
                                 </View>
                             </View>
-                            <View style={styles.halfField}>
-                                <Text style={styles.fieldLabel}>Possible Score</Text>
-                                <View style={styles.readOnlyField}>
-                                    <Text style={styles.readOnlyText}>{possibleScore}</Text>
-                                </View>
-                            </View>
-                        </View>
 
-                        {/* Max Pts Lost and Score Row */}
-                        <View style={styles.row}>
-                            <View style={styles.halfField}>
-                                <Text style={styles.fieldLabel}>Max Pts Lost</Text>
-                                <View style={styles.readOnlyField}>
-                                    <Text style={styles.readOnlyText}>{scoringResult?.maxPtsLost?.toFixed(2) || '5.50'}</Text>
+                            {/* Pts Lost and Possible Score Row */}
+                            <View style={styles.row}>
+                                <View style={styles.halfField}>
+                                    <Text style={styles.fieldLabel}>Pts Lost</Text>
+                                    <View style={styles.readOnlyField}>
+                                        <Text style={styles.readOnlyText}>{scoringResult?.ptsLost?.toFixed(2) || '0.00'}</Text>
+                                    </View>
+                                </View>
+                                <View style={styles.halfField}>
+                                    <Text style={styles.fieldLabel}>Possible Score</Text>
+                                    <View style={styles.readOnlyField}>
+                                        <Text style={styles.readOnlyText}>{possibleScore}</Text>
+                                    </View>
                                 </View>
                             </View>
-                            <View style={styles.halfField}>
-                                <Text style={styles.fieldLabel}>Score</Text>
-                                <View style={[styles.readOnlyField, scoreStatus && { borderColor: scoreStatus.color, borderWidth: 2 }]}>
-                                    <Text style={[styles.readOnlyText, styles.scoreText, scoreStatus && { color: scoreStatus.color }]}>
-                                        {scoringResult?.score?.toFixed(2) || possibleScore.toFixed(2)}
-                                    </Text>
-                                </View>
-                            </View>
-                        </View>
 
-                        {/* # of Deficiencies */}
-                        <View style={styles.fullField}>
-                            <Text style={styles.fieldLabel}># of Deficiencies</Text>
-                            {Platform.OS === 'ios' ? (
-                                <TouchableOpacity
-                                    style={styles.deficiencyDropdown}
-                                    onPress={() => setShowDeficiencyPicker(true)}
-                                >
-                                    <Text style={styles.deficiencyText}>{deficiencies}</Text>
-                                    <Ionicons name="chevron-down" size={20} color="#666666" />
-                                </TouchableOpacity>
-                            ) : (
-                                <View style={styles.pickerContainer}>
-                                    <Picker
-                                        selectedValue={deficiencies}
-                                        onValueChange={(value) => setDeficiencies(value)}
-                                        style={styles.picker}
+                            {/* Max Pts Lost and Score Row */}
+                            <View style={styles.row}>
+                                <View style={styles.halfField}>
+                                    <Text style={styles.fieldLabel}>Max Pts Lost</Text>
+                                    <View style={styles.readOnlyField}>
+                                        <Text style={styles.readOnlyText}>{scoringResult?.maxPtsLost?.toFixed(2) || '5.50'}</Text>
+                                    </View>
+                                </View>
+                                <View style={styles.halfField}>
+                                    <Text style={styles.fieldLabel}>Score</Text>
+                                    <View style={[styles.readOnlyField, scoreStatus && { borderColor: scoreStatus.color, borderWidth: 2 }]}>
+                                        <Text style={[styles.readOnlyText, styles.scoreText, scoreStatus && { color: scoreStatus.color }]}>
+                                            {scoringResult?.score?.toFixed(2) || possibleScore.toFixed(2)}
+                                        </Text>
+                                    </View>
+                                </View>
+                            </View>
+
+                            {/* # of Deficiencies */}
+                            <View style={styles.fullField}>
+                                <Text style={styles.fieldLabel}># of Deficiencies</Text>
+                                {Platform.OS === 'ios' ? (
+                                    <TouchableOpacity
+                                        style={styles.deficiencyDropdown}
+                                        onPress={() => setShowDeficiencyPicker(true)}
                                     >
-                                        {DEFICIENCY_OPTIONS.map((option) => (
-                                            <Picker.Item
-                                                key={option.value}
-                                                label={option.label}
-                                                value={option.value}
-                                            />
-                                        ))}
-                                    </Picker>
-                                </View>
-                            )}
-                        </View>
-                    </ScrollView>
+                                        <Text style={styles.deficiencyText}>{deficiencies}</Text>
+                                        <Ionicons name="chevron-down" size={20} color="#666666" />
+                                    </TouchableOpacity>
+                                ) : (
+                                    <View style={styles.pickerContainer}>
+                                        <Picker
+                                            selectedValue={deficiencies}
+                                            onValueChange={(value) => setDeficiencies(value)}
+                                            style={styles.picker}
+                                        >
+                                            {DEFICIENCY_OPTIONS.map((option) => (
+                                                <Picker.Item
+                                                    key={option.value}
+                                                    label={option.label}
+                                                    value={option.value}
+                                                />
+                                            ))}
+                                        </Picker>
+                                    </View>
+                                )}
+                            </View>
+                        </ScrollView>
 
-                    {/* Footer Buttons */}
-                    <View style={styles.footer}>
-                        <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
-                            <Text style={styles.cancelButtonText}>Cancel</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-                            <Text style={styles.saveButtonText}>Save</Text>
-                        </TouchableOpacity>
+                        {/* Footer Buttons */}
+                        <View style={styles.footer}>
+                            <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
+                                <Text style={styles.cancelButtonText}>Cancel</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+                                <Text style={styles.saveButtonText}>Save</Text>
+                            </TouchableOpacity>
+                        </View>
                     </View>
                 </View>
-            </View>
             </ModalZoomWrapper>
 
-            {/* iOS Deficiency Picker Modal */
+            {/* iOS Deficiency Picker Modal */}
             {Platform.OS === 'ios' && (
                 <Modal
                     visible={showDeficiencyPicker}

@@ -23,6 +23,7 @@ import {
   getCompletedUnits,
   resetPropertyInspectionState,
 } from '../utils/unitInspectionStorage';
+import { globalInspectionProgress } from '../utils/globalState';
 
 type PropertyInfoScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -80,9 +81,22 @@ const PropertyInfoScreen: React.FC<Props> = ({ navigation, route }) => {
     return unsubscribe;
   }, [navigation, loadCompletedUnits]);
 
-  const isUnitCompleted = (unitName: string) => completedUnits.includes(unitName);
+  const isUnitCompleted = (unitName: string) => {
+    if (completedUnits.includes(unitName)) return true;
 
-  const completedCount = completedUnits.filter(u => unitNames.includes(u)).length;
+    // Check if it has any manual inspection responses in global state
+    try {
+      const inspectKey = `inspection_responses_${propertyId}_${buildingId}_Unit_${unitName}`;
+      const unData = globalInspectionProgress[inspectKey];
+      if (unData && Object.keys(unData).length > 0) {
+        return true;
+      }
+    } catch (e) { }
+
+    return false;
+  };
+
+  const completedCount = unitNames.filter(u => isUnitCompleted(u)).length;
   const totalCount = unitNames.length;
   const allCompleted = completedCount === totalCount && totalCount > 0;
   const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
@@ -117,7 +131,8 @@ const PropertyInfoScreen: React.FC<Props> = ({ navigation, route }) => {
   const navigateToInspection = (unitName: string) => {
     navigation.navigate('LocationInspection', {
       property,
-      selectedUnits: [unitName],
+      selectedUnits: unitNames,
+      currentUnit: unitName,
       buildingId,
       location: 'Unit',
     });
