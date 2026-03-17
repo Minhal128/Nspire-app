@@ -601,7 +601,7 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
               <Ionicons name="menu" size={28} color="#1F2937" />
             </TouchableOpacity>
             <Image
-              source={require('../../logo.png')}
+              source={require('../../inspire_logo.png')}
               style={styles.headerLogo}
               resizeMode="contain"
             />

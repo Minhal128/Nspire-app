@@ -4,12 +4,12 @@
     "slug": "inspire-app",
     "version": "1.0.0",
     "orientation": "default",
-    "icon": "./logo.png",
+    "icon": "./inspire_logo.png",
     "userInterfaceStyle": "automatic",
     "runtimeVersion": "1.0.0",
     "scheme": "inspire",
     "splash": {
-      "image": "./logo.png",
+      "image": "./inspire_logo.png",
       "resizeMode": "contain",
       "backgroundColor": "#97F0FF"
     },
@@ -33,7 +33,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./logo.png",
+        "foregroundImage": "./inspire_logo.png",
         "backgroundColor": "#97F0FF"
       },
       "package": "com.inspire.app",
@@ -76,7 +76,7 @@
       }
     },
     "web": {
-      "favicon": "./logo.png",
+      "favicon": "./inspire_logo.png",
       "bundler": "metro"
     },
     "plugins": [

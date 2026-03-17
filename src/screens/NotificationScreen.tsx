@@ -250,7 +250,7 @@ export default function NotificationScreen({ navigation }: NotificationScreenPro
             <Ionicons name="arrow-back" size={28} color="#1F2937" />
           </TouchableOpacity>
           <Image
-            source={require("../../logo.png")}
+            source={require("../../inspire_logo.png")}
             style={styles.headerLogo}
             resizeMode="contain"
           />

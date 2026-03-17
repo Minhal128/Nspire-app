@@ -323,7 +323,7 @@ export default function SignUpScreen({ navigation, route }: SignUpScreenProps) {
         <View style={styles.content}>
           {/* Logo */}
           <Image
-            source={require("../../logo.png")}
+            source={require("../../inspire_logo.png")}
             style={styles.logo}
             resizeMode="contain"
           />
