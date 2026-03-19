@@ -94,7 +94,7 @@ export default function ManagementDetailedReportScreen({ navigation, route }: Ma
           </View>
 
           {/* Table Rows - EXACT SAME AS PDF */}
-          {report.deficiencies.map((deficiency, index) => (
+          {report.deficiencies.map((deficiency: any, index: number) => (
             <View key={deficiency.id} style={[styles.tableRow, index % 2 === 0 && styles.evenRow]}>
               {/* Deficiency Picture */}
               <View style={[styles.cell, { width: 110 }]}>

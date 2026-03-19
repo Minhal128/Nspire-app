@@ -421,7 +421,7 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
       // Use NSPIRE sampling for all property sizes
       if (isRandomSelectionAvailable(totalUnits)) {
         try {
-          const propertyId = property._id || property.id || `property_${Date.now()}`;
+          const propertyId = property._id || (property as any).id || `property_${Date.now()}`;
           const sample = generateRandomUnitSample(totalUnits, propertyId);
           unitsToInspect = sample.unitsToInspect;
           setSelectedUnits(sample.selectedUnits);

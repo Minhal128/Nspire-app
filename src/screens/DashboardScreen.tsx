@@ -369,7 +369,7 @@ export default function DashboardScreen({
 
   const handleEditProperty = () => {
     setActionModalVisible(false);
-    navigation.navigate("EditProperty", {
+    navigation.navigate("EditProperty" as any, {
       property: selectedProperty,
       onUpdate: (updatedProperty: Property) => {
         // Update the property in the local state immediately

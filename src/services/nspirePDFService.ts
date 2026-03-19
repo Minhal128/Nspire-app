@@ -1207,28 +1207,28 @@ const generateDeficiencyTable = (deficiencies: DeficiencyEntry[], options: PDFGe
         </thead>
         <tbody>
           ${deficiencies.map((def, idx) => {
-            const isRepeat = def.repeatIndicator || repeatFlags[idx];
-            return `
+    const isRepeat = def.repeatIndicator || repeatFlags[idx];
+    return `
             <tr class="avoid-break">
               <td class="details-cell">${(def as any).isGeneralComment ? '-' : cleanJsonContent(def.deficiencyDetails)}</td>
               <td class="comments-cell" style="text-align:center;vertical-align:middle;">${(def as any).isGeneralComment ? '-' : makeCodeRefLink(def.nspireCode, def.codeReference)}</td>
               <td>
                 ${options.includeImages && def.imageUri
-      ? (def.imageUri.startsWith('data:') || def.imageUri.startsWith('http'))
-        ? `<img src="${def.imageUri}" alt="Deficiency Image" class="deficiency-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+        ? (def.imageUri.startsWith('data:') || def.imageUri.startsWith('http'))
+          ? `<img src="${def.imageUri}" alt="Deficiency Image" class="deficiency-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
                          <div class="image-placeholder" style="display: none;">
                            <div class="placeholder-icon">📷</div>
                            <div class="placeholder-text">Image Failed to Load</div>
                          </div>`
-        : `<div class="image-placeholder">
+          : `<div class="image-placeholder">
                            <div class="placeholder-icon">📷</div>
                            <div class="placeholder-text">Image Processing Failed</div>
                          </div>`
-      : `<div class="image-placeholder">
+        : `<div class="image-placeholder">
                        <div class="placeholder-icon">📷</div>
                        <div class="placeholder-text">No Image Available</div>
                      </div>`
-    }
+      }
               </td>
               <td class="deduction-cell">${(def as any).isGeneralComment ? '-' : def.deductionPts}</td>
               <td style="text-align: center;">
@@ -1240,7 +1240,7 @@ const generateDeficiencyTable = (deficiencies: DeficiencyEntry[], options: PDFGe
               <td style="vertical-align:top;padding:4px 6px;">${def.note || ''}</td>
             </tr>
           `;
-          }).join('')}
+  }).join('')}
         </tbody>
       </table>
     </div>
@@ -1697,6 +1697,7 @@ class NSPIREPDFReportService {
       deficiencies: [
         {
           id: '1',
+          deficiencyQRId: '',
           imageUri: '',
           imagePlaceholder: true,
           building: 'A',
@@ -1718,6 +1719,7 @@ class NSPIREPDFReportService {
           status: 'Open',
         },
         {
+          deficiencyQRId: '',
           id: '2',
           imageUri: '',
           imagePlaceholder: true,
@@ -1740,6 +1742,7 @@ class NSPIREPDFReportService {
           status: 'In Progress',
         },
         {
+          deficiencyQRId: '',
           id: '3',
           imageUri: '',
           imagePlaceholder: true,
@@ -1760,6 +1763,7 @@ class NSPIREPDFReportService {
           status: 'Open',
         },
         {
+          deficiencyQRId: '',
           id: '4',
           imageUri: '',
           imagePlaceholder: true,
@@ -1781,6 +1785,7 @@ class NSPIREPDFReportService {
           status: 'Open',
         },
         {
+          deficiencyQRId: '',
           id: '5',
           imageUri: '',
           imagePlaceholder: true,

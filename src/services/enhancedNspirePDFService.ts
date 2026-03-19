@@ -498,7 +498,7 @@ function generateEnhancedFooter(options: PDFGenerationOptions): string {
  * Generate complete lightweight NSPIRE Report HTML.
  * Designed to stay under ~20KB for reliable mobile WebView PDF conversion.
  */
-export function generateEnhancedNSPIREReportHTML(
+function generateEnhancedNSPIREReportHTML(
   report: NSPIREInspectionReport,
   options: PDFGenerationOptions = DEFAULT_PDF_OPTIONS,
   imageMap: Map<string, string> = new Map()
@@ -721,19 +721,19 @@ class EnhancedNSPIREPDFReportService {
 
     // Calculate enhanced summary statistics
     const summary: DeficiencySummary = {
-      lifeThreatening: deficiencies.filter(d => d.severity === 'Life-Threatening').length,
-      severe: deficiencies.filter(d => d.severity === 'Severe').length,
-      moderate: deficiencies.filter(d => d.severity === 'Moderate').length,
-      low: deficiencies.filter(d => d.severity === 'Low').length,
+      lifeThreatening: deficiencies.filter((d: any) => d.severity === 'Life-Threatening').length,
+      severe: deficiencies.filter((d: any) => d.severity === 'Severe').length,
+      moderate: deficiencies.filter((d: any) => d.severity === 'Moderate').length,
+      low: deficiencies.filter((d: any) => d.severity === 'Low').length,
       total: deficiencies.length,
       byBuilding: {},
       byCategory: {},
-      repeatDeficiencies: deficiencies.filter(d => d.repeatIndicator).length,
-      newDeficiencies: deficiencies.filter(d => !d.repeatIndicator).length
+      repeatDeficiencies: deficiencies.filter((d: any) => d.repeatIndicator).length,
+      newDeficiencies: deficiencies.filter((d: any) => !d.repeatIndicator).length
     };
 
     // Calculate final score
-    const totalDeductions = deficiencies.reduce((sum, def) => sum + def.deductionPts, 0);
+    const totalDeductions = deficiencies.reduce((sum: number, def: any) => sum + def.deductionPts, 0);
     const finalScore = Math.max(0, 100 - totalDeductions);
 
     return {
@@ -763,8 +763,8 @@ class EnhancedNSPIREPDFReportService {
       },
 
       inspectionData: [
-        { type: 'Buildings', propertyTotal: data.property?.buildings || 1, sampleSize: 1, totalUnitsInspected: 1 },
-        { type: 'Units', propertyTotal: data.property?.units || 1, sampleSize: 1, totalUnitsInspected: 1 }
+        { type: 'Building' as any, propertyTotal: data.property?.buildings || 1, sampleSize: 1, totalUnitsInspected: 1 },
+        { type: 'Unit' as any, propertyTotal: data.property?.units || 1, sampleSize: 1, totalUnitsInspected: 1 }
       ],
 
       occupancyInfo: {
@@ -849,4 +849,4 @@ class EnhancedNSPIREPDFReportService {
 export const enhancedNspirePDFService = new EnhancedNSPIREPDFReportService();
 
 // Export class for custom instantiation
-export { EnhancedNSPIREPDFReportService, generateEnhancedNSPIREReportHTML };
+export { EnhancedNSPIREPDFReportService }; export { generateEnhancedNSPIREReportHTML as makeHTML };

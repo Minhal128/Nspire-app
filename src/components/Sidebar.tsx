@@ -23,13 +23,12 @@ export default function Sidebar({ onClose, onNavigate, onLogout, userType }: Sid
         { id: 'Others', label: 'Others', icon: 'people-outline' as const },
       ];
     }
-    
+
     // Default menu for Inspector and Management
     return [
       { id: 'Dashboard', label: 'Dashboard', icon: 'speedometer-outline' as const },
       { id: 'MyInspections', label: 'My Inspections', icon: 'business-outline' as const },
       { id: 'Reports', label: 'Reports', icon: 'reader-outline' as const },
-      { id: 'InspectionStatus', label: 'Inspection Status', icon: 'list-outline' as const },
       { id: 'Analytics', label: 'Analytics/Insights', icon: 'stats-chart-outline' as const },
       { id: 'Settings', label: 'Settings', icon: 'settings-outline' as const },
     ];

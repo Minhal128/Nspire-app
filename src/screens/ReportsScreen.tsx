@@ -20,6 +20,10 @@ import Sidebar from '../components/Sidebar';
 import IOSPickerModal from '../components/IOSPickerModal';
 import { inspectionService, propertyService, authService } from '../services';
 import { Inspection, Property } from '../services/api';
+import { WebView } from 'react-native-webview';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { generateNSPIREReport } from '../utils/nspireReportUtils';
+import { generateNSPIREReportHTML, nspirePDFService } from '../services/nspirePDFService';
 
 // Status options for picker
 const STATUS_OPTIONS = [
@@ -58,6 +62,9 @@ interface Report {
 
 export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreenProps) {
   const [sidebarVisible, setSidebarVisible] = useState(false);
+  const [previewModalVisible, setPreviewModalVisible] = useState(false);
+  const [previewHtml, setPreviewHtml] = useState('');
+  const [currentReportTitle, setCurrentReportTitle] = useState('');
   const [searchText, setSearchText] = useState('');
   const [propertyName, setPropertyName] = useState('');
   const [dateRange, setDateRange] = useState('');
@@ -121,10 +128,10 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
         }));
 
         // Handle property as either populated object or string ID
-        const propertyId = typeof inspection.property === 'object' 
-          ? (inspection.property as any)?._id 
+        const propertyId = typeof inspection.property === 'object'
+          ? (inspection.property as any)?._id
           : inspection.property;
-        
+
         const property = (propertiesData.properties || propertiesData || []).find(
           (p: Property) => p._id === propertyId
         );
@@ -136,14 +143,14 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
         // Get findings/deficiencies data
         const findings = (inspection as any).findings || (inspection as any).deficiencies || [];
         const totalDeficiencies = findings.length;
-        const criticalDeficiencies = findings.filter((f: any) => 
+        const criticalDeficiencies = findings.filter((f: any) =>
           f.severity === 'critical' || f.severity === 'life-threatening' || f.severity === 'severe'
         ).length;
 
         return {
           id: inspection._id,
-          property: typeof inspection.property === 'object' 
-            ? (inspection.property as any)?.name 
+          property: typeof inspection.property === 'object'
+            ? (inspection.property as any)?.name
             : (property?.name || 'Unknown Property'),
           propertyId: propertyId || '',
           unit: (inspection as any).unit || 'All Units',
@@ -161,6 +168,50 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
           rawData: inspection,
         };
       });
+
+      // Add Local Drafts from AsyncStorage
+      try {
+        const keys = await AsyncStorage.getAllKeys();
+        const draftKeys = keys.filter(k => k.startsWith('saved_inspection_'));
+
+        for (const key of draftKeys) {
+          const raw = await AsyncStorage.getItem(key);
+          if (raw) {
+            const draftData = JSON.parse(raw);
+
+            const draftFindings = draftData.findings || draftData.deficiencies || [];
+            const dTotalDef = draftFindings.length;
+            const dCritDef = draftFindings.filter((f: any) =>
+              f.severity === 'critical' || f.severity === 'life-threatening' || f.severity === 'severe'
+            ).length;
+
+            const keyParts = key.replace('saved_inspection_', '').split('_');
+            const extractedPropertyId = keyParts[0];
+
+            const foundProp = (propertiesData.properties || propertiesData || []).find((p: any) => p._id === extractedPropertyId || p.id === extractedPropertyId);
+            const resolvedPropName = foundProp?.name || draftData.property?.name || 'Local Draft';
+
+            mappedReports.push({
+              id: draftData._id || 'draft_' + key,
+              property: resolvedPropName,
+              propertyId: extractedPropertyId || draftData.property?._id || '',
+              unit: draftData.unit || 'All Units',
+              inspector: storedUser?.fullName || 'Draft Inspector',
+              date: new Date(draftData.updatedAt || draftData.createdAt || draftData.savedAt || Date.now()).toLocaleDateString('en-US', {
+                month: 'short', day: 'numeric', year: 'numeric'
+              }) + ' (Draft)',
+              complianceScore: 'Unpaid',
+              inspectionType: draftData.inspectionType || 'Draft Inspection',
+              totalDeficiencies: dTotalDef,
+              criticalDeficiencies: dCritDef,
+              notes: draftData.notes || 'Draft from local storage',
+              rawData: { ...draftData, property: foundProp || draftData.property || { _id: extractedPropertyId, name: resolvedPropName } },
+            });
+          }
+        }
+      } catch (storageErr) {
+        console.log('Error loading local drafts:', storageErr);
+      }
 
       // Sort by date (newest first)
       mappedReports.sort((a, b) => {
@@ -245,7 +296,7 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
       const reportDate = new Date(report.date);
       const now = new Date();
       let cutoffDate = new Date();
-      
+
       switch (dateRange) {
         case '7days':
           cutoffDate.setDate(now.getDate() - 7);
@@ -259,12 +310,71 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
         default:
           cutoffDate = new Date(0); // Include all dates
       }
-      
+
       matchesDateRange = reportDate >= cutoffDate;
     }
 
     return matchesSearch && matchesProperty && matchesStatus && matchesDateRange;
   });
+
+  const handleViewReport = async (report: Report) => {
+    try {
+      setLoading(true);
+      setCurrentReportTitle(`${report.property} Report`);
+
+      const reportData = { ...report.rawData } as any;
+      if (typeof reportData.property === 'string') {
+        reportData.property = { _id: reportData.property, name: report.property };
+      }
+
+      reportData.findings = reportData.findings || reportData.deficiencies || [];
+      reportData.inspectorName = report.inspector;
+
+      const nspireReport = generateNSPIREReport(reportData);
+      const html = await nspirePDFService.generateHTMLPreviewAsync(nspireReport as any, {
+        includeImages: true,
+        includeDetailedDeficiencies: true
+      } as any);
+
+      setPreviewHtml(html);
+      setPreviewModalVisible(true);
+    } catch (err: any) {
+      console.error('Failed to generate preview', err);
+      Alert.alert('Error', `Failed to generate report preview: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleShareReport = async (report: Report) => {
+    try {
+      setLoading(true);
+
+      const reportData = { ...report.rawData } as any;
+      if (typeof reportData.property === 'string') {
+        reportData.property = { _id: reportData.property, name: report.property };
+      }
+
+      reportData.findings = reportData.findings || reportData.deficiencies || [];
+      reportData.inspectorName = report.inspector;
+
+      const nspireReport = generateNSPIREReport(reportData);
+
+      const result = await nspirePDFService.generateAndSharePDF(nspireReport as any, {
+        includeImages: true,
+        includeDetailedDeficiencies: true
+      } as any);
+
+      if (!result.success) {
+        Alert.alert('Share Failed', result.error || 'Could not share the report.');
+      }
+    } catch (err: any) {
+      console.error('Failed to share report', err);
+      Alert.alert('Error', `Failed to share report: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -488,14 +598,14 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
                   <View style={styles.actionButtons}>
                     <TouchableOpacity
                       style={styles.iconButton}
-                      onPress={() => navigation.navigate('ReportDetail' as never, { report } as never)}
+                      onPress={() => handleViewReport(report)}
                     >
                       <Ionicons name="document-text-outline" size={24} color="#0E7490" />
                       <Text style={styles.iconButtonLabel}>View Report</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={styles.iconButton}
-                      onPress={() => console.log('Share report:', report.property)}
+                      onPress={() => handleShareReport(report)}
                     >
                       <Ionicons name="share-social-outline" size={24} color="#0E7490" />
                       <Text style={styles.iconButtonLabel}>Share</Text>
@@ -535,6 +645,36 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
         onSelect={setStatus}
         onClose={() => setStatusPickerVisible(false)}
       />
+      <Modal
+        visible={previewModalVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setPreviewModalVisible(false)}
+      >
+        <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }}>
+          <View style={{
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: 16,
+            borderBottomWidth: 1,
+            borderBottomColor: '#E5E7EB'
+          }}>
+            <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#1F2937' }} numberOfLines={1}>
+              {currentReportTitle || 'Report Preview'}
+            </Text>
+            <TouchableOpacity onPress={() => setPreviewModalVisible(false)}>
+              <Ionicons name="close" size={28} color="#6B7280" />
+            </TouchableOpacity>
+          </View>
+          <WebView
+            source={{ html: previewHtml }}
+            style={{ flex: 1 }}
+            originWhitelist={['*']}
+            showsVerticalScrollIndicator={true}
+          />
+        </SafeAreaView>
+      </Modal>
     </>
   );
 }

@@ -107,7 +107,7 @@ const convertInspectionToNSPIREReport = (inspection: Report): NSPIREInspectionRe
     deficiencies = findingsArray.map((finding: any, index: number) => {
       // Enhanced image URL mapping for Cloudinary
       let imageUri = '';
-      
+
       // Priority order for image URL detection
       if (finding.imageUrl && finding.imageUrl.includes('cloudinary.com')) {
         imageUri = finding.imageUrl;
@@ -132,6 +132,7 @@ const convertInspectionToNSPIREReport = (inspection: Report): NSPIREInspectionRe
       }
 
       return {
+        deficiencyQRId: '',
         id: finding.id || `DEF-${index + 1}`,
         imageUri: imageUri,
         building: finding.building || 'A',
@@ -158,7 +159,7 @@ const convertInspectionToNSPIREReport = (inspection: Report): NSPIREInspectionRe
     deficiencies = deficienciesArray.map((deficiency: any, index: number) => {
       // Enhanced image URL mapping for Cloudinary
       let imageUri = '';
-      
+
       // Priority order for image URL detection
       if (deficiency.photos && deficiency.photos.length > 0) {
         const photo = deficiency.photos[0];
@@ -182,6 +183,7 @@ const convertInspectionToNSPIREReport = (inspection: Report): NSPIREInspectionRe
       }
 
       return {
+        deficiencyQRId: '',
         id: deficiency.id || deficiency._id || `DEF-${index + 1}`,
         imageUri: imageUri,
         building: deficiency.building || 'A',
@@ -437,13 +439,21 @@ export default function ManagementReportsScreen({ navigation }: ManagementReport
   const getStatusStyle = (status: string, result?: string) => {
     const finalStatus = result || status;
     if (finalStatus === 'completed' || finalStatus === 'pass' || finalStatus === 'Compliant' || finalStatus === 'paid' || finalStatus === 'Paid') {
-      return { color: '#10B981', bg: '#D1FAE5' };
+      return {
+        deficiencyQRId: '', color: '#10B981', bg: '#D1FAE5'
+      };
     } else if (finalStatus === 'failed' || finalStatus === 'fail' || finalStatus === 'Non-Compliant' || finalStatus === 'unpaid' || finalStatus === 'Unpaid') {
-      return { color: '#EF4444', bg: '#FEE2E2' };
+      return {
+        deficiencyQRId: '', color: '#EF4444', bg: '#FEE2E2'
+      };
     } else if (finalStatus === 'in-progress' || finalStatus === 'pending') {
-      return { color: '#F59E0B', bg: '#FEF3C7' };
+      return {
+        deficiencyQRId: '', color: '#F59E0B', bg: '#FEF3C7'
+      };
     }
-    return { color: '#6B7280', bg: '#F3F4F6' };
+    return {
+      deficiencyQRId: '', color: '#6B7280', bg: '#F3F4F6'
+    };
   };
 
   const formatDate = (dateString: string) => {
@@ -675,7 +685,7 @@ export default function ManagementReportsScreen({ navigation }: ManagementReport
 
       // Get full inspection data with findings
       let fullInspectionData = null;
-      
+
       // First try the admin route
       try {
         const { api } = await import('../services');

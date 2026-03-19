@@ -126,13 +126,13 @@ export const convertFindingsToDeficiencies = (
 ): DeficiencyEntry[] => {
   const now = new Date();
 
-  return findings.map((finding, index) => {
+  return findings.map((finding: any, index: number) => {
+    finding.deficiencyQRId = '';
     const severity = mapFindingSeverityToNSPIRE(finding.severity);
     const nspireCode = finding.nspireCode || mapCategoryToNSPIRECode(finding.category);
 
     return {
-      id: finding.id || `DEF-${index + 1}`,
-      imageUri: finding.imageUri || '',
+      id: finding.id || `DEF-${index + 1}`, deficiencyQRId: '', imageUri: finding.imageUri || '',
       imagePlaceholder: !finding.imageUri,
       building: propertyInfo?.building || 'A',
       unit: propertyInfo?.unit || '-',
