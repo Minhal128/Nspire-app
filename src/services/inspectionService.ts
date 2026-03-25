@@ -90,7 +90,7 @@ class InspectionService {
   async getInspections(filters?: InspectionFilters): Promise<{ success: boolean; inspections: Inspection[]; pagination: any }> {
     try {
       const params = new URLSearchParams();
-      
+
       if (filters) {
         if (filters.status) params.append('status', filters.status);
         if (filters.property) params.append('property', filters.property);
@@ -100,7 +100,7 @@ class InspectionService {
 
       const queryString = params.toString();
       const endpoint = queryString ? `/inspections?${queryString}` : '/inspections';
-      
+
       console.log('Fetching inspections from endpoint:', endpoint);
       const response = await api.get<{ success: boolean; inspections: Inspection[]; pagination: any }>(endpoint);
       console.log('Inspections response:', JSON.stringify(response).substring(0, 200));
@@ -113,12 +113,25 @@ class InspectionService {
   }
 
   /**
+   * Get all inspection progress drafts for the current inspector
+   */
+  async getAllProgress(): Promise<{ success: boolean; progress: any[] }> {
+    try {
+      const response = await api.get<{ success: boolean; progress: any[] }>('/inspections/progress');
+      return response;
+    } catch (error: any) {
+      console.error('Error fetching all progress:', error.message);
+      return { success: false, progress: [] };
+    }
+  }
+
+  /**
    * Get all inspections across the system (for management portal)
    */
   async getAllInspections(filters?: InspectionFilters): Promise<{ success: boolean; inspections: Inspection[]; pagination: any }> {
     try {
       const params = new URLSearchParams();
-      
+
       if (filters) {
         if (filters.status) params.append('status', filters.status);
         if (filters.property) params.append('property', filters.property);
@@ -128,7 +141,7 @@ class InspectionService {
 
       const queryString = params.toString();
       const endpoint = queryString ? `/admin/inspections?${queryString}` : '/admin/inspections';
-      
+
       console.log('Fetching all inspections from endpoint:', endpoint);
       const response = await api.get<{ success: boolean; inspections: Inspection[]; pagination: any }>(endpoint);
       console.log('All inspections response:', JSON.stringify(response).substring(0, 200));

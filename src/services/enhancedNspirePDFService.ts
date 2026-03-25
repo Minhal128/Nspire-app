@@ -16,6 +16,7 @@ import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Platform } from 'react-native';
 import { INSPIRE_LOGO_BASE64 } from '../constants/inspireLogo';
+import { API_CONFIG } from './api';
 import {
   NSPIREInspectionReport,
   DeficiencyEntry,
@@ -68,11 +69,11 @@ function esc(str: string): string {
 }
 
 /** Build a clickable data URI link showing the short NSPIRE code; clicking opens a clean HTML page with the full codeReference text */
-function makeCodeRefLink(nspireCode: string, codeReference?: string): string {
-  const shortCode = esc(nspireCode || '-');
-  if (!codeReference) return shortCode;
-  const url = `https://inspirebackend-eight.vercel.app/api/code-ref?code=${encodeURIComponent(nspireCode)}&ref=${encodeURIComponent(codeReference)}`;
-  return `<a href="${url}" style="color:#0E7490;font-weight:600;text-decoration:underline;">${shortCode}</a>`;
+function makeCodeRefLink(nspireCode: string, codeReference?: any): string {
+  const shortCode = esc(nspireCode && nspireCode !== '-' ? nspireCode : 'HS-12');
+  const rawRef = typeof codeReference === 'string' ? codeReference : (codeReference?.text || codeReference?.source || '');
+  const url = `${API_CONFIG.BASE_URL}/code-ref?code=${encodeURIComponent(shortCode)}&ref=${encodeURIComponent(rawRef)}`;
+  return `<a href="${url}" style="color:#0E7490;font-weight:600;text-decoration:underline;" target="_blank">${shortCode}</a>`;
 }
 
 /** Per-image fetch timeout (8 seconds) */
@@ -93,7 +94,7 @@ async function fetchImageAsBase64(url: string): Promise<string> {
     if (!result || !('uri' in result)) return '';
     const b64 = await FileSystem.readAsStringAsync(result.uri, { encoding: FileSystem.EncodingType.Base64 });
     // Clean up temp file (fire-and-forget)
-    FileSystem.deleteAsync(tmpPath, { idempotent: true }).catch(() => {});
+    FileSystem.deleteAsync(tmpPath, { idempotent: true }).catch(() => { });
     if (!b64 || b64.length < 100) return '';
     // Detect mime type from URL or default to jpeg
     const ext = url.toLowerCase().includes('.png') ? 'png' : 'jpeg';
@@ -353,7 +354,7 @@ function generateEnhancedDeficiencyTable(deficiencies: DeficiencyEntry[], imageM
   interface GroupedDef { def: DeficiencyEntry; isRepeat: boolean; }
   const groups = new Map<string, GroupedDef[]>();
   deficiencies.forEach((def, idx) => {
-    const building = def.building || 'Building A';
+    const building = (def.building && def.building !== '-') ? def.building : 'Building';
     const unit = def.unit && def.unit !== '-' ? def.unit : '';
     const area = def.area || '';
 
@@ -495,6 +496,218 @@ function generateEnhancedFooter(options: PDFGenerationOptions): string {
 }
 
 /**
+ * In-progress report deficiency table generator using standard UI format
+ */
+function generateInProgressDeficiencyTable(
+  report: any,
+  imageMap: Map<string, string>
+): string {
+  const m = report.metadata;
+  const pData = m.progressData || {
+    outsideProgress: 0, insideProgress: 0, unitProgress: 0,
+    outsideTotal: 1, insideTotal: 1, unitTotal: 1,
+    buildingProgressMap: {}
+  };
+
+  const bMap = pData.buildingProgressMap || {};
+
+  const esc = (txt: string | undefined | null) => (txt || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+  const makeCodeRefLink = (nspireCode: string, codeReference?: any) => {
+    const rawRef = typeof codeReference === 'string' ? codeReference : (codeReference?.text || codeReference?.source || '');
+    let lbl = nspireCode && nspireCode !== '-' ? nspireCode : (rawRef ? 'How to Inspect' : '-');
+    if (!rawRef && lbl === '-') return '-';
+    if (!rawRef) return esc(lbl);
+    const url = `${API_CONFIG.BASE_URL}/code-ref?code=${encodeURIComponent(lbl)}&ref=${encodeURIComponent(rawRef)}`;
+    return `<a href="${url}" style="color:#0E7490;font-weight:600;text-decoration:underline;cursor:pointer;" target="_blank" onclick="window.open('${url}'); return false;">${esc(lbl)}</a>`;
+  };
+
+  const deficiencies = report.deficiencies || [];
+  if (!deficiencies.length && Object.keys(bMap).length === 0) {
+    return `
+  <div>
+    <h3 class="section-title">Inspectable Areas Deficiencies</h3>
+    <table class="dt">
+      <thead>
+        <tr>
+          <th style="width:22%">Deficiency Details</th>
+          <th style="width:10%">Code of Reference</th>
+          <th style="width:16%">Deficiency Picture</th>
+          <th style="width:9%">Deduction Pts.</th>
+          <th style="width:11%">Repeat Indicator</th>
+          <th style="width:9%">Severity</th>
+          <th style="width:13%">Note</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td colspan="7" style="text-align:center;padding:20px;">No inspectable data available.</td></tr>
+      </tbody>
+    </table>
+  </div>`;
+  }
+
+  const detailsSeen = new Map<string, number>();
+  const repeatFlags = deficiencies.map((def: any) => {
+    const key = (def.deficiencyDetails || '').trim().toLowerCase();
+    if (!key) return false;
+    const count = detailsSeen.get(key) || 0;
+    detailsSeen.set(key, count + 1);
+    return count > 0;
+  });
+
+  interface GroupedDef { def: any; isRepeat: boolean; }
+  const buildingsMap = new Map<string, Map<string, GroupedDef[]>>();
+
+  // Create a bucket for every building that has deficiencies
+  deficiencies.forEach((def: any, idx: number) => {
+    const building = (def.building && def.building !== '-') ? def.building : 'Building';
+    if (!buildingsMap.has(building)) buildingsMap.set(building, new Map());
+
+    // Within building, segment by 'Outside', 'Inside', 'Units', or 'General Comment'
+    let area = def.area || '';
+    if (def.isGeneralComment) {
+      area = def.category || area || 'Other';
+    }
+
+    let subGroupKey = 'Other';
+    const lArea = area.toLowerCase();
+    if (lArea.includes('outside')) subGroupKey = 'Outside';
+    else if (lArea.includes('inside')) subGroupKey = 'Inside';
+    else if (lArea.includes('unit')) subGroupKey = 'Units';
+
+    const buildingGroups = buildingsMap.get(building)!;
+    if (!buildingGroups.has(subGroupKey)) buildingGroups.set(subGroupKey, []);
+    buildingGroups.get(subGroupKey)!.push({ def, isRepeat: def.repeatIndicator || repeatFlags[idx] });
+  });
+
+  // Add empty buildings from progress map
+  Object.keys(bMap).forEach((bName) => {
+    if (!buildingsMap.has(bName)) buildingsMap.set(bName, new Map());
+  });
+
+  // Sort Buildings alphabetically
+  const sortedBuildings = Array.from(buildingsMap.keys()).sort((a, b) => a.localeCompare(b));
+
+  let rows = '';
+
+  sortedBuildings.forEach(building => {
+    const bProgress = bMap[building] || { out: 0, in: 0, un: 0 };
+
+    const outPct = Math.min(100, Math.round((bProgress.out / (pData.outsideTotal || 1)) * 100));
+    const inPct = Math.min(100, Math.round((bProgress.in / (pData.insideTotal || 1)) * 100));
+    const unPct = Math.min(100, Math.round((bProgress.un / (pData.unitTotal || 1)) * 100));
+
+    const buildingGroups = buildingsMap.get(building)!;
+
+    // Enforce order: Outside -> Inside -> Units
+    const ordering = [
+      { key: 'Outside', pct: outPct },
+      { key: 'Inside', pct: inPct },
+      { key: 'Units', pct: unPct },
+      { key: 'Other', pct: null }
+    ];
+
+    let itemsShownForBuilding = false;
+
+    ordering.forEach(groupOrderDef => {
+      const items = buildingGroups.get(groupOrderDef.key) || [];
+
+      // We render a section if it has findings OR if it has SOME progress
+      if (items.length === 0 && (groupOrderDef.pct === 0 || groupOrderDef.pct === null)) {
+        return; // Skip completely empty & untouched sections
+      }
+
+      itemsShownForBuilding = true;
+      const displayGroupKey = groupOrderDef.key === 'Other'
+        ? 'General Comment'
+        : `${groupOrderDef.key} (Building - ${building})`;
+
+      rows += `\n<tr class="gh"><td colspan="7">${esc(displayGroupKey)}</td></tr>\n`;
+
+      if (items.length === 0) {
+        // Render dummy row for missing defects/photos
+        rows += `<tr class="avoid-break"><td colspan="7" style="text-align:center;font-style:italic;padding:10px;">In Progress - No Deficiencies Logged Yet</td></tr>\n`;
+      } else {
+        items.forEach(({ def, isRepeat }) => {
+          let imgSrc = '';
+          if (def.imageUri) {
+            if (def.imageUri.startsWith('data:')) {
+              imgSrc = def.imageUri;
+            } else {
+              imgSrc = imageMap.get(def.imageUri) || '';
+            }
+          }
+          const imgCell = imgSrc
+            ? `<img src="${imgSrc}" style="width:80px;height:60px;object-fit:cover;border:1px solid #000;display:block;margin:0 auto" />`
+            : `<div class="ip">Photo</div>`;
+
+          // Special handling for NO OD or General Comments
+          const isNoOD = def.title === 'No OD' || def.deficiencyName === 'No OD';
+          const isGC = !!def.isGeneralComment;
+
+          if (isNoOD) {
+            rows += `<tr class="avoid-break"><td colspan="7" style="text-align:center;font-weight:bold;padding:10px;">All NO OD (No Observable Deficiencies)</td></tr>\n`;
+          } else {
+            const detailText = def.deficiencyDetails || def.detail || def.description || 'No details available';
+            rows += `<tr class="avoid-break">
+    <td class="la">${isGC ? '-' : (def.deficiencyName && def.deficiencyName !== 'Deficiency' && def.deficiencyName !== 'General Comment' ? `<b>${esc(def.deficiencyName)}</b><br/><br/>` : '') + esc(detailText)}</td>
+    <td class="la" style="text-align:center;vertical-align:middle;cursor:pointer;">${isGC ? '-' : makeCodeRefLink(def.nspireCode, def.codeReference)}</td>
+    <td>${imgCell}</td>
+    <td>${isGC ? '-' : (def.deductionPts || '-')}</td>
+    <td>${isGC ? '-' : (isRepeat ? 'Repeat' : 'Not Repeat')}</td>
+    <td>${isGC ? '-' : esc(def.severity || '-')}</td>
+    <td class="la">${esc(def.note || def.comments || '-')}</td>
+    </tr>\n`;
+          }
+        });
+      }
+    });
+
+    if (!itemsShownForBuilding) {
+      rows += `\n<tr class="gh"><td colspan="7">Building - ${building}</td></tr>\n`;
+      rows += `<tr class="avoid-break"><td colspan="7" style="text-align:center;font-style:italic;padding:10px;">In Progress - No sections started yet</td></tr>\n`;
+    }
+  });
+
+  if (!rows) {
+    rows = '<tr><td colspan="7" style="text-align:center;padding:20px;">No inspectable areas data available.</td></tr>';
+  }
+
+  return `
+  <div>
+    <h3 class="section-title">Inspectable Areas Deficiencies</h3>
+    <table class="dt">
+      <thead>
+        <tr>
+          <th style="width:22%">Deficiency Details</th>
+          <th style="width:10%">Code of Reference</th>
+          <th style="width:16%">Deficiency Picture</th>
+          <th style="width:9%">Deduction Pts.</th>
+          <th style="width:11%">Repeat Indicator</th>
+          <th style="width:9%">Severity</th>
+          <th style="width:13%">Note</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows}
+      </tbody>
+    </table>
+  </div>`;
+}
+
+/**
+ * In-progress report template function
+ */
+function generateInProgressReportHTML(
+  report: NSPIREInspectionReport,
+  options: PDFGenerationOptions,
+  imageMap: Map<string, string>
+): string {
+  // Uses the EXACT SAME top-level UI, just replaces the deficiencies payload with the in-progress module grouping
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>NSPIRE Report (In-Progress)</title><style>${generateEnhancedStyles()}</style></head><body><div class="report-container">${generateEnhancedHeader(report.metadata)}${options.includeSummaryPage ? generateEnhancedSummaryPage(report.summary, report.categoryBreakdown, report.metadata, report.inspectionData, report.occupancyInfo, report.deficiencies) : ''}${options.includeDetailedDeficiencies ? generateInProgressDeficiencyTable(report, imageMap) : ''}${generateCertificatesTable()}${options.includeCertification && report.certification ? generateEnhancedCertificationSection(report.certification) : ''}${generateEnhancedFooter(options)}</div></body></html>`;
+}
+
+/**
  * Generate complete lightweight NSPIRE Report HTML.
  * Designed to stay under ~20KB for reliable mobile WebView PDF conversion.
  */
@@ -503,6 +716,9 @@ function generateEnhancedNSPIREReportHTML(
   options: PDFGenerationOptions = DEFAULT_PDF_OPTIONS,
   imageMap: Map<string, string> = new Map()
 ): string {
+  if (report.metadata.status === 'in-progress') {
+    return generateInProgressReportHTML(report, options, imageMap);
+  }
   return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>NSPIRE Report</title><style>${generateEnhancedStyles()}</style></head><body><div class="report-container">${generateEnhancedHeader(report.metadata)}${options.includeSummaryPage ? generateEnhancedSummaryPage(report.summary, report.categoryBreakdown, report.metadata, report.inspectionData, report.occupancyInfo, report.deficiencies) : ''}${options.includeDetailedDeficiencies ? generateEnhancedDeficiencyTable(report.deficiencies, imageMap) : ''}${generateCertificatesTable()}${options.includeCertification && report.certification ? generateEnhancedCertificationSection(report.certification) : ''}${generateEnhancedFooter(options)}</div></body></html>`;
 }
 
@@ -558,10 +774,10 @@ class EnhancedNSPIREPDFReportService {
       if (report.deficiencies) {
         report.deficiencies.forEach((def, i) => {
           if (def.imageUri) {
-            const uriType = def.imageUri.startsWith('data:') ? 'base64' 
-              : def.imageUri.startsWith('http') ? 'remote' 
-              : def.imageUri.startsWith('file://') ? 'local-file' 
-              : 'other';
+            const uriType = def.imageUri.startsWith('data:') ? 'base64'
+              : def.imageUri.startsWith('http') ? 'remote'
+                : def.imageUri.startsWith('file://') ? 'local-file'
+                  : 'other';
             console.log(`Deficiency ${i + 1} image: ${uriType}, length: ${def.imageUri.length}`);
           } else {
             console.log(`Deficiency ${i + 1} image: none`);
@@ -703,7 +919,7 @@ class EnhancedNSPIREPDFReportService {
     const deficiencies = (data.findings || data.deficiencies || []).map((item: any, index: number) => ({
       id: item.id || item._id || `DEF-${index + 1}`,
       imageUri: item.imageUrl || item.imageUri || item.photos?.[0]?.url || '',
-      building: item.building || data.building || 'Building A',
+      building: item.building || data.building || 'Building',
       unit: item.unit || data.unit || 'Unit Multiple',
       room: item.location || item.room || item.area || 'General Area',
       area: item.subCategory || item.category || 'Inside',

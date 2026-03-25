@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { globalInspectionProgress } from '../utils/globalState';
+import { inspectionService } from '../services/inspectionService';
 import {
   View,
   Text,
@@ -46,36 +47,81 @@ const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
 
   useFocusEffect(
     useCallback(() => {
-      const fetchProgress = () => {
+      const fetchProgress = async () => {
         try {
           const propId = property?._id || property?.id || property?.propertyId || 'unknown';
 
-          // Outside
-          const outKey = `inspection_responses_${propId}_${buildingName}_Outside`;
-          const outData = globalInspectionProgress[outKey];
-          if (outData) setOutsideProgress(Object.keys(outData).length);
-          else setOutsideProgress(0);
+          const updateLocalState = () => {
+            // Outside
+            const outKey = `inspection_responses_${propId}_${buildingName}_Outside`;
+            const outData = globalInspectionProgress[outKey];
+            if (outData) setOutsideProgress(Object.keys(outData).length);
+            else setOutsideProgress(0);
 
-          // Inside
-          const inKey = `inspection_responses_${propId}_${buildingName}_Inside`;
-          const inData = globalInspectionProgress[inKey];
-          if (inData) setInsideProgress(Object.keys(inData).length);
-          else setInsideProgress(0);
+            // Inside
+            const inKey = `inspection_responses_${propId}_${buildingName}_Inside`;
+            const inData = globalInspectionProgress[inKey];
+            if (inData) setInsideProgress(Object.keys(inData).length);
+            else setInsideProgress(0);
 
-          // Units
-          let totalUn = 0;
-          if (selectedUnits && selectedUnits.length > 0) {
-            for (const unit of selectedUnits) {
-              const unKey = `inspection_responses_${propId}_${buildingName}_Unit_${unit}`;
-              const unData = globalInspectionProgress[unKey];
-              if (unData) totalUn += Object.keys(unData).length;
+            // Units
+            let totalUn = 0;
+            if (selectedUnits && selectedUnits.length > 0) {
+              for (const unit of selectedUnits) {
+                const unKey = `inspection_responses_${propId}_${buildingName}_Unit_${unit}`;
+                const unData = globalInspectionProgress[unKey];
+                if (unData) totalUn += Object.keys(unData).length;
+              }
             }
+            setUnitsProgress(totalUn);
+          };
+
+          // Render instantly from memory first
+          updateLocalState();
+
+          // Sync from API in case app was just opened or progress was saved via other screen/device
+          try {
+            const apiRes = await inspectionService.getAllProgress();
+            if (apiRes && apiRes.success && apiRes.progress) {
+              apiRes.progress.forEach((p: any) => {
+                const pId = p.propertyId?._id || p.propertyId || 'unknown';
+                const pIdStr = String(pId);
+                const pPropIdStr = p.propertyId?.propertyId ? String(p.propertyId.propertyId) : '';
+
+                const currentPropIdStr = String(propId);
+                const currentPropPropertyIdStr = property?.propertyId ? String(property.propertyId) : '';
+
+                const isMatch = (pIdStr === currentPropIdStr) ||
+                  (pPropIdStr && pPropIdStr === currentPropIdStr) ||
+                  (pIdStr && currentPropPropertyIdStr && pIdStr === currentPropPropertyIdStr) ||
+                  (pPropIdStr && currentPropPropertyIdStr && pPropIdStr === currentPropPropertyIdStr) ||
+                  (String(p.propertyId) === currentPropIdStr);
+
+                if (isMatch && String(p.unitId) === String(buildingName)) {
+                  // For units, LocationInspectionScreen appends _[unit] to the name when creating the key
+                  const safeLoc = p.inspectionType === 'Unit' ? `Unit_${p.unitId}` : p.inspectionType;
+                  // Wait, actually LocationInspectionScreen uses actual Unit_1 etc for inspectionType if it is a unit! Or rather location: Unit, unit name appended.
+                  // Let's just use what p.inspectionType is, or recreate LocationInspectionScreen's key logic
+                  // Backend receives: inspection_type: "Outside" or "Unit_1" etc. Wait, LocationInspectionScreen saves `location` which for Unit is just "Unit".
+                  // Let's check api.post call in LocationInspectionScreen again just to be safe. But `p.inspectionType` IS that location.
+
+                  const key = `inspection_responses_${propId}_${p.unitId}_${p.inspectionType}`;
+                  if (p.responses && Object.keys(p.responses).length > 0) {
+                    globalInspectionProgress[key] = p.responses;
+                  }
+                }
+              });
+              updateLocalState();
+            }
+          } catch (e) {
+            console.log("Could not sync category progress from API", e);
           }
-          setUnitsProgress(totalUn);
+
         } catch (e) {
           console.error('Failed to load progress', e);
         }
       };
+
       fetchProgress();
     }, [property, buildingName, selectedUnits])
   );
@@ -145,56 +191,9 @@ const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
           <View style={styles.buildingHeader}>
             <Ionicons name="business-outline" size={24} color="#FFFFFF" />
             <Text style={styles.buildingTitle}>BUILDING NO: {buildingName}</Text>
-            <TouchableOpacity style={styles.buildingEditBtn} onPress={openBuildingEditModal}>
-              <Ionicons name="pencil-outline" size={16} color="#FFFFFF" />
-            </TouchableOpacity>
           </View>
-          {/* Only show building name, no unit names */}
         </View>
 
-        {/* Edit Building Name Modal */}
-        <Modal
-          visible={editBuildingModalVisible}
-          transparent
-          animationType="fade"
-          onRequestClose={handleCancelBuildingEdit}
-        >
-          <KeyboardAvoidingView
-            style={styles.modalOverlay}
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          >
-            <View style={styles.modalContainer}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Edit Building Name</Text>
-                <TouchableOpacity onPress={handleCancelBuildingEdit}>
-                  <Ionicons name="close" size={24} color="#666" />
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.modalInputRow}>
-                <Text style={styles.modalInputLabel}>Building Name</Text>
-                <TextInput
-                  style={styles.modalInput}
-                  value={tempBuildingName}
-                  onChangeText={setTempBuildingName}
-                  placeholder="Enter building name"
-                  placeholderTextColor="#9CA3AF"
-                  selectTextOnFocus
-                  autoFocus
-                />
-              </View>
-
-              <View style={styles.modalFooter}>
-                <TouchableOpacity style={styles.modalCancelBtn} onPress={handleCancelBuildingEdit}>
-                  <Text style={styles.modalCancelText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.modalSaveBtn} onPress={handleSaveBuildingName}>
-                  <Text style={styles.modalSaveText}>Save</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </KeyboardAvoidingView>
-        </Modal>
 
         {/* OUTSIDE Section */}
         <TouchableOpacity
@@ -284,6 +283,51 @@ const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
           </View>
         </TouchableOpacity>
       </ScrollView>
+
+      {/* Edit Building Name Modal */}
+      <Modal
+        visible={editBuildingModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={handleCancelBuildingEdit}
+      >
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Edit Building Name</Text>
+              <TouchableOpacity onPress={handleCancelBuildingEdit}>
+                <Ionicons name="close" size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalInputRow}>
+              <Text style={styles.modalInputLabel}>Building Name</Text>
+              <TextInput
+                style={styles.modalInput}
+                value={tempBuildingName}
+                onChangeText={setTempBuildingName}
+                placeholder="Enter building name"
+                placeholderTextColor="#9CA3AF"
+                selectTextOnFocus
+                autoFocus
+              />
+            </View>
+
+            <View style={styles.modalFooter}>
+              <TouchableOpacity style={styles.modalCancelBtn} onPress={handleCancelBuildingEdit}>
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.modalSaveBtn} onPress={handleSaveBuildingName}>
+                <Text style={styles.modalSaveText}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
     </SafeAreaView>
   );
 };

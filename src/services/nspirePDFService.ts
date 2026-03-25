@@ -21,12 +21,13 @@ import {
   DeficiencySeverity,
 } from '../types/nspireReport';
 import { INSPIRE_LOGO_BASE64 } from '../constants/inspireLogo';
+import { API_CONFIG } from './api';
 
 /** Build a clickable data URI link showing the short NSPIRE code; clicking opens a clean HTML page with the full codeReference text */
 function makeCodeRefLink(nspireCode: string, codeReference?: string): string {
   const shortCode = (nspireCode || '-').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   if (!codeReference) return shortCode;
-  const url = `https://inspirebackend-eight.vercel.app/api/code-ref?code=${encodeURIComponent(nspireCode)}&ref=${encodeURIComponent(codeReference)}`;
+  const url = `${API_CONFIG.BASE_URL}/code-ref?code=${encodeURIComponent(nspireCode)}&ref=${encodeURIComponent(codeReference)}`;
   return `<a href="${url}" style="color:#0E7490;font-weight:600;text-decoration:underline;">${shortCode}</a>`;
 }
 

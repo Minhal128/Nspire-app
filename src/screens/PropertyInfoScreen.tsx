@@ -24,6 +24,7 @@ import {
   resetPropertyInspectionState,
 } from '../utils/unitInspectionStorage';
 import { globalInspectionProgress } from '../utils/globalState';
+import { inspectionService } from '../services/inspectionService';
 
 type PropertyInfoScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -66,6 +67,38 @@ const PropertyInfoScreen: React.FC<Props> = ({ navigation, route }) => {
           }
         }
       }
+
+      // Sync progress from API to global memory so it reflects checkmarks properly
+      try {
+        const apiRes = await inspectionService.getAllProgress();
+        if (apiRes && apiRes.success && apiRes.progress) {
+          apiRes.progress.forEach((p: any) => {
+            const pId = p.propertyId?._id || p.propertyId || 'unknown';
+            const pIdStr = String(pId);
+            const pPropIdStr = p.propertyId?.propertyId ? String(p.propertyId.propertyId) : '';
+
+            const currentPropIdStr = String(propertyId);
+            const currentPropPropertyIdStr = property?.propertyId ? String(property.propertyId) : '';
+
+            const isMatch = (pIdStr === currentPropIdStr) ||
+              (pPropIdStr && pPropIdStr === currentPropIdStr) ||
+              (pIdStr && currentPropPropertyIdStr && pIdStr === currentPropPropertyIdStr) ||
+              (pPropIdStr && currentPropPropertyIdStr && pPropIdStr === currentPropPropertyIdStr) ||
+              (String(p.propertyId) === currentPropIdStr);
+
+            if (isMatch && String(p.unitId) === String(buildingId)) {
+              const key = `inspection_responses_${propertyId}_${p.unitId}_${p.inspectionType}`;
+              if (p.responses && Object.keys(p.responses).length > 0) {
+                globalInspectionProgress[key] = p.responses;
+              }
+            }
+          });
+          setRefreshTick(tick => tick + 1); // trigger re-render of checkmarks
+        }
+      } catch (e) {
+        console.log("Could not sync from API in PropertyInfoScreen", e);
+      }
+
     } catch (error) {
       console.error('Error loading completed units:', error);
     }

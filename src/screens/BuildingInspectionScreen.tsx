@@ -10,15 +10,53 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
+  Modal,
+  Image,
 } from 'react-native';
+import { WebView } from 'react-native-webview';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../types/navigation';
+import offlineStorageService from '../services/offlineStorageService';
+import { generateNSPIREReport } from '../utils/nspireReportUtils';
+import { enhancedNspirePDFService } from '../services/enhancedNspirePDFService';
+import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system/legacy';
+import { OUTSIDE_ITEMS, INSIDE_ITEMS, UNIT_ITEMS } from '../data/inspectionData';
+import authService from '../services/authService';
+import { inspectionService } from '../services/inspectionService';
 
 type BuildingInspectionRouteProp = RouteProp<RootStackParamList, 'BuildingInspection'>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'BuildingInspection'>;
+
+// Finding interface for NSPIRE report display
+function getValidDetail(...args: any[]) {
+  for (const a of args) {
+    if (a && typeof a === 'string' && a.trim() !== '' && a.trim() !== '-') return a;
+  }
+  return 'No details recorded';
+}
+
+interface Finding {
+  id: string;
+  title?: string;
+  deficiencyName: string;
+  deficiencyDetails: string;
+  severity: string;
+  area: string;
+  category: string;
+  location: string;
+  building: string;
+  unit: string;
+  imageUri?: string;
+  nspireCode?: string;
+  codeReference?: string;
+  comments?: string;
+  isGeneralComment?: boolean;
+}
 
 interface BuildingRow {
   buildingId: string;
@@ -54,6 +92,13 @@ export default function BuildingInspectionScreen() {
   }, [totalBuildings, totalUnits, calculatedUnits]);
 
   const [buildings, setBuildings] = useState<BuildingRow[]>(initBuildings);
+
+  // Export state
+  const [isExporting, setIsExporting] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportFindings, setReportFindings] = useState<Finding[]>([]);
+  const [inspectorName, setInspectorName] = useState('Inspector');
+  const [previewHtml, setPreviewHtml] = useState<string>('');
 
   // Track which field is actively being edited so we skip auto-save mid-typing
   const editTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -222,6 +267,259 @@ export default function BuildingInspectionScreen() {
     });
   };
 
+  // Gather all inspection findings and show in modal
+  const handleExportInProgress = async () => {
+    try {
+      setIsExporting(true);
+
+      // Get current user
+      const user = await authService.getCurrentUser();
+      let inspector = 'Inspector';
+      if (user && (user as any).firstName) {
+        inspector = `${(user as any).firstName} ${(user as any).lastName || ''}`.trim();
+      } else if (user && (user as any).fullName) {
+        inspector = (user as any).fullName;
+      } else if (user && user.email) {
+        inspector = user.email.split('@')[0];
+      }
+      setInspectorName(inspector);
+
+      // Get offline sessions for this property
+      const sessions = await offlineStorageService.getAllSessions();
+      const propertyIdStr = String(property._id || property.propertyId || property.id);
+
+      const propertySessions = sessions.filter(
+        (s: any) => String(s.propertyId) === propertyIdStr
+      );
+
+      let allFindings: Finding[] = [];
+
+      // Try to get remote progress
+      try {
+        const remoteProgress = await inspectionService.getAllProgress();
+
+        if (remoteProgress && remoteProgress.success && remoteProgress.progress) {
+          remoteProgress.progress.forEach((p: any) => {
+            const pId = p.propertyId?._id || p.propertyId || 'unknown';
+            const pIdStr = String(pId);
+
+            // Get findings from various possible structures
+            let findings: any[] = [];
+            if (p.inspectionData && Array.isArray(p.inspectionData.findings)) {
+              findings = p.inspectionData.findings;
+            } else if (p.inspectionData && Array.isArray(p.inspectionData.deficiencies)) {
+              findings = p.inspectionData.deficiencies;
+            } else if (Array.isArray(p.findings)) {
+              findings = p.findings;
+            }
+
+            if (pIdStr === propertyIdStr && findings.length > 0) {
+              allFindings.push(...findings.map((f: any) => ({
+                ...f,
+                building: (p.buildingName && p.buildingName !== '-')
+                  ? p.buildingName
+                  : ((p.unitId && p.unitId !== '-') ? p.unitId : 'Building'),
+                deficiencyDetails: getValidDetail(f.deficiencyDetails, f.description, f.detail, f?.deficiency?.detail, f.title, f?.deficiency?.title, f.name, f?.deficiency?.name, f.deficiencyName, f?.deficiency?.deficiencyName, 'Issue recorded'),
+                deficiencyName: f.deficiencyName || f?.deficiency?.name || f.title || f?.deficiency?.title || f.name || 'Deficiency',
+                codeReference: f.codeReference || f?.deficiency?.codeReference || f?.deficiency?.code || f.code || '',
+                nspireCode: f.nspireCode || f?.deficiency?.code || '-',
+                area: f.area || f.category || p.inspectionType || 'General',
+              })));
+            }
+          });
+        }
+      } catch (err) {
+        console.log("Could not fetch remote progress:", err);
+      }
+
+      // Process local sessions
+      for (const session of propertySessions) {
+        let bName = (session as any).buildingName || (session as any).buildingId || property?.name || 'Building';
+        if (bName === '-') bName = 'Building';
+
+        if (session.images && session.images.length > 0) {
+          for (const img of session.images) {
+            const hasFindings = img.findings && img.findings.length > 0;
+            const itemsToProcess: any[] = (hasFindings ? img.findings : [{}]) as any[];
+
+            for (const f of itemsToProcess) {
+              let imageUri = f.imageUri || img.localUri || (img as any).uri || (f as any).imageUrl || '';
+
+              // Convert local file to base64 for display
+              if (imageUri && Platform.OS !== 'web' && !imageUri.startsWith('data:') && !imageUri.startsWith('http')) {
+                try {
+                  const fileInfo = await FileSystem.getInfoAsync(imageUri);
+                  if (fileInfo.exists) {
+                    const base64 = await FileSystem.readAsStringAsync(imageUri, {
+                      encoding: FileSystem.EncodingType.Base64,
+                    });
+                    if (base64 && base64.length > 100) {
+                      const ext = imageUri.toLowerCase().includes('.png') ? 'png' : 'jpeg';
+                      imageUri = `data:image/${ext};base64,${base64}`;
+                    }
+                  }
+                } catch (err) {
+                  console.log('Failed native conversion:', err);
+                }
+              }
+
+              const cat = (f.category || img.roomCategory || (session as any).inspectionType || '').toLowerCase();
+              let computedArea = 'General';
+              if (cat.includes('outside')) {
+                computedArea = 'Outside';
+              } else if (cat.includes('inside')) {
+                computedArea = 'Inside';
+              } else if (cat.includes('unit')) {
+                computedArea = 'Unit';
+              }
+
+              if (!hasFindings) {
+                allFindings.push({
+                  id: `IMG-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+                  isGeneralComment: true,
+                  title: 'General Photo',
+                  deficiencyName: 'General Observation',
+                  deficiencyDetails: 'Photo captured during inspection.',
+                  severity: '-',
+                  area: computedArea,
+                  category: computedArea,
+                  location: img.room || img.roomCategory || (session as any).inspectionType || 'General',
+                  building: bName,
+                  unit: (session as any).unitId || '-',
+                  imageUri,
+                });
+                continue;
+              }
+
+              const fData = (f as any).deficiency || f;
+              // Ensure deficiencyDetails has actual text from any available field
+              const detailText = f.deficiencyDetails || f.detail || fData?.detail || f.description || fData?.description || fData?.name || fData?.title || '';
+              allFindings.push({
+                id: f.id || `F-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+                title: f.title || fData.name || fData.title || 'Deficiency',
+                deficiencyName: f.deficiencyName || fData?.deficiencyName || fData?.name || fData?.title || f.title || f.name || 'Deficiency',
+                deficiencyDetails: detailText || 'Issue recorded',
+                severity: f.severity || fData.severity || fData.aiSeverity || 'Moderate',
+                area: computedArea,
+                category: computedArea,
+                location: f.location || img.room || img.roomCategory || (session as any).inspectionType || 'General',
+                building: bName,
+                unit: (session as any).unitId || '-',
+                imageUri,
+                nspireCode: f.nspireCode || fData.code || '-',
+                codeReference: f.codeReference || fData.codeReference || '',
+                comments: (f as any).note || fData.aiAnalysis || (f as any).recommendedAction || '',
+              });
+            }
+          }
+        }
+      }
+
+      setReportFindings(allFindings);
+
+      const reportData = {
+        property: property,
+        inspectorName: inspector,
+        date: new Date().toISOString(),
+        findings: allFindings,
+        status: 'in-progress',
+        buildingName: (property?.name && property?.name !== '-') ? property.name : 'Building',
+        selectedUnits: selectedUnits || [],
+        progressData: {
+          outsideProgress: 0,
+          insideProgress: 0,
+          unitProgress: 0,
+          outsideTotal: OUTSIDE_ITEMS.length,
+          insideTotal: INSIDE_ITEMS.length,
+          unitTotal: UNIT_ITEMS.length,
+          buildingProgressMap: {}
+        }
+      };
+
+      const nspireReport = generateNSPIREReport(reportData as any);
+      nspireReport.metadata.inspectorName = inspector;
+      nspireReport.metadata.inspectionNo = "INSP-" + Date.now().toString(36).toUpperCase();
+
+      const html = enhancedNspirePDFService.generateEnhancedHTMLPreview(nspireReport as any, {
+        includeImages: true,
+        imageQuality: 'high',
+        colorCodingSeverity: true,
+        includeSummaryPage: true,
+        includeDetailedDeficiencies: true,
+        includeCertification: true,
+        pageSize: 'letter',
+        orientation: 'portrait',
+      } as any);
+
+      setPreviewHtml(html);
+      setShowReportModal(true);
+    } catch (err: any) {
+      console.error('Failed to load inspection data:', err);
+      Alert.alert('Error', `Failed to load inspection data: ${err.message}`);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  // Generate and share PDF
+  const handleGeneratePDF = async () => {
+    try {
+      setIsExporting(true);
+
+      const reportData = {
+        property: property,
+        inspectorName: inspectorName,
+        date: new Date().toISOString(),
+        findings: reportFindings,
+        status: 'in-progress',
+        buildingName: (property?.name && property?.name !== '-') ? property.name : 'Building',
+        selectedUnits: selectedUnits || [],
+        progressData: {
+          outsideProgress: 0,
+          insideProgress: 0,
+          unitProgress: 0,
+          outsideTotal: OUTSIDE_ITEMS.length,
+          insideTotal: INSIDE_ITEMS.length,
+          unitTotal: UNIT_ITEMS.length,
+          buildingProgressMap: {}
+        }
+      };
+
+      const nspireReport = generateNSPIREReport(reportData as any);
+      nspireReport.metadata.inspectorName = inspectorName;
+      nspireReport.metadata.inspectionNo = "INSP-" + Date.now().toString(36).toUpperCase();
+
+      const result = await enhancedNspirePDFService.generateEnhancedPDF(nspireReport as any, {
+        includeImages: true,
+        imageQuality: 'high',
+        colorCodingSeverity: true,
+        includeSummaryPage: true,
+        includeDetailedDeficiencies: true,
+        includeCertification: true,
+        pageSize: 'letter',
+        orientation: 'portrait',
+      } as any);
+
+      if (!result.success) {
+        Alert.alert('Export Failed', result.error || 'Could not export the report.');
+        return;
+      }
+
+      if (Platform.OS !== 'web' && await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(result.uri, {
+          mimeType: 'application/pdf',
+          dialogTitle: 'NSPIRE Inspection Report',
+          UTI: 'com.adobe.pdf',
+        });
+      }
+    } catch (err: any) {
+      console.error('Failed to generate PDF:', err);
+      Alert.alert('Error', `Failed to generate PDF: ${err.message}`);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
@@ -356,8 +654,70 @@ export default function BuildingInspectionScreen() {
               </View>
             </View>
           ))}
+
+          {/* Export In Progress Button */}
+          <TouchableOpacity
+            style={styles.exportButton}
+            onPress={handleExportInProgress}
+            disabled={isExporting}
+          >
+            {isExporting ? (
+              <ActivityIndicator color="#FFFFFF" size="small" />
+            ) : (
+              <>
+                <Ionicons name="document-text-outline" size={20} color="#FFFFFF" />
+                <Text style={styles.exportButtonText}>Export In Progress</Text>
+              </>
+            )}
+          </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* NSPIRE Report Modal */}
+      <Modal
+        visible={showReportModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowReportModal(false)}
+      >
+        <SafeAreaView style={styles.modalContainer}>
+          {/* Modal Header */}
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setShowReportModal(false)}>
+              <Ionicons name="close" size={28} color="#1F2937" />
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>NSPIRE Report</Text>
+            <TouchableOpacity
+              style={styles.pdfButton}
+              onPress={handleGeneratePDF}
+              disabled={isExporting}
+            >
+              {isExporting ? (
+                <ActivityIndicator color="#FFFFFF" size="small" />
+              ) : (
+                <Text style={styles.pdfButtonText}>PDF</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          {/* Report Content */}
+          <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
+            <WebView
+              source={{ html: previewHtml }}
+              style={{ flex: 1 }}
+              originWhitelist={['*']}
+              scalesPageToFit={true}
+              javaScriptEnabled={true}
+              domStorageEnabled={true}
+              startInLoadingState={true}
+              allowFileAccess={true}
+              allowFileAccessFromFileURLs={true}
+              allowUniversalAccessFromFileURLs={true}
+              mixedContentMode="always"
+            />
+          </View>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -565,5 +925,58 @@ const styles = StyleSheet.create({
   editableCellError: {
     borderColor: '#FCA5A5',
     backgroundColor: '#FEF2F2',
+  },
+  // Export Button
+  exportButton: {
+    backgroundColor: '#10B981',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    borderRadius: 12,
+    marginTop: 24,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  exportButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  // Modal Styles
+  modalContainer: {
+    flex: 1,
+    backgroundColor: '#F3F4F6',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  pdfButton: {
+    backgroundColor: '#3B82F6',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  pdfButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

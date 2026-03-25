@@ -129,19 +129,32 @@ export const convertFindingsToDeficiencies = (
   return findings.map((finding: any, index: number) => {
     finding.deficiencyQRId = '';
     const severity = mapFindingSeverityToNSPIRE(finding.severity);
-    const nspireCode = finding.nspireCode || mapCategoryToNSPIRECode(finding.category);
+    const nspireCode = finding.nspireCode || finding.code || finding?.deficiency?.code || mapCategoryToNSPIRECode(finding.category || finding.area);
+    const rawDetails =
+      finding.deficiencyDetails ||
+      finding.detail ||
+      finding.description ||
+      finding?.deficiency?.detail ||
+      finding?.deficiency?.description ||
+      finding?.deficiencyName ||
+      finding?.title ||
+      finding?.name ||
+      '';
+    const detailsText = sanitizeAIDescription(rawDetails) || 'Issue recorded';
 
     return {
       id: finding.id || `DEF-${index + 1}`, deficiencyQRId: '', imageUri: finding.imageUri || '',
       imagePlaceholder: !finding.imageUri,
-      building: propertyInfo?.building || 'A',
-      unit: propertyInfo?.unit || '-',
+      building: finding.building || finding.buildingName || finding.unitId || propertyInfo?.building || 'Building',
+      unit: finding.unit || finding.unitId || propertyInfo?.unit || '-',
       room: finding.location || 'General',
-      area: finding.category || 'General',
-      deficiencyName: finding.title,
+      area: finding.area || finding.category || finding.inspectionType || 'General',
+      deficiencyName: finding.deficiencyName || finding?.deficiency?.name || finding.title || finding.name || 'Deficiency',
       nspireCode,
-      deficiencyDetails: sanitizeAIDescription(finding.description),
-      comments: finding.recommendedAction || '',
+      codeReference: finding.codeReference || finding?.deficiency?.codeReference || finding?.deficiency?.source || '',
+      deficiencyDetails: detailsText,
+      comments: finding.comments || finding.note || finding.recommendedAction || finding.aiAnalysis || '',
+      note: finding.note || finding.comments || '',
       deductionPts: calculateDeductionPoints(severity),
       repeatIndicator: false,
       severity,

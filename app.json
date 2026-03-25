@@ -21,7 +21,7 @@
       "bundleIdentifier": "com.inspire.app",
       "requiresFullScreen": false,
       "associatedDomains": [
-        "applinks:inspire.app", 
+        "applinks:inspire.app",
         "applinks:*.inspire.app",
         "applinks:light-mutt-72.clerk.accounts.dev"
       ],
@@ -29,7 +29,8 @@
         "NSCameraUsageDescription": "This app uses the camera for document scanning and property inspection.",
         "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to save and upload inspection photos.",
         "NSLocationWhenInUseUsageDescription": "This app uses your location to tag property inspections."
-      }
+      },
+      "appleTeamId": "RFK8X7U53N"
     },
     "android": {
       "adaptiveIcon": {
@@ -60,7 +61,10 @@
               "scheme": "inspire"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ],
       "permissions": [

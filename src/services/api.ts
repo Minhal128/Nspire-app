@@ -6,13 +6,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StorageKeys } from '../utils/storage';
 
-// API Base URL - Always use production URL since the backend is deployed on Vercel
-const API_BASE_URL = 'https://inspirebackend-eight.vercel.app/api';
-
-// For local development with a local backend:
-// - Android emulator: 'http://10.0.2.2:5000/api'
-// - iOS simulator: 'http://localhost:5000/api'
-// - Physical device: 'http://YOUR_COMPUTER_IP:5000/api'
+// API Base URL - use deployed DigitalOcean backend only
+const API_BASE_URL = 'https://sea-lion-app-2u676.ondigitalocean.app/api';
 
 export const API_CONFIG = {
   BASE_URL: API_BASE_URL,

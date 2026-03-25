@@ -6,13 +6,9 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { Platform } from 'react-native';
+import { API_CONFIG } from './api';
 
-// API Base URL - Always use production URL since the backend is deployed on Vercel
-// For local development with a local backend, you can use:
-// - Android emulator: 'http://10.0.2.2:5000/api'
-// - iOS simulator: 'http://localhost:5000/api'
-// - Physical device: 'http://YOUR_COMPUTER_IP:5000/api'
-const API_BASE_URL = 'https://inspirebackend-eight.vercel.app/api';
+const API_BASE_URL = API_CONFIG.BASE_URL;
 
 // Maximum image dimensions to prevent oversized uploads
 const MAX_IMAGE_WIDTH = 1200;
@@ -51,16 +47,16 @@ class CloudinaryService {
   private async compressImage(imageUri: string): Promise<string> {
     try {
       console.log('Compressing image...');
-      
+
       const manipulatedImage = await ImageManipulator.manipulateAsync(
         imageUri,
         [{ resize: { width: MAX_IMAGE_WIDTH, height: MAX_IMAGE_HEIGHT } }],
-        { 
-          compress: IMAGE_QUALITY, 
-          format: ImageManipulator.SaveFormat.JPEG 
+        {
+          compress: IMAGE_QUALITY,
+          format: ImageManipulator.SaveFormat.JPEG
         }
       );
-      
+
       console.log('Image compressed, new URI:', manipulatedImage.uri);
       return manipulatedImage.uri;
     } catch (error) {
@@ -77,7 +73,7 @@ class CloudinaryService {
     try {
       // Handle different URI formats
       let uri = imageUri;
-      
+
       // For iOS file:// URIs
       if (Platform.OS === 'ios' && uri.startsWith('file://')) {
         uri = uri.replace('file://', '');
@@ -90,7 +86,7 @@ class CloudinaryService {
       // Determine image type from URI
       const extension = imageUri.split('.').pop()?.toLowerCase() || 'jpeg';
       const mimeType = extension === 'png' ? 'image/png' : 'image/jpeg';
-      
+
       return `data:${mimeType};base64,${base64}`;
     } catch (error) {
       console.error('Error converting image to base64:', error);
@@ -102,24 +98,24 @@ class CloudinaryService {
    * Upload a single image to Cloudinary via backend
    */
   async uploadImage(
-    imageUri: string, 
+    imageUri: string,
     folder: string = 'nspire-inspections/deficiencies'
   ): Promise<CloudinaryUploadResult> {
     try {
       console.log('Starting image upload to Cloudinary...');
       console.log('API URL:', `${this.apiBaseUrl}/ai/upload-image`);
-      
+
       // Compress image first to reduce size
       const compressedUri = await this.compressImage(imageUri);
-      
+
       // Convert to base64
       const base64Image = await this.imageToBase64(compressedUri);
       console.log('Base64 image size:', Math.round(base64Image.length / 1024), 'KB');
-      
+
       // Create abort controller for timeout
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
-      
+
       // Send to backend
       const response = await fetch(`${this.apiBaseUrl}/ai/upload-image`, {
         method: 'POST',
@@ -132,7 +128,7 @@ class CloudinaryService {
         }),
         signal: controller.signal,
       });
-      
+
       clearTimeout(timeoutId);
 
       if (!response.ok) {
@@ -187,16 +183,16 @@ class CloudinaryService {
   ): Promise<CloudinaryMultiUploadResult> {
     try {
       console.log(`Starting batch upload of ${imageUris.length} images...`);
-      
+
       const uploaded: Array<{ url: string; publicId: string }> = [];
       let failed = 0;
 
       for (let i = 0; i < imageUris.length; i++) {
         const uri = imageUris[i];
-        
+
         try {
           const result = await this.uploadImage(uri, folder);
-          
+
           if (result.success && result.url && result.publicId) {
             uploaded.push({
               url: result.url,
@@ -242,25 +238,25 @@ class CloudinaryService {
     folder: string = 'nspire-inspections/deficiencies'
   ): Promise<CloudinaryUploadResult> {
     let lastError: string = 'Unknown error';
-    
+
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         console.log(`Upload attempt ${attempt}/${maxRetries}...`);
         const result = await this.uploadImage(imageUri, folder);
-        
+
         if (result.success) {
           return result;
         }
-        
+
         lastError = result.error || 'Upload failed';
-        
+
         // Wait before retry (exponential backoff)
         if (attempt < maxRetries) {
           await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
         }
       } catch (error: any) {
         lastError = error.message || 'Network error';
-        
+
         if (attempt < maxRetries) {
           await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
         }
@@ -294,7 +290,7 @@ class CloudinaryService {
     if (parts.length === 2) {
       return `${parts[0]}/upload/w_${width},q_${quality},f_auto/${parts[1]}`;
     }
-    
+
     return url;
   }
 
@@ -310,7 +306,7 @@ class CloudinaryService {
     if (parts.length === 2) {
       return `${parts[0]}/upload/w_${size},h_${size},c_fill,q_auto,f_auto/${parts[1]}`;
     }
-    
+
     return url;
   }
 }

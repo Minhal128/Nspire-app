@@ -9,6 +9,7 @@ import {
   SafeAreaView,
   Modal,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
@@ -16,6 +17,7 @@ import { RootStackParamList } from '../types/navigation';
 import { Ionicons } from '@expo/vector-icons';
 import ModalZoomWrapper from '../components/ModalZoomWrapper';
 import { OUTSIDE_ITEMS, INSIDE_ITEMS, UNIT_ITEMS, UNIT_LOCATIONS, InspectionResponse } from '../data/inspectionData';
+import api from '../services/api';
 
 type LocationInspectionScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -43,19 +45,56 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
   const safeLocationName = location === 'Unit' ? `Unit_${currentUnit || selectedUnits?.[0] || 'Unknown'}` : location;
   const saveKey = `inspection_responses_${property?._id || property?.id || property?.propertyId || 'unknown'}_${buildingId}_${safeLocationName}`;
 
-  // Load responses from global state on mount
+  // Load responses from backend on mount
   useEffect(() => {
-    try {
-      const saved = globalInspectionProgress[saveKey];
-      if (saved) {
-        setResponses(saved);
+    const fetchProgress = async () => {
+      try {
+        const propertyId = property?._id || property?.id || property?.propertyId || 'unknown';
+        const response = await api.get(`/inspections/progress?property_id=${propertyId}&unit_id=${buildingId}&inspection_type=${safeLocationName}`);
+        const result = response as any;
+
+        // Handle payload shape mismatch (e.g. response.data.inspection_items vs saved key-value pairs)
+        if (result?.items) {
+          setResponses(result.items);
+          globalInspectionProgress[saveKey] = result.items;
+        } else if (result?.data?.inspection_items) {
+          // If the backend returns an array structure, convert it to the expected dictionary format
+          if (Array.isArray(result.data.inspection_items)) {
+            const mappedResponses: { [key: string]: ResponseType } = {};
+            result.data.inspection_items.forEach((item: any) => {
+              mappedResponses[item.id || item.itemId || item.name] = item.response || item.value || item.status;
+            });
+            setResponses(mappedResponses);
+            globalInspectionProgress[saveKey] = mappedResponses;
+          } else {
+            // Already a dictionary
+            setResponses(result.data.inspection_items);
+            globalInspectionProgress[saveKey] = result.data.inspection_items;
+          }
+        } else {
+          // Fallback to global state if API fails or during dev
+          const saved = globalInspectionProgress[saveKey];
+          if (saved) {
+            setResponses(saved);
+          }
+        }
+      } catch (error) {
+        // Suppress the console.error if the backend API isn't deployed yet 
+        // to avoid disruptive red screens in the simulator.
+        // console.warn('Backend progress sync failed, falling back to local memory.', error);
+
+        // Fallback to global state
+        const saved = globalInspectionProgress[saveKey];
+        if (saved) {
+          setResponses(saved);
+        }
+      } finally {
+        setIsLoaded(true);
       }
-    } catch (error) {
-      console.error('Error loading saved responses', error);
-    } finally {
-      setIsLoaded(true);
-    }
-  }, [saveKey]);
+    };
+
+    fetchProgress();
+  }, [saveKey, property, buildingId, location]);
 
   // Use appropriate inspection items based on location
   // Outside = OUTSIDE_ITEMS (26), Inside = INSIDE_ITEMS (35), Unit = UNIT_ITEMS (32)
@@ -143,15 +182,28 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
     }
   };
 
-  const handleSaveProgress = () => {
+  const handleSaveProgress = async () => {
     try {
+      const propertyId = property?._id || property?.id || property?.propertyId || 'unknown';
+
+      // Save locally as fallback
       if (Object.keys(responses).length > 0) {
         globalInspectionProgress[saveKey] = responses;
       } else {
         delete globalInspectionProgress[saveKey];
       }
+
+      // Save to remote backend
+      await api.post('/inspections/progress', {
+        property_id: propertyId,
+        unit_id: buildingId,
+        inspection_type: safeLocationName,
+        responses: responses
+      });
+
     } catch (e) {
-      console.error('Error saving responses', e);
+      console.error('Error saving responses to backend:', e);
+      // We continue to the alert even if backend save fails so they aren't stuck, it's saved locally
     }
 
     Alert.alert(
@@ -218,6 +270,14 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
   const completedCount = Object.keys(responses).length;
   const totalCount = inspectionItems.length;
   const progressPercentage = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
+
+  if (!isLoaded) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color="#0E7490" />
+      </View>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>

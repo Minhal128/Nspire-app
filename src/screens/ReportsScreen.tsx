@@ -346,6 +346,40 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
     }
   };
 
+  const handleDeleteReport = (report: Report) => {
+    Alert.alert(
+      "Delete Report",
+      `Are you sure you want to delete the report for ${report.property}?`,
+      [
+        {
+          text: "Cancel",
+          style: "cancel"
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setLoading(true);
+              if (report.id.startsWith('draft_')) {
+                const draftKey = report.id.replace('draft_', '');
+                await AsyncStorage.removeItem(draftKey);
+              } else {
+                await inspectionService.deleteInspection(report.id);
+              }
+              await loadData();
+            } catch (err: any) {
+              console.error('Failed to delete report:', err);
+              Alert.alert('Error', `Failed to delete report: ${err.message}`);
+            } finally {
+              setLoading(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const handleShareReport = async (report: Report) => {
     try {
       setLoading(true);
@@ -609,6 +643,13 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
                     >
                       <Ionicons name="share-social-outline" size={24} color="#0E7490" />
                       <Text style={styles.iconButtonLabel}>Share</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.iconButton}
+                      onPress={() => handleDeleteReport(report)}
+                    >
+                      <Ionicons name="trash-outline" size={24} color="#EF4444" />
+                      <Text style={[styles.iconButtonLabel, { color: '#EF4444' }]}>Delete</Text>
                     </TouchableOpacity>
                   </View>
                 </View>

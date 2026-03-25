@@ -22,21 +22,21 @@ export interface InspectionMetadata {
   propertyAddress: string;
   propertyName: string;
   propertyId: string;
-  
+
   // Timeline
   startDate: string;
   startTime: string;
   endDate: string;
   endTime: string;
   reportCreatedDate: string;
-  
+
   // Scores
   preliminaryScore: number;
   finalScore: number;
   calculatedScore: number;
   healthSafetyThreshold: number;
   physicalConditionThreshold: number;
-  
+
   // Inspector Information
   inspectorName: string;
   inspectorId: string;
@@ -45,6 +45,15 @@ export interface InspectionMetadata {
   // Building & Unit Information
   buildingName?: string;
   inspectedUnits?: string[];
+  status?: string; // e.g., 'in-progress'
+  progressData?: {
+    outsideProgress: number;
+    insideProgress: number;
+    unitProgress: number;
+    outsideTotal: number;
+    insideTotal: number;
+    unitTotal: number;
+  };
 }
 
 /**
@@ -74,48 +83,48 @@ export interface OccupancyInfo {
  */
 export interface DeficiencyEntry {
   id: string;
-  
+
   // Unique QR identifier for each deficiency image (QR-XXXXX format)
   deficiencyQRId: string;
-  
+
   // Deficiency Picture
   imageUri?: string;
   imagePlaceholder?: boolean;
-  
+
   // Location Details
   building: string;
   unit: string;
   room: string;
   area: string;
-  
+
   // Deficiency Information
   deficiencyName: string;
   nspireCode: string;
   codeReference?: string;
-  
+
   // Technical Details
   deficiencyDetails: string;
-  
+
   // Inspector Notes
   comments: string;
   note?: string;
   isGeneralComment?: boolean;
-  
+
   // Scoring Impact
   deductionPts: number;
-  
+
   // History
   repeatIndicator: boolean;
   previousInspectionDate?: string;
-  
+
   // Severity Classification
   severity: DeficiencySeverity;
-  
+
   // Additional metadata
   inspectedDate: string;
   inspectedTime: string;
   inspectorId: string;
-  
+
   // Corrective Action
   correctiveAction?: string;
   dueDate?: string;
@@ -131,7 +140,7 @@ export interface DeficiencySummary {
   moderate: number;
   low: number;
   total: number;
-  
+
   // Additional breakdowns
   byBuilding: Record<string, number>;
   byCategory: Record<string, number>;
@@ -161,26 +170,26 @@ export interface NSPIREInspectionReport {
   reportId: string;
   version: string;
   generatedAt: string;
-  
+
   // Header & Metadata
   metadata: InspectionMetadata;
-  
+
   // Inspection Data Tables
   inspectionData: InspectionDataRow[];
   occupancyInfo: OccupancyInfo;
-  
+
   // Deficiency Summary (shown at beginning)
   summary: DeficiencySummary;
   categoryBreakdown: CategoryBreakdown[];
-  
+
   // Main Deficiency Table
   deficiencies: DeficiencyEntry[];
-  
+
   // Additional Information
   generalComments?: string;
   recommendations?: string[];
   attachments?: ReportAttachment[];
-  
+
   // Certification
   certification?: ReportCertification;
 }
@@ -238,7 +247,7 @@ export const NSPIRE_CODES = {
   'S-8': 'Retaining Walls',
   'S-9': 'Signs',
   'S-10': 'Storm Drainage',
-  
+
   // Building Exterior
   'BE-1': 'Doors',
   'BE-2': 'Fire Escapes',
@@ -247,7 +256,7 @@ export const NSPIRE_CODES = {
   'BE-5': 'Roofs',
   'BE-6': 'Walls',
   'BE-7': 'Windows',
-  
+
   // Building Systems
   'BS-1': 'Domestic Water',
   'BS-2': 'Electrical System',
@@ -255,7 +264,7 @@ export const NSPIRE_CODES = {
   'BS-4': 'Emergency/Fire',
   'BS-5': 'HVAC',
   'BS-6': 'Sanitary System',
-  
+
   // Common Areas
   'CA-1': 'Basement/Garage',
   'CA-2': 'Closets/Utility',
@@ -271,7 +280,7 @@ export const NSPIRE_CODES = {
   'CA-12': 'Restrooms',
   'CA-13': 'Stairs',
   'CA-14': 'Storage',
-  
+
   // Unit
   'U-1': 'Bathroom',
   'U-2': 'Call-for-Aid',
@@ -290,7 +299,7 @@ export const NSPIRE_CODES = {
   'U-15': 'Stairs',
   'U-16': 'Walls',
   'U-17': 'Windows',
-  
+
   // Health & Safety
   'HS-1': 'Air Quality - Mold',
   'HS-2': 'Air Quality - Propane/Gas',
