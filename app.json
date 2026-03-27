@@ -97,14 +97,11 @@
         }
       ]
     ],
+    "owner": "minhal.rizvi",
     "extra": {
       "eas": {
-        "projectId": "c2342250-892c-462f-a3ab-a26dbafdff3c"
+        "projectId": "693d2364-f65e-4ab9-ad78-6ab27b7b2094"
       }
-    },
-    "owner": "minhal128",
-    "updates": {
-      "url": "https://u.expo.dev/c2342250-892c-462f-a3ab-a26dbafdff3c"
     }
   }
 }

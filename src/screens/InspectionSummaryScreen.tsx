@@ -5,13 +5,12 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
   Alert,
   ActivityIndicator,
   Modal,
-  Dimensions,
   Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
@@ -34,10 +33,8 @@ interface Props {
   route: InspectionSummaryScreenRouteProp;
 }
 
-const { width, height } = Dimensions.get('window');
-
-const InspectionSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
-  const { property, selectedUnits, buildingId, inspectionData, currentUnit } = route.params;
+const InspectionSummaryScreen = ({ navigation, route }: Props) => {
+  const { property, selectedUnits, buildingId, inspectionData, currentUnit: routeCurrentUnit } = route.params;
   const [activeTab, setActiveTab] = useState<'summary' | 'deficiencies'>('summary');
   const [exportingPDF, setExportingPDF] = useState(false);
   const [exportingHTML, setExportingHTML] = useState(false);
@@ -116,23 +113,23 @@ const InspectionSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
   const inspectionDate = new Date().toLocaleDateString();
 
   const handleContinueInspection = async () => {
+    const nextArea: string = inspectionData?.isOutsideInspection
+      ? 'Outside'
+      : (inspectionData?.location === 'Inside' ? 'Inside' : 'Units');
+    const nextUnit = (nextArea === 'Inside' || nextArea === 'Outside')
+      ? '-'
+      : (selectedUnits.join(', ') || routeCurrentUnit || 'Unit Multiple');
+
     try {
       const saveKey = `saved_inspection_${property?._id || property?.id || 'unknown'}_${buildingId}`;
-      // Determine the inspectable area for the CURRENT session's deficiencies
-      const currentArea: string = inspectionData.isOutsideInspection
-        ? 'Outside'
-        : (inspectionData.location === 'Inside' ? 'Inside' : 'Units');
-      const currentUnit = (currentArea === 'Inside' || currentArea === 'Outside')
-        ? '-'
-        : (selectedUnits.join(', ') || 'Unit Multiple');
 
       // Convert local image URIs to base64 so images survive navigation,
       // and stamp _area / _unit on each deficiency so they survive future merges
       const deficienciesWithImages = await Promise.all(
         mergedDeficiencies.map(async (defItem: any) => {
           // Keep existing _area if already stamped (from a previous session)
-          const area = defItem._area || currentArea;
-          const unit = defItem._unit !== undefined ? defItem._unit : currentUnit;
+          const area = defItem._area || nextArea;
+          const unit = defItem._unit !== undefined ? defItem._unit : nextUnit;
 
           // If already base64 or a remote URL, keep as-is
           if (
@@ -170,17 +167,13 @@ const InspectionSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
       console.warn('Could not save inspection data:', e);
     }
 
-    const currentArea = inspectionData?.isOutsideInspection
-      ? 'Outside'
-      : (inspectionData?.location === 'Inside' ? 'Inside' : 'Unit');
-
     // Go back to the specific location inspection screen to continue answering items
     navigation.navigate('LocationInspection', {
       property,
       selectedUnits,
       buildingId,
-      location: currentArea,
-      currentUnit,
+      location: nextArea,
+      currentUnit: nextUnit,
     });
   };
 
@@ -314,6 +307,7 @@ const InspectionSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
     if (mergedDeficiencies.length > 0) {
       for (let i = 0; i < mergedDeficiencies.length; i++) {
         const defItem = mergedDeficiencies[i];
+        const deficiency = defItem?.deficiency || {};
 
         // Convert local image to base64
         let imageBase64: string | null = null;
@@ -358,15 +352,15 @@ const InspectionSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
           room: defItem.location || 'Multiple',
           area: inspectionArea,
           isGeneralComment: isGC,
-          deficiencyName: isGC ? 'General Comment' : (defItem.deficiency.name || 'Deficiency'),
-          nspireCode: isGC ? '-' : (defItem.deficiency.code || 'U-1'),
-          codeReference: isGC ? '' : (defItem.deficiency.codeReference || ''),
-          deficiencyDetails: isGC ? '-' : (defItem.deficiency.detail || 'Damaged or vandalized'),
-          comments: defItem.note || (isGC ? '' : (defItem.deficiency.aiAnalysis || 'AI analyzed')),
+          deficiencyName: isGC ? 'General Comment' : (deficiency.name || 'Deficiency'),
+          nspireCode: isGC ? '-' : (deficiency.code || 'U-1'),
+          codeReference: isGC ? '' : (deficiency.codeReference || ''),
+          deficiencyDetails: isGC ? '-' : (deficiency.detail || 'Damaged or vandalized'),
+          comments: defItem.note || (isGC ? '' : (deficiency.aiAnalysis || 'AI analyzed')),
           note: defItem.note || '',
           deductionPts: isGC ? 0 : 3,
           repeatIndicator: false,
-          severity: isGC ? '-' : (defItem.deficiency.severity || defItem.deficiency.aiSeverity || 'Moderate'),
+          severity: isGC ? '-' : (deficiency.severity || deficiency.aiSeverity || 'Moderate'),
           inspectedDate: inspectionDate,
           inspectedTime: new Date().toLocaleTimeString(),
           inspectorId: 'INS-001',
@@ -550,10 +544,10 @@ const InspectionSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
     setExportingExcel(true);
     try {
       const reportData = await buildReportData();
-      
+
       // Create workbook with multiple sheets
       const workbook = XLSX.utils.book_new();
-      
+
       // Sheet 1: Summary
       const summaryData = [
         ['NSPIRE INSPECTION REPORT'],
@@ -579,10 +573,10 @@ const InspectionSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
       const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
       summarySheet['!cols'] = [{ wch: 25 }, { wch: 40 }];
       XLSX.utils.book_append_sheet(workbook, summarySheet, 'Summary');
-      
+
       // Sheet 2: Deficiencies
       const deficiencyHeaders = [
-        'Room', 'Building', 'Unit', 'Area', 'Deficiency', 
+        'Room', 'Building', 'Unit', 'Area', 'Deficiency',
         'NSPIRE Code', 'Severity', 'Deduction', 'Status', 'Details', 'Date'
       ];
       const deficiencyRows = (reportData.deficiencies || []).map((def: any) => [
@@ -624,7 +618,7 @@ const InspectionSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
         const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'base64' });
         const filePath = `${FileSystem.documentDirectory}${fileName}`;
         await FileSystem.writeAsStringAsync(filePath, wbout, { encoding: FileSystem.EncodingType.Base64 });
-        
+
         if (await Sharing.isAvailableAsync()) {
           await Sharing.shareAsync(filePath, {
             mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -846,46 +840,54 @@ const InspectionSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
             {mergedDeficiencies.length > 0 ? (
               mergedDeficiencies.map((defItem: any, index: number) => (
                 <View key={index} style={[styles.deficiencyDetailCard, index > 0 && { marginTop: 16 }]}>
-                  <View style={styles.deficiencyHeader}>
-                    <Text style={styles.deficiencyItemName}>{defItem.itemName || inspectionData.itemName}</Text>
-                    <View style={[
-                      styles.severityBadge,
-                      (defItem.deficiency.aiSeverity || defItem.deficiency.severity) === 'Life-Threatening' && styles.lifethreateningBadge,
-                      (defItem.deficiency.aiSeverity || defItem.deficiency.severity) === 'Severe' && styles.severeBadge,
-                      (defItem.deficiency.aiSeverity || defItem.deficiency.severity) === 'Moderate' && styles.moderateBadge,
-                      (defItem.deficiency.aiSeverity || defItem.deficiency.severity) === 'Low' && styles.lowBadge,
-                    ]}>
-                      <Text style={styles.severityText}>{defItem.deficiency.aiSeverity || defItem.deficiency.severity}</Text>
-                    </View>
-                  </View>
+                  {(() => {
+                    const deficiency = defItem?.deficiency || {};
+                    const severity = deficiency.aiSeverity || deficiency.severity || 'Moderate';
+                    return (
+                      <>
+                        <View style={styles.deficiencyHeader}>
+                          <Text style={styles.deficiencyItemName}>{defItem.itemName || inspectionData.itemName}</Text>
+                          <View style={[
+                            styles.severityBadge,
+                            severity === 'Life-Threatening' && styles.lifethreateningBadge,
+                            severity === 'Severe' && styles.severeBadge,
+                            severity === 'Moderate' && styles.moderateBadge,
+                            severity === 'Low' && styles.lowBadge,
+                          ]}>
+                            <Text style={styles.severityText}>{severity}</Text>
+                          </View>
+                        </View>
 
-                  <Text style={styles.deficiencyName}>{defItem.deficiency.name}</Text>
-                  <Text style={styles.deficiencyDescription}>{defItem.deficiency.detail}</Text>
+                        <Text style={styles.deficiencyName}>{deficiency.name || 'Deficiency'}</Text>
+                        <Text style={styles.deficiencyDescription}>{deficiency.detail || 'No details available'}</Text>
 
-                  {defItem.deficiency.aiAnalysis && (
-                    <View style={styles.aiAnalysisSection}>
-                      <Text style={styles.aiAnalysisLabel}>AI Analysis:</Text>
-                      <Text style={styles.aiAnalysisText}>{defItem.deficiency.aiAnalysis}</Text>
-                    </View>
-                  )}
+                        {deficiency.aiAnalysis && (
+                          <View style={styles.aiAnalysisSection}>
+                            <Text style={styles.aiAnalysisLabel}>AI Analysis:</Text>
+                            <Text style={styles.aiAnalysisText}>{deficiency.aiAnalysis}</Text>
+                          </View>
+                        )}
 
-                  <View style={styles.deficiencyMeta}>
-                    <View style={styles.metaItem}>
-                      <Ionicons name="time-outline" size={16} color="#666666" />
-                      <Text style={styles.metaText}>Repair by: {defItem.deficiency.repairBy}</Text>
-                    </View>
-                    <View style={styles.metaItem}>
-                      <Ionicons name="location-outline" size={16} color="#666666" />
-                      <Text style={styles.metaText}>{defItem.location}</Text>
-                    </View>
-                  </View>
+                        <View style={styles.deficiencyMeta}>
+                          <View style={styles.metaItem}>
+                            <Ionicons name="time-outline" size={16} color="#666666" />
+                            <Text style={styles.metaText}>Repair by: {deficiency.repairBy || '-'}</Text>
+                          </View>
+                          <View style={styles.metaItem}>
+                            <Ionicons name="location-outline" size={16} color="#666666" />
+                            <Text style={styles.metaText}>{defItem.location}</Text>
+                          </View>
+                        </View>
 
-                  {defItem.imageUrl && (
-                    <View style={styles.imagesInfo}>
-                      <Ionicons name="images-outline" size={16} color="#0E7490" />
-                      <Text style={styles.imagesText}>Photo attached</Text>
-                    </View>
-                  )}
+                        {defItem.imageUrl && (
+                          <View style={styles.imagesInfo}>
+                            <Ionicons name="images-outline" size={16} color="#0E7490" />
+                            <Text style={styles.imagesText}>Photo attached</Text>
+                          </View>
+                        )}
+                      </>
+                    );
+                  })()}
                 </View>
               ))
             ) : (
@@ -935,7 +937,7 @@ const InspectionSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
                   <Text style={styles.previewLoadingText}>Loading preview...</Text>
                 </View>
               )}
-              onError={(syntheticEvent) => {
+              onError={(syntheticEvent: any) => {
                 const { nativeEvent } = syntheticEvent;
                 console.error('WebView error:', nativeEvent);
               }}
