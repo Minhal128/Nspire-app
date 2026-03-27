@@ -71,6 +71,20 @@ export interface InspectionRequest {
   createdAt: string;
 }
 
+export interface SaveProgressPayload {
+  property_id: string;
+  unit_id: string;
+  inspection_type: string;
+  responses?: Record<string, any>;
+  inspectionData?: any;
+}
+
+export interface GetProgressPayload {
+  property_id: string;
+  unit_id: string;
+  inspection_type: string;
+}
+
 class InspectionService {
   /**
    * Create a new inspection
@@ -122,6 +136,36 @@ class InspectionService {
     } catch (error: any) {
       console.error('Error fetching all progress:', error.message);
       return { success: false, progress: [] };
+    }
+  }
+
+  /**
+   * Save progress for a specific property/unit/type
+   */
+  async saveProgress(payload: SaveProgressPayload): Promise<{ success: boolean; msg?: string }> {
+    try {
+      const response = await api.post<{ success: boolean; msg?: string }>('/inspections/progress', payload);
+      return response;
+    } catch (error: any) {
+      throw new Error(error.message || 'Failed to save progress');
+    }
+  }
+
+  /**
+   * Get progress for a specific property/unit/type
+   */
+  async getProgress(params: GetProgressPayload): Promise<{ items: Record<string, any>; inspectionData?: any }> {
+    try {
+      const query = new URLSearchParams({
+        property_id: params.property_id,
+        unit_id: params.unit_id,
+        inspection_type: params.inspection_type,
+      }).toString();
+
+      const response = await api.get<{ items: Record<string, any>; inspectionData?: any }>(`/inspections/progress?${query}`);
+      return response;
+    } catch (error: any) {
+      throw new Error(error.message || 'Failed to fetch progress');
     }
   }
 

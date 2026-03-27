@@ -541,7 +541,37 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   const handleProceed = async () => {
-    if (!selectedDeficiency) {
+    let currentDeficiency: any = null;
+    
+    if (isGeneralComment) {
+      currentDeficiency = {
+        name: 'General Comment',
+        severity: 'Low',
+        detail: note || 'General observation',
+        criteria: '',
+        points: '0',
+        repairBy: '',
+        category: 'General'
+      };
+    } else if (isCustomEntry) {
+      if (!customDeficiencyDetail) {
+        Alert.alert('Error', 'Please enter details for the custom deficiency');
+        return;
+      }
+      currentDeficiency = {
+        name: customDeficiencyName || 'Custom Deficiency',
+        severity: 'Moderate',
+        detail: customDeficiencyDetail,
+        criteria: customDeficiencyCriteria || '',
+        points: '0',
+        repairBy: '',
+        category: 'Custom'
+      };
+    } else {
+      currentDeficiency = selectedDeficiency;
+    }
+
+    if (!currentDeficiency) {
       Alert.alert('Error', 'Please select a deficiency');
       return;
     }
@@ -550,6 +580,13 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       Alert.alert('Error', 'Please add at least one photo');
       return;
     }
+
+    const normalizedArea = isOutsideLocation ? 'Outside' : (isUnit ? 'Unit' : 'Inside');
+    const normalizedUnit = isUnit ? (currentUnit || selectedUnits?.[0] || '-') : '-';
+    const selectedInspectionLocation = isOutsideLocation
+      ? selectedOutsideLocation
+      : (isUnit ? selectedUnitLocation : selectedInsideLocation);
+    const deficiencyDedupeKey = `${String(normalizedArea).trim().toLowerCase()}|${String(normalizedUnit).trim().toLowerCase()}|${String(itemId || itemName || 'unknown-item').trim().toLowerCase()}|${String(currentDeficiency.name || 'unknown-deficiency').trim().toLowerCase()}`;
 
     try {
       // Show processing modal - will be dismissed when processing completes
@@ -576,27 +613,27 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           try {
             aiAnalysis = await geminiService.analyzeDeficiency(
               imageUri, // Use local URI for AI analysis
-              selectedDeficiency.name,
+              currentDeficiency.name,
               itemName
             );
           } catch (aiError) {
             console.error('AI analysis error:', aiError);
             // Fallback if AI analysis fails
             aiAnalysis = {
-              analysis: `${selectedDeficiency.name} observed in ${itemName}`,
-              severity: selectedDeficiency.severity,
-              recommendations: selectedDeficiency.detail,
+              analysis: `${currentDeficiency.name} observed in ${itemName}`,
+              severity: currentDeficiency.severity,
+              recommendations: currentDeficiency.detail,
             };
           }
 
           // Create deficiency entry with AI analysis
           analyzedDeficiencies.push({
             deficiency: {
-              ...selectedDeficiency,
+              ...currentDeficiency,
               // Override severity with Outside-specific scoring if applicable
               severity: isOutsideLocation && outsideScoringResult
                 ? outsideScoringResult.severity as 'Life-Threatening' | 'Severe' | 'Moderate' | 'Low'
-                : selectedDeficiency.severity,
+                : currentDeficiency.severity,
               aiAnalysis: aiAnalysis.analysis,
               aiSeverity: aiAnalysis.severity,
               aiRecommendations: aiAnalysis.recommendations,
@@ -612,9 +649,12 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             imageUrl: uploadResult.success ? uploadResult.url : null, // Cloudinary URL for storage
             imageUri: imageUri, // Local URI for display
             note: note || '',
-            location: isOutsideLocation ? selectedOutsideLocation : location,
+            location: selectedInspectionLocation,
             itemName,
             itemId,
+            dedupeKey: deficiencyDedupeKey,
+            _area: normalizedArea,
+            _unit: normalizedUnit,
             analyzedAt: new Date().toISOString(),
           });
         } catch (error) {
@@ -622,11 +662,11 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           // Still add the deficiency without AI analysis
           analyzedDeficiencies.push({
             deficiency: {
-              ...selectedDeficiency,
+              ...currentDeficiency,
               // Override severity with Outside-specific scoring if applicable
               severity: isOutsideLocation && outsideScoringResult
                 ? outsideScoringResult.severity as 'Life-Threatening' | 'Severe' | 'Moderate' | 'Low'
-                : selectedDeficiency.severity,
+                : currentDeficiency.severity,
               // Include Outside-specific scoring info
               ...(isOutsideLocation && outsideScoringResult && {
                 categoryNumber: outsideScoringResult.categoryNumber,
@@ -639,9 +679,12 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             imageUrl: null,
             imageUri: imageUri,
             note,
-            location: isOutsideLocation ? selectedOutsideLocation : location,
+            location: selectedInspectionLocation,
             itemName,
             itemId,
+            dedupeKey: deficiencyDedupeKey,
+            _area: normalizedArea,
+            _unit: normalizedUnit,
             analyzedAt: new Date().toISOString(),
           });
         }
@@ -669,7 +712,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             deficiencies: deficiencyCount,
             severity: isOutsideLocation && outsideScoringResult
               ? outsideScoringResult.severity as 'Life-Threatening' | 'Severe' | 'Moderate' | 'Low'
-              : (selectedDeficiency?.severity || 'Moderate'),
+              : (currentDeficiency?.severity || 'Moderate'),
           }),
           // Include Outside-specific scoring information
           outsideScoringResult: isOutsideLocation ? outsideScoringResult : undefined,

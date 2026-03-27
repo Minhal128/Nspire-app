@@ -79,12 +79,26 @@ class CloudinaryService {
         uri = uri.replace('file://', '');
       }
 
-      const base64 = await FileSystem.readAsStringAsync(imageUri, {
+      // For web blob URLs or HTTP/HTTPS
+      if (uri.startsWith('blob:') || uri.startsWith('http://') || uri.startsWith('https://')) {
+        const response = await fetch(uri);
+        const blob = await response.blob();
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            resolve(reader.result as string); // Includes data: prefix
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+      }
+
+      const base64 = await FileSystem.readAsStringAsync(uri, {
         encoding: FileSystem.EncodingType.Base64,
       });
 
       // Determine image type from URI
-      const extension = imageUri.split('.').pop()?.toLowerCase() || 'jpeg';
+      const extension = uri.split('.').pop()?.toLowerCase() || 'jpeg';
       const mimeType = extension === 'png' ? 'image/png' : 'image/jpeg';
 
       return `data:${mimeType};base64,${base64}`;

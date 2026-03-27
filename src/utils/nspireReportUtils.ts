@@ -118,6 +118,22 @@ export const getNSPIRECodeDescription = (code: string): string => {
 };
 
 /**
+ * Pick the best available image URI from mixed finding payload shapes.
+ */
+const getFindingImageUri = (finding: any): string => {
+  return (
+    finding?.imageUrl ||
+    finding?.imageUri ||
+    finding?.photoUrl ||
+    finding?.photos?.[0]?.url ||
+    finding?.photo?.url ||
+    finding?.deficiency?.imageUri ||
+    finding?.deficiency?.imageUrl ||
+    ''
+  );
+};
+
+/**
  * Convert AI findings to NSPIRE deficiency entries
  */
 export const convertFindingsToDeficiencies = (
@@ -130,6 +146,7 @@ export const convertFindingsToDeficiencies = (
     finding.deficiencyQRId = '';
     const severity = mapFindingSeverityToNSPIRE(finding.severity);
     const nspireCode = finding.nspireCode || finding.code || finding?.deficiency?.code || mapCategoryToNSPIRECode(finding.category || finding.area);
+    const imageUri = getFindingImageUri(finding);
     const rawDetails =
       finding.deficiencyDetails ||
       finding.detail ||
@@ -143,8 +160,8 @@ export const convertFindingsToDeficiencies = (
     const detailsText = sanitizeAIDescription(rawDetails) || 'Issue recorded';
 
     return {
-      id: finding.id || `DEF-${index + 1}`, deficiencyQRId: '', imageUri: finding.imageUri || '',
-      imagePlaceholder: !finding.imageUri,
+      id: finding.id || `DEF-${index + 1}`, deficiencyQRId: '', imageUri,
+      imagePlaceholder: !imageUri,
       building: finding.building || finding.buildingName || finding.unitId || propertyInfo?.building || 'Building',
       unit: finding.unit || finding.unitId || propertyInfo?.unit || '-',
       room: finding.location || 'General',
@@ -299,10 +316,14 @@ export const generateNSPIREReport = (
     notes?: string;
     buildingName?: string;
     selectedUnits?: string[];
+    status?: string;
+    progressData?: any;
   }
 ): NSPIREInspectionReport => {
   const now = new Date();
   const { findings, property, inspectorName, inspectorId, escortName, startDate, endDate, notes, buildingName, selectedUnits } = inspectionData;
+  const runtimeStatus = (inspectionData as any).status;
+  const runtimeProgressData = (inspectionData as any).progressData;
 
   // Convert findings to deficiencies
   const deficiencies = convertFindingsToDeficiencies(findings, {
@@ -314,6 +335,26 @@ export const generateNSPIREReport = (
   const summary = calculateDeficiencySummary(deficiencies);
   const categoryBreakdown = calculateCategoryBreakdown(deficiencies);
   const score = calculateInspectionScore(deficiencies);
+
+  const buildingProgressMap = runtimeProgressData?.buildingProgressMap || {};
+  const buildingRows = runtimeProgressData?.buildingRows || [];
+
+  const inspectedBuildingCount = Object.values(buildingProgressMap).filter((b: any) => {
+    const out = Number(b?.out || 0);
+    const inside = Number(b?.in || 0);
+    const unit = Number(b?.un || 0);
+    const inspectedUnits = Array.isArray(b?.inspectedUnits) ? b.inspectedUnits.length : 0;
+    return out > 0 || inside > 0 || unit > 0 || inspectedUnits > 0;
+  }).length;
+
+  const inspectedUnitCount = Object.values(buildingProgressMap).reduce((sum: number, b: any) => {
+    const unitSet = new Set(Array.isArray(b?.inspectedUnits) ? b.inspectedUnits : []);
+    return sum + unitSet.size;
+  }, 0);
+
+  const sampledUnitsFromBuildings = Array.isArray(buildingRows)
+    ? buildingRows.reduce((sum: number, b: any) => sum + Number(b?.unitsForInspection || 0), 0)
+    : 0;
 
   // Build metadata
   const metadata: InspectionMetadata = {
@@ -337,6 +378,8 @@ export const generateNSPIREReport = (
     inspectorId: inspectorId || 'INS-001',
     buildingName: buildingName || undefined,
     inspectedUnits: selectedUnits && selectedUnits.length > 0 ? selectedUnits : undefined,
+    status: runtimeStatus || undefined,
+    progressData: runtimeProgressData || undefined,
   };
 
   // Build inspection data table
@@ -344,14 +387,14 @@ export const generateNSPIREReport = (
     {
       type: 'Building',
       propertyTotal: property?.buildings || 1,
-      sampleSize: 1,
-      totalUnitsInspected: 1
+      sampleSize: buildingRows.length || property?.buildings || 1,
+      totalUnitsInspected: inspectedBuildingCount
     },
     {
       type: 'Unit',
       propertyTotal: property?.units || 1,
-      sampleSize: 1,
-      totalUnitsInspected: 1
+      sampleSize: sampledUnitsFromBuildings || selectedUnits?.length || 1,
+      totalUnitsInspected: inspectedUnitCount
     },
     {
       type: 'Site',

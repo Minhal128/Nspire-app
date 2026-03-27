@@ -386,9 +386,9 @@ class GeminiService {
         throw new Error('Invalid image URI provided');
       }
 
-      // For remote URLs (Cloudinary), fetch and convert
-      if (imageUri.startsWith('http://') || imageUri.startsWith('https://')) {
-        console.log('Fetching remote image from:', imageUri);
+      // For remote URLs (Cloudinary) or Web blob URLs, fetch and convert
+      if (imageUri.startsWith('http://') || imageUri.startsWith('https://') || imageUri.startsWith('blob:')) {
+        console.log('Fetching remote or blob image from:', imageUri);
         const response = await fetch(imageUri);
         if (!response.ok) {
           throw new Error(`Failed to fetch image: ${response.status}`);

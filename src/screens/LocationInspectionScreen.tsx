@@ -10,6 +10,7 @@ import {
   Modal,
   Alert,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
@@ -206,31 +207,48 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
       // We continue to the alert even if backend save fails so they aren't stuck, it's saved locally
     }
 
-    Alert.alert(
-      'Progress Saved',
-      'Your inspection progress has been saved successfully.',
-      [
-        {
-          text: 'OK',
-          onPress: () => {
-            // Navigate back to the correct parent screen
-            if (location === 'Unit' || isUnitLocation) {
-              navigation.navigate('PropertyInfo', {
-                property,
-                selectedUnits,
-                buildingId,
-              });
-            } else {
-              navigation.navigate('InspectionCategories', {
-                property,
-                selectedUnits,
-                buildingId,
-              });
-            }
-          },
-        },
-      ]
-    );
+          if (Platform.OS === 'web') {
+        window.alert('Your inspection progress has been saved successfully.');
+        if (location === 'Unit' || isUnitLocation) {
+          navigation.navigate('PropertyInfo', {
+            property,
+            selectedUnits,
+            buildingId,
+          });
+        } else {
+          navigation.navigate('InspectionCategories', {
+            property,
+            selectedUnits,
+            buildingId,
+          });
+        }
+      } else {
+        Alert.alert(
+          'Progress Saved',
+          'Your inspection progress has been saved successfully.',
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                // Navigate back to the correct parent screen
+                if (location === 'Unit' || isUnitLocation) {
+                  navigation.navigate('PropertyInfo', {
+                    property,
+                    selectedUnits,
+                    buildingId,
+                  });
+                } else {
+                  navigation.navigate('InspectionCategories', {
+                    property,
+                    selectedUnits,
+                    buildingId,
+                  });
+                }
+              },
+            },
+          ]
+        );
+      }
   };
 
   const handleSelectAll = (response: ResponseType) => {

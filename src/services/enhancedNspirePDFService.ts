@@ -76,31 +76,42 @@ function makeCodeRefLink(nspireCode: string, codeReference?: any): string {
   return `<a href="${url}" style="color:#0E7490;font-weight:600;text-decoration:underline;" target="_blank">${shortCode}</a>`;
 }
 
-/** Per-image fetch timeout (8 seconds) */
-const IMAGE_FETCH_TIMEOUT = 8000;
+/** Per-image fetch timeout (20 seconds) */
+const IMAGE_FETCH_TIMEOUT = 20000;
+
+/** Number of retry attempts for remote image fetch */
+const IMAGE_FETCH_RETRIES = 2;
 
 /**
  * Download a remote image and return a data URI (base64).
  * Returns empty string on failure so the PDF still generates.
  */
 async function fetchImageAsBase64(url: string): Promise<string> {
+  const normalizedUrl = String(url || '').trim();
   try {
-    if (!url || (!url.startsWith('http://') && !url.startsWith('https://'))) return '';
+    if (!normalizedUrl || (!normalizedUrl.startsWith('http://') && !normalizedUrl.startsWith('https://'))) return '';
     // Use expo-file-system to download to a temp file, then read as base64
-    const tmpPath = FileSystem.cacheDirectory + 'img_' + Date.now() + '_' + Math.random().toString(36).slice(2) + '.jpg';
-    const downloadPromise = FileSystem.downloadAsync(url, tmpPath);
-    const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), IMAGE_FETCH_TIMEOUT));
-    const result = await Promise.race([downloadPromise, timeoutPromise]);
-    if (!result || !('uri' in result)) return '';
-    const b64 = await FileSystem.readAsStringAsync(result.uri, { encoding: FileSystem.EncodingType.Base64 });
-    // Clean up temp file (fire-and-forget)
-    FileSystem.deleteAsync(tmpPath, { idempotent: true }).catch(() => { });
-    if (!b64 || b64.length < 100) return '';
-    // Detect mime type from URL or default to jpeg
-    const ext = url.toLowerCase().includes('.png') ? 'png' : 'jpeg';
-    return `data:image/${ext};base64,${b64}`;
+    for (let attempt = 0; attempt <= IMAGE_FETCH_RETRIES; attempt++) {
+      const tmpPath = FileSystem.cacheDirectory + 'img_' + Date.now() + '_' + Math.random().toString(36).slice(2) + '.jpg';
+      const downloadPromise = FileSystem.downloadAsync(normalizedUrl, tmpPath);
+      const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), IMAGE_FETCH_TIMEOUT));
+      const result = await Promise.race([downloadPromise, timeoutPromise]);
+      if (!result || !('uri' in result)) {
+        continue;
+      }
+      const b64 = await FileSystem.readAsStringAsync(result.uri, { encoding: FileSystem.EncodingType.Base64 });
+      // Clean up temp file (fire-and-forget)
+      FileSystem.deleteAsync(tmpPath, { idempotent: true }).catch(() => { });
+      if (!b64 || b64.length < 100) {
+        continue;
+      }
+      // Detect mime type from URL or default to jpeg
+      const ext = normalizedUrl.toLowerCase().includes('.png') ? 'png' : 'jpeg';
+      return `data:image/${ext};base64,${b64}`;
+    }
+    return '';
   } catch (e) {
-    console.warn('Failed to fetch image:', url, e);
+    console.warn('Failed to fetch image:', normalizedUrl, e);
     return '';
   }
 }
@@ -114,29 +125,30 @@ async function preloadDeficiencyImages(deficiencies: DeficiencyEntry[]): Promise
   const imageMap = new Map<string, string>();
   const uniqueUrls = new Set<string>();
   for (const def of deficiencies) {
-    if (def.imageUri) {
+    const rawUri = typeof def.imageUri === 'string' ? def.imageUri.trim() : '';
+    if (rawUri) {
       // If already a base64 data URI, add directly to the map
-      if (def.imageUri.startsWith('data:')) {
-        imageMap.set(def.imageUri, def.imageUri);
-      } else if (def.imageUri.startsWith('http://') || def.imageUri.startsWith('https://')) {
-        uniqueUrls.add(def.imageUri);
+      if (rawUri.startsWith('data:')) {
+        imageMap.set(rawUri, rawUri);
+      } else if (rawUri.startsWith('http://') || rawUri.startsWith('https://')) {
+        uniqueUrls.add(rawUri);
       } else if (!Platform.OS || Platform.OS !== 'web') {
-        if (def.imageUri.startsWith('file://') || def.imageUri.startsWith('/')) {
+        if (rawUri.startsWith('file://') || rawUri.startsWith('/') || rawUri.startsWith('content://')) {
           // Local file URI - try to convert to base64 (native only)
           try {
-            const filePath = def.imageUri.startsWith('file://') ? def.imageUri : def.imageUri;
+            const filePath = rawUri;
             const b64 = await FileSystem.readAsStringAsync(filePath, { encoding: FileSystem.EncodingType.Base64 });
             if (b64 && b64.length > 100) {
-              const ext = def.imageUri.toLowerCase().includes('.png') ? 'png' : 'jpeg';
-              imageMap.set(def.imageUri, `data:image/${ext};base64,${b64}`);
+              const ext = rawUri.toLowerCase().includes('.png') ? 'png' : 'jpeg';
+              imageMap.set(rawUri, `data:image/${ext};base64,${b64}`);
             }
           } catch (e) {
-            console.warn('Failed to read local image file:', def.imageUri, e);
+            console.warn('Failed to read local image file:', rawUri, e);
           }
         }
       } else {
         // Web: use the imageUri directly (could be a blob URL or existing data URI)
-        imageMap.set(def.imageUri, def.imageUri);
+        imageMap.set(rawUri, rawUri);
       }
     }
   }
@@ -149,7 +161,8 @@ async function preloadDeficiencyImages(deficiencies: DeficiencyEntry[]): Promise
   const entries = await Promise.all(
     Array.from(uniqueUrls).map(async (url) => {
       const b64 = await fetchImageAsBase64(url);
-      return [url, b64] as [string, string];
+      // Fallback to original URL if base64 conversion fails
+      return [url, b64 || url] as [string, string];
     })
   );
   for (const [url, b64] of entries) {
@@ -390,12 +403,13 @@ function generateEnhancedDeficiencyTable(deficiencies: DeficiencyEntry[], imageM
       // Check if imageUri is already a base64 data URI (use directly) or look up from the preloaded map
       let imgSrc = '';
       if (def.imageUri) {
-        if (def.imageUri.startsWith('data:')) {
+        const normalized = String(def.imageUri).trim();
+        if (normalized.startsWith('data:')) {
           // Already a base64 data URI — use directly
-          imgSrc = def.imageUri;
+          imgSrc = normalized;
         } else {
           // Look up from the preloaded image map
-          imgSrc = imageMap.get(def.imageUri) || '';
+          imgSrc = imageMap.get(normalized) || (normalized.startsWith('http') ? normalized : '');
         }
       }
       const imgCell = imgSrc
@@ -558,6 +572,46 @@ function generateInProgressDeficiencyTable(
   interface GroupedDef { def: any; isRepeat: boolean; }
   const buildingsMap = new Map<string, Map<string, GroupedDef[]>>();
 
+  const inferSectionForDef = (def: any, bProgress: any): 'Outside' | 'Inside' | 'Units' => {
+    const area = String(def?.area || '').toLowerCase();
+    if (area.includes('outside')) return 'Outside';
+    if (area.includes('inside')) return 'Inside';
+    if (area.includes('unit')) return 'Units';
+
+    const unitValue = String(def?.unit || '').trim().toLowerCase();
+    if (unitValue && unitValue !== '-' && !unitValue.includes('multiple')) return 'Units';
+
+    const textBlob = [
+      def?.location,
+      def?.room,
+      def?.category,
+      def?.subCategory,
+      def?.itemName,
+      def?.inspectionType,
+      def?.title,
+      def?.deficiencyName,
+    ].map((v) => String(v || '').toLowerCase()).join(' ');
+
+    const outsideKeywords = ['outside', 'exterior', 'site', 'ground', 'roof', 'facade', 'parking', 'yard'];
+    const insideKeywords = ['inside', 'interior', 'lobby', 'hall', 'corridor', 'stair', 'common area', 'community'];
+    const unitKeywords = ['unit', 'apartment', 'bedroom', 'bathroom', 'kitchen', 'living room', 'tenant'];
+
+    if (outsideKeywords.some((k) => textBlob.includes(k))) return 'Outside';
+    if (unitKeywords.some((k) => textBlob.includes(k))) return 'Units';
+    if (insideKeywords.some((k) => textBlob.includes(k))) return 'Inside';
+
+    const outScore = Number(bProgress?.out || 0);
+    const inScore = Number(bProgress?.in || 0);
+    const unScore = Number(bProgress?.un || 0);
+
+    if (outScore >= inScore && outScore >= unScore && outScore > 0) return 'Outside';
+    if (unScore >= inScore && unScore >= outScore && unScore > 0) return 'Units';
+    if (inScore > 0) return 'Inside';
+
+    // Safe default when no signal is available
+    return 'Inside';
+  };
+
   // Create a bucket for every building that has deficiencies
   deficiencies.forEach((def: any, idx: number) => {
     const building = (def.building && def.building !== '-') ? def.building : 'Building';
@@ -565,15 +619,24 @@ function generateInProgressDeficiencyTable(
 
     // Within building, segment by 'Outside', 'Inside', 'Units', or 'General Comment'
     let area = def.area || '';
-    if (def.isGeneralComment) {
-      area = def.category || area || 'Other';
+    const isExplicitGeneralComment =
+      !!def.isGeneralComment ||
+      String(def.deficiencyName || '').trim().toLowerCase() === 'general comment' ||
+      String(def.title || '').trim().toLowerCase() === 'general comment';
+    if (isExplicitGeneralComment) {
+      area = def.category || area || 'General Comment';
     }
 
-    let subGroupKey = 'Other';
+    let subGroupKey: 'Outside' | 'Inside' | 'Units' | 'GeneralComment';
     const lArea = area.toLowerCase();
-    if (lArea.includes('outside')) subGroupKey = 'Outside';
+    if (isExplicitGeneralComment) subGroupKey = 'GeneralComment';
+    else if (lArea.includes('outside')) subGroupKey = 'Outside';
     else if (lArea.includes('inside')) subGroupKey = 'Inside';
     else if (lArea.includes('unit')) subGroupKey = 'Units';
+    else {
+      const bProgress = bMap[building] || { out: 0, in: 0, un: 0 };
+      subGroupKey = inferSectionForDef(def, bProgress);
+    }
 
     const buildingGroups = buildingsMap.get(building)!;
     if (!buildingGroups.has(subGroupKey)) buildingGroups.set(subGroupKey, []);
@@ -588,6 +651,32 @@ function generateInProgressDeficiencyTable(
   // Sort Buildings alphabetically
   const sortedBuildings = Array.from(buildingsMap.keys()).sort((a, b) => a.localeCompare(b));
 
+  const unique = (items: string[]) => Array.from(new Set(items.filter(Boolean)));
+
+  const getSelectedModulesForSection = (
+    building: string,
+    groupKey: 'Outside' | 'Inside' | 'Units' | 'GeneralComment',
+    items: GroupedDef[]
+  ): string[] => {
+    if (groupKey === 'GeneralComment') return [];
+
+    const bProgress = bMap[building] || {};
+    const progressModules = groupKey === 'Outside'
+      ? (bProgress?.modules?.Outside?.submodules || [])
+      : groupKey === 'Inside'
+        ? (bProgress?.modules?.Inside?.submodules || [])
+        : (bProgress?.modules?.Units?.submodules || []);
+
+    const inferredFromRows = items
+      .map(({ def }) => String(def?.itemName || def?.module || def?.submodule || '').trim())
+      .filter((v) => !!v);
+
+    return unique([
+      ...progressModules.map((m: any) => String(m).trim()),
+      ...inferredFromRows,
+    ]);
+  };
+
   let rows = '';
 
   sortedBuildings.forEach(building => {
@@ -599,30 +688,41 @@ function generateInProgressDeficiencyTable(
 
     const buildingGroups = buildingsMap.get(building)!;
 
+    rows += `\n<tr><td colspan="7" style="background:#D1D5DB;font-weight:700;font-size:8pt;text-align:left;padding:6px 4px;border:1px solid #000;">Building - ${esc(building)}</td></tr>\n`;
+
     // Enforce order: Outside -> Inside -> Units
     const ordering = [
       { key: 'Outside', pct: outPct },
       { key: 'Inside', pct: inPct },
       { key: 'Units', pct: unPct },
-      { key: 'Other', pct: null }
+      { key: 'GeneralComment', pct: null },
     ];
 
     let itemsShownForBuilding = false;
 
     ordering.forEach(groupOrderDef => {
       const items = buildingGroups.get(groupOrderDef.key) || [];
+      const selectedModules = getSelectedModulesForSection(
+        building,
+        groupOrderDef.key as 'Outside' | 'Inside' | 'Units' | 'GeneralComment',
+        items
+      );
 
       // We render a section if it has findings OR if it has SOME progress
-      if (items.length === 0 && (groupOrderDef.pct === 0 || groupOrderDef.pct === null)) {
+      if (
+        items.length === 0 &&
+        (groupOrderDef.pct === 0 || groupOrderDef.pct === null) &&
+        selectedModules.length === 0
+      ) {
         return; // Skip completely empty & untouched sections
       }
 
       itemsShownForBuilding = true;
-      const displayGroupKey = groupOrderDef.key === 'Other'
+      const displayGroupKey = groupOrderDef.key === 'GeneralComment'
         ? 'General Comment'
-        : `${groupOrderDef.key} (Building - ${building})`;
+        : `${groupOrderDef.key}${selectedModules.length ? ` | Selected Modules: ${selectedModules.map((m) => esc(m)).join(', ')}` : ''}`;
 
-      rows += `\n<tr class="gh"><td colspan="7">${esc(displayGroupKey)}</td></tr>\n`;
+      rows += `\n<tr><td colspan="7" style="background:#F3F4F6;font-weight:700;font-size:7.5pt;text-align:left;padding:6px 4px;border:1px solid #000;">${displayGroupKey}</td></tr>\n`;
 
       if (items.length === 0) {
         // Render dummy row for missing defects/photos
@@ -631,10 +731,11 @@ function generateInProgressDeficiencyTable(
         items.forEach(({ def, isRepeat }) => {
           let imgSrc = '';
           if (def.imageUri) {
-            if (def.imageUri.startsWith('data:')) {
-              imgSrc = def.imageUri;
+            const normalized = String(def.imageUri).trim();
+            if (normalized.startsWith('data:')) {
+              imgSrc = normalized;
             } else {
-              imgSrc = imageMap.get(def.imageUri) || '';
+              imgSrc = imageMap.get(normalized) || (normalized.startsWith('http') ? normalized : '');
             }
           }
           const imgCell = imgSrc
@@ -664,7 +765,6 @@ function generateInProgressDeficiencyTable(
     });
 
     if (!itemsShownForBuilding) {
-      rows += `\n<tr class="gh"><td colspan="7">Building - ${building}</td></tr>\n`;
       rows += `<tr class="avoid-break"><td colspan="7" style="text-align:center;font-style:italic;padding:10px;">In Progress - No sections started yet</td></tr>\n`;
     }
   });
@@ -696,6 +796,71 @@ function generateInProgressDeficiencyTable(
 }
 
 /**
+ * Render per-building progress details for in-progress exports.
+ * Includes building name, units coverage, modules started, and sub-modules inspected.
+ */
+function generateInProgressBuildingSummary(report: any): string {
+  const pData = report?.metadata?.progressData || {};
+  const bMap = pData.buildingProgressMap || {};
+  const buildingKeys = Object.keys(bMap).sort((a, b) => a.localeCompare(b));
+
+  if (buildingKeys.length === 0) return '';
+
+  const formatSubmoduleList = (entry: any, key: 'Outside' | 'Inside' | 'Units'): string => {
+    const modules = entry?.modules || {};
+    const subs = Array.isArray(modules?.[key]?.submodules) ? modules[key].submodules : [];
+    if (subs.length === 0) return '-';
+    return esc(subs.join(', '));
+  };
+
+  const rows = buildingKeys.map((buildingName) => {
+    const entry = bMap[buildingName] || {};
+    const outCount = Number(entry?.out || 0);
+    const inCount = Number(entry?.in || 0);
+    const unitCount = Number(entry?.un || 0);
+    const inspectedUnits = Array.isArray(entry?.inspectedUnits) ? entry.inspectedUnits : [];
+
+    return `
+      <tr>
+        <td class="la">${esc(buildingName)}</td>
+        <td>${Number(entry?.totalUnits || 0)}</td>
+        <td>${Number(entry?.unitsForInspection || 0)}</td>
+        <td class="la">${inspectedUnits.length ? esc(inspectedUnits.join(', ')) : '-'}</td>
+        <td class="la">
+          Outside (${outCount})<br/>
+          Inside (${inCount})<br/>
+          Units (${unitCount})
+        </td>
+        <td class="la">
+          <b>Outside:</b> ${formatSubmoduleList(entry, 'Outside')}<br/>
+          <b>Inside:</b> ${formatSubmoduleList(entry, 'Inside')}<br/>
+          <b>Units:</b> ${formatSubmoduleList(entry, 'Units')}
+        </td>
+      </tr>`;
+  }).join('');
+
+  return `
+  <div class="avoid-break">
+    <h3 class="section-title">In-Progress Building Summary</h3>
+    <table>
+      <thead>
+        <tr>
+          <th class="la" style="width:14%">Building</th>
+          <th style="width:8%">Total Units</th>
+          <th style="width:10%">Units for Inspection</th>
+          <th class="la" style="width:16%">Inspected Units</th>
+          <th class="la" style="width:14%">Modules</th>
+          <th class="la" style="width:38%">Sub-Modules Inspected</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows}
+      </tbody>
+    </table>
+  </div>`;
+}
+
+/**
  * In-progress report template function
  */
 function generateInProgressReportHTML(
@@ -704,7 +869,7 @@ function generateInProgressReportHTML(
   imageMap: Map<string, string>
 ): string {
   // Uses the EXACT SAME top-level UI, just replaces the deficiencies payload with the in-progress module grouping
-  return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>NSPIRE Report (In-Progress)</title><style>${generateEnhancedStyles()}</style></head><body><div class="report-container">${generateEnhancedHeader(report.metadata)}${options.includeSummaryPage ? generateEnhancedSummaryPage(report.summary, report.categoryBreakdown, report.metadata, report.inspectionData, report.occupancyInfo, report.deficiencies) : ''}${options.includeDetailedDeficiencies ? generateInProgressDeficiencyTable(report, imageMap) : ''}${generateCertificatesTable()}${options.includeCertification && report.certification ? generateEnhancedCertificationSection(report.certification) : ''}${generateEnhancedFooter(options)}</div></body></html>`;
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>NSPIRE Report (In-Progress)</title><style>${generateEnhancedStyles()}</style></head><body><div class="report-container">${generateEnhancedHeader(report.metadata)}${options.includeSummaryPage ? generateEnhancedSummaryPage(report.summary, report.categoryBreakdown, report.metadata, report.inspectionData, report.occupancyInfo, report.deficiencies) : ''}${generateInProgressBuildingSummary(report)}${options.includeDetailedDeficiencies ? generateInProgressDeficiencyTable(report, imageMap) : ''}${generateCertificatesTable()}${options.includeCertification && report.certification ? generateEnhancedCertificationSection(report.certification) : ''}${generateEnhancedFooter(options)}</div></body></html>`;
 }
 
 /**

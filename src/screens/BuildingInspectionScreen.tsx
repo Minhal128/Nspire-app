@@ -64,6 +64,20 @@ interface BuildingRow {
   unitsForInspection: number;
 }
 
+interface BuildingProgressEntry {
+  out: number;
+  in: number;
+  un: number;
+  totalUnits: number;
+  unitsForInspection: number;
+  inspectedUnits: string[];
+  modules: {
+    Outside: { submodules: string[] };
+    Inside: { submodules: string[] };
+    Units: { submodules: string[] };
+  };
+}
+
 export default function BuildingInspectionScreen() {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<BuildingInspectionRouteProp>();
@@ -292,6 +306,58 @@ export default function BuildingInspectionScreen() {
         (s: any) => String(s.propertyId) === propertyIdStr
       );
 
+      const outsideLookup: Record<string, string> = (OUTSIDE_ITEMS as any[]).reduce((acc: Record<string, string>, item: any) => {
+        const key = String(item?.id || item?.itemId || item?.name || '').trim();
+        const label = String(item?.name || item?.title || item?.label || key).trim();
+        if (key) acc[key] = label;
+        return acc;
+      }, {});
+
+      const insideLookup: Record<string, string> = (INSIDE_ITEMS as any[]).reduce((acc: Record<string, string>, item: any) => {
+        const key = String(item?.id || item?.itemId || item?.name || '').trim();
+        const label = String(item?.name || item?.title || item?.label || key).trim();
+        if (key) acc[key] = label;
+        return acc;
+      }, {});
+
+      const unitLookup: Record<string, string> = (UNIT_ITEMS as any[]).reduce((acc: Record<string, string>, item: any) => {
+        const key = String(item?.id || item?.itemId || item?.name || '').trim();
+        const label = String(item?.name || item?.title || item?.label || key).trim();
+        if (key) acc[key] = label;
+        return acc;
+      }, {});
+
+      const buildingProgressMap: Record<string, BuildingProgressEntry> = {};
+
+      const ensureBuildingProgress = (buildingName: string): BuildingProgressEntry => {
+        const key = String(buildingName || 'Building').trim() || 'Building';
+        if (!buildingProgressMap[key]) {
+          const matchingRow = buildings.find((b) => b.buildingId === key);
+          buildingProgressMap[key] = {
+            out: 0,
+            in: 0,
+            un: 0,
+            totalUnits: matchingRow?.totalUnits || 0,
+            unitsForInspection: matchingRow?.unitsForInspection || 0,
+            inspectedUnits: [],
+            modules: {
+              Outside: { submodules: [] },
+              Inside: { submodules: [] },
+              Units: { submodules: [] },
+            },
+          };
+        }
+        return buildingProgressMap[key];
+      };
+
+      const pushUnique = (arr: string[], value: string) => {
+        const safeValue = String(value || '').trim();
+        if (!safeValue) return;
+        if (!arr.includes(safeValue)) arr.push(safeValue);
+      };
+
+      buildings.forEach((b) => ensureBuildingProgress(b.buildingId));
+
       let allFindings: Finding[] = [];
 
       // Try to get remote progress
@@ -303,6 +369,44 @@ export default function BuildingInspectionScreen() {
             const pId = p.propertyId?._id || p.propertyId || 'unknown';
             const pIdStr = String(pId);
 
+            if (pIdStr !== propertyIdStr) return;
+
+            const inspectionType = String(p.inspectionType || '').trim();
+            const inspectionTypeLower = inspectionType.toLowerCase();
+            const isDraftOnly = inspectionTypeLower.startsWith('report_draft_');
+
+            const rawBuildingName =
+              (p.unitId && p.unitId !== '-')
+                ? String(p.unitId)
+                : ((p.buildingName && p.buildingName !== '-') ? String(p.buildingName) : 'Building');
+            const progressEntry = ensureBuildingProgress(rawBuildingName);
+
+            if (!isDraftOnly) {
+              const responses = p.responses && typeof p.responses === 'object' ? p.responses : {};
+              const answeredKeys = Object.keys(responses).filter((k) => {
+                const value = responses[k];
+                return value !== null && value !== undefined && String(value).trim() !== '';
+              });
+
+              if (inspectionTypeLower.startsWith('outside')) {
+                answeredKeys.forEach((k) => pushUnique(progressEntry.modules.Outside.submodules, outsideLookup[k] || k));
+              } else if (inspectionTypeLower.startsWith('inside')) {
+                answeredKeys.forEach((k) => pushUnique(progressEntry.modules.Inside.submodules, insideLookup[k] || k));
+              } else if (inspectionTypeLower.startsWith('unit')) {
+                answeredKeys.forEach((k) => pushUnique(progressEntry.modules.Units.submodules, unitLookup[k] || k));
+
+                const inspectionParts = inspectionType.split('_');
+                if (inspectionParts.length > 1) {
+                  const unitLabel = inspectionParts.slice(1).join('_').trim();
+                  if (unitLabel) pushUnique(progressEntry.inspectedUnits, unitLabel);
+                }
+              }
+
+              progressEntry.out = progressEntry.modules.Outside.submodules.length;
+              progressEntry.in = progressEntry.modules.Inside.submodules.length;
+              progressEntry.un = progressEntry.inspectedUnits.length;
+            }
+
             // Get findings from various possible structures
             let findings: any[] = [];
             if (p.inspectionData && Array.isArray(p.inspectionData.findings)) {
@@ -313,9 +417,10 @@ export default function BuildingInspectionScreen() {
               findings = p.findings;
             }
 
-            if (pIdStr === propertyIdStr && findings.length > 0) {
+            if (findings.length > 0) {
               allFindings.push(...findings.map((f: any) => ({
                 ...f,
+                imageUri: f.imageUrl || f.imageUri || f?.photos?.[0]?.url || f?.deficiency?.imageUrl || f?.deficiency?.imageUri || '',
                 building: (p.buildingName && p.buildingName !== '-')
                   ? p.buildingName
                   : ((p.unitId && p.unitId !== '-') ? p.unitId : 'Building'),
@@ -337,6 +442,25 @@ export default function BuildingInspectionScreen() {
         let bName = (session as any).buildingName || (session as any).buildingId || property?.name || 'Building';
         if (bName === '-') bName = 'Building';
 
+        const progressEntry = ensureBuildingProgress(bName);
+        const sessionInspectionType = String((session as any).inspectionType || '').toLowerCase();
+
+        if (sessionInspectionType.includes('outside')) {
+          const keys = Array.isArray((session as any).responses) ? (session as any).responses : Object.keys((session as any).responses || {});
+          keys.forEach((k: any) => pushUnique(progressEntry.modules.Outside.submodules, outsideLookup[String(k)] || String(k)));
+          progressEntry.out = progressEntry.modules.Outside.submodules.length;
+        } else if (sessionInspectionType.includes('inside')) {
+          const keys = Array.isArray((session as any).responses) ? (session as any).responses : Object.keys((session as any).responses || {});
+          keys.forEach((k: any) => pushUnique(progressEntry.modules.Inside.submodules, insideLookup[String(k)] || String(k)));
+          progressEntry.in = progressEntry.modules.Inside.submodules.length;
+        } else if (sessionInspectionType.includes('unit')) {
+          const keys = Array.isArray((session as any).responses) ? (session as any).responses : Object.keys((session as any).responses || {});
+          keys.forEach((k: any) => pushUnique(progressEntry.modules.Units.submodules, unitLookup[String(k)] || String(k)));
+          const currentSessionUnit = (session as any).currentUnit || (session as any).unitId;
+          if (currentSessionUnit) pushUnique(progressEntry.inspectedUnits, String(currentSessionUnit));
+          progressEntry.un = progressEntry.inspectedUnits.length;
+        }
+
         if (session.images && session.images.length > 0) {
           for (const img of session.images) {
             const hasFindings = img.findings && img.findings.length > 0;
@@ -349,13 +473,17 @@ export default function BuildingInspectionScreen() {
               if (imageUri && Platform.OS !== 'web' && !imageUri.startsWith('data:') && !imageUri.startsWith('http')) {
                 try {
                   const fileInfo = await FileSystem.getInfoAsync(imageUri);
-                  if (fileInfo.exists) {
-                    const base64 = await FileSystem.readAsStringAsync(imageUri, {
-                      encoding: FileSystem.EncodingType.Base64,
-                    });
-                    if (base64 && base64.length > 100) {
-                      const ext = imageUri.toLowerCase().includes('.png') ? 'png' : 'jpeg';
-                      imageUri = `data:image/${ext};base64,${base64}`;
+                  if (fileInfo.exists || imageUri.startsWith('content://') || imageUri.startsWith('file://')) {
+                    try {
+                      const base64 = await FileSystem.readAsStringAsync(imageUri, {
+                        encoding: FileSystem.EncodingType.Base64,
+                      });
+                      if (base64 && base64.length > 100) {
+                        const ext = imageUri.toLowerCase().includes('.png') ? 'png' : 'jpeg';
+                        imageUri = `data:image/${ext};base64,${base64}`;
+                      }
+                    } catch (readErr) {
+                      console.log('Direct local/base URI conversion failed:', readErr);
                     }
                   }
                 } catch (err) {
@@ -374,20 +502,8 @@ export default function BuildingInspectionScreen() {
               }
 
               if (!hasFindings) {
-                allFindings.push({
-                  id: `IMG-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-                  isGeneralComment: true,
-                  title: 'General Photo',
-                  deficiencyName: 'General Observation',
-                  deficiencyDetails: 'Photo captured during inspection.',
-                  severity: '-',
-                  area: computedArea,
-                  category: computedArea,
-                  location: img.room || img.roomCategory || (session as any).inspectionType || 'General',
-                  building: bName,
-                  unit: (session as any).unitId || '-',
-                  imageUri,
-                });
+                // Do not auto-create "General Comment" entries from blank image findings.
+                // General comments should only appear when the user explicitly selected that option.
                 continue;
               }
 
@@ -405,7 +521,7 @@ export default function BuildingInspectionScreen() {
                 location: f.location || img.room || img.roomCategory || (session as any).inspectionType || 'General',
                 building: bName,
                 unit: (session as any).unitId || '-',
-                imageUri,
+                imageUri: fData?.imageUrl || imageUri || fData?.imageUri || '',
                 nspireCode: f.nspireCode || fData.code || '-',
                 codeReference: f.codeReference || fData.codeReference || '',
                 comments: (f as any).note || fData.aiAnalysis || (f as any).recommendedAction || '',
@@ -426,13 +542,18 @@ export default function BuildingInspectionScreen() {
         buildingName: (property?.name && property?.name !== '-') ? property.name : 'Building',
         selectedUnits: selectedUnits || [],
         progressData: {
-          outsideProgress: 0,
-          insideProgress: 0,
-          unitProgress: 0,
+          outsideProgress: Object.values(buildingProgressMap).reduce((sum, b) => sum + Number(b.out || 0), 0),
+          insideProgress: Object.values(buildingProgressMap).reduce((sum, b) => sum + Number(b.in || 0), 0),
+          unitProgress: Object.values(buildingProgressMap).reduce((sum, b) => sum + Number(b.un || 0), 0),
           outsideTotal: OUTSIDE_ITEMS.length,
           insideTotal: INSIDE_ITEMS.length,
           unitTotal: UNIT_ITEMS.length,
-          buildingProgressMap: {}
+          buildingRows: buildings.map((b) => ({
+            buildingId: b.buildingId,
+            totalUnits: b.totalUnits,
+            unitsForInspection: b.unitsForInspection,
+          })),
+          buildingProgressMap,
         }
       };
 
@@ -481,6 +602,11 @@ export default function BuildingInspectionScreen() {
           outsideTotal: OUTSIDE_ITEMS.length,
           insideTotal: INSIDE_ITEMS.length,
           unitTotal: UNIT_ITEMS.length,
+          buildingRows: buildings.map((b) => ({
+            buildingId: b.buildingId,
+            totalUnits: b.totalUnits,
+            unitsForInspection: b.unitsForInspection,
+          })),
           buildingProgressMap: {}
         }
       };

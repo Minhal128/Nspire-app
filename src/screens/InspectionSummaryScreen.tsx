@@ -21,6 +21,7 @@ import * as Sharing from 'expo-sharing';
 import * as XLSX from 'xlsx';
 import { enhancedNspirePDFService } from '../services/enhancedNspirePDFService';
 import { storeData, getData } from '../utils/storage';
+import { inspectionService } from '../services/inspectionService';
 
 type InspectionSummaryScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -35,6 +36,8 @@ interface Props {
 
 const InspectionSummaryScreen = ({ navigation, route }: Props) => {
   const { property, selectedUnits, buildingId, inspectionData, currentUnit: routeCurrentUnit } = route.params;
+  const propertyId = property?._id || property?.id || property?.propertyId || 'unknown';
+  const summaryDraftInspectionType = `REPORT_DRAFT_${String(buildingId)}`;
   const [activeTab, setActiveTab] = useState<'summary' | 'deficiencies'>('summary');
   const [exportingPDF, setExportingPDF] = useState(false);
   const [exportingHTML, setExportingHTML] = useState(false);
@@ -45,41 +48,104 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
     inspectionData?.deficiencies || []
   );
 
+  const normalizeKeyPart = (value: any): string => String(value ?? '').trim().toLowerCase();
+
+  const buildDeficiencyDedupeKey = (deficiencyItem: any, fallbackArea: string, fallbackUnit: string): string => {
+    if (deficiencyItem?.dedupeKey && typeof deficiencyItem.dedupeKey === 'string') {
+      return deficiencyItem.dedupeKey;
+    }
+
+    const area = normalizeKeyPart(deficiencyItem?._area || fallbackArea || 'unknown-area');
+    const unit = normalizeKeyPart(deficiencyItem?._unit !== undefined ? deficiencyItem._unit : fallbackUnit);
+    const moduleId = normalizeKeyPart(
+      deficiencyItem?.itemId ||
+      deficiencyItem?.itemName ||
+      deficiencyItem?.deficiencyQRId ||
+      'unknown-item'
+    );
+    const deficiencyName = normalizeKeyPart(
+      deficiencyItem?.deficiency?.name ||
+      deficiencyItem?.deficiencyName ||
+      (deficiencyItem?.isGeneralComment ? 'general comment' : 'unknown-deficiency')
+    );
+
+    return `${area}|${unit}|${moduleId}|${deficiencyName}`;
+  };
+
+  const mergeDeficiencyLists = (
+    existingList: any[] = [],
+    incomingList: any[] = [],
+    fallbackArea: string,
+    fallbackUnit: string
+  ): any[] => {
+    const mergedByKey = new Map<string, any>();
+
+    const upsert = (item: any) => {
+      const key = buildDeficiencyDedupeKey(item, fallbackArea, fallbackUnit);
+      const previous = mergedByKey.get(key) || {};
+      const merged = {
+        ...previous,
+        ...item,
+        _area: item?._area || previous?._area || fallbackArea,
+        _unit: item?._unit !== undefined ? item._unit : (previous?._unit !== undefined ? previous._unit : fallbackUnit),
+        dedupeKey: key,
+      };
+      mergedByKey.set(key, merged);
+    };
+
+    existingList.forEach(upsert);
+    incomingList.forEach(upsert);
+
+    return Array.from(mergedByKey.values());
+  };
+
   // On mount: load any previously saved deficiencies and merge with the new ones
   useEffect(() => {
     const loadAndMerge = async () => {
       try {
-        const saveKey = `saved_inspection_${property?._id || property?.id || property?.propertyId || 'unknown'}_${buildingId}`;
-        const saved = await getData(saveKey);
+        const saveKey = `saved_inspection_${propertyId}_${buildingId}`;
+        const [saved, remoteProgress] = await Promise.all([
+          getData(saveKey),
+          inspectionService
+            .getProgress({
+              property_id: String(propertyId),
+              unit_id: String(buildingId),
+              inspection_type: summaryDraftInspectionType,
+            })
+            .catch(() => ({ items: {}, inspectionData: {} })),
+        ]);
 
         // Stamp _area / _unit on incoming deficiencies from the CURRENT session
         const currentArea: string = inspectionData?.isOutsideInspection
           ? 'Outside'
           : (inspectionData?.location === 'Inside' ? 'Inside' : 'Units');
-        const currentUnit = (currentArea === 'Inside' || currentArea === 'Outside')
+        const currentUnitValue = (currentArea === 'Inside' || currentArea === 'Outside')
           ? '-'
-          : (selectedUnits.join(', ') || 'Unit Multiple');
+          : (routeCurrentUnit || selectedUnits.join(', ') || 'Unit Multiple');
 
         const incoming = (inspectionData?.deficiencies || []).map((d: any) => ({
           ...d,
           _area: d._area || currentArea,
-          _unit: d._unit !== undefined ? d._unit : currentUnit,
+          _unit: d._unit !== undefined ? d._unit : currentUnitValue,
+          dedupeKey: buildDeficiencyDedupeKey(d, currentArea, currentUnitValue),
         }));
 
-        if (saved?.deficiencies && Array.isArray(saved.deficiencies) && saved.deficiencies.length > 0) {
-          // Deduplicate by deficiencyQRId; saved ones first, then new ones not already present
-          const existingIds = new Set(saved.deficiencies.map((d: any) => d.deficiencyQRId).filter(Boolean));
-          const uniqueNew = incoming.filter((d: any) => !existingIds.has(d.deficiencyQRId));
-          setMergedDeficiencies([...saved.deficiencies, ...uniqueNew]);
-        } else if (incoming.length > 0) {
-          setMergedDeficiencies(incoming);
+        const savedDeficiencies = (saved?.deficiencies && Array.isArray(saved.deficiencies)) ? saved.deficiencies : [];
+        const remoteDeficiencies = (remoteProgress?.inspectionData?.deficiencies && Array.isArray(remoteProgress.inspectionData.deficiencies))
+          ? remoteProgress.inspectionData.deficiencies
+          : [];
+
+        const mergedLocalRemote = mergeDeficiencyLists(remoteDeficiencies, savedDeficiencies, currentArea, currentUnitValue);
+        const merged = mergeDeficiencyLists(mergedLocalRemote, incoming, currentArea, currentUnitValue);
+        if (merged.length > 0) {
+          setMergedDeficiencies(merged);
         }
       } catch (e) {
         console.warn('Could not load saved inspection data:', e);
       }
     };
     loadAndMerge();
-  }, []);
+  }, [propertyId, buildingId, summaryDraftInspectionType]);
 
   // Calculate actual deficiency counts from mergedDeficiencies
   const deficiencyCounts = {
@@ -112,6 +178,20 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
   const inspectionId = `697e0d82e115b966d90cc009`;
   const inspectionDate = new Date().toLocaleDateString();
 
+  const isUnitContextInspection =
+    ['unit', 'units'].includes(String(inspectionData?.location || '').toLowerCase()) ||
+    mergedDeficiencies.some((d: any) => String(d?._area || '').toLowerCase() === 'unit' || (d?._unit && d._unit !== '-'));
+
+  const inspectedUnitSet = new Set(
+    mergedDeficiencies
+      .map((d: any) => String(d?._unit || '').trim())
+      .filter((u: string) => !!u && u !== '-' && u.toLowerCase() !== 'unit multiple')
+  );
+
+  const inspectedUnitsCount = isUnitContextInspection
+    ? (inspectedUnitSet.size > 0 ? inspectedUnitSet.size : (routeCurrentUnit ? 1 : ((selectedUnits?.length || 0) === 1 ? 1 : null)))
+    : null;
+
   const handleContinueInspection = async () => {
     const nextArea: string = inspectionData?.isOutsideInspection
       ? 'Outside'
@@ -121,7 +201,7 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
       : (selectedUnits.join(', ') || routeCurrentUnit || 'Unit Multiple');
 
     try {
-      const saveKey = `saved_inspection_${property?._id || property?.id || 'unknown'}_${buildingId}`;
+      const saveKey = `saved_inspection_${propertyId}_${buildingId}`;
 
       // Convert local image URIs to base64 so images survive navigation,
       // and stamp _area / _unit on each deficiency so they survive future merges
@@ -159,10 +239,32 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
           return { ...defItem, _area: area, _unit: unit, imageUri: defItem.imageUrl || null };
         })
       );
+
+      const dedupedForSave = mergeDeficiencyLists([], deficienciesWithImages, nextArea, nextUnit);
+      const savedAt = new Date().toISOString();
+
       await storeData(saveKey, {
-        deficiencies: deficienciesWithImages,
-        savedAt: new Date().toISOString(),
+        deficiencies: dedupedForSave,
+        savedAt,
       });
+
+      await inspectionService.saveProgress({
+        property_id: String(propertyId),
+        unit_id: String(buildingId),
+        inspection_type: summaryDraftInspectionType,
+        inspectionData: {
+          deficiencies: dedupedForSave,
+          property: {
+            _id: propertyId,
+            name: property?.name || 'Property',
+          },
+          unit: nextUnit,
+          inspectionType: 'Draft Inspection',
+          savedAt,
+        },
+      });
+
+      setMergedDeficiencies(dedupedForSave);
     } catch (e) {
       console.warn('Could not save inspection data:', e);
     }
@@ -817,10 +919,12 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
                 <Text style={styles.detailValue}>{buildingId}</Text>
               </View>
 
-              <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Units Inspected:</Text>
-                <Text style={styles.detailValue}>{selectedUnits.length}</Text>
-              </View>
+              {inspectedUnitsCount !== null && (
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Units Inspected:</Text>
+                  <Text style={styles.detailValue}>{inspectedUnitsCount}</Text>
+                </View>
+              )}
 
               <View style={styles.detailRow}>
                 <Text style={styles.detailLabel}>Inspector:</Text>
@@ -839,7 +943,7 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
 
             {mergedDeficiencies.length > 0 ? (
               mergedDeficiencies.map((defItem: any, index: number) => (
-                <View key={index} style={[styles.deficiencyDetailCard, index > 0 && { marginTop: 16 }]}>
+                <View key={defItem.dedupeKey || defItem.deficiencyQRId || `${defItem.itemId || defItem.itemName || 'def'}-${index}`} style={[styles.deficiencyDetailCard, index > 0 && { marginTop: 16 }]}>
                   {(() => {
                     const deficiency = defItem?.deficiency || {};
                     const severity = deficiency.aiSeverity || deficiency.severity || 'Moderate';

@@ -58,6 +58,13 @@ interface Report {
   criticalDeficiencies: number;
   notes: string;
   rawData: Inspection;
+  draftMeta?: {
+    source: 'local' | 'backend';
+    key?: string;
+    propertyId?: string;
+    unitId?: string;
+    inspectionType?: string;
+  };
 }
 
 export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreenProps) {
@@ -206,11 +213,75 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
               criticalDeficiencies: dCritDef,
               notes: draftData.notes || 'Draft from local storage',
               rawData: { ...draftData, property: foundProp || draftData.property || { _id: extractedPropertyId, name: resolvedPropName } },
+              draftMeta: {
+                source: 'local',
+                key,
+              },
             });
           }
         }
       } catch (storageErr) {
         console.log('Error loading local drafts:', storageErr);
+      }
+
+      // Add DB-synced drafts from inspection progress (tied to logged-in user)
+      try {
+        const progressRes = await inspectionService.getAllProgress();
+        const backendDrafts = (progressRes?.progress || []).filter((p: any) =>
+          String(p?.inspectionType || '').startsWith('REPORT_DRAFT_') &&
+          Array.isArray(p?.inspectionData?.deficiencies) &&
+          p.inspectionData.deficiencies.length > 0
+        );
+
+        backendDrafts.forEach((p: any) => {
+          const propertyObj = p.propertyId;
+          const extractedPropertyId = propertyObj?._id || propertyObj || p?.inspectionData?.property?._id || '';
+          const foundProp = (propertiesData.properties || propertiesData || []).find((prop: any) =>
+            prop._id === extractedPropertyId || prop.id === extractedPropertyId
+          );
+          const resolvedPropName =
+            propertyObj?.name ||
+            p?.inspectionData?.property?.name ||
+            foundProp?.name ||
+            'Cloud Draft';
+
+          const draftFindings = p.inspectionData.deficiencies || [];
+          const dTotalDef = draftFindings.length;
+          const dCritDef = draftFindings.filter((f: any) => {
+            const sev = String(f?.severity || f?.deficiency?.severity || f?.deficiency?.aiSeverity || '').toLowerCase();
+            return sev === 'critical' || sev === 'life-threatening' || sev === 'severe';
+          }).length;
+
+          mappedReports.push({
+            id: `draftdb_${p._id}`,
+            property: resolvedPropName,
+            propertyId: extractedPropertyId,
+            unit: p?.inspectionData?.unit || p.unitId || 'All Units',
+            inspector: storedUser?.fullName || 'Draft Inspector',
+            date: new Date(p.updatedAt || p.createdAt || p?.inspectionData?.savedAt || Date.now()).toLocaleDateString('en-US', {
+              month: 'short', day: 'numeric', year: 'numeric'
+            }) + ' (Draft)',
+            complianceScore: 'Unpaid',
+            inspectionType: p?.inspectionData?.inspectionType || 'Draft Inspection',
+            totalDeficiencies: dTotalDef,
+            criticalDeficiencies: dCritDef,
+            notes: 'Draft synced to cloud',
+            rawData: {
+              ...(p.inspectionData || {}),
+              deficiencies: draftFindings,
+              findings: draftFindings,
+              property: foundProp || p?.inspectionData?.property || { _id: extractedPropertyId, name: resolvedPropName },
+            } as any,
+            draftMeta: {
+              source: 'backend',
+              propertyId: extractedPropertyId,
+              unitId: String(p.unitId || ''),
+              inspectionType: String(p.inspectionType || ''),
+            },
+          });
+        });
+      } catch (backendDraftErr) {
+        console.log('Error loading backend drafts:', backendDraftErr);
       }
 
       // Sort by date (newest first)
@@ -364,6 +435,18 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
               if (report.id.startsWith('draft_')) {
                 const draftKey = report.id.replace('draft_', '');
                 await AsyncStorage.removeItem(draftKey);
+              } else if (report.id.startsWith('draftdb_') && report.draftMeta?.source === 'backend') {
+                await inspectionService.saveProgress({
+                  property_id: String(report.draftMeta.propertyId || report.propertyId),
+                  unit_id: String(report.draftMeta.unitId || report.unit || 'unknown'),
+                  inspection_type: String(report.draftMeta.inspectionType || ''),
+                  inspectionData: {
+                    deleted: true,
+                    deficiencies: [],
+                    savedAt: new Date().toISOString(),
+                  },
+                  responses: {},
+                });
               } else {
                 await inspectionService.deleteInspection(report.id);
               }

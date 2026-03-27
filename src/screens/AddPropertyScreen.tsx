@@ -17,7 +17,7 @@ import { Country, State, City } from 'country-state-city';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as XLSX from 'xlsx';
-import { propertyService } from '../services';
+import { propertyService, authService } from '../services';
 
 interface AddPropertyScreenProps {
   navigation: any;
@@ -127,6 +127,27 @@ export default function AddPropertyScreen({
   const [uploadedFile, setUploadedFile] = useState<{ name: string; size: number } | null>(null);
   const [isProcessingFile, setIsProcessingFile] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
+
+  const handleSafeBack = useCallback(async () => {
+    try {
+      if (navigation.canGoBack && navigation.canGoBack()) {
+        navigation.goBack();
+        return;
+      }
+
+      const storedUser = await authService.getStoredUser();
+      const dashboardRoute = authService.getDashboardRoute(storedUser?.role || 'inspector');
+      navigation.reset({
+        index: 0,
+        routes: [{ name: dashboardRoute as never }],
+      });
+    } catch (error) {
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Dashboard' as never }],
+      });
+    }
+  }, [navigation]);
 
   // Update a specific form field
   const updateForm = (index: number, field: keyof PropertyForm, value: string) => {
@@ -579,7 +600,7 @@ export default function AddPropertyScreen({
         if (response.success) {
           Alert.alert('Success', 'Property added successfully!', [
             { text: 'Add More', onPress: () => { setForms([createEmptyForm()]); setUploadedFile(null); } },
-            { text: 'Go to Dashboard', onPress: () => navigation.goBack() },
+            { text: 'Go to Dashboard', onPress: () => { handleSafeBack(); } },
           ]);
         } else {
           Alert.alert('Error', response.message || 'Failed to add property.');
@@ -595,7 +616,7 @@ export default function AddPropertyScreen({
               `All ${count} properties added successfully!`,
               [
                 { text: 'Add More', onPress: () => { setForms([createEmptyForm()]); setUploadedFile(null); } },
-                { text: 'Go to Dashboard', onPress: () => navigation.goBack() },
+                { text: 'Go to Dashboard', onPress: () => { handleSafeBack(); } },
               ],
             );
           } else {
@@ -617,7 +638,7 @@ export default function AddPropertyScreen({
           if (failCount === 0) {
             Alert.alert('Success', `All ${successCount} properties added successfully!`, [
               { text: 'Add More', onPress: () => { setForms([createEmptyForm()]); setUploadedFile(null); } },
-              { text: 'Go to Dashboard', onPress: () => navigation.goBack() },
+              { text: 'Go to Dashboard', onPress: () => { handleSafeBack(); } },
             ]);
           } else {
             const failedNames = results.filter((r) => !r.success).map((r) => r.name).join(', ');
@@ -810,7 +831,7 @@ export default function AddPropertyScreen({
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => navigation.goBack()}
+          onPress={() => { handleSafeBack(); }}
         >
           <Ionicons name="arrow-back" size={24} color="#1F2937" />
         </TouchableOpacity>
@@ -845,6 +866,24 @@ export default function AddPropertyScreen({
           >
             <Ionicons name="add" size={22} color="#FFFFFF" style={{ marginRight: 6 }} />
             <Text style={styles.addAnotherButtonText}>Add Another Property</Text>
+          </TouchableOpacity>
+
+          {/* Submit All Button */}
+          <TouchableOpacity
+            style={[styles.submitAllButton, loading && styles.submitButtonDisabled, { marginBottom: 20 }]}
+            onPress={handleSubmitAll}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <View style={styles.submitButtonContent}>
+                <Ionicons name="checkmark-circle" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
+                <Text style={styles.submitAllButtonText}>
+                  Submit {forms.length} {forms.length === 1 ? 'Property' : 'Properties'}
+                </Text>
+              </View>
+            )}
           </TouchableOpacity>
 
           {/* OR Divider */}
@@ -925,24 +964,6 @@ export default function AddPropertyScreen({
               </View>
             </View>
           </View>
-
-          {/* Submit All Button */}
-          <TouchableOpacity
-            style={[styles.submitAllButton, loading && styles.submitButtonDisabled]}
-            onPress={handleSubmitAll}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <View style={styles.submitButtonContent}>
-                <Ionicons name="checkmark-circle" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
-                <Text style={styles.submitAllButtonText}>
-                  Submit {forms.length} {forms.length === 1 ? 'Property' : 'Properties'}
-                </Text>
-              </View>
-            )}
-          </TouchableOpacity>
 
           <View style={{ height: 50 }} />
         </ScrollView>
