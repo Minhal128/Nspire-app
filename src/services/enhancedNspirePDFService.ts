@@ -326,7 +326,6 @@ function generateEnhancedHeader(metadata: InspectionMetadata, logoBase64: string
         <tr><td class="meta-label">Start Date:</td><td>${esc(metadata.startDate)}</td></tr>
         <tr><td class="meta-label">End Date:</td><td>${esc(metadata.endDate)}</td></tr>
         <tr><td class="meta-label">Report Created:</td><td>${esc(metadata.reportCreatedDate)}</td></tr>
-        ${metadata.buildingName ? `<tr><td class="meta-label">Building:</td><td>${esc(metadata.buildingName)}</td></tr>` : ''}
         ${metadata.inspectedUnits && metadata.inspectedUnits.length > 0 ? `<tr><td class="meta-label">Inspected Units:</td><td>${esc(metadata.inspectedUnits.join(', '))}</td></tr>` : ''}
       </table>
     </td>
@@ -385,7 +384,7 @@ function generateEnhancedSummaryPage(
 </div>
 
 <div class="avoid-break">
-  <h3 class="section-title">Building/Unit Inspection Data</h3>
+  <h3 class="section-title">Unit Inspection Data</h3>
   <table>
     <thead>
       <tr>
@@ -397,7 +396,10 @@ function generateEnhancedSummaryPage(
       <tr><th>Total Units Inspected</th></tr>
     </thead>
     <tbody>
-      ${inspectionData.map(row => `<tr><td class="la">${esc(row.type)}</td><td>${row.propertyTotal}</td><td>${row.sampleSize}</td><td>${row.totalUnitsInspected}</td></tr>`).join('')}
+      ${inspectionData
+        .filter(row => String(row.type).toLowerCase() !== 'building')
+        .map(row => `<tr><td class="la">${esc(row.type)}</td><td>${row.propertyTotal}</td><td>${row.sampleSize}</td><td>${row.totalUnitsInspected}</td></tr>`)
+        .join('')}
     </tbody>
   </table>
 </div>
@@ -480,7 +482,13 @@ function generateEnhancedDeficiencyTable(deficiencies: DeficiencyEntry[], imageM
 
   let rows = '';
   sortedGroups.forEach((items, groupKey) => {
-    rows += `<tr class="gh"><td colspan="7">${esc(groupKey)}</td></tr>\n`;
+    const displayGroupKey = groupKey
+      .replace(/\s*\/\s*Building\s*-\s*[^)]+/gi, '')
+      .replace(/\(\s*Building\s*-\s*[^)]+\)/gi, '')
+      .replace(/^Building\s*-\s*/i, '')
+      .trim() || 'General';
+
+    rows += `<tr class="gh"><td colspan="7">${esc(displayGroupKey)}</td></tr>\n`;
     items.forEach(({ def, isRepeat }) => {
       // Check if imageUri is already a base64 data URI (use directly) or look up from the preloaded map
       let imgSrc = '';
@@ -647,6 +655,19 @@ function generateInProgressDeficiencyTable(
     return '';
   };
 
+  const sanitizeUnitLabel = (value: unknown): string => {
+    const label = toLabel(value);
+    if (!label) return '';
+
+    return label
+      .replace(/\s*\/\s*building\s*-\s*[^/]+/gi, '')
+      .replace(/\s*\(\s*building\s*-\s*[^)]+\)/gi, '')
+      .replace(/\s*\/\s*property\s*-\s*[^/]+/gi, '')
+      .replace(/\s*\(\s*property\s*-\s*[^)]+\)/gi, '')
+      .replace(/^\s*building\s*-\s*/i, '')
+      .trim();
+  };
+
   const looksLikeBuildingLabel = (value: string): boolean => {
     const label = toLabel(value);
     if (!label) return false;
@@ -783,11 +804,11 @@ function generateInProgressDeficiencyTable(
   
   deficiencies.forEach((def: any, idx: number) => {
     const area = String(def.area || def._area || '').trim();
-    const normalizedUnit = firstValidLabel([
+    const normalizedUnit = sanitizeUnitLabel(firstValidLabel([
       def.unit,
       normalizeLabelToken(area).includes('unit') ? def._unit : '',
       def.unitId,
-    ]);
+    ]));
     const building = resolveBuildingLabel(def.building || def.buildingName || def.buildingId, area, normalizedUnit);
 
     if (!buildingsMap.has(building)) buildingsMap.set(building, new Map());
@@ -811,7 +832,19 @@ function generateInProgressDeficiencyTable(
     const lArea = currentArea.toLowerCase();
     if (isExplicitGeneralComment) subGroupKey = 'GeneralComment';
     else if (lArea.includes('outside')) subGroupKey = 'Outside';
-    else if (lArea.includes('inside')) subGroupKey = 'Inside';
+    else if (lArea.includes('inside')) {
+      const normalizedUnitLabel = sanitizeUnitLabel(firstValidLabel([
+        def.unit,
+        def._unit,
+        def.unitId,
+      ]));
+      const shouldTreatAsUnits =
+        !!normalizedUnitLabel &&
+        !isPlaceholderLabel(normalizedUnitLabel) &&
+        normalizeLabelToken(normalizedUnitLabel) !== normalizeLabelToken(building);
+
+      subGroupKey = shouldTreatAsUnits ? 'Units' : 'Inside';
+    }
     else if (lArea.includes('unit')) subGroupKey = 'Units';
     else {
       const bProgress = bMap[building] || { out: 0, in: 0, un: 0 };
@@ -831,7 +864,7 @@ function generateInProgressDeficiencyTable(
 
     const progressUnits = Array.isArray(progressEntry?.inspectedUnits) ? progressEntry.inspectedUnits : [];
     progressUnits.forEach((unitLabel: unknown) => {
-      const normalizedUnitLabel = firstValidLabel([unitLabel]);
+      const normalizedUnitLabel = sanitizeUnitLabel(firstValidLabel([unitLabel]));
       if (normalizedUnitLabel && !isPlaceholderLabel(normalizedUnitLabel)) {
         buildingUnitsMap.get(resolvedBuildingName)!.add(normalizedUnitLabel);
       }
@@ -938,15 +971,9 @@ function generateInProgressDeficiencyTable(
     const buildingGroups = buildingsMap.get(building)!;
 
     const combinedUnits = unique([
-      ...Array.from(buildingUnitsMap.get(building) || []).map((unit) => String(unit || '').trim()),
-      ...mergedProgress.inspectedUnits,
+      ...Array.from(buildingUnitsMap.get(building) || []).map((unit) => sanitizeUnitLabel(unit)),
+      ...mergedProgress.inspectedUnits.map((unit) => sanitizeUnitLabel(unit)),
     ]).filter((unit) => !isPlaceholderLabel(unit));
-
-    const shouldAppendUnitToHeading =
-      combinedUnits.length === 1 && normalizeLabelToken(combinedUnits[0]) !== normalizeLabelToken(building);
-    const buildingHeading = shouldAppendUnitToHeading ? `${building} / ${combinedUnits[0]}` : building;
-
-    rows += `\n<tr><td colspan="7" style="background:#D1D5DB;font-weight:700;font-size:8pt;text-align:left;padding:6px 4px;border:1px solid #000;">${esc(buildingHeading)}</td></tr>\n`;
 
     // Enforce order: Outside -> Inside -> Units
     const ordering = [
@@ -976,9 +1003,87 @@ function generateInProgressDeficiencyTable(
       }
 
       itemsShownForBuilding = true;
+
+      if (groupOrderDef.key === 'Units' && items.length > 0) {
+        const unitBuckets = new Map<string, GroupedDef[]>();
+        items.forEach((entry) => {
+          const unitCandidate = sanitizeUnitLabel(firstValidLabel([
+            entry.def?.unit,
+            entry.def?._unit,
+            entry.def?.unitId,
+          ]));
+
+          const normalizedUnit =
+            unitCandidate &&
+            !isPlaceholderLabel(unitCandidate) &&
+            normalizeLabelToken(unitCandidate) !== normalizeLabelToken(building)
+              ? unitCandidate
+              : 'Unspecified Unit';
+
+          if (!unitBuckets.has(normalizedUnit)) {
+            unitBuckets.set(normalizedUnit, []);
+          }
+          unitBuckets.get(normalizedUnit)!.push(entry);
+        });
+
+        const propertyNameForHeading = String(report?.metadata?.propertyName || '').trim();
+        const sortedUnitLabels = Array.from(unitBuckets.keys()).sort((a, b) => a.localeCompare(b));
+
+        sortedUnitLabels.forEach((unitLabel) => {
+          const unitItems = unitBuckets.get(unitLabel) || [];
+          const unitSelectedModules = getSelectedModulesForSection(
+            building,
+            'Units',
+            unitItems
+          );
+
+          const displayGroupKey = `Units (Unit - ${esc(unitLabel)}${propertyNameForHeading ? ` / Property - ${esc(propertyNameForHeading)}` : ''})${unitSelectedModules.length ? ` | Selected Modules: ${unitSelectedModules.map((m) => esc(m)).join(', ')}` : ''}`;
+
+          rows += `\n<tr><td colspan="7" style="background:#F3F4F6;font-weight:700;font-size:7.5pt;text-align:left;padding:6px 4px;border:1px solid #000;">${displayGroupKey}</td></tr>\n`;
+
+          unitItems.forEach(({ def, isRepeat }) => {
+            let imgSrc = '';
+            if (def.imageUri) {
+              const normalized = String(def.imageUri).trim();
+              if (normalized.startsWith('data:')) {
+                imgSrc = normalized;
+              } else {
+                imgSrc = imageMap.get(normalized) || (normalized.startsWith('http') ? normalized : '');
+              }
+            }
+
+            const imgCell = imgSrc
+              ? `<img src="${imgSrc}" style="width:80px;height:60px;object-fit:cover;border:1px solid #000;display:block;margin:0 auto" />`
+              : `<div class="ip">Photo</div>`;
+
+            const isGC = !!def.isGeneralComment;
+            const detailText = def.deficiencyDetails || def.detail || def.description || 'No details available';
+
+            rows += `<tr class="avoid-break">
+    <td class="la">${isGC ? '-' : (def.deficiencyName && def.deficiencyName !== 'Deficiency' && def.deficiencyName !== 'General Comment' ? `<b>${esc(def.deficiencyName)}</b><br/><br/>` : '') + esc(detailText)}</td>
+    <td class="la" style="text-align:center;vertical-align:middle;cursor:pointer;">${isGC ? '-' : makeCodeRefLink(def.nspireCode, def.codeReference)}</td>
+    <td>${imgCell}</td>
+    <td>${isGC ? '-' : (def.deductionPts || '-')}</td>
+    <td>${isGC ? '-' : (isRepeat ? 'Repeat' : 'Not Repeat')}</td>
+    <td>${isGC ? '-' : esc(def.severity || '-')}</td>
+    <td class="la">${esc(def.note || def.comments || '-')}</td>
+    </tr>\n`;
+          });
+        });
+
+        return;
+      }
+
+      const propertyNameForHeading = String(report?.metadata?.propertyName || '').trim();
+
+      const unitsHeadingSuffix =
+        groupOrderDef.key === 'Units' && combinedUnits.length > 0
+          ? ` (Unit - ${combinedUnits.map((u) => esc(u)).join(', ')}${propertyNameForHeading ? ` / Property - ${esc(propertyNameForHeading)}` : ''})`
+          : '';
+
       const displayGroupKey = groupOrderDef.key === 'GeneralComment'
         ? 'General Comment'
-        : `${groupOrderDef.key}${selectedModules.length ? ` | Selected Modules: ${selectedModules.map((m) => esc(m)).join(', ')}` : ''}`;
+        : `${groupOrderDef.key}${unitsHeadingSuffix}${selectedModules.length ? ` | Selected Modules: ${selectedModules.map((m) => esc(m)).join(', ')}` : ''}`;
 
       rows += `\n<tr><td colspan="7" style="background:#F3F4F6;font-weight:700;font-size:7.5pt;text-align:left;padding:6px 4px;border:1px solid #000;">${displayGroupKey}</td></tr>\n`;
 
@@ -1125,7 +1230,7 @@ function generateInProgressReportHTML(
   logoBase64: string
 ): string {
   // Uses the EXACT SAME top-level UI, just replaces the deficiencies payload with the in-progress module grouping
-  return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>NSPIRE Report (In-Progress)</title><style>${generateEnhancedStyles()}</style></head><body><div class="report-container">${generateEnhancedHeader(report.metadata, logoBase64)}${options.includeSummaryPage ? generateEnhancedSummaryPage(report.summary, report.categoryBreakdown, report.metadata, report.inspectionData, report.occupancyInfo, report.deficiencies) : ''}${generateInProgressBuildingSummary(report)}${options.includeDetailedDeficiencies ? generateInProgressDeficiencyTable(report, imageMap) : ''}${generateCertificatesTable()}${options.includeCertification && report.certification ? generateEnhancedCertificationSection(report.certification) : ''}${generateEnhancedFooter(options, logoBase64)}</div></body></html>`;
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>NSPIRE Report (In-Progress)</title><style>${generateEnhancedStyles()}</style></head><body><div class="report-container">${generateEnhancedHeader(report.metadata, logoBase64)}${options.includeSummaryPage ? generateEnhancedSummaryPage(report.summary, report.categoryBreakdown, report.metadata, report.inspectionData, report.occupancyInfo, report.deficiencies) : ''}${options.includeDetailedDeficiencies ? generateInProgressDeficiencyTable(report, imageMap) : ''}${generateCertificatesTable()}${options.includeCertification && report.certification ? generateEnhancedCertificationSection(report.certification) : ''}${generateEnhancedFooter(options, logoBase64)}</div></body></html>`;
 }
 
 /**

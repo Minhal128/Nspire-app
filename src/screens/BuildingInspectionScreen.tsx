@@ -381,6 +381,10 @@ export default function BuildingInspectionScreen() {
                 : ((p.buildingName && p.buildingName !== '-') ? String(p.buildingName) : 'Building');
             const progressEntry = ensureBuildingProgress(rawBuildingName);
 
+            const parsedUnitFromInspectionType = inspectionTypeLower.startsWith('unit_')
+              ? inspectionType.split('_').slice(1).join('_').trim()
+              : '';
+
             if (!isDraftOnly) {
               const responses = p.responses && typeof p.responses === 'object' ? p.responses : {};
               const answeredKeys = Object.keys(responses).filter((k) => {
@@ -395,11 +399,7 @@ export default function BuildingInspectionScreen() {
               } else if (inspectionTypeLower.startsWith('unit')) {
                 answeredKeys.forEach((k) => pushUnique(progressEntry.modules.Units.submodules, unitLookup[k] || k));
 
-                const inspectionParts = inspectionType.split('_');
-                if (inspectionParts.length > 1) {
-                  const unitLabel = inspectionParts.slice(1).join('_').trim();
-                  if (unitLabel) pushUnique(progressEntry.inspectedUnits, unitLabel);
-                }
+                if (parsedUnitFromInspectionType) pushUnique(progressEntry.inspectedUnits, parsedUnitFromInspectionType);
               }
 
               progressEntry.out = progressEntry.modules.Outside.submodules.length;
@@ -428,7 +428,15 @@ export default function BuildingInspectionScreen() {
                 deficiencyName: f.deficiencyName || f?.deficiency?.name || f.title || f?.deficiency?.title || f.name || 'Deficiency',
                 codeReference: f.codeReference || f?.deficiency?.codeReference || f?.deficiency?.code || f.code || '',
                 nspireCode: f.nspireCode || f?.deficiency?.code || '-',
-                area: f.area || f.category || p.inspectionType || 'General',
+                // If this progress record belongs to a Unit_* inspection,
+                // keep it as Unit even when nested finding payload says "Inside".
+                area: (inspectionTypeLower.startsWith('unit_') || inspectionTypeLower === 'unit')
+                  ? 'Unit'
+                  : (f.area || f.category || p.inspectionType || 'General'),
+                unit: (() => {
+                  const candidate = String(f.unit || f._unit || parsedUnitFromInspectionType || '').trim();
+                  return candidate && !/^b\d+$/i.test(candidate) ? candidate : '-';
+                })(),
               })));
             }
           });
@@ -444,6 +452,9 @@ export default function BuildingInspectionScreen() {
 
         const progressEntry = ensureBuildingProgress(bName);
         const sessionInspectionType = String((session as any).inspectionType || '').toLowerCase();
+        const parsedUnitFromSessionType = sessionInspectionType.startsWith('unit_')
+          ? sessionInspectionType.split('_').slice(1).join('_').trim()
+          : '';
 
         if (sessionInspectionType.includes('outside')) {
           const keys = Array.isArray((session as any).responses) ? (session as any).responses : Object.keys((session as any).responses || {});
@@ -456,7 +467,10 @@ export default function BuildingInspectionScreen() {
         } else if (sessionInspectionType.includes('unit')) {
           const keys = Array.isArray((session as any).responses) ? (session as any).responses : Object.keys((session as any).responses || {});
           keys.forEach((k: any) => pushUnique(progressEntry.modules.Units.submodules, unitLookup[String(k)] || String(k)));
-          const currentSessionUnit = (session as any).currentUnit || (session as any).unitId;
+          const currentSessionUnit =
+            (session as any).currentUnit
+            || parsedUnitFromSessionType
+            || (!/^b\d+$/i.test(String((session as any).unitId || '')) ? (session as any).unitId : '');
           if (currentSessionUnit) pushUnique(progressEntry.inspectedUnits, String(currentSessionUnit));
           progressEntry.un = progressEntry.inspectedUnits.length;
         }
@@ -493,12 +507,14 @@ export default function BuildingInspectionScreen() {
 
               const cat = (f.category || img.roomCategory || (session as any).inspectionType || '').toLowerCase();
               let computedArea = 'General';
-              if (cat.includes('outside')) {
+              if (sessionInspectionType.startsWith('unit_') || sessionInspectionType === 'unit') {
+                computedArea = 'Unit';
+              } else if (cat.includes('outside')) {
                 computedArea = 'Outside';
-              } else if (cat.includes('inside')) {
-                computedArea = 'Inside';
               } else if (cat.includes('unit')) {
                 computedArea = 'Unit';
+              } else if (cat.includes('inside')) {
+                computedArea = 'Inside';
               }
 
               if (!hasFindings) {
@@ -520,7 +536,10 @@ export default function BuildingInspectionScreen() {
                 category: computedArea,
                 location: f.location || img.room || img.roomCategory || (session as any).inspectionType || 'General',
                 building: bName,
-                unit: (session as any).unitId || '-',
+                unit: (() => {
+                  const candidate = String(f.unit || f._unit || (session as any).currentUnit || parsedUnitFromSessionType || '').trim();
+                  return candidate && !/^b\d+$/i.test(candidate) ? candidate : '-';
+                })(),
                 imageUri: fData?.imageUrl || imageUri || fData?.imageUri || '',
                 nspireCode: f.nspireCode || fData.code || '-',
                 codeReference: f.codeReference || fData.codeReference || '',

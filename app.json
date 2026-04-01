@@ -37,7 +37,7 @@
         "foregroundImage": "./inspire_logo.png",
         "backgroundColor": "#97F0FF"
       },
-      "package": "com.inspire.app",
+      "package": "com.inspire.minhal",
       "intentFilters": [
         {
           "action": "VIEW",
@@ -103,14 +103,10 @@
         }
       ]
     ],
-    "owner": "minhal.rizvi",
     "extra": {
       "eas": {
-        "projectId": "693d2364-f65e-4ab9-ad78-6ab27b7b2094"
+        "projectId": "9ac75db8-08de-43b1-b544-443c0cf8ee6c"
       }
-    },
-    "updates": {
-      "url": "https://u.expo.dev/693d2364-f65e-4ab9-ad78-6ab27b7b2094"
     }
   }
 }
