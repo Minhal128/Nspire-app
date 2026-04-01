@@ -531,6 +531,92 @@ export default function BuildingInspectionScreen() {
         }
       }
 
+      // Add OD responses from globalInspectionProgress that don't have detailed findings
+      // This ensures items marked as "ALL OD" (without photos) appear in the report
+      // NOTE: Disabled per client request to exclude ALL/OD-only entries from reports.
+      /*
+      const createODFinding = (itemId: string, itemName: string, areaType: string, bName: string, unitNum: string = '-'): Finding => ({
+        id: `OD-${areaType}-${itemId}-${Date.now()}`,
+        title: itemName,
+        deficiencyName: itemName,
+        deficiencyDetails: 'Marked as Operational Deficiency',
+        severity: 'Low',
+        area: areaType,
+        category: areaType,
+        location: areaType,
+        building: bName,
+        unit: unitNum,
+        imageUri: '',
+        nspireCode: 'OD-MARKED',
+        codeReference: '',
+        comments: '',
+      });
+
+      // Check globalInspectionProgress for OD responses across all buildings
+      buildings.forEach((b) => {
+        const bName = b.buildingId;
+        
+        // Check Outside items
+        const outsideKey = `inspection_responses_${propertyIdStr}_${bName}_Outside`;
+        const outsideResponses = globalInspectionProgress[outsideKey];
+        if (outsideResponses && typeof outsideResponses === 'object') {
+          Object.entries(outsideResponses).forEach(([itemId, response]) => {
+            if (response === 'OD') {
+              const item = OUTSIDE_ITEMS.find(i => String(i.id) === String(itemId));
+              const itemName = item?.name || `Item ${itemId}`;
+              // Check if finding already exists
+              const exists = allFindings.some(f => 
+                f.deficiencyName === itemName && f.area === 'Outside' && f.building === bName
+              );
+              if (!exists) {
+                allFindings.push(createODFinding(itemId, itemName, 'Outside', bName));
+              }
+            }
+          });
+        }
+        
+        // Check Inside items
+        const insideKey = `inspection_responses_${propertyIdStr}_${bName}_Inside`;
+        const insideResponses = globalInspectionProgress[insideKey];
+        if (insideResponses && typeof insideResponses === 'object') {
+          Object.entries(insideResponses).forEach(([itemId, response]) => {
+            if (response === 'OD') {
+              const item = INSIDE_ITEMS.find(i => String(i.id) === String(itemId));
+              const itemName = item?.name || `Item ${itemId}`;
+              const exists = allFindings.some(f => 
+                f.deficiencyName === itemName && f.area === 'Inside' && f.building === bName
+              );
+              if (!exists) {
+                allFindings.push(createODFinding(itemId, itemName, 'Inside', bName));
+              }
+            }
+          });
+        }
+        
+        // Check Unit items for each selected unit
+        (selectedUnits || []).forEach((unit: string) => {
+          const unitKey = `inspection_responses_${propertyIdStr}_${bName}_Unit_${unit}`;
+          const unitResponses = globalInspectionProgress[unitKey];
+          if (unitResponses && typeof unitResponses === 'object') {
+            Object.entries(unitResponses).forEach(([itemId, response]) => {
+              if (response === 'OD') {
+                const item = UNIT_ITEMS.find(i => String(i.id) === String(itemId));
+                const itemName = item?.name || `Item ${itemId}`;
+                const exists = allFindings.some(f => 
+                  f.deficiencyName === itemName && f.area === 'Units' && f.building === bName && f.unit === unit
+                );
+                if (!exists) {
+                  allFindings.push(createODFinding(itemId, itemName, 'Units', bName, unit));
+                }
+              }
+            });
+          }
+        });
+      });
+      */
+
+      console.log(`[BuildingInspection] Total findings collected: ${allFindings.length}`);
+
       setReportFindings(allFindings);
 
       const reportData = {

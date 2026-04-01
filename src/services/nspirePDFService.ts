@@ -23,6 +23,81 @@ import {
 import { INSPIRE_LOGO_BASE64 } from '../constants/inspireLogo';
 import { API_CONFIG } from './api';
 
+/** Cached logo base64 data URI */
+let cachedLogoBase64: string | null = null;
+
+/**
+ * Load the INSPIRE logo as base64 data URI for embedding in PDF.
+ * Returns a fallback text placeholder if loading fails.
+ */
+async function getLogoBase64(): Promise<string> {
+  if (cachedLogoBase64) return cachedLogoBase64;
+  
+  try {
+    // On web, use fetch to get the logo
+    if (Platform.OS === 'web') {
+      const logoUrl = INSPIRE_LOGO_BASE64 || '/inspire_logo.png';
+      if (logoUrl.startsWith('data:')) {
+        cachedLogoBase64 = logoUrl;
+        return cachedLogoBase64;
+      }
+      try {
+        const response = await fetch(logoUrl);
+        const blob = await response.blob();
+        return new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            cachedLogoBase64 = reader.result as string;
+            resolve(cachedLogoBase64 || '');
+          };
+          reader.onerror = () => resolve('');
+          reader.readAsDataURL(blob);
+        });
+      } catch (e) {
+        console.warn('Failed to load logo on web:', e);
+        return '';
+      }
+    }
+    
+    // On native, use Image.resolveAssetSource and FileSystem
+    const { Image } = require('react-native');
+    const logo = require('../../inspire_logo.png');
+    const asset = Image.resolveAssetSource(logo);
+    
+    if (!asset?.uri) {
+      console.warn('Could not resolve logo asset');
+      return '';
+    }
+    
+    if (asset.uri.startsWith('data:')) {
+      cachedLogoBase64 = asset.uri;
+      return cachedLogoBase64 || '';
+    }
+    
+    if (asset.uri.startsWith('file://') || asset.uri.startsWith('/')) {
+      const b64 = await FileSystem.readAsStringAsync(asset.uri, { encoding: FileSystem.EncodingType.Base64 });
+      cachedLogoBase64 = `data:image/png;base64,${b64}`;
+      return cachedLogoBase64 || '';
+    }
+    
+    if (asset.uri.startsWith('http')) {
+      const tmpPath = FileSystem.cacheDirectory + 'inspire_logo_' + Date.now() + '.png';
+      const result = await FileSystem.downloadAsync(asset.uri, tmpPath);
+      if (result?.uri) {
+        const b64 = await FileSystem.readAsStringAsync(result.uri, { encoding: FileSystem.EncodingType.Base64 });
+        FileSystem.deleteAsync(tmpPath, { idempotent: true }).catch(() => {});
+        cachedLogoBase64 = `data:image/png;base64,${b64}`;
+        return cachedLogoBase64;
+      }
+    }
+    
+    return '';
+  } catch (error) {
+    console.warn('Failed to load logo as base64:', error);
+    return '';
+  }
+}
+
 /** Build a clickable data URI link showing the short NSPIRE code; clicking opens a clean HTML page with the full codeReference text */
 function makeCodeRefLink(nspireCode: string, codeReference?: string): string {
   const shortCode = (nspireCode || '-').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -273,7 +348,8 @@ const processReportImages = async (report: NSPIREInspectionReport, forceBase64: 
  */
 export const generateNSPIREReportHTML = (
   report: NSPIREInspectionReport,
-  options: PDFGenerationOptions = DEFAULT_PDF_OPTIONS
+  options: PDFGenerationOptions = DEFAULT_PDF_OPTIONS,
+  logoBase64: string = ''
 ): string => {
   const styles = generateStyles(options);
 
@@ -287,7 +363,7 @@ export const generateNSPIREReportHTML = (
   <style>${styles}</style>
 </head>
 <body>
-  ${generateHeader(report.metadata, options)}
+  ${generateHeader(report.metadata, options, logoBase64)}
   
   ${options.includeSummaryPage ? generateSummaryPage(report.summary, report.categoryBreakdown, report.deficiencies) : ''}
   
@@ -303,7 +379,7 @@ export const generateNSPIREReportHTML = (
   
   ${options.includeCertification && report.certification ? generateCertificationSection(report.certification) : ''}
   
-  ${generateFooter(options)}
+  ${generateFooter(options, logoBase64)}
 </body>
 </html>
   `;
@@ -852,10 +928,13 @@ const generateStyles = (options: PDFGenerationOptions): string => {
 /**
  * Generate Report Header
  */
-const generateHeader = (metadata: InspectionMetadata, options: PDFGenerationOptions): string => {
+const generateHeader = (metadata: InspectionMetadata, options: PDFGenerationOptions, logoBase64: string): string => {
+  const logoHtml = logoBase64 
+    ? `<img src="${logoBase64}" alt="INSPIRE" style="width: 180px; height: auto; display: block; margin: 0 auto 10px;" />`
+    : `<div style="font-size: 24pt; font-weight: bold; color: #0E7490; margin: 0 auto 10px; text-align: center;">INSPIRE</div>`;
   return `
     <div class="report-header">
-      <img src="${INSPIRE_LOGO_BASE64}" alt="INSPIRE" style="width: 180px; height: auto; display: block; margin: 0 auto 10px;" />
+      ${logoHtml}
       <p style="font-size: 8pt; color: #666; margin-bottom: 10px; text-align: center;">NATIONAL STANDARDS FOR THE PHYSICAL INSPECTION OF REAL ESTATE</p>
       
       <h1 class="header-title">INSPIRE INSPECTION REPORT</h1>
@@ -1300,11 +1379,15 @@ const generateCertificationSection = (certification: any): string => {
 };
 
 /**
- * Generate Footer
+ * Generate Footer with logo
  */
-const generateFooter = (options: PDFGenerationOptions): string => {
+const generateFooter = (options: PDFGenerationOptions, logoBase64: string): string => {
+  const footerLogo = logoBase64 
+    ? `<img src="${logoBase64}" style="width: 100px; height: auto; margin: 15px auto 10px; display: block;" alt="INSPIRE" />`
+    : `<div style="font-size: 16pt; font-weight: bold; color: #0E7490; margin: 15px auto 10px; text-align: center;">INSPIRE</div>`;
   return `
     <div class="report-footer">
+      ${footerLogo}
       <p>${options.footerText || 'Generated by INSPIRE Inspection System'}</p>
       <p>Report generated on ${new Date().toLocaleString()}</p>
       <p style="margin-top: 5px;">This report is confidential and intended for authorized personnel only.</p>
@@ -1323,10 +1406,14 @@ class NSPIREPDFReportService {
     report: NSPIREInspectionReport,
     options: PDFGenerationOptions = DEFAULT_PDF_OPTIONS
   ): Promise<{ uri: string; success: boolean; error?: string }> {
+    // Load logo as base64 for embedding in PDF
+    const logoBase64 = await getLogoBase64();
+    console.log('Logo loaded:', logoBase64 ? `${logoBase64.length} chars` : 'failed (using text fallback)');
+
     // ── Web: open HTML in new tab and show print dialog ────────────────────
     if (Platform.OS === 'web') {
       try {
-        const html = generateNSPIREReportHTML(report, options);
+        const html = generateNSPIREReportHTML(report, options, logoBase64);
         const win = (window as any).open('', '_blank') as Window | null;
         if (win) {
           win.document.write(html);
@@ -1386,7 +1473,7 @@ class NSPIREPDFReportService {
       }
 
       console.log('Generating HTML...');
-      const html = generateNSPIREReportHTML(processedReport, options);
+      const html = generateNSPIREReportHTML(processedReport, options, logoBase64);
 
       // Validate HTML is not empty
       if (!html || html.trim().length < 100) {

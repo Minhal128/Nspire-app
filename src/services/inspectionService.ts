@@ -144,7 +144,7 @@ class InspectionService {
    */
   async saveProgress(payload: SaveProgressPayload): Promise<{ success: boolean; msg?: string }> {
     try {
-      const response = await api.post<{ success: boolean; msg?: string }>('/inspections/progress', payload);
+      const response = await api.put<{ success: boolean; msg?: string }>('/inspections/progress', payload);
       return response;
     } catch (error: any) {
       throw new Error(error.message || 'Failed to save progress');

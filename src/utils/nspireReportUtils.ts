@@ -133,6 +133,49 @@ const getFindingImageUri = (finding: any): string => {
   );
 };
 
+const normalizeLabelToken = (value: unknown): string =>
+  String(value ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_-]+/g, '');
+
+const isPlaceholderLabel = (value: unknown): boolean => {
+  const token = normalizeLabelToken(value);
+  return (
+    !token ||
+    token === 'allunits' ||
+    token === 'allunit' ||
+    token === 'unknown' ||
+    token === 'null' ||
+    token === 'undefined' ||
+    token === 'unitmultiple' ||
+    token === 'property' ||
+    token === 'building'
+  );
+};
+
+const toDisplayLabel = (value: unknown): string => String(value ?? '').trim();
+
+const firstNonPlaceholderLabel = (values: unknown[]): string => {
+  for (const value of values) {
+    const label = toDisplayLabel(value);
+    if (!isPlaceholderLabel(label)) {
+      return label;
+    }
+  }
+
+  return '';
+};
+
+const looksLikeBuildingLabel = (value: string): boolean => {
+  const label = toDisplayLabel(value);
+  if (!label) {
+    return false;
+  }
+
+  return /^b\d+$/i.test(label) || /^building[\s_-]?[a-z0-9]+$/i.test(label);
+};
+
 /**
  * Convert AI findings to NSPIRE deficiency entries
  */
@@ -145,6 +188,44 @@ export const convertFindingsToDeficiencies = (
   return findings.map((finding: any, index: number) => {
     finding.deficiencyQRId = '';
     const severity = mapFindingSeverityToNSPIRE(finding.severity);
+    const areaToken = normalizeLabelToken(
+      finding.area || finding._area || finding.category || finding.inspectionType
+    );
+    const isInsideOutsideArea = areaToken.includes('inside') || areaToken.includes('outside');
+    const isUnitArea = areaToken.includes('unit');
+
+    const resolvedUnit =
+      firstNonPlaceholderLabel([
+        finding.unit,
+        finding.unitNumber,
+        finding.currentUnit,
+        isUnitArea ? finding._unit : '',
+        propertyInfo?.unit,
+      ]) || '-';
+
+    let resolvedBuilding = firstNonPlaceholderLabel([
+      finding.building,
+      finding.buildingName,
+      finding.buildingId,
+      isInsideOutsideArea ? finding._unit : '',
+      propertyInfo?.building,
+    ]);
+
+    if (!resolvedBuilding) {
+      const unitIdCandidate = toDisplayLabel(finding.unitId);
+      if (!isPlaceholderLabel(unitIdCandidate) && looksLikeBuildingLabel(unitIdCandidate)) {
+        resolvedBuilding = unitIdCandidate;
+      }
+    }
+
+    if (!resolvedBuilding && looksLikeBuildingLabel(resolvedUnit)) {
+      resolvedBuilding = resolvedUnit;
+    }
+
+    if (!resolvedBuilding) {
+      resolvedBuilding = 'Building';
+    }
+
     const nspireCode = finding.nspireCode || finding.code || finding?.deficiency?.code || mapCategoryToNSPIRECode(finding.category || finding.area);
     const imageUri = getFindingImageUri(finding);
     const rawDetails =
@@ -162,8 +243,8 @@ export const convertFindingsToDeficiencies = (
     return {
       id: finding.id || `DEF-${index + 1}`, deficiencyQRId: '', imageUri,
       imagePlaceholder: !imageUri,
-      building: finding.building || finding.buildingName || finding.unitId || propertyInfo?.building || 'Building',
-      unit: finding.unit || finding.unitId || propertyInfo?.unit || '-',
+      building: resolvedBuilding,
+      unit: resolvedUnit,
       room: finding.location || 'General',
       area: finding.area || finding.category || finding.inspectionType || 'General',
       deficiencyName: finding.deficiencyName || finding?.deficiency?.name || finding.title || finding.name || 'Deficiency',
@@ -327,8 +408,8 @@ export const generateNSPIREReport = (
 
   // Convert findings to deficiencies
   const deficiencies = convertFindingsToDeficiencies(findings, {
-    building: property?.building,
-    unit: property?.unit,
+    building: buildingName || property?.building || property?.buildingName,
+    unit: property?.unit || (selectedUnits && selectedUnits.length === 1 ? selectedUnits[0] : undefined),
   });
 
   // Calculate summary and breakdown

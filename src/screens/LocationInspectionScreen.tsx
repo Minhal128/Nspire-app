@@ -195,7 +195,7 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
       }
 
       // Save to remote backend
-      await api.post('/inspections/progress', {
+      await api.put('/inspections/progress', {
         property_id: propertyId,
         unit_id: buildingId,
         inspection_type: safeLocationName,
@@ -258,6 +258,12 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
     if (allSelected) {
       // Unselect all - clear responses
       setResponses({});
+      // Also clear from global state
+      try {
+        delete globalInspectionProgress[saveKey];
+      } catch (e) {
+        console.error('Error clearing global inspection progress', e);
+      }
     } else {
       // Select all with this response
       const newResponses: { [key: string]: ResponseType } = {};
@@ -265,6 +271,12 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
         newResponses[item.id] = response;
       });
       setResponses(newResponses);
+      // Save to global state so it persists when navigating back
+      try {
+        globalInspectionProgress[saveKey] = newResponses;
+      } catch (e) {
+        console.error('Error saving selected responses to global state', e);
+      }
     }
   };
 

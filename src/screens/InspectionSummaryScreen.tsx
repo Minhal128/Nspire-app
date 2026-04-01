@@ -18,9 +18,9 @@ import { RootStackParamList } from '../types/navigation';
 import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
-import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx-js-style';
 import { enhancedNspirePDFService } from '../services/enhancedNspirePDFService';
-import { storeData, getData } from '../utils/storage';
+import { storeData, getData, removeData } from '../utils/storage';
 import { inspectionService } from '../services/inspectionService';
 
 type InspectionSummaryScreenNavigationProp = NativeStackNavigationProp<
@@ -37,7 +37,14 @@ interface Props {
 const InspectionSummaryScreen = ({ navigation, route }: Props) => {
   const { property, selectedUnits, buildingId, inspectionData, currentUnit: routeCurrentUnit } = route.params;
   const propertyId = property?._id || property?.id || property?.propertyId || 'unknown';
-  const summaryDraftInspectionType = `REPORT_DRAFT_${String(buildingId)}`;
+  const resolvedBuildingLabel = String(
+    buildingId || property?.building || property?.buildingName || 'Building'
+  ).trim();
+  const summaryDraftInspectionType = 'REPORT_DRAFT_PROPERTY';
+  const summaryDraftUnitId = 'ALL_UNITS';
+  const propertyDraftSaveKey = `saved_inspection_${propertyId}`;
+  const legacyBuildingDraftSaveKey = `saved_inspection_${propertyId}_${buildingId}`;
+  const legacySummaryDraftInspectionType = `REPORT_DRAFT_${String(buildingId)}`;
   const [activeTab, setActiveTab] = useState<'summary' | 'deficiencies'>('summary');
   const [exportingPDF, setExportingPDF] = useState(false);
   const [exportingHTML, setExportingHTML] = useState(false);
@@ -103,14 +110,23 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
   useEffect(() => {
     const loadAndMerge = async () => {
       try {
-        const saveKey = `saved_inspection_${propertyId}_${buildingId}`;
-        const [saved, remoteProgress] = await Promise.all([
-          getData(saveKey),
+        const [propertySaved, legacySaved, remoteProgress, legacyRemoteProgress] = await Promise.all([
+          getData(propertyDraftSaveKey),
+          legacyBuildingDraftSaveKey !== propertyDraftSaveKey
+            ? getData(legacyBuildingDraftSaveKey).catch(() => null)
+            : Promise.resolve(null),
+          inspectionService
+            .getProgress({
+              property_id: String(propertyId),
+              unit_id: summaryDraftUnitId,
+              inspection_type: summaryDraftInspectionType,
+            })
+            .catch(() => ({ items: {}, inspectionData: {} })),
           inspectionService
             .getProgress({
               property_id: String(propertyId),
               unit_id: String(buildingId),
-              inspection_type: summaryDraftInspectionType,
+              inspection_type: legacySummaryDraftInspectionType,
             })
             .catch(() => ({ items: {}, inspectionData: {} })),
         ]);
@@ -120,7 +136,7 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
           ? 'Outside'
           : (inspectionData?.location === 'Inside' ? 'Inside' : 'Units');
         const currentUnitValue = (currentArea === 'Inside' || currentArea === 'Outside')
-          ? '-'
+          ? resolvedBuildingLabel
           : (routeCurrentUnit || selectedUnits.join(', ') || 'Unit Multiple');
 
         const incoming = (inspectionData?.deficiencies || []).map((d: any) => ({
@@ -130,12 +146,33 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
           dedupeKey: buildDeficiencyDedupeKey(d, currentArea, currentUnitValue),
         }));
 
-        const savedDeficiencies = (saved?.deficiencies && Array.isArray(saved.deficiencies)) ? saved.deficiencies : [];
+        const propertySavedDeficiencies = (propertySaved?.deficiencies && Array.isArray(propertySaved.deficiencies))
+          ? propertySaved.deficiencies
+          : [];
+        const legacySavedDeficiencies = (legacySaved?.deficiencies && Array.isArray(legacySaved.deficiencies))
+          ? legacySaved.deficiencies
+          : [];
+        const savedDeficiencies = mergeDeficiencyLists(
+          propertySavedDeficiencies,
+          legacySavedDeficiencies,
+          currentArea,
+          currentUnitValue
+        );
+
         const remoteDeficiencies = (remoteProgress?.inspectionData?.deficiencies && Array.isArray(remoteProgress.inspectionData.deficiencies))
           ? remoteProgress.inspectionData.deficiencies
           : [];
+        const legacyRemoteDeficiencies = (legacyRemoteProgress?.inspectionData?.deficiencies && Array.isArray(legacyRemoteProgress.inspectionData.deficiencies))
+          ? legacyRemoteProgress.inspectionData.deficiencies
+          : [];
+        const mergedRemoteDeficiencies = mergeDeficiencyLists(
+          remoteDeficiencies,
+          legacyRemoteDeficiencies,
+          currentArea,
+          currentUnitValue
+        );
 
-        const mergedLocalRemote = mergeDeficiencyLists(remoteDeficiencies, savedDeficiencies, currentArea, currentUnitValue);
+        const mergedLocalRemote = mergeDeficiencyLists(mergedRemoteDeficiencies, savedDeficiencies, currentArea, currentUnitValue);
         const merged = mergeDeficiencyLists(mergedLocalRemote, incoming, currentArea, currentUnitValue);
         if (merged.length > 0) {
           setMergedDeficiencies(merged);
@@ -145,7 +182,15 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
       }
     };
     loadAndMerge();
-  }, [propertyId, buildingId, summaryDraftInspectionType]);
+  }, [
+    propertyId,
+    buildingId,
+    propertyDraftSaveKey,
+    legacyBuildingDraftSaveKey,
+    summaryDraftUnitId,
+    summaryDraftInspectionType,
+    legacySummaryDraftInspectionType,
+  ]);
 
   // Calculate actual deficiency counts from mergedDeficiencies
   const deficiencyCounts = {
@@ -197,12 +242,10 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
       ? 'Outside'
       : (inspectionData?.location === 'Inside' ? 'Inside' : 'Units');
     const nextUnit = (nextArea === 'Inside' || nextArea === 'Outside')
-      ? '-'
+      ? resolvedBuildingLabel
       : (selectedUnits.join(', ') || routeCurrentUnit || 'Unit Multiple');
 
     try {
-      const saveKey = `saved_inspection_${propertyId}_${buildingId}`;
-
       // Convert local image URIs to base64 so images survive navigation,
       // and stamp _area / _unit on each deficiency so they survive future merges
       const deficienciesWithImages = await Promise.all(
@@ -243,14 +286,18 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
       const dedupedForSave = mergeDeficiencyLists([], deficienciesWithImages, nextArea, nextUnit);
       const savedAt = new Date().toISOString();
 
-      await storeData(saveKey, {
+      await storeData(propertyDraftSaveKey, {
         deficiencies: dedupedForSave,
         savedAt,
       });
 
+      if (legacyBuildingDraftSaveKey !== propertyDraftSaveKey) {
+        await removeData(legacyBuildingDraftSaveKey).catch(() => undefined);
+      }
+
       await inspectionService.saveProgress({
         property_id: String(propertyId),
-        unit_id: String(buildingId),
+        unit_id: summaryDraftUnitId,
         inspection_type: summaryDraftInspectionType,
         inspectionData: {
           deficiencies: dedupedForSave,
@@ -258,6 +305,7 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
             _id: propertyId,
             name: property?.name || 'Property',
           },
+          buildingId: resolvedBuildingLabel,
           unit: nextUnit,
           inspectionType: 'Draft Inspection',
           savedAt,
@@ -404,7 +452,7 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
   // ── Shared helper: build the full reportData object from current state ─────
   const buildReportData = async () => {
     const deficienciesArray: any[] = [];
-    const buildingName = property.name || buildingId || 'B1';
+    const buildingName = resolvedBuildingLabel || 'Building';
 
     if (mergedDeficiencies.length > 0) {
       for (let i = 0; i < mergedDeficiencies.length; i++) {
@@ -443,7 +491,7 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
         const defUnit: string = defItem._unit !== undefined
           ? defItem._unit
           : ((inspectionArea === 'Inside' || inspectionArea === 'Outside')
-            ? '-'
+            ? buildingName
             : (selectedUnits.join(', ') || 'Unit Multiple'));
 
         deficienciesArray.push({
@@ -453,6 +501,7 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
           unit: defUnit,
           room: defItem.location || 'Multiple',
           area: inspectionArea,
+          module: defItem.itemName || defItem.module || defItem.submodule || '',
           isGeneralComment: isGC,
           deficiencyName: isGC ? 'General Comment' : (deficiency.name || 'Deficiency'),
           nspireCode: isGC ? '-' : (deficiency.code || 'U-1'),
@@ -647,60 +696,315 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
     try {
       const reportData = await buildReportData();
 
-      // Create workbook with multiple sheets
+      // Create workbook with report-clone layout
       const workbook = XLSX.utils.book_new();
 
-      // Sheet 1: Summary
-      const summaryData = [
-        ['NSPIRE INSPECTION REPORT'],
-        [],
-        ['Property Name', reportData.metadata.propertyName || ''],
-        ['Property Address', reportData.metadata.propertyAddress || ''],
-        ['Inspection Number', reportData.metadata.inspectionNo || ''],
-        ['Inspection Date', reportData.metadata.startDate || ''],
-        ['Inspector', reportData.metadata.inspectorName || ''],
-        [],
-        ['SCORES'],
-        ['Preliminary Score', reportData.metadata.preliminaryScore || 'N/A'],
-        ['Calculated Score', reportData.metadata.calculatedScore || 'N/A'],
-        ['Final Score', reportData.metadata.finalScore || 'N/A'],
-        [],
-        ['DEFICIENCY SUMMARY'],
-        ['Life Threatening', reportData.summary?.lifeThreatening || 0],
-        ['Severe', reportData.summary?.severe || 0],
-        ['Moderate', reportData.summary?.moderate || 0],
-        ['Low', reportData.summary?.low || 0],
-        ['Total Deficiencies', reportData.summary?.total || 0],
-      ];
-      const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
-      summarySheet['!cols'] = [{ wch: 25 }, { wch: 40 }];
-      XLSX.utils.book_append_sheet(workbook, summarySheet, 'Summary');
+      type DefGroupKey = 'Outside' | 'Inside' | 'Units' | 'GeneralComment';
+      type GroupedDef = { def: any; isRepeat: boolean };
 
-      // Sheet 2: Deficiencies
-      const deficiencyHeaders = [
-        'Room', 'Building', 'Unit', 'Area', 'Deficiency',
-        'NSPIRE Code', 'Severity', 'Deduction', 'Status', 'Details', 'Date'
+      const detailsSeen = new Map<string, number>();
+      const repeatFlags = (reportData.deficiencies || []).map((def: any) => {
+        const key = String(def?.deficiencyDetails || '').trim().toLowerCase();
+        if (!key) return false;
+        const count = detailsSeen.get(key) || 0;
+        detailsSeen.set(key, count + 1);
+        return count > 0;
+      });
+
+      const buildingsMap = new Map<string, Map<DefGroupKey, GroupedDef[]>>();
+
+      (reportData.deficiencies || []).forEach((def: any, idx: number) => {
+        const building = (def?.building && def.building !== '-') ? String(def.building) : 'Building';
+        if (!buildingsMap.has(building)) {
+          buildingsMap.set(building, new Map<DefGroupKey, GroupedDef[]>());
+        }
+
+        const isGeneralComment =
+          !!def?.isGeneralComment ||
+          String(def?.deficiencyName || '').trim().toLowerCase() === 'general comment';
+
+        let key: DefGroupKey;
+        if (isGeneralComment) {
+          key = 'GeneralComment';
+        } else {
+          const area = String(def?.area || '').toLowerCase();
+          if (area.includes('outside')) key = 'Outside';
+          else if (area.includes('inside')) key = 'Inside';
+          else key = 'Units';
+        }
+
+        const buildingGroups = buildingsMap.get(building)!;
+        if (!buildingGroups.has(key)) {
+          buildingGroups.set(key, []);
+        }
+        buildingGroups.get(key)!.push({
+          def,
+          isRepeat: !!def?.repeatIndicator || repeatFlags[idx],
+        });
+      });
+
+      const orderedSections: DefGroupKey[] = ['Outside', 'Inside', 'Units', 'GeneralComment'];
+      const sortedBuildings = Array.from(buildingsMap.keys()).sort((a, b) => a.localeCompare(b));
+
+      const tableHeaders = [
+        'Deficiency Details',
+        'Code of Reference',
+        'Deficiency Picture',
+        'Deduction Pts.',
+        'Repeat Indicator',
+        'Severity',
+        'Note',
       ];
-      const deficiencyRows = (reportData.deficiencies || []).map((def: any) => [
-        def.room || '',
-        def.building || '',
-        def.unit || '',
-        def.area || '',
-        def.deficiencyName || '',
-        def.nspireCode || '',
-        def.severity || '',
-        def.deductionPts || '',
-        def.status || '',
-        def.deficiencyDetails || '',
-        def.inspectedDate || '',
+
+      const reportCloneRows: any[][] = [];
+      const merges: any[] = [];
+      const totalColumns = tableHeaders.length;
+      const sectionRowIndexes = new Set<number>();
+      const headerRowIndexes = new Set<number>();
+      const detailRowIndexes = new Set<number>();
+      const statementRowIndexes = new Set<number>();
+      const signatureRowIndexes = new Set<number>();
+      const imageRowIndexes = new Set<number>();
+
+      const pushMergedLabelRow = (label: string, kind: 'section' | 'statement' = 'section') => {
+        const rowIndex = reportCloneRows.length;
+        reportCloneRows.push([label, ...Array(totalColumns - 1).fill('')]);
+        merges.push({ s: { r: rowIndex, c: 0 }, e: { r: rowIndex, c: totalColumns - 1 } });
+        if (kind === 'statement') {
+          statementRowIndexes.add(rowIndex);
+        } else {
+          sectionRowIndexes.add(rowIndex);
+        }
+      };
+
+      const codeReferenceLabel = (def: any): string => {
+        const nspireCode = String(def?.nspireCode || '').trim();
+        const rawRef = typeof def?.codeReference === 'string'
+          ? def.codeReference
+          : (def?.codeReference?.text || def?.codeReference?.source || '');
+        if (nspireCode && nspireCode !== '-') return nspireCode;
+        return rawRef ? 'How to Inspect' : '-';
+      };
+
+      const imageCellValue = (def: any): any => {
+        const imageUri = String(def?.imageUri || '').trim();
+        if (!imageUri) return 'Photo not attached';
+        if (imageUri.startsWith('http://') || imageUri.startsWith('https://')) {
+          const safeUrl = imageUri.replace(/"/g, '""');
+          // Excel compatibility: show inline preview where IMAGE is supported,
+          // and gracefully fall back to a clickable link where it is not.
+          return { f: `IFERROR(_xlfn.IMAGE("${safeUrl}"),HYPERLINK("${safeUrl}","View Image"))` };
+        }
+        if (imageUri.startsWith('data:')) return 'Embedded photo attached';
+        return 'Photo attached';
+      };
+
+      // Page heading row similar to report page layout
+      const titleRowIndex = reportCloneRows.length;
+      reportCloneRows.push([new Date().toLocaleString(), '', 'NSPIRE Report', '', '', '', '']);
+      merges.push({ s: { r: 0, c: 2 }, e: { r: 0, c: 6 } });
+      reportCloneRows.push([]);
+
+      // Deficiency table header (matching page 2 structure)
+      const deficiencyHeaderRowIndex = reportCloneRows.length;
+      reportCloneRows.push(tableHeaders);
+      headerRowIndexes.add(deficiencyHeaderRowIndex);
+
+      if (sortedBuildings.length === 0) {
+        pushMergedLabelRow('No inspectable data available.');
+      } else {
+        sortedBuildings.forEach((building) => {
+          const buildingGroups = buildingsMap.get(building)!;
+
+          orderedSections.forEach((sectionKey) => {
+            const items = buildingGroups.get(sectionKey) || [];
+            if (items.length === 0) return;
+
+            const sectionLabel = sectionKey === 'GeneralComment'
+              ? 'General Comment'
+              : `${sectionKey} (Building - ${building})`;
+
+            pushMergedLabelRow(sectionLabel);
+
+            items.forEach(({ def, isRepeat }) => {
+              const isGC = !!def?.isGeneralComment || String(def?.deficiencyName || '').toLowerCase() === 'general comment';
+              const detailPrefix = isGC
+                ? '-'
+                : ((def?.deficiencyName && def.deficiencyName !== 'Deficiency' && def.deficiencyName !== 'General Comment')
+                  ? `${def.deficiencyName}: `
+                  : '');
+              const detailText = isGC
+                ? '-'
+                : `${detailPrefix}${String(def?.deficiencyDetails || 'No details available')}`;
+
+              const detailRowIndex = reportCloneRows.length;
+              reportCloneRows.push([
+                detailText,
+                isGC ? '-' : codeReferenceLabel(def),
+                imageCellValue(def),
+                isGC ? '-' : (def?.deductionPts ?? '-'),
+                isGC ? '-' : (isRepeat ? 'Repeat' : 'Not Repeat'),
+                isGC ? '-' : (def?.severity || '-'),
+                def?.note || def?.comments || '-',
+              ]);
+              detailRowIndexes.add(detailRowIndex);
+              if (typeof def?.imageUri === 'string' && /^https?:\/\//i.test(def.imageUri.trim())) {
+                imageRowIndexes.add(detailRowIndex);
+              }
+            });
+          });
+        });
+      }
+
+      reportCloneRows.push([]);
+
+      // Certificates block (matching report)
+      pushMergedLabelRow('Certificates');
+      const certificateHeaderRowIndex = reportCloneRows.length;
+      reportCloneRows.push(['Certificate Type', 'Status', 'Comment', '', '', '', '']);
+      headerRowIndexes.add(certificateHeaderRowIndex);
+      [
+        ['Elevator', 'N/A', 'No elevator present'],
+        ['Boiler', 'Current', 'Valid until 2026'],
+        ['Lead-Based Paint', 'Current', 'Compliant'],
+        ['Fire Alarm', 'Current', 'Tested monthly'],
+        ['Sprinkler', 'N/A', 'Not required'],
+      ].forEach((row) => {
+        const certDataRowIndex = reportCloneRows.length;
+        reportCloneRows.push([row[0], row[1], row[2], '', '', '', '']);
+        detailRowIndexes.add(certDataRowIndex);
+      });
+
+      reportCloneRows.push([]);
+
+      // Inspector Certification block
+      pushMergedLabelRow('Inspector Certification');
+      pushMergedLabelRow('I certify this inspection was conducted per INSPIRE standards.', 'statement');
+      reportCloneRows.push([]);
+      const signatureRowIndex = reportCloneRows.length;
+      reportCloneRows.push([
+        'Inspector Signature',
+        reportData.metadata.inspectorName || 'Current User',
+        '',
+        '',
+        '',
+        'Date',
+        reportData.metadata.startDate || inspectionDate,
       ]);
-      const deficiencyData = [deficiencyHeaders, ...deficiencyRows];
-      const deficiencySheet = XLSX.utils.aoa_to_sheet(deficiencyData);
-      deficiencySheet['!cols'] = [
-        { wch: 15 }, { wch: 12 }, { wch: 10 }, { wch: 12 }, { wch: 25 },
-        { wch: 15 }, { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 30 }, { wch: 12 }
+      signatureRowIndexes.add(signatureRowIndex);
+      detailRowIndexes.add(signatureRowIndex);
+
+      const reportCloneSheet = XLSX.utils.aoa_to_sheet(reportCloneRows);
+
+      const palette = {
+        blueBg: 'FF1F4E78',
+        yellowBg: 'FFFFF2CC',
+        whiteBg: 'FFFFFFFF',
+        whiteFont: 'FFFFFFFF',
+        blueFont: 'FF1F4E78',
+        darkText: 'FF1F2937',
+        border: 'FF9CA3AF',
+      };
+
+      const thinBorder = {
+        top: { style: 'thin', color: { rgb: palette.border } },
+        right: { style: 'thin', color: { rgb: palette.border } },
+        bottom: { style: 'thin', color: { rgb: palette.border } },
+        left: { style: 'thin', color: { rgb: palette.border } },
+      };
+
+      const bodyStyle: any = {
+        font: { name: 'Calibri', sz: 11, color: { rgb: palette.darkText } },
+        fill: { patternType: 'solid', fgColor: { rgb: palette.whiteBg } },
+        alignment: { horizontal: 'left', vertical: 'top', wrapText: true },
+        border: thinBorder,
+      };
+
+      const sectionStyle: any = {
+        font: { name: 'Calibri', sz: 11, bold: true, color: { rgb: palette.whiteFont } },
+        fill: { patternType: 'solid', fgColor: { rgb: palette.blueBg } },
+        alignment: { horizontal: 'left', vertical: 'center', wrapText: true },
+        border: thinBorder,
+      };
+
+      const headerStyle: any = {
+        font: { name: 'Calibri', sz: 11, bold: true, color: { rgb: palette.blueFont } },
+        fill: { patternType: 'solid', fgColor: { rgb: palette.yellowBg } },
+        alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+        border: thinBorder,
+      };
+
+      const statementStyle: any = {
+        font: { name: 'Calibri', sz: 11, italic: true, color: { rgb: palette.blueFont } },
+        fill: { patternType: 'solid', fgColor: { rgb: palette.yellowBg } },
+        alignment: { horizontal: 'left', vertical: 'center', wrapText: true },
+        border: thinBorder,
+      };
+
+      const titleDateStyle: any = {
+        font: { name: 'Calibri', sz: 11, bold: true, color: { rgb: palette.blueFont } },
+        fill: { patternType: 'solid', fgColor: { rgb: palette.yellowBg } },
+        alignment: { horizontal: 'left', vertical: 'center', wrapText: false },
+        border: thinBorder,
+      };
+
+      const titleMainStyle: any = {
+        font: { name: 'Calibri', sz: 14, bold: true, color: { rgb: palette.whiteFont } },
+        fill: { patternType: 'solid', fgColor: { rgb: palette.blueBg } },
+        alignment: { horizontal: 'center', vertical: 'center', wrapText: false },
+        border: thinBorder,
+      };
+
+      const applyRowStyle = (rowIndex: number, style: any) => {
+        for (let col = 0; col < totalColumns; col++) {
+          const address = XLSX.utils.encode_cell({ r: rowIndex, c: col });
+          if (!reportCloneSheet[address]) {
+            reportCloneSheet[address] = { t: 's', v: '' } as any;
+          }
+          (reportCloneSheet[address] as any).s = style;
+        }
+      };
+
+      headerRowIndexes.forEach((rowIndex) => applyRowStyle(rowIndex, headerStyle));
+      sectionRowIndexes.forEach((rowIndex) => applyRowStyle(rowIndex, sectionStyle));
+      statementRowIndexes.forEach((rowIndex) => applyRowStyle(rowIndex, statementStyle));
+      detailRowIndexes.forEach((rowIndex) => applyRowStyle(rowIndex, bodyStyle));
+      signatureRowIndexes.forEach((rowIndex) => applyRowStyle(rowIndex, headerStyle));
+
+      // Title row styling: left timestamp cell in yellow, merged title block in blue.
+      const timestampAddress = XLSX.utils.encode_cell({ r: titleRowIndex, c: 0 });
+      if (reportCloneSheet[timestampAddress]) {
+        (reportCloneSheet[timestampAddress] as any).s = titleDateStyle;
+      }
+      for (let col = 1; col < totalColumns; col++) {
+        const address = XLSX.utils.encode_cell({ r: titleRowIndex, c: col });
+        if (!reportCloneSheet[address]) {
+          reportCloneSheet[address] = { t: 's', v: '' } as any;
+        }
+        (reportCloneSheet[address] as any).s = (col >= 2) ? titleMainStyle : titleDateStyle;
+      }
+
+      reportCloneSheet['!cols'] = [
+        { wch: 45 }, // Deficiency Details
+        { wch: 16 }, // Code of Reference
+        { wch: 24 }, // Deficiency Picture
+        { wch: 12 }, // Deduction
+        { wch: 14 }, // Repeat
+        { wch: 12 }, // Severity
+        { wch: 30 }, // Note
       ];
-      XLSX.utils.book_append_sheet(workbook, deficiencySheet, 'Deficiencies');
+
+      reportCloneSheet['!rows'] = reportCloneRows.map((_, idx) => {
+        if (idx === titleRowIndex) return { hpt: 24 };
+        if (headerRowIndexes.has(idx)) return { hpt: 22 };
+        if (sectionRowIndexes.has(idx) || statementRowIndexes.has(idx)) return { hpt: 20 };
+        if (imageRowIndexes.has(idx)) return { hpt: 90 };
+        return { hpt: 18 };
+      });
+
+      reportCloneSheet['!merges'] = merges;
+
+      XLSX.utils.book_append_sheet(workbook, reportCloneSheet, 'NSPIRE Report');
 
       const fileName = `NSPIRE-Report-${inspectionId}.xlsx`;
 

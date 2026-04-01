@@ -45,7 +45,14 @@ interface NSPIREReportScreenProps {
 }
 
 export default function NSPIREReportScreen({ navigation, route }: NSPIREReportScreenProps) {
-  const { report: initialReport, inspectionData, property, preGeneratedHtml } = route.params || {};
+  const { report: initialReport, inspectionData: passedInspectionData, property, preGeneratedHtml, buildingName: passedBuildingName, selectedUnits: passedSelectedUnits } = route.params || {};
+
+  // Extract or initialize inspection data with building and units info
+  const inspectionData = passedInspectionData ? {
+    ...passedInspectionData,
+    buildingName: passedBuildingName || passedInspectionData.buildingName || 'B1',
+    selectedUnits: passedSelectedUnits || passedInspectionData.selectedUnits || [],
+  } : undefined;
 
   const [report, setReport] = useState<NSPIREInspectionReport | null>(null);
   const [loading, setLoading] = useState(true);
@@ -108,6 +115,131 @@ export default function NSPIREReportScreen({ navigation, route }: NSPIREReportSc
       inspectorId: data.inspectorId || 'INS-001',
       status: 'Open',
     }));
+
+    // Add OD responses from globalInspectionProgress that don't have detailed findings
+    // NOTE: Disabled per client request to exclude ALL/OD-only items from report output.
+    /*
+    const propertyId = property?._id || property?.id || property?.propertyId || inspectionData?.property?._id || inspectionData?.property?.id || 'unknown';
+    
+    // Determine buildingName - try multiple sources
+    let buildingName = inspectionData?.buildingName || inspectionData?.building || 'B1';
+    
+    // If buildingName is still the default, try to discover it from globalInspectionProgress keys
+    if (buildingName === 'B1' && typeof globalInspectionProgress === 'object') {
+      const progressKeys = Object.keys(globalInspectionProgress);
+      const matchingKey = progressKeys.find(k => 
+        k.includes(`inspection_responses_${propertyId}_`) && (k.includes('_Outside') || k.includes('_Inside'))
+      );
+      if (matchingKey) {
+        // Extract building name from key like "inspection_responses_prop_B2_Outside"
+        const matches = matchingKey.match(/inspection_responses_[^_]+_([^_]+)_(Outside|Inside)/);
+        if (matches && matches[1]) {
+          buildingName = matches[1];
+          console.log(`[NSPIREReport] Auto-discovered building name: ${buildingName} from key: ${matchingKey}`);
+        }
+      }
+    }
+    
+    console.log(`[NSPIREReport] Using building name: ${buildingName}, property ID: ${propertyId}`);
+    
+    const selectedUnits = inspectionData?.selectedUnits || [];
+    
+    // Helper to create deficiency from OD response
+    const createODDeficiency = (itemId: string, itemName: string, areaName: string, index: number): DeficiencyEntry => {
+      // Normalize area to 'Outside', 'Inside', or 'Units'
+      const normalizedArea = areaName.startsWith('Unit_') ? 'Units' : areaName;
+      const unitNum = areaName.startsWith('Unit_') ? areaName.replace('Unit_', '') : '-';
+      
+      return {
+        id: `OD-${areaName}-${itemId}`,
+        deficiencyQRId: `QR-${Math.floor(10000000 + Math.random() * 90000000)}`,
+        imageUri: '',
+        building: buildingName,
+        unit: unitNum,
+        room: areaName,
+        area: normalizedArea,  // CRITICAL: Must be 'Outside', 'Inside', or 'Units'
+        deficiencyName: itemName,
+        nspireCode: 'OD-MARKED', // Generic code for marked-only deficiencies
+        deficiencyDetails: 'Marked as Operational Deficiency',
+        comments: '',
+        deductionPts: 1, // Minimal deduction for marked-only
+        repeatIndicator: false,
+        severity: 'Low',
+        inspectedDate: now.toLocaleDateString(),
+        inspectedTime: now.toLocaleTimeString(),
+        inspectorId: data.inspectorId || 'INS-001',
+        status: 'Open',
+      };
+    };
+
+    // Scan globalInspectionProgress for OD responses
+    let odDeficiencyIndex = deficiencies.length;
+    
+    // Check each location type
+    const locationsToCheck = [
+      { key: `inspection_responses_${propertyId}_${buildingName}_Outside`, area: 'Outside', items: OUTSIDE_ITEMS },
+      { key: `inspection_responses_${propertyId}_${buildingName}_Inside`, area: 'Inside', items: INSIDE_ITEMS },
+    ];
+
+    locationsToCheck.forEach(({ key, area, items }) => {
+      const responses = globalInspectionProgress[key];
+      if (responses && typeof responses === 'object') {
+        Object.entries(responses).forEach(([itemId, response]: [string, any]) => {
+          if (response === 'OD') {
+            // Find the item name
+            const item = items.find(i => String(i.id) === String(itemId));
+            const itemName = item?.name || `Item ${itemId}`;
+            
+            // Check if a detailed finding already exists for this item
+            const existingFinding = deficiencies.find(d => 
+              d.deficiencyName === itemName && d.area === area
+            );
+            
+            // Only add if no detailed finding exists
+            if (!existingFinding) {
+              deficiencies.push(createODDeficiency(itemId, itemName, area, odDeficiencyIndex++));
+            }
+          }
+        });
+      }
+    });
+
+    // Also check Unit responses
+    if (selectedUnits && Array.isArray(selectedUnits)) {
+      selectedUnits.forEach((unit: string) => {
+        const unitKey = `inspection_responses_${propertyId}_${buildingName}_Unit_${unit}`;
+        const responses = globalInspectionProgress[unitKey];
+        if (responses && typeof responses === 'object') {
+          Object.entries(responses).forEach(([itemId, response]: [string, any]) => {
+            if (response === 'OD') {
+              const item = UNIT_ITEMS.find(i => String(i.id) === String(itemId));
+              const itemName = item?.name || `Item ${itemId}`;
+              
+              const existingFinding = deficiencies.find(d => 
+                d.deficiencyName === itemName && d.unit === unit
+              );
+              
+              if (!existingFinding) {
+                deficiencies.push(createODDeficiency(itemId, itemName, `Unit_${unit}`, odDeficiencyIndex++));
+              }
+            }
+          });
+        }
+      });
+    }
+
+    const odItems = deficiencies.filter(d => d.nspireCode === 'OD-MARKED');
+    console.log(`[NSPIREReport] Total deficiencies including OD items: ${deficiencies.length}`);
+    console.log(`[NSPIREReport] OD deficiencies found: ${odItems.length}`);
+    if (odItems.length > 0) {
+      console.log(`[NSPIREReport] OD items by area:`, odItems.reduce((acc: any, d) => {
+        acc[d.area] = (acc[d.area] || 0) + 1;
+        return acc;
+      }, {}));
+    }
+    */
+
+    console.log(`[NSPIREReport] Total deficiencies: ${deficiencies.length}`);
 
     // Calculate summary
     const summary: DeficiencySummary = {

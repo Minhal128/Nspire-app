@@ -58,6 +58,13 @@ interface Report {
   criticalDeficiencies: number;
   notes: string;
   rawData: Inspection;
+  sourceInspectionIds?: string[];
+  sourceLocalDraftKeys?: string[];
+  sourceBackendDraftRefs?: Array<{
+    propertyId: string;
+    unitId: string;
+    inspectionType: string;
+  }>;
   draftMeta?: {
     source: 'local' | 'backend';
     key?: string;
@@ -123,6 +130,79 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
 
       console.log('Reports - Loaded inspections:', (inspectionsData.inspections || []).length);
 
+      const normalizeUnitToken = (value: unknown): string => {
+        return String(value ?? '')
+          .trim()
+          .toLowerCase()
+          .replace(/[\s_-]+/g, '');
+      };
+
+      const isPlaceholderUnitLabel = (label: string): boolean => {
+        const token = normalizeUnitToken(label);
+        return !token || token === '-' || token === 'unknown' || token === 'allunits' || token === 'allunit' || token === 'property';
+      };
+
+      const normalizeUnitLabel = (unitValue: unknown): string => {
+        if (unitValue && typeof unitValue === 'object') {
+          const unitObject = unitValue as any;
+          return normalizeUnitLabel(unitObject?.unitNumber || unitObject?.unitId || unitObject?.name || '');
+        }
+
+        const stringUnit = String(unitValue ?? '').trim();
+        if (isPlaceholderUnitLabel(stringUnit)) {
+          return 'All Units';
+        }
+
+        return stringUnit;
+      };
+
+      const mergeUniqueStringArrays = (values: string[]): string[] => {
+        return Array.from(new Set(values.filter((value) => Boolean(value && value.trim()))));
+      };
+
+      const extractUnitFromInspectionType = (inspectionTypeValue: unknown): string => {
+        const inspectionType = String(inspectionTypeValue ?? '').trim();
+        if (!inspectionType) {
+          return '';
+        }
+
+        const draftMatch = inspectionType.match(/^REPORT_DRAFT_(.+)$/i);
+        if (!draftMatch) {
+          return '';
+        }
+
+        const candidate = normalizeUnitLabel(draftMatch[1]);
+        return isPlaceholderUnitLabel(candidate) ? '' : candidate;
+      };
+
+      const buildMergedUnitLabel = (unitCandidates: unknown[]): string => {
+        const normalizedCandidates = unitCandidates
+          .map((candidate) => normalizeUnitLabel(candidate))
+          .filter(Boolean);
+        const uniqueCandidates = mergeUniqueStringArrays(normalizedCandidates);
+        const specificUnits = uniqueCandidates.filter((label) => !isPlaceholderUnitLabel(label));
+
+        if (specificUnits.length > 0) {
+          return specificUnits.join(', ');
+        }
+
+        return uniqueCandidates[0] || 'All Units';
+      };
+
+      const normalizeNoteForMerge = (noteValue: unknown): string => {
+        const note = String(noteValue ?? '').trim();
+        if (!note) {
+          return '';
+        }
+
+        const lowered = note.toLowerCase();
+        if (lowered === 'draft from local storage' || lowered === 'draft synced to cloud' || lowered === 'no notes available.') {
+          return '';
+        }
+
+        return note;
+      };
+
       // Map inspections to report format
       const mappedReports: Report[] = (inspectionsData.inspections || inspectionsData || []).map((inspection: Inspection) => {
         // Debug log each inspection
@@ -154,13 +234,18 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
           f.severity === 'critical' || f.severity === 'life-threatening' || f.severity === 'severe'
         ).length;
 
+        const inspectionUnitValue = typeof (inspection as any).unit === 'object'
+          ? ((inspection as any).unit?.unitNumber || (inspection as any).unit?.unitId || (inspection as any).unit?.name || '')
+          : (inspection as any).unit;
+        const inspectionTypeUnit = extractUnitFromInspectionType((inspection as any).inspectionType);
+
         return {
           id: inspection._id,
           property: typeof inspection.property === 'object'
             ? (inspection.property as any)?.name
             : (property?.name || 'Unknown Property'),
           propertyId: propertyId || '',
-          unit: (inspection as any).unit || 'All Units',
+          unit: buildMergedUnitLabel([inspectionUnitValue, inspectionTypeUnit]),
           inspector: (inspection as any).inspector?.fullName || (inspection as any).inspectorName || storedUser?.fullName || 'Unknown',
           date: new Date(inspection.completedDate || inspection.scheduledDate || (inspection as any).createdAt).toLocaleDateString('en-US', {
             month: 'short',
@@ -171,7 +256,7 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
           inspectionType: (inspection as any).inspectionType || 'INSPIRE Inspection',
           totalDeficiencies,
           criticalDeficiencies,
-          notes: (inspection as any).notes || 'No notes available.',
+          notes: normalizeNoteForMerge((inspection as any).notes),
           rawData: inspection,
         };
       });
@@ -180,8 +265,25 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
       try {
         const keys = await AsyncStorage.getAllKeys();
         const draftKeys = keys.filter(k => k.startsWith('saved_inspection_'));
+        const propertyLevelDraftPropertyIds = new Set(
+          draftKeys
+            .map((key) => key.replace('saved_inspection_', '').trim())
+            .filter((suffix) => suffix && !suffix.includes('_'))
+        );
+        const normalizedDraftKeys = draftKeys.filter((key) => {
+          const suffix = key.replace('saved_inspection_', '').trim();
+          const parts = suffix.split('_').filter(Boolean);
 
-        for (const key of draftKeys) {
+          // Property-level draft key (preferred source)
+          if (parts.length <= 1) {
+            return true;
+          }
+
+          const legacyPropertyId = parts[0];
+          return !propertyLevelDraftPropertyIds.has(legacyPropertyId);
+        });
+
+        for (const key of normalizedDraftKeys) {
           const raw = await AsyncStorage.getItem(key);
           if (raw) {
             const draftData = JSON.parse(raw);
@@ -194,15 +296,28 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
 
             const keyParts = key.replace('saved_inspection_', '').split('_');
             const extractedPropertyId = keyParts[0];
+            const extractedUnitId = keyParts.length > 1 ? keyParts.slice(1).join('_') : '';
+            const normalizedExtractedPropertyId =
+              extractedPropertyId &&
+              !['unknown', 'null', 'undefined'].includes(extractedPropertyId.trim().toLowerCase())
+                ? extractedPropertyId
+                : '';
 
             const foundProp = (propertiesData.properties || propertiesData || []).find((p: any) => p._id === extractedPropertyId || p.id === extractedPropertyId);
             const resolvedPropName = foundProp?.name || draftData.property?.name || 'Local Draft';
+            const resolvedPropertyId = normalizedExtractedPropertyId || draftData.property?._id || foundProp?._id || '';
+
+            const localDraftTypeUnit = extractUnitFromInspectionType(draftData.inspectionType || draftData?.inspectionData?.inspectionType);
 
             mappedReports.push({
               id: draftData._id || 'draft_' + key,
               property: resolvedPropName,
-              propertyId: extractedPropertyId || draftData.property?._id || '',
-              unit: draftData.unit || 'All Units',
+              propertyId: resolvedPropertyId,
+              unit: buildMergedUnitLabel([
+                draftData.unit,
+                extractedUnitId,
+                localDraftTypeUnit,
+              ]),
               inspector: storedUser?.fullName || 'Draft Inspector',
               date: new Date(draftData.updatedAt || draftData.createdAt || draftData.savedAt || Date.now()).toLocaleDateString('en-US', {
                 month: 'short', day: 'numeric', year: 'numeric'
@@ -211,7 +326,7 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
               inspectionType: draftData.inspectionType || 'Draft Inspection',
               totalDeficiencies: dTotalDef,
               criticalDeficiencies: dCritDef,
-              notes: draftData.notes || 'Draft from local storage',
+              notes: normalizeNoteForMerge(draftData.notes || draftData?.inspectionData?.notes),
               rawData: { ...draftData, property: foundProp || draftData.property || { _id: extractedPropertyId, name: resolvedPropName } },
               draftMeta: {
                 source: 'local',
@@ -233,7 +348,37 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
           p.inspectionData.deficiencies.length > 0
         );
 
-        backendDrafts.forEach((p: any) => {
+        const getProgressPropertyId = (progressItem: any): string => {
+          return String(
+            progressItem?.propertyId?._id ||
+            progressItem?.propertyId ||
+            progressItem?.inspectionData?.property?._id ||
+            ''
+          ).trim();
+        };
+
+        const propertyLevelBackendDraftPropertyIds = new Set(
+          backendDrafts
+            .filter((progressItem: any) => String(progressItem?.inspectionType || '').toUpperCase() === 'REPORT_DRAFT_PROPERTY')
+            .map((progressItem: any) => getProgressPropertyId(progressItem))
+            .filter(Boolean)
+        );
+
+        const normalizedBackendDrafts = backendDrafts.filter((progressItem: any) => {
+          const inspectionType = String(progressItem?.inspectionType || '').toUpperCase();
+          if (inspectionType === 'REPORT_DRAFT_PROPERTY') {
+            return true;
+          }
+
+          const progressPropertyId = getProgressPropertyId(progressItem);
+          if (!progressPropertyId) {
+            return true;
+          }
+
+          return !propertyLevelBackendDraftPropertyIds.has(progressPropertyId);
+        });
+
+        normalizedBackendDrafts.forEach((p: any) => {
           const propertyObj = p.propertyId;
           const extractedPropertyId = propertyObj?._id || propertyObj || p?.inspectionData?.property?._id || '';
           const foundProp = (propertiesData.properties || propertiesData || []).find((prop: any) =>
@@ -251,12 +396,17 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
             const sev = String(f?.severity || f?.deficiency?.severity || f?.deficiency?.aiSeverity || '').toLowerCase();
             return sev === 'critical' || sev === 'life-threatening' || sev === 'severe';
           }).length;
+          const backendDraftTypeUnit = extractUnitFromInspectionType(p.inspectionType || p?.inspectionData?.inspectionType);
 
           mappedReports.push({
             id: `draftdb_${p._id}`,
             property: resolvedPropName,
             propertyId: extractedPropertyId,
-            unit: p?.inspectionData?.unit || p.unitId || 'All Units',
+            unit: buildMergedUnitLabel([
+              p?.inspectionData?.unit,
+              p.unitId,
+              backendDraftTypeUnit,
+            ]),
             inspector: storedUser?.fullName || 'Draft Inspector',
             date: new Date(p.updatedAt || p.createdAt || p?.inspectionData?.savedAt || Date.now()).toLocaleDateString('en-US', {
               month: 'short', day: 'numeric', year: 'numeric'
@@ -265,7 +415,7 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
             inspectionType: p?.inspectionData?.inspectionType || 'Draft Inspection',
             totalDeficiencies: dTotalDef,
             criticalDeficiencies: dCritDef,
-            notes: 'Draft synced to cloud',
+            notes: normalizeNoteForMerge(p?.inspectionData?.notes),
             rawData: {
               ...(p.inspectionData || {}),
               deficiencies: draftFindings,
@@ -284,14 +434,299 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
         console.log('Error loading backend drafts:', backendDraftErr);
       }
 
+      const getPropertyGroupKey = (report: Report): string => {
+        const propertyIdValue = String(report.propertyId || '').trim();
+        if (propertyIdValue && !['unknown', 'null', 'undefined'].includes(propertyIdValue.toLowerCase())) {
+          return propertyIdValue;
+        }
+
+        const normalizedPropertyName = String(report.property || '').trim().toLowerCase();
+        return normalizedPropertyName || 'unknown-property';
+      };
+
+      const dedupeBackendDraftRefs = (
+        refs: Array<{ propertyId: string; unitId: string; inspectionType: string }>
+      ) => {
+        const deduped = new Map<string, { propertyId: string; unitId: string; inspectionType: string }>();
+
+        refs.forEach((ref) => {
+          const normalizedRef = {
+            propertyId: String(ref.propertyId || ''),
+            unitId: String(ref.unitId || ''),
+            inspectionType: String(ref.inspectionType || ''),
+          };
+
+          const key = `${normalizedRef.propertyId}|${normalizedRef.unitId}|${normalizedRef.inspectionType}`;
+          if (!deduped.has(key)) {
+            deduped.set(key, normalizedRef);
+          }
+        });
+
+        return Array.from(deduped.values());
+      };
+
+      const normalizeFindingKeyPart = (value: unknown): string => String(value ?? '').trim().toLowerCase();
+
+      const buildFindingDedupeKey = (finding: any): string => {
+        const stableFindingId = normalizeFindingKeyPart(
+          finding?.deficiencyQRId ||
+          finding?.findingId ||
+          finding?.id ||
+          finding?._id ||
+          ''
+        );
+
+        if (stableFindingId && !['unknown', 'undefined', 'null'].includes(stableFindingId)) {
+          return `finding-id|${stableFindingId}`;
+        }
+
+        if (finding?.dedupeKey && typeof finding.dedupeKey === 'string') {
+          return finding.dedupeKey;
+        }
+
+        const area = normalizeFindingKeyPart(finding?._area || finding?.area || 'unknown-area');
+        const unit = normalizeFindingKeyPart(
+          finding?._unit !== undefined
+            ? finding._unit
+            : (finding?.unit || finding?.unitId || finding?.building || finding?.buildingName || 'unknown-unit')
+        );
+        const location = normalizeFindingKeyPart(finding?.location || finding?.room || 'unknown-location');
+        const moduleId = normalizeFindingKeyPart(
+          finding?.itemId ||
+          finding?.itemName ||
+          finding?.module ||
+          finding?.submodule ||
+          finding?.deficiencyQRId ||
+          finding?.id ||
+          'unknown-item'
+        );
+        const deficiencyName = normalizeFindingKeyPart(
+          finding?.deficiency?.name ||
+          finding?.deficiencyName ||
+          finding?.name ||
+          finding?.title ||
+          (finding?.isGeneralComment ? 'general comment' : 'unknown-deficiency')
+        );
+        const deficiencyCode = normalizeFindingKeyPart(
+          finding?.deficiency?.code ||
+          finding?.nspireCode ||
+          finding?.codeReference ||
+          'unknown-code'
+        );
+        const details = normalizeFindingKeyPart(
+          finding?.deficiency?.detail ||
+          finding?.deficiencyDetails ||
+          finding?.detail ||
+          finding?.description ||
+          ''
+        );
+
+        return `${area}|${unit}|${location}|${moduleId}|${deficiencyCode}|${deficiencyName}|${details}`;
+      };
+
+      const dedupeFindings = (findings: any[]): any[] => {
+        const deduped = new Map<string, any>();
+
+        findings.forEach((finding) => {
+          if (!finding) {
+            return;
+          }
+
+          const key = buildFindingDedupeKey(finding);
+          const existing = deduped.get(key) || {};
+
+          deduped.set(key, {
+            ...existing,
+            ...finding,
+            dedupeKey: key,
+          });
+        });
+
+        return Array.from(deduped.values());
+      };
+
+      const extractUnitLabelsFromFindings = (findings: any[]): string[] => {
+        const unitCandidates: string[] = [];
+
+        findings.forEach((finding) => {
+          const candidates = [
+            finding?._unit,
+            finding?.unit,
+            finding?.unitId,
+            finding?.unitNumber,
+            finding?.building,
+            finding?.buildingName,
+            finding?.buildingId,
+          ];
+
+          candidates.forEach((candidate) => {
+            const normalized = normalizeUnitLabel(candidate);
+            if (!isPlaceholderUnitLabel(normalized)) {
+              unitCandidates.push(normalized);
+            }
+          });
+        });
+
+        return mergeUniqueStringArrays(unitCandidates);
+      };
+
+      const aggregateReportsByProperty = (sourceReports: Report[]): Report[] => {
+        const groupedReports = new Map<string, Report>();
+
+        const getInspectionTimestamp = (candidate: Report): number => {
+          const raw = candidate.rawData as any;
+          const timestamp = raw?.updatedAt || raw?.completedDate || raw?.scheduledDate || raw?.createdAt;
+          if (timestamp) {
+            const parsed = new Date(timestamp).getTime();
+            if (!Number.isNaN(parsed)) {
+              return parsed;
+            }
+          }
+
+          const fallback = Date.parse(String(candidate.date || '').replace('(Draft)', '').trim());
+          return Number.isNaN(fallback) ? Date.now() : fallback;
+        };
+
+        const isCriticalSeverity = (finding: any): boolean => {
+          const severity = String(
+            finding?.severity ||
+            finding?.deficiency?.severity ||
+            finding?.deficiency?.aiSeverity ||
+            ''
+          ).toLowerCase();
+
+          return severity === 'critical' || severity === 'life-threatening' || severity === 'severe';
+        };
+
+        sourceReports.forEach((report) => {
+          const groupKey = getPropertyGroupKey(report);
+          const reportFindingsRaw = ((report.rawData as any).findings || (report.rawData as any).deficiencies || []).filter(Boolean);
+          const reportInspectionIds = report.sourceInspectionIds?.length
+            ? report.sourceInspectionIds
+            : (!report.draftMeta ? [report.id] : []);
+          const reportLocalDraftKeys = report.sourceLocalDraftKeys?.length
+            ? report.sourceLocalDraftKeys
+            : (report.draftMeta?.source === 'local' && report.draftMeta.key ? [report.draftMeta.key] : []);
+          const reportBackendDraftRefs = report.sourceBackendDraftRefs?.length
+            ? report.sourceBackendDraftRefs
+            : (report.draftMeta?.source === 'backend'
+              ? [{
+                propertyId: String(report.draftMeta.propertyId || report.propertyId || ''),
+                unitId: String(report.draftMeta.unitId || ''),
+                inspectionType: String(report.draftMeta.inspectionType || ''),
+              }]
+              : []);
+          const reportFindings = dedupeFindings(reportFindingsRaw);
+          const reportUnitLabel = buildMergedUnitLabel([
+            report.unit,
+            ...extractUnitLabelsFromFindings(reportFindings),
+            ...reportBackendDraftRefs.map((ref) => ref.unitId),
+            extractUnitFromInspectionType(report.inspectionType),
+            extractUnitFromInspectionType((report.rawData as any)?.inspectionType),
+          ]);
+          const reportNotes = normalizeNoteForMerge(report.notes);
+
+          const existing = groupedReports.get(groupKey);
+
+          if (!existing) {
+            groupedReports.set(groupKey, {
+              ...report,
+              unit: reportUnitLabel,
+              totalDeficiencies: reportFindings.length,
+              criticalDeficiencies: reportFindings.filter(isCriticalSeverity).length,
+              notes: reportNotes,
+              rawData: {
+                ...(report.rawData as any),
+                findings: reportFindings,
+                deficiencies: reportFindings,
+                notes: reportNotes,
+              } as any,
+              sourceInspectionIds: mergeUniqueStringArrays(reportInspectionIds),
+              sourceLocalDraftKeys: mergeUniqueStringArrays(reportLocalDraftKeys),
+              sourceBackendDraftRefs: dedupeBackendDraftRefs(reportBackendDraftRefs),
+            });
+            return;
+          }
+
+          const existingFindings = ((existing.rawData as any).findings || (existing.rawData as any).deficiencies || []).filter(Boolean);
+          const mergedFindings = dedupeFindings([...existingFindings, ...reportFindings]);
+          const mergedNotes = [existing.notes, report.notes]
+            .map((noteValue) => normalizeNoteForMerge(noteValue))
+            .filter((note): note is string => Boolean(note && note.trim()))
+            .filter((note, index, allNotes) => allNotes.indexOf(note) === index)
+            .join('\n\n');
+          const latestReport = getInspectionTimestamp(report) > getInspectionTimestamp(existing) ? report : existing;
+          const mergedInspectionIds = mergeUniqueStringArrays([
+            ...(existing.sourceInspectionIds || []),
+            ...reportInspectionIds,
+          ]);
+          const mergedLocalDraftKeys = mergeUniqueStringArrays([
+            ...(existing.sourceLocalDraftKeys || []),
+            ...reportLocalDraftKeys,
+          ]);
+          const mergedBackendDraftRefs = dedupeBackendDraftRefs([
+            ...(existing.sourceBackendDraftRefs || []),
+            ...reportBackendDraftRefs,
+          ]);
+          const mergedUnitLabel = buildMergedUnitLabel([
+            ...String(existing.unit || '').split(','),
+            report.unit,
+            ...extractUnitLabelsFromFindings(mergedFindings),
+            ...mergedBackendDraftRefs.map((ref) => ref.unitId),
+            extractUnitFromInspectionType(existing.inspectionType),
+            extractUnitFromInspectionType(report.inspectionType),
+            extractUnitFromInspectionType((latestReport.rawData as any)?.inspectionType),
+          ]);
+
+          groupedReports.set(groupKey, {
+            ...existing,
+            id: latestReport.id,
+            date: latestReport.date,
+            inspector: latestReport.inspector,
+            complianceScore: latestReport.complianceScore,
+            unit: mergedUnitLabel,
+            totalDeficiencies: mergedFindings.length,
+            criticalDeficiencies: mergedFindings.filter(isCriticalSeverity).length,
+            notes: mergedNotes,
+            rawData: {
+              ...(existing.rawData as any),
+              ...(latestReport.rawData as any),
+              findings: mergedFindings,
+              deficiencies: mergedFindings,
+              notes: mergedNotes,
+            } as any,
+            sourceInspectionIds: mergedInspectionIds,
+            sourceLocalDraftKeys: mergedLocalDraftKeys,
+            sourceBackendDraftRefs: mergedBackendDraftRefs,
+            draftMeta: latestReport.draftMeta || existing.draftMeta,
+          });
+        });
+
+        return Array.from(groupedReports.values());
+      };
+
+      const finalReports = aggregateReportsByProperty(mappedReports);
+
       // Sort by date (newest first)
-      mappedReports.sort((a, b) => {
-        const dateA = new Date(a.rawData.completedDate || a.rawData.scheduledDate || (a.rawData as any).createdAt);
-        const dateB = new Date(b.rawData.completedDate || b.rawData.scheduledDate || (b.rawData as any).createdAt);
-        return dateB.getTime() - dateA.getTime();
+      const getSortTimestamp = (candidate: Report): number => {
+        const raw = candidate.rawData as any;
+        const timestamp = raw?.updatedAt || raw?.completedDate || raw?.scheduledDate || raw?.createdAt;
+        if (timestamp) {
+          const parsed = new Date(timestamp).getTime();
+          if (!Number.isNaN(parsed)) {
+            return parsed;
+          }
+        }
+
+        const fallback = Date.parse(String(candidate.date || '').replace('(Draft)', '').trim());
+        return Number.isNaN(fallback) ? Date.now() : fallback;
+      };
+
+      finalReports.sort((a, b) => {
+        return getSortTimestamp(b) - getSortTimestamp(a);
       });
 
-      setReports(mappedReports);
+      setReports(finalReports);
       setProperties(propertiesData.properties || propertiesData || []);
     } catch (error) {
       console.error('Error loading reports:', error);
@@ -388,6 +823,55 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
     return matchesSearch && matchesProperty && matchesStatus && matchesDateRange;
   });
 
+  const normalizeReportLabelToken = (value: unknown): string =>
+    String(value ?? '')
+      .trim()
+      .toLowerCase()
+      .replace(/[\s_-]+/g, '');
+
+  const isPlaceholderReportLabel = (value: unknown): boolean => {
+    const token = normalizeReportLabelToken(value);
+    return (
+      !token ||
+      token === 'allunits' ||
+      token === 'allunit' ||
+      token === 'unknown' ||
+      token === 'null' ||
+      token === 'undefined' ||
+      token === 'property' ||
+      token === 'building'
+    );
+  };
+
+  const parseUnitLabelCandidates = (value: unknown): string[] => {
+    return String(value ?? '')
+      .split(',')
+      .map((chunk) => chunk.trim())
+      .flatMap((chunk) => chunk.split('/').map((part) => part.trim()))
+      .filter((chunk) => Boolean(chunk) && !isPlaceholderReportLabel(chunk));
+  };
+
+  const resolveReportBuildingName = (report: Report): string => {
+    const raw = report.rawData as any;
+    const directCandidates = [
+      raw?.buildingName,
+      raw?.buildingId,
+      raw?.inspectionData?.buildingId,
+      raw?.property?.building,
+      raw?.property?.buildingName,
+    ];
+
+    for (const candidate of directCandidates) {
+      const label = String(candidate ?? '').trim();
+      if (label && !isPlaceholderReportLabel(label)) {
+        return label;
+      }
+    }
+
+    const unitCandidates = parseUnitLabelCandidates(report.unit);
+    return unitCandidates[0] || '';
+  };
+
   const handleViewReport = async (report: Report) => {
     try {
       setLoading(true);
@@ -400,6 +884,18 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
 
       reportData.findings = reportData.findings || reportData.deficiencies || [];
       reportData.inspectorName = report.inspector;
+
+      const resolvedBuildingName = resolveReportBuildingName(report);
+      if (resolvedBuildingName) {
+        reportData.buildingName = resolvedBuildingName;
+      }
+
+      if (!Array.isArray(reportData.selectedUnits) || reportData.selectedUnits.length === 0) {
+        const selectedUnitsFromLabel = parseUnitLabelCandidates(report.unit);
+        if (selectedUnitsFromLabel.length > 0) {
+          reportData.selectedUnits = selectedUnitsFromLabel;
+        }
+      }
 
       const nspireReport = generateNSPIREReport(reportData);
       const html = await nspirePDFService.generateHTMLPreviewAsync(nspireReport as any, {
@@ -432,14 +928,21 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
           onPress: async () => {
             try {
               setLoading(true);
-              if (report.id.startsWith('draft_')) {
-                const draftKey = report.id.replace('draft_', '');
+              const localDraftKeysToDelete = Array.from(new Set(report.sourceLocalDraftKeys || []));
+              for (const draftKey of localDraftKeysToDelete) {
                 await AsyncStorage.removeItem(draftKey);
-              } else if (report.id.startsWith('draftdb_') && report.draftMeta?.source === 'backend') {
+              }
+
+              const backendDraftsToDelete = report.sourceBackendDraftRefs || [];
+              for (const backendDraft of backendDraftsToDelete) {
+                if (!backendDraft.propertyId || !backendDraft.unitId || !backendDraft.inspectionType) {
+                  continue;
+                }
+
                 await inspectionService.saveProgress({
-                  property_id: String(report.draftMeta.propertyId || report.propertyId),
-                  unit_id: String(report.draftMeta.unitId || report.unit || 'unknown'),
-                  inspection_type: String(report.draftMeta.inspectionType || ''),
+                  property_id: String(backendDraft.propertyId),
+                  unit_id: String(backendDraft.unitId),
+                  inspection_type: String(backendDraft.inspectionType),
                   inspectionData: {
                     deleted: true,
                     deficiencies: [],
@@ -447,9 +950,18 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
                   },
                   responses: {},
                 });
-              } else {
-                await inspectionService.deleteInspection(report.id);
               }
+
+              const inspectionIdsToDelete = Array.from(new Set(
+                report.sourceInspectionIds?.length
+                  ? report.sourceInspectionIds
+                  : (!report.draftMeta ? [report.id] : [])
+              ));
+
+              for (const inspectionId of inspectionIdsToDelete) {
+                await inspectionService.deleteInspection(inspectionId);
+              }
+
               await loadData();
             } catch (err: any) {
               console.error('Failed to delete report:', err);
@@ -474,6 +986,18 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
 
       reportData.findings = reportData.findings || reportData.deficiencies || [];
       reportData.inspectorName = report.inspector;
+
+      const resolvedBuildingName = resolveReportBuildingName(report);
+      if (resolvedBuildingName) {
+        reportData.buildingName = resolvedBuildingName;
+      }
+
+      if (!Array.isArray(reportData.selectedUnits) || reportData.selectedUnits.length === 0) {
+        const selectedUnitsFromLabel = parseUnitLabelCandidates(report.unit);
+        if (selectedUnitsFromLabel.length > 0) {
+          reportData.selectedUnits = selectedUnitsFromLabel;
+        }
+      }
 
       const nspireReport = generateNSPIREReport(reportData);
 
