@@ -23,8 +23,19 @@ import {
   getCompletedUnits,
   resetPropertyInspectionState,
 } from '../utils/unitInspectionStorage';
+import { getData } from '../utils/storage';
 import { globalInspectionProgress } from '../utils/globalState';
 import { inspectionService } from '../services/inspectionService';
+import { progressSocketService } from '../services/progressSocketService';
+import {
+  normalizeUnitIdentifier,
+  buildInspectionProgressKey,
+  doesProgressRecordMatchBuilding,
+  doesProgressRecordMatchProperty,
+  extractInspectionTypeTokenFromProgressKey,
+  isUnitInspectionTypeToken,
+  extractUnitSuffixFromInspectionTypeToken,
+} from '../utils/inspectionProgressUtils';
 
 type PropertyInfoScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -50,13 +61,172 @@ const PropertyInfoScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const [refreshTick, setRefreshTick] = useState(0);
 
+  const resolveCompletedUnitsFromProgress = useCallback((progressRecords: any[] = []): string[] => {
+    const normalizedUnitLookup = new Map<string, string>();
+
+    unitNames.forEach((unitName) => {
+      const normalized = normalizeUnitIdentifier(unitName);
+      if (normalized) {
+        normalizedUnitLookup.set(normalized, unitName);
+      }
+    });
+
+    const completedUnitTokens = new Set<string>();
+
+    const markCompletedFromCandidate = (candidate: unknown) => {
+      const normalized = normalizeUnitIdentifier(candidate);
+      if (!normalized || !normalizedUnitLookup.has(normalized)) {
+        return;
+      }
+
+      completedUnitTokens.add(normalized);
+    };
+
+    progressRecords.forEach((record: any) => {
+      if (!doesProgressRecordMatchProperty(record, property)) {
+        return;
+      }
+
+      if (!doesProgressRecordMatchBuilding(record, buildingId)) {
+        return;
+      }
+
+      const inspectionType = String(record?.inspectionType || '').trim();
+      const inspectionTypeUpper = inspectionType.toUpperCase();
+      const hasResponsePayload =
+        !!record?.responses &&
+        typeof record.responses === 'object' &&
+        Object.keys(record.responses).length > 0;
+
+      if (isUnitInspectionTypeToken(inspectionType)) {
+        const explicitUnitFromType = extractUnitSuffixFromInspectionTypeToken(inspectionType);
+        const fallbackCurrentUnit = String(record?.inspectionData?.currentUnit || '').trim();
+
+        if (hasResponsePayload || fallbackCurrentUnit) {
+          markCompletedFromCandidate(explicitUnitFromType || fallbackCurrentUnit);
+        }
+      }
+
+      if (!inspectionTypeUpper.startsWith('REPORT_DRAFT_')) {
+        return;
+      }
+
+      const draftDeficiencies = Array.isArray(record?.inspectionData?.deficiencies)
+        ? record.inspectionData.deficiencies
+        : [];
+
+      draftDeficiencies.forEach((deficiencyItem: any) => {
+        [
+          deficiencyItem?._unit,
+          deficiencyItem?.unit,
+          deficiencyItem?.unitId,
+          deficiencyItem?.currentUnit,
+        ].forEach(markCompletedFromCandidate);
+      });
+    });
+
+    return Array.from(completedUnitTokens)
+      .map((token) => normalizedUnitLookup.get(token) || '')
+      .filter(Boolean);
+  }, [unitNames, property, buildingId]);
+
+  const resolveCompletedUnitsFromDeficiencies = useCallback((deficiencies: any[] = []): string[] => {
+    const normalizedUnitLookup = new Map<string, string>();
+    const targetBuildingToken = String(buildingId || '').trim().toLowerCase();
+
+    unitNames.forEach((unitName) => {
+      const normalized = normalizeUnitIdentifier(unitName);
+      if (normalized) {
+        normalizedUnitLookup.set(normalized, unitName);
+      }
+    });
+
+    const completedUnitTokens = new Set<string>();
+
+    const markCompletedFromCandidate = (candidate: unknown) => {
+      const normalized = normalizeUnitIdentifier(candidate);
+      if (!normalized || !normalizedUnitLookup.has(normalized)) {
+        return;
+      }
+
+      completedUnitTokens.add(normalized);
+    };
+
+    deficiencies.forEach((deficiencyItem: any) => {
+      if (!deficiencyItem || typeof deficiencyItem !== 'object') {
+        return;
+      }
+
+      const buildingCandidates = [
+        deficiencyItem?.buildingInspectionId,
+        deficiencyItem?.building,
+        deficiencyItem?.buildingName,
+        deficiencyItem?.buildingId,
+      ]
+        .map((candidate) => String(candidate || '').trim().toLowerCase())
+        .filter(Boolean);
+
+      const hasExplicitBuilding = buildingCandidates.length > 0;
+      const matchesBuilding =
+        !targetBuildingToken ||
+        !hasExplicitBuilding ||
+        buildingCandidates.includes(targetBuildingToken);
+
+      if (!matchesBuilding) {
+        return;
+      }
+
+      [
+        deficiencyItem?._unit,
+        deficiencyItem?.unit,
+        deficiencyItem?.unitId,
+        deficiencyItem?.currentUnit,
+      ].forEach(markCompletedFromCandidate);
+    });
+
+    return Array.from(completedUnitTokens)
+      .map((token) => normalizedUnitLookup.get(token) || '')
+      .filter(Boolean);
+  }, [unitNames, buildingId]);
+
   // Load completed units from storage on mount and when returning from inspection
   const loadCompletedUnits = useCallback(async () => {
     try {
       await initializePropertyInspectionState(propertyId, buildingId, unitNames);
       const completed = await getCompletedUnits(propertyId, buildingId);
+
+      const propertyDraftSaveKey = `saved_inspection_${propertyId}`;
+      const legacyBuildingDraftSaveKey = `saved_inspection_${propertyId}_${buildingId}`;
+      const [propertyDraft, legacyDraft] = await Promise.all([
+        getData(propertyDraftSaveKey).catch(() => null),
+        legacyBuildingDraftSaveKey !== propertyDraftSaveKey
+          ? getData(legacyBuildingDraftSaveKey).catch(() => null)
+          : Promise.resolve(null),
+      ]);
+
+      const localDraftDeficiencies = [
+        ...(Array.isArray(propertyDraft?.deficiencies) ? propertyDraft.deficiencies : []),
+        ...(Array.isArray(legacyDraft?.deficiencies) ? legacyDraft.deficiencies : []),
+      ];
+      const inferredFromLocalDrafts = resolveCompletedUnitsFromDeficiencies(localDraftDeficiencies);
+
+      const backendUnitStatus = await inspectionService.getUnitInspectionStatus({
+        property_id: String(propertyId),
+        building_id: String(buildingId),
+      });
+
+      const inferredFromBackendFlags = unitNames.filter((unitName) => {
+        const normalizedUnit = normalizeUnitIdentifier(unitName);
+        return Boolean(backendUnitStatus?.unitStatusMap?.[normalizedUnit]);
+      });
+
       // Merge with any passed completed units
-      const allCompleted = [...new Set([...completed, ...(passedCompletedUnits || [])])];
+      const allCompleted = [...new Set([
+        ...completed,
+        ...(passedCompletedUnits || []),
+        ...inferredFromLocalDrafts,
+        ...inferredFromBackendFlags,
+      ])];
       setCompletedUnits(allCompleted);
 
       // Persist any newly passed completed units
@@ -72,27 +242,38 @@ const PropertyInfoScreen: React.FC<Props> = ({ navigation, route }) => {
       try {
         const apiRes = await inspectionService.getAllProgress();
         if (apiRes && apiRes.success && apiRes.progress) {
+          const inferredFromProgress = resolveCompletedUnitsFromProgress(apiRes.progress);
+
           apiRes.progress.forEach((p: any) => {
-            const pId = p.propertyId?._id || p.propertyId || 'unknown';
-            const pIdStr = String(pId);
-            const pPropIdStr = p.propertyId?.propertyId ? String(p.propertyId.propertyId) : '';
+            if (doesProgressRecordMatchProperty(p, property) && doesProgressRecordMatchBuilding(p, buildingId)) {
+              const key = buildInspectionProgressKey({
+                propertyId,
+                buildingId,
+                inspectionType: p.inspectionType,
+                inspectionData: p.inspectionData,
+              });
 
-            const currentPropIdStr = String(propertyId);
-            const currentPropPropertyIdStr = property?.propertyId ? String(property.propertyId) : '';
-
-            const isMatch = (pIdStr === currentPropIdStr) ||
-              (pPropIdStr && pPropIdStr === currentPropIdStr) ||
-              (pIdStr && currentPropPropertyIdStr && pIdStr === currentPropPropertyIdStr) ||
-              (pPropIdStr && currentPropPropertyIdStr && pPropIdStr === currentPropPropertyIdStr) ||
-              (String(p.propertyId) === currentPropIdStr);
-
-            if (isMatch && String(p.unitId) === String(buildingId)) {
-              const key = `inspection_responses_${propertyId}_${p.unitId}_${p.inspectionType}`;
               if (p.responses && Object.keys(p.responses).length > 0) {
                 globalInspectionProgress[key] = p.responses;
               }
             }
           });
+
+          const mergedCompletedUnits = Array.from(new Set([
+            ...allCompleted,
+            ...inferredFromProgress,
+          ]));
+
+          setCompletedUnits(mergedCompletedUnits);
+
+          await Promise.all(
+            mergedCompletedUnits.map(async (unitName) => {
+              if (!completed.includes(unitName)) {
+                await markUnitCompleted(propertyId, buildingId, unitName);
+              }
+            })
+          );
+
           setRefreshTick(tick => tick + 1); // trigger re-render of checkmarks
         }
       } catch (e) {
@@ -102,7 +283,7 @@ const PropertyInfoScreen: React.FC<Props> = ({ navigation, route }) => {
     } catch (error) {
       console.error('Error loading completed units:', error);
     }
-  }, [propertyId, buildingId, unitNames, passedCompletedUnits]);
+  }, [propertyId, buildingId, unitNames, passedCompletedUnits, resolveCompletedUnitsFromProgress, resolveCompletedUnitsFromDeficiencies, property]);
 
   useEffect(() => {
     loadCompletedUnits();
@@ -117,14 +298,73 @@ const PropertyInfoScreen: React.FC<Props> = ({ navigation, route }) => {
     return unsubscribe;
   }, [navigation, loadCompletedUnits]);
 
+  useEffect(() => {
+    const unsubscribe = progressSocketService.subscribe((progressUpdate) => {
+      const progressLikeRecord = {
+        propertyId: progressUpdate.propertyId,
+        buildingId: progressUpdate.buildingId,
+        unitId: progressUpdate.buildingId,
+        inspectionType: progressUpdate.inspectionType,
+      };
+
+      if (!doesProgressRecordMatchProperty(progressLikeRecord, property)) {
+        return;
+      }
+
+      if (!doesProgressRecordMatchBuilding(progressLikeRecord, buildingId)) {
+        return;
+      }
+
+      const key = buildInspectionProgressKey({
+        propertyId,
+        buildingId,
+        inspectionType: progressUpdate.inspectionType,
+      });
+
+      globalInspectionProgress[key] = progressUpdate.responses || {};
+      setRefreshTick((tick) => tick + 1);
+
+      const inspectionTypeToken = String(progressUpdate.inspectionType || '').trim();
+      const isDraftInspection = inspectionTypeToken.toUpperCase().startsWith('REPORT_DRAFT_');
+
+      if (isDraftInspection || isUnitInspectionTypeToken(inspectionTypeToken)) {
+        loadCompletedUnits();
+      }
+    });
+
+    return unsubscribe;
+  }, [property, propertyId, buildingId, loadCompletedUnits]);
+
   const isUnitCompleted = (unitName: string) => {
     if (completedUnits.includes(unitName)) return true;
 
     // Check if it has any manual inspection responses in global state
     try {
-      const inspectKey = `inspection_responses_${propertyId}_${buildingId}_Unit_${unitName}`;
-      const unData = globalInspectionProgress[inspectKey];
-      if (unData && Object.keys(unData).length > 0) {
+      const unitPrefix = `inspection_responses_${propertyId}_${buildingId}_`;
+      const normalizedTargetUnit = normalizeUnitIdentifier(unitName);
+
+      const unitProgressEntries = Object.entries(globalInspectionProgress).filter(
+        ([key, value]) => {
+          if (!key.startsWith(unitPrefix) || !value || typeof value !== 'object') {
+            return false;
+          }
+
+          const inspectionTypeToken = extractInspectionTypeTokenFromProgressKey(key, unitPrefix);
+          return isUnitInspectionTypeToken(inspectionTypeToken);
+        }
+      ) as Array<[string, Record<string, any>]>;
+
+      const hasMatchingUnitProgress = unitProgressEntries.some(([key, unitData]) => {
+        if (!unitData || Object.keys(unitData).length === 0) {
+          return false;
+        }
+
+        const inspectionTypeToken = extractInspectionTypeTokenFromProgressKey(key, unitPrefix);
+        const unitSuffix = extractUnitSuffixFromInspectionTypeToken(inspectionTypeToken);
+        return normalizeUnitIdentifier(unitSuffix) === normalizedTargetUnit;
+      });
+
+      if (hasMatchingUnitProgress) {
         return true;
       }
     } catch (e) { }

@@ -30,6 +30,7 @@ import {
 import { cloudinaryService } from '../services/cloudinaryService';
 import ModalZoomWrapper from '../components/ModalZoomWrapper';
 import { geminiService } from '../services/openaiService';
+import { inspectionService } from '../services/inspectionService';
 import { ScoringResult, calculateUnitScore, POSSIBLE_SCORE } from '../utils/scoringCalculations';
 import { UNIT_TOTAL_POSSIBLE_POINTS } from '../data/insideDeficiencyMapping';
 import {
@@ -505,8 +506,10 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     const hasPermission = await requestPermissions(true);
     if (!hasPermission) return;
 
+    const mediaTypes: any = ['images'];
+
     const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes,
       allowsEditing: true,
       aspect: [4, 3],
       quality: 0.8,
@@ -521,9 +524,10 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     const hasPermission = await requestPermissions(false);
     if (!hasPermission) return;
 
+    const mediaTypes: any = ['images'];
+
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
+      mediaTypes,
       aspect: [4, 3],
       quality: 0.8,
       allowsMultipleSelection: true,
@@ -582,7 +586,12 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     }
 
     const normalizedArea = isOutsideLocation ? 'Outside' : (isUnit ? 'Unit' : 'Inside');
-    const normalizedUnit = isUnit ? (currentUnit || selectedUnits?.[0] || '-') : '-';
+    const normalizedBuildingLabel = String(
+      buildingId || property?.building || property?.buildingName || ''
+    ).trim();
+    const normalizedUnit = isUnit
+      ? (currentUnit || selectedUnits?.[0] || '-')
+      : (normalizedBuildingLabel || '-');
     const selectedInspectionLocation = isOutsideLocation
       ? selectedOutsideLocation
       : (isUnit ? selectedUnitLocation : selectedInsideLocation);
@@ -652,6 +661,8 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             location: selectedInspectionLocation,
             itemName,
             itemId,
+            building: normalizedBuildingLabel || undefined,
+            buildingInspectionId: normalizedBuildingLabel || undefined,
             dedupeKey: deficiencyDedupeKey,
             _area: normalizedArea,
             _unit: normalizedUnit,
@@ -682,12 +693,38 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             location: selectedInspectionLocation,
             itemName,
             itemId,
+            building: normalizedBuildingLabel || undefined,
+            buildingInspectionId: normalizedBuildingLabel || undefined,
             dedupeKey: deficiencyDedupeKey,
             _area: normalizedArea,
             _unit: normalizedUnit,
             analyzedAt: new Date().toISOString(),
           });
         }
+      }
+
+      const propertyIdentifier = String(property?._id || property?.id || property?.propertyId || 'unknown');
+      const draftSavedAt = new Date().toISOString();
+
+      try {
+        await inspectionService.saveProgress({
+          property_id: propertyIdentifier,
+          unit_id: 'ALL_UNITS',
+          inspection_type: 'REPORT_DRAFT_PROPERTY',
+          inspectionData: {
+            deficiencies: analyzedDeficiencies,
+            property: {
+              _id: propertyIdentifier,
+              name: property?.name || 'Property',
+            },
+            buildingId: normalizedBuildingLabel,
+            unit: normalizedUnit,
+            inspectionType: 'Draft Inspection',
+            savedAt: draftSavedAt,
+          },
+        });
+      } catch (draftSaveError) {
+        console.warn('Could not persist draft from detail screen:', draftSaveError);
       }
 
       // Hide processing modal before navigation

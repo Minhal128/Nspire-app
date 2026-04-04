@@ -27,7 +27,7 @@ export type RootStackParamList = {
   NSPIREReport: { report?: any; inspectionData?: any; property?: any };
   InspectionReport: { property?: any; session?: any; findings?: any[]; images?: any[]; complianceScore?: number; overallCondition?: string };
   PropertyInfo: { property: any; selectedUnits: string[]; completedUnits?: string[]; buildingId?: string };
-  InspectionCategories: { property: any; selectedUnits: string[]; buildingId: string; currentUnit?: string };
+  InspectionCategories: { property: any; selectedUnits: string[]; buildingId: string; currentUnit?: string; propertyId?: string };
   UnitLocations: { property: any; selectedUnits: string[]; buildingId: string };
   LocationInspection: { property: any; selectedUnits: string[]; buildingId: string; location: string; currentUnit?: string };
   DeficiencyDetail: { 

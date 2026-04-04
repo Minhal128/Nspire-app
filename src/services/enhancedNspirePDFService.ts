@@ -169,6 +169,41 @@ async function fetchImageAsBase64(url: string): Promise<string> {
   const normalizedUrl = String(url || '').trim();
   try {
     if (!normalizedUrl || (!normalizedUrl.startsWith('http://') && !normalizedUrl.startsWith('https://'))) return '';
+
+    if (Platform.OS === 'web') {
+      for (let attempt = 0; attempt <= IMAGE_FETCH_RETRIES; attempt++) {
+        const controller = new AbortController();
+        const timeoutHandle = setTimeout(() => controller.abort(), IMAGE_FETCH_TIMEOUT);
+
+        try {
+          const response = await fetch(normalizedUrl, { signal: controller.signal });
+          if (!response.ok) {
+            continue;
+          }
+
+          const blob = await response.blob();
+          const dataUri = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(typeof reader.result === 'string' ? reader.result : '');
+            reader.onerror = () => reject(new Error('Failed to decode image blob'));
+            reader.readAsDataURL(blob);
+          });
+
+          if (dataUri && dataUri.startsWith('data:')) {
+            return dataUri;
+          }
+        } catch (webFetchError) {
+          if (attempt === IMAGE_FETCH_RETRIES) {
+            console.warn('Failed to fetch image:', normalizedUrl, webFetchError);
+          }
+        } finally {
+          clearTimeout(timeoutHandle);
+        }
+      }
+
+      return '';
+    }
+
     // Use expo-file-system to download to a temp file, then read as base64
     for (let attempt = 0; attempt <= IMAGE_FETCH_RETRIES; attempt++) {
       const tmpPath = FileSystem.cacheDirectory + 'img_' + Date.now() + '_' + Math.random().toString(36).slice(2) + '.jpg';
@@ -424,7 +459,11 @@ function generateEnhancedSummaryPage(
  * Grouped by Building / Unit with yellow header rows.
  * Uses pre-loaded base64 images (no remote URLs in final HTML).
  */
-function generateEnhancedDeficiencyTable(deficiencies: DeficiencyEntry[], imageMap: Map<string, string> = new Map()): string {
+function generateEnhancedDeficiencyTable(
+  deficiencies: DeficiencyEntry[],
+  imageMap: Map<string, string> = new Map(),
+  propertyName: string = ''
+): string {
   if (deficiencies.length === 0) {
     return `
 <div>
@@ -432,6 +471,48 @@ function generateEnhancedDeficiencyTable(deficiencies: DeficiencyEntry[], imageM
   <p style="text-align:center;padding:12px;font-style:italic;">No deficiencies found during this inspection.</p>
 </div>`;
   }
+
+  const normalizeToken = (value: unknown): string =>
+    String(value ?? '')
+      .trim()
+      .toLowerCase()
+      .replace(/[\s_-]+/g, '');
+
+  const isLikelyUnitLabel = (value: unknown): boolean => {
+    const normalized = String(value ?? '').trim().toLowerCase();
+    return normalized.startsWith('unit ') || normalized.startsWith('unit-') || normalized.startsWith('unit_');
+  };
+
+  const isPlaceholder = (value: unknown): boolean => {
+    const token = normalizeToken(value);
+    return (
+      !token ||
+      token === '-' ||
+      token === 'allunits' ||
+      token === 'allunit' ||
+      token === 'unknown' ||
+      token === 'null' ||
+      token === 'undefined' ||
+      token === 'property' ||
+      token === 'building'
+    );
+  };
+
+  const normalizeUnitLabel = (value: unknown): string =>
+    String(value ?? '')
+      .trim()
+      .replace(/\s*\/\s*building\s*-\s*[^/]+/gi, '')
+      .replace(/\s*\(\s*building\s*-\s*[^)]+\)/gi, '')
+      .replace(/\s*\/\s*property\s*-\s*[^/]+/gi, '')
+      .replace(/\s*\(\s*property\s*-\s*[^)]+\)/gi, '')
+      .replace(/^\s*building\s*-\s*/i, '')
+      .trim();
+
+  const formatUnitHeading = (value: unknown): string => {
+    const normalized = normalizeUnitLabel(value);
+    if (!normalized || isPlaceholder(normalized)) return 'Unit 001';
+    return /^unit[\s_-]*/i.test(normalized) ? normalized : `Unit ${normalized}`;
+  };
 
   // Build repeat detection map
   const detailsSeen = new Map<string, number>();
@@ -443,53 +524,60 @@ function generateEnhancedDeficiencyTable(deficiencies: DeficiencyEntry[], imageM
     return count > 0;
   });
 
-  // Group deficiencies by section:
-  // - Inside → "Inside (Building - {building})"
-  // - Outside → "Outside (Building - {building})"
-  // - Units → "Units (Unit - {unit} / Building - {building})"
-  // Inside and Outside sections do NOT merge with unit sections.
   interface GroupedDef { def: DeficiencyEntry; isRepeat: boolean; }
-  const groups = new Map<string, GroupedDef[]>();
-  deficiencies.forEach((def, idx) => {
-    const building = (def.building && def.building !== '-') ? def.building : 'Building';
-    const unit = def.unit && def.unit !== '-' ? def.unit : '';
-    const area = def.area || '';
+  const buildingMap = new Map<string, {
+    Outside: GroupedDef[];
+    Inside: GroupedDef[];
+    Units: GroupedDef[];
+    GeneralComment: GroupedDef[];
+  }>();
 
-    let groupKey: string;
-    if ((def as any).isGeneralComment) {
-      groupKey = 'General Comment';
-    } else if (area === 'Inside') {
-      groupKey = `Inside (Building - ${building})`;
-    } else if (area === 'Outside') {
-      groupKey = `Outside (Building - ${building})`;
-    } else if (unit) {
-      groupKey = `Units (Unit - ${unit} / Building - ${building})`;
-    } else {
-      groupKey = `Building - ${building}`;
+  deficiencies.forEach((def, idx) => {
+    const resolvedBuildingCandidate = String(
+      (def as any).buildingInspectionId ||
+      (def as any).building_id ||
+      def.building ||
+      (def as any).buildingId ||
+      ''
+    ).trim();
+    const building =
+      resolvedBuildingCandidate &&
+      !isPlaceholder(resolvedBuildingCandidate) &&
+      !isLikelyUnitLabel(resolvedBuildingCandidate)
+        ? resolvedBuildingCandidate
+        : 'B1';
+
+    if (!buildingMap.has(building)) {
+      buildingMap.set(building, {
+        Outside: [],
+        Inside: [],
+        Units: [],
+        GeneralComment: [],
+      });
     }
 
-    if (!groups.has(groupKey)) groups.set(groupKey, []);
-    groups.get(groupKey)!.push({ def, isRepeat: def.repeatIndicator || repeatFlags[idx] });
+    let section: 'Outside' | 'Inside' | 'Units' | 'GeneralComment' = 'Inside';
+    const areaToken = normalizeToken(def.area);
+    if ((def as any).isGeneralComment) {
+      section = 'GeneralComment';
+    } else if (areaToken.includes('outside') || areaToken.includes('site') || areaToken.includes('exterior')) {
+      section = 'Outside';
+    } else if (areaToken.includes('inside') || areaToken.includes('interior') || areaToken.includes('common')) {
+      section = 'Inside';
+    } else if (areaToken.includes('unit')) {
+      section = 'Units';
+    } else {
+      const unitToken = normalizeToken(def.unit);
+      section = (unitToken && !isPlaceholder(unitToken)) ? 'Units' : 'Inside';
+    }
+
+    buildingMap.get(building)![section].push({ def, isRepeat: def.repeatIndicator || repeatFlags[idx] });
   });
 
-  // Sort groups: Inside first, then Outside, then Units (sorted by unit name), then others
-  const sortedGroups = new Map<string, GroupedDef[]>();
-  const insideKeys = Array.from(groups.keys()).filter(k => k.startsWith('Inside'));
-  const outsideKeys = Array.from(groups.keys()).filter(k => k.startsWith('Outside'));
-  const unitKeys = Array.from(groups.keys()).filter(k => k.startsWith('Units')).sort();
-  const otherKeys = Array.from(groups.keys()).filter(k => !k.startsWith('Inside') && !k.startsWith('Outside') && !k.startsWith('Units'));
-  [...insideKeys, ...outsideKeys, ...unitKeys, ...otherKeys].forEach(k => sortedGroups.set(k, groups.get(k)!));
+  const normalizedPropertyName = String(propertyName || '').trim();
+  const propertySuffix = normalizedPropertyName ? ` / ${normalizedPropertyName}` : '';
 
-  let rows = '';
-  sortedGroups.forEach((items, groupKey) => {
-    const displayGroupKey = groupKey
-      .replace(/\s*\/\s*Building\s*-\s*[^)]+/gi, '')
-      .replace(/\(\s*Building\s*-\s*[^)]+\)/gi, '')
-      .replace(/^Building\s*-\s*/i, '')
-      .trim() || 'General';
-
-    rows += `<tr class="gh"><td colspan="7">${esc(displayGroupKey)}</td></tr>\n`;
-    items.forEach(({ def, isRepeat }) => {
+  const renderDeficiencyRow = ({ def, isRepeat }: GroupedDef): string => {
       // Check if imageUri is already a base64 data URI (use directly) or look up from the preloaded map
       let imgSrc = '';
       if (def.imageUri) {
@@ -506,7 +594,7 @@ function generateEnhancedDeficiencyTable(deficiencies: DeficiencyEntry[], imageM
         ? `<img src="${imgSrc}" style="width:80px;height:60px;object-fit:cover;border:1px solid #000;display:block;margin:0 auto" />`
         : `<div class="ip">Photo</div>`;
       const isGC = !!(def as any).isGeneralComment;
-      rows += `<tr class="avoid-break">
+      return `<tr class="avoid-break">
 <td class="la">${isGC ? '-' : esc(def.deficiencyDetails || 'No details available')}</td>
 <td class="la" style="text-align:center;vertical-align:middle;">${isGC ? '-' : makeCodeRefLink(def.nspireCode, def.codeReference)}</td>
 <td>${imgCell}</td>
@@ -515,6 +603,48 @@ function generateEnhancedDeficiencyTable(deficiencies: DeficiencyEntry[], imageM
 <td>${isGC ? '-' : esc(def.severity)}</td>
 <td class="la">${esc(def.note || '-')}</td>
 </tr>\n`;
+  };
+
+  let rows = '';
+  const sortedBuildings = Array.from(buildingMap.keys()).sort((a, b) => a.localeCompare(b));
+  sortedBuildings.forEach((building) => {
+    const sections = buildingMap.get(building)!;
+    const sectionOrder: Array<'Outside' | 'Inside' | 'Units' | 'GeneralComment'> = ['Outside', 'Inside', 'Units', 'GeneralComment'];
+
+    sectionOrder.forEach((sectionName) => {
+      const items = sections[sectionName] || [];
+      if (items.length === 0) return;
+
+      if (sectionName === 'Units') {
+        const unitBuckets = new Map<string, GroupedDef[]>();
+        items.forEach((entry) => {
+          const normalizedUnit = normalizeUnitLabel(entry.def.unit);
+          const unitKey = !isPlaceholder(normalizedUnit) ? normalizedUnit : '001';
+          if (!unitBuckets.has(unitKey)) {
+            unitBuckets.set(unitKey, []);
+          }
+          unitBuckets.get(unitKey)!.push(entry);
+        });
+
+        Array.from(unitBuckets.keys()).sort((a, b) => a.localeCompare(b)).forEach((unitKey) => {
+          const displayGroupKey = `${formatUnitHeading(unitKey)} - ${building}${propertySuffix}`;
+          rows += `<tr class="gh"><td colspan="7">${esc(displayGroupKey)}</td></tr>\n`;
+          unitBuckets.get(unitKey)!.forEach((entry) => {
+            rows += renderDeficiencyRow(entry);
+          });
+        });
+
+        return;
+      }
+
+      const displayGroupKey = sectionName === 'GeneralComment'
+        ? `General Comment - ${building}${propertySuffix}`
+        : `${sectionName} - ${building}${propertySuffix}`;
+
+      rows += `<tr class="gh"><td colspan="7">${esc(displayGroupKey)}</td></tr>\n`;
+      items.forEach((entry) => {
+        rows += renderDeficiencyRow(entry);
+      });
     });
   });
 
@@ -668,15 +798,28 @@ function generateInProgressDeficiencyTable(
       .trim();
   };
 
+  const formatUnitSectionHeading = (value: unknown): string => {
+    const normalized = sanitizeUnitLabel(value);
+    if (!normalized || isPlaceholderLabel(normalized)) return 'Unit 001';
+    return /^unit[\s_-]*/i.test(normalized) ? normalized : `Unit ${normalized}`;
+  };
+
   const looksLikeBuildingLabel = (value: string): boolean => {
     const label = toLabel(value);
     if (!label) return false;
     return /^b\d+$/i.test(label) || /^building[\s_-]?[a-z0-9]+$/i.test(label);
   };
 
+  const looksLikeUnitLabel = (value: string): boolean => {
+    const label = toLabel(value).toLowerCase();
+    return label.startsWith('unit ') || label.startsWith('unit-') || label.startsWith('unit_');
+  };
+
   const fallbackBuildingFromMetadata = firstValidLabel([
+    report?.metadata?.buildingInspectionId,
     report?.metadata?.buildingName,
     report?.metadata?.buildingId,
+    report?.metadata?.progressData?.buildingInspectionId,
     report?.metadata?.progressData?.buildingId,
   ]);
 
@@ -688,12 +831,14 @@ function generateInProgressDeficiencyTable(
     nonPlaceholderProgressBuildings.length === 1 ? nonPlaceholderProgressBuildings[0] : '';
 
   const resolveBuildingLabel = (rawBuilding: unknown, areaValue: unknown, rawUnit: unknown): string => {
-    const areaToken = normalizeLabelToken(areaValue);
     const unitLabel = toLabel(rawUnit);
+    const candidateFromUnit = looksLikeBuildingLabel(unitLabel) ? unitLabel : '';
+    const rawBuildingLabel = toLabel(rawBuilding);
+    const safeRawBuilding = looksLikeUnitLabel(rawBuildingLabel) ? '' : rawBuildingLabel;
 
     let resolved = firstValidLabel([
-      rawBuilding,
-      (areaToken.includes('inside') || areaToken.includes('outside')) ? unitLabel : '',
+      safeRawBuilding,
+      candidateFromUnit,
       fallbackBuildingFromMetadata,
       fallbackBuildingFromProgress,
     ]);
@@ -702,7 +847,7 @@ function generateInProgressDeficiencyTable(
       resolved = unitLabel;
     }
 
-    return resolved || 'Building';
+    return resolved || 'B1';
   };
 
   const makeCodeRefLink = (nspireCode: string, codeReference?: any) => {
@@ -809,7 +954,11 @@ function generateInProgressDeficiencyTable(
       normalizeLabelToken(area).includes('unit') ? def._unit : '',
       def.unitId,
     ]));
-    const building = resolveBuildingLabel(def.building || def.buildingName || def.buildingId, area, normalizedUnit);
+    const building = resolveBuildingLabel(
+      def.buildingInspectionId || def.building_id || def.building || def.buildingName || def.buildingId,
+      area,
+      normalizedUnit
+    );
 
     if (!buildingsMap.has(building)) buildingsMap.set(building, new Map());
     if (!buildingUnitsMap.has(building)) buildingUnitsMap.set(building, new Set<string>());
@@ -984,6 +1133,29 @@ function generateInProgressDeficiencyTable(
     ];
 
     let itemsShownForBuilding = false;
+    const hasProgressContextForBuilding = matchingProgressEntries.length > 0;
+
+    const sectionHasRecordedProgress = (
+      sectionKey: 'Outside' | 'Inside' | 'Units' | 'GeneralComment'
+    ): boolean => {
+      if (sectionKey === 'Outside') {
+        return mergedProgress.out > 0 || mergedProgress.modules.Outside.submodules.length > 0;
+      }
+
+      if (sectionKey === 'Inside') {
+        return mergedProgress.in > 0 || mergedProgress.modules.Inside.submodules.length > 0;
+      }
+
+      if (sectionKey === 'Units') {
+        return (
+          mergedProgress.un > 0 ||
+          mergedProgress.modules.Units.submodules.length > 0 ||
+          mergedProgress.inspectedUnits.length > 0
+        );
+      }
+
+      return true;
+    };
 
     ordering.forEach(groupOrderDef => {
       const items = buildingGroups.get(groupOrderDef.key) || [];
@@ -992,6 +1164,16 @@ function generateInProgressDeficiencyTable(
         groupOrderDef.key as 'Outside' | 'Inside' | 'Units' | 'GeneralComment',
         items
       );
+
+      // When progress context exists for a building, trust it as the source of truth:
+      // if a section was never started, suppress it even if stale findings leaked in.
+      if (
+        hasProgressContextForBuilding &&
+        groupOrderDef.key !== 'GeneralComment' &&
+        !sectionHasRecordedProgress(groupOrderDef.key as 'Outside' | 'Inside' | 'Units' | 'GeneralComment')
+      ) {
+        return;
+      }
 
       // We render a section if it has findings OR if it has SOME progress
       if (
@@ -1018,7 +1200,7 @@ function generateInProgressDeficiencyTable(
             !isPlaceholderLabel(unitCandidate) &&
             normalizeLabelToken(unitCandidate) !== normalizeLabelToken(building)
               ? unitCandidate
-              : 'Unspecified Unit';
+              : '001';
 
           if (!unitBuckets.has(normalizedUnit)) {
             unitBuckets.set(normalizedUnit, []);
@@ -1031,13 +1213,8 @@ function generateInProgressDeficiencyTable(
 
         sortedUnitLabels.forEach((unitLabel) => {
           const unitItems = unitBuckets.get(unitLabel) || [];
-          const unitSelectedModules = getSelectedModulesForSection(
-            building,
-            'Units',
-            unitItems
-          );
-
-          const displayGroupKey = `Units (Unit - ${esc(unitLabel)}${propertyNameForHeading ? ` / Property - ${esc(propertyNameForHeading)}` : ''})${unitSelectedModules.length ? ` | Selected Modules: ${unitSelectedModules.map((m) => esc(m)).join(', ')}` : ''}`;
+          const propertySuffix = propertyNameForHeading ? ` / ${esc(propertyNameForHeading)}` : '';
+          const displayGroupKey = `${formatUnitSectionHeading(unitLabel)} - ${esc(building)}${propertySuffix}`;
 
           rows += `\n<tr><td colspan="7" style="background:#F3F4F6;font-weight:700;font-size:7.5pt;text-align:left;padding:6px 4px;border:1px solid #000;">${displayGroupKey}</td></tr>\n`;
 
@@ -1075,15 +1252,19 @@ function generateInProgressDeficiencyTable(
       }
 
       const propertyNameForHeading = String(report?.metadata?.propertyName || '').trim();
+      const propertySuffix = propertyNameForHeading ? ` / ${esc(propertyNameForHeading)}` : '';
 
-      const unitsHeadingSuffix =
-        groupOrderDef.key === 'Units' && combinedUnits.length > 0
-          ? ` (Unit - ${combinedUnits.map((u) => esc(u)).join(', ')}${propertyNameForHeading ? ` / Property - ${esc(propertyNameForHeading)}` : ''})`
-          : '';
-
-      const displayGroupKey = groupOrderDef.key === 'GeneralComment'
-        ? 'General Comment'
-        : `${groupOrderDef.key}${unitsHeadingSuffix}${selectedModules.length ? ` | Selected Modules: ${selectedModules.map((m) => esc(m)).join(', ')}` : ''}`;
+      let displayGroupKey = 'General Comment';
+      if (groupOrderDef.key === 'Outside' || groupOrderDef.key === 'Inside') {
+        displayGroupKey = `${groupOrderDef.key} - ${esc(building)}${propertySuffix}`;
+      } else if (groupOrderDef.key === 'Units') {
+        const fallbackUnitLabel = combinedUnits.length > 0
+          ? formatUnitSectionHeading(combinedUnits[0])
+          : 'Unit 001';
+        displayGroupKey = `${fallbackUnitLabel} - ${esc(building)}${propertySuffix}`;
+      } else if (groupOrderDef.key === 'GeneralComment') {
+        displayGroupKey = `General Comment - ${esc(building)}${propertySuffix}`;
+      }
 
       rows += `\n<tr><td colspan="7" style="background:#F3F4F6;font-weight:700;font-size:7.5pt;text-align:left;padding:6px 4px;border:1px solid #000;">${displayGroupKey}</td></tr>\n`;
 
@@ -1246,7 +1427,7 @@ function generateEnhancedNSPIREReportHTML(
   if (report.metadata.status === 'in-progress') {
     return generateInProgressReportHTML(report, options, imageMap, logoBase64);
   }
-  return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>NSPIRE Report</title><style>${generateEnhancedStyles()}</style></head><body><div class="report-container">${generateEnhancedHeader(report.metadata, logoBase64)}${options.includeSummaryPage ? generateEnhancedSummaryPage(report.summary, report.categoryBreakdown, report.metadata, report.inspectionData, report.occupancyInfo, report.deficiencies) : ''}${options.includeDetailedDeficiencies ? generateEnhancedDeficiencyTable(report.deficiencies, imageMap) : ''}${generateCertificatesTable()}${options.includeCertification && report.certification ? generateEnhancedCertificationSection(report.certification) : ''}${generateEnhancedFooter(options, logoBase64)}</div></body></html>`;
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>NSPIRE Report</title><style>${generateEnhancedStyles()}</style></head><body><div class="report-container">${generateEnhancedHeader(report.metadata, logoBase64)}${options.includeSummaryPage ? generateEnhancedSummaryPage(report.summary, report.categoryBreakdown, report.metadata, report.inspectionData, report.occupancyInfo, report.deficiencies) : ''}${options.includeDetailedDeficiencies ? generateEnhancedDeficiencyTable(report.deficiencies, imageMap, report?.metadata?.propertyName || '') : ''}${generateCertificatesTable()}${options.includeCertification && report.certification ? generateEnhancedCertificationSection(report.certification) : ''}${generateEnhancedFooter(options, logoBase64)}</div></body></html>`;
 }
 
 /**
@@ -1379,6 +1560,14 @@ class EnhancedNSPIREPDFReportService {
     options: PDFGenerationOptions = DEFAULT_PDF_OPTIONS
   ): Promise<{ success: boolean; error?: string }> {
     try {
+      if (Platform.OS === 'web') {
+        const webResult = await this.generateEnhancedPDF(report, options);
+        if (!webResult.success) {
+          throw new Error(webResult.error);
+        }
+        return { success: true };
+      }
+
       const result = await this.generateEnhancedPDF(report, options);
 
       if (!result.success) {
@@ -1446,25 +1635,40 @@ class EnhancedNSPIREPDFReportService {
   convertToEnhancedNSPIREFormat(data: any): NSPIREInspectionReport {
     const now = new Date();
 
+    const normalizeAreaBucket = (value: unknown, fallbackIsUnit = false): string => {
+      const token = String(value ?? '').trim().toLowerCase().replace(/[\s_-]+/g, '');
+      if (token.includes('outside') || token.includes('site') || token.includes('exterior')) return 'Outside';
+      if (token.includes('inside') || token.includes('interior') || token.includes('common')) return 'Inside';
+      if (token.includes('unit')) return 'Units';
+      return fallbackIsUnit ? 'Units' : 'Inside';
+    };
+
     // Convert findings/deficiencies to enhanced NSPIRE format
-    const deficiencies = (data.findings || data.deficiencies || []).map((item: any, index: number) => ({
-      id: item.id || item._id || `DEF-${index + 1}`,
-      imageUri: item.imageUrl || item.imageUri || item.photos?.[0]?.url || '',
-      building: item.building || data.building || 'Building',
-      unit: item.unit || data.unit || 'Unit Multiple',
-      room: item.location || item.room || item.area || 'General Area',
-      area: item.subCategory || item.category || 'Inside',
-      deficiencyName: item.title || item.description || item.deficiencyName || 'Unnamed Issue',
-      nspireCode: item.nspireCode || this.mapCategoryToEnhancedNSPIRECode(item.category || item.area),
-      deficiencyDetails: item.description || item.details || item.deficiencyDetails || 'Address or building identification codes are broken, missing, or not visible',
-      comments: item.notes || item.comments || item.recommendation || 'Wait for Input',
-      deductionPts: this.calculateEnhancedDeductionPoints(item.severity),
-      repeatIndicator: item.repeat || false,
-      severity: this.mapSeverityToEnhancedNSPIRE(item.severity) as DeficiencySeverity,
-      inspectedDate: now.toLocaleDateString(),
-      inspectedTime: now.toLocaleTimeString(),
-      status: item.status || 'Open'
-    }));
+    const deficiencies = (data.findings || data.deficiencies || []).map((item: any, index: number) => {
+      const area = normalizeAreaBucket(
+        item.area || item._area || item.inspectionArea || item.subCategory || item.category || item.inspectionType,
+        !!(item.unit || item._unit || item.unitId)
+      );
+
+      return {
+        id: item.id || item._id || `DEF-${index + 1}`,
+        imageUri: item.imageUrl || item.imageUri || item.photos?.[0]?.url || '',
+        building: item.buildingInspectionId || item.building_id || item.buildingId || item.building || data.buildingInspectionId || data.buildingId || data.building || 'B1',
+        unit: item.unit || item._unit || item.unitId || data.unit || 'Unit Multiple',
+        room: item.location || item.room || item.area || 'General Area',
+        area,
+        deficiencyName: item.title || item.description || item.deficiencyName || 'Unnamed Issue',
+        nspireCode: item.nspireCode || this.mapCategoryToEnhancedNSPIRECode(item.category || item.area),
+        deficiencyDetails: item.description || item.details || item.deficiencyDetails || 'Address or building identification codes are broken, missing, or not visible',
+        comments: item.notes || item.comments || item.recommendation || 'Wait for Input',
+        deductionPts: this.calculateEnhancedDeductionPoints(item.severity),
+        repeatIndicator: item.repeat || false,
+        severity: this.mapSeverityToEnhancedNSPIRE(item.severity) as DeficiencySeverity,
+        inspectedDate: now.toLocaleDateString(),
+        inspectedTime: now.toLocaleTimeString(),
+        status: item.status || 'Open'
+      };
+    });
 
     // Calculate enhanced summary statistics
     const summary: DeficiencySummary = {

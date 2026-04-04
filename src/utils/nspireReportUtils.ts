@@ -176,6 +176,29 @@ const looksLikeBuildingLabel = (value: string): boolean => {
   return /^b\d+$/i.test(label) || /^building[\s_-]?[a-z0-9]+$/i.test(label);
 };
 
+const looksLikeUnitLabel = (value: unknown): boolean => {
+  const label = toDisplayLabel(value).toLowerCase();
+  return label.startsWith('unit ') || label.startsWith('unit-') || label.startsWith('unit_');
+};
+
+const resolveAreaBucket = (value: unknown, fallbackIsUnit = false): string => {
+  const token = normalizeLabelToken(value);
+
+  if (token.includes('outside') || token.includes('site') || token.includes('exterior')) {
+    return 'Outside';
+  }
+
+  if (token.includes('inside') || token.includes('interior') || token.includes('common')) {
+    return 'Inside';
+  }
+
+  if (token.includes('unit')) {
+    return 'Units';
+  }
+
+  return fallbackIsUnit ? 'Units' : 'Inside';
+};
+
 /**
  * Convert AI findings to NSPIRE deficiency entries
  */
@@ -188,11 +211,37 @@ export const convertFindingsToDeficiencies = (
   return findings.map((finding: any, index: number) => {
     finding.deficiencyQRId = '';
     const severity = mapFindingSeverityToNSPIRE(finding.severity);
-    const areaToken = normalizeLabelToken(
-      finding.area || finding._area || finding.category || finding.inspectionType
-    );
+    const sourceArea =
+      finding.area ||
+      finding._area ||
+      finding.inspectionArea ||
+      finding.subCategory ||
+      finding.category ||
+      finding.inspectionType;
+    const areaToken = normalizeLabelToken(sourceArea);
     const isInsideOutsideArea = areaToken.includes('inside') || areaToken.includes('outside');
     const isUnitArea = areaToken.includes('unit');
+    const areaBucket = resolveAreaBucket(sourceArea, isUnitArea);
+
+    const insideOutsideUnitAsBuilding =
+      isInsideOutsideArea && looksLikeBuildingLabel(toDisplayLabel(finding._unit))
+        ? finding._unit
+        : '';
+    const insideOutsideUnitLabelAsBuilding =
+      isInsideOutsideArea && looksLikeBuildingLabel(toDisplayLabel(finding.unit))
+        ? finding.unit
+        : '';
+
+    const directBuildingCandidates = [
+      finding.buildingInspectionId,
+      finding.building_id,
+      finding.buildingId,
+      finding.building,
+      finding.buildingName,
+    ].map((candidate) => {
+      const label = toDisplayLabel(candidate);
+      return label && !looksLikeUnitLabel(label) ? label : '';
+    });
 
     const resolvedUnit =
       firstNonPlaceholderLabel([
@@ -204,10 +253,9 @@ export const convertFindingsToDeficiencies = (
       ]) || '-';
 
     let resolvedBuilding = firstNonPlaceholderLabel([
-      finding.building,
-      finding.buildingName,
-      finding.buildingId,
-      isInsideOutsideArea ? finding._unit : '',
+      ...directBuildingCandidates,
+      insideOutsideUnitAsBuilding,
+      insideOutsideUnitLabelAsBuilding,
       propertyInfo?.building,
     ]);
 
@@ -223,7 +271,7 @@ export const convertFindingsToDeficiencies = (
     }
 
     if (!resolvedBuilding) {
-      resolvedBuilding = 'Building';
+      resolvedBuilding = 'B1';
     }
 
     const nspireCode = finding.nspireCode || finding.code || finding?.deficiency?.code || mapCategoryToNSPIRECode(finding.category || finding.area);
@@ -246,7 +294,7 @@ export const convertFindingsToDeficiencies = (
       building: resolvedBuilding,
       unit: resolvedUnit,
       room: finding.location || 'General',
-      area: finding.area || finding.category || finding.inspectionType || 'General',
+      area: areaBucket,
       deficiencyName: finding.deficiencyName || finding?.deficiency?.name || finding.title || finding.name || 'Deficiency',
       nspireCode,
       codeReference: finding.codeReference || finding?.deficiency?.codeReference || finding?.deficiency?.source || '',

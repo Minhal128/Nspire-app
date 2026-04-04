@@ -1,7 +1,19 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { globalInspectionProgress } from '../utils/globalState';
 import { inspectionService } from '../services/inspectionService';
+import { progressSocketService } from '../services/progressSocketService';
+import {
+  normalizeUnitIdentifier,
+  buildInspectionProgressKey,
+  doesProgressRecordMatchBuilding,
+  doesProgressRecordMatchProperty,
+  extractInspectionTypeTokenFromProgressKey,
+  isInsideInspectionTypeToken,
+  isOutsideInspectionTypeToken,
+  isUnitInspectionTypeToken,
+  extractUnitSuffixFromInspectionTypeToken,
+} from '../utils/inspectionProgressUtils';
 import {
   View,
   Text,
@@ -14,11 +26,13 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../types/navigation';
 import { Ionicons } from '@expo/vector-icons';
 import { OUTSIDE_ITEMS, INSIDE_ITEMS, UNIT_ITEMS, UNIT_LOCATIONS } from '../data/inspectionData';
+import { getCompletedUnits } from '../utils/unitInspectionStorage';
 
 type InspectionCategoriesScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -34,8 +48,57 @@ interface Props {
   route: InspectionCategoriesScreenRouteProp;
 }
 
+const INVALID_PROPERTY_IDENTIFIER_TOKENS = new Set([
+  '',
+  '-',
+  'unknown',
+  'null',
+  'undefined',
+  '[object object]',
+]);
+
+const normalizePropertyIdentifier = (value: unknown): string => {
+  const raw = String(value ?? '').trim();
+  if (!raw) {
+    return '';
+  }
+
+  if (INVALID_PROPERTY_IDENTIFIER_TOKENS.has(raw.toLowerCase())) {
+    return '';
+  }
+
+  return raw;
+};
+
+const extractProgressRecordPropertyId = (record: any): string => {
+  return normalizePropertyIdentifier(
+    record?.propertyId?._id ||
+    record?.propertyId ||
+    record?.propertyId?.propertyId ||
+    record?.inspectionData?.property?._id ||
+    record?.inspectionData?.property?.propertyId ||
+    ''
+  );
+};
+
+const extractPropertyIdFromProgressKey = (key: string, buildingId: string): string => {
+  const normalizedBuildingId = String(buildingId || '').trim();
+  if (!normalizedBuildingId || !key.startsWith('inspection_responses_')) {
+    return '';
+  }
+
+  const marker = `_${normalizedBuildingId}_`;
+  const markerIndex = key.indexOf(marker);
+  if (markerIndex <= 'inspection_responses_'.length) {
+    return '';
+  }
+
+  const propertyIdSegment = key.slice('inspection_responses_'.length, markerIndex);
+  return normalizePropertyIdentifier(propertyIdSegment);
+};
+
 const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
-  const { property, selectedUnits, buildingId } = route.params;
+  const { property, selectedUnits, buildingId, propertyId: routePropertyId } = route.params;
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [buildingName, setBuildingName] = useState(buildingId);
   const [editBuildingModalVisible, setEditBuildingModalVisible] = useState(false);
@@ -44,77 +107,562 @@ const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
   const [outsideProgress, setOutsideProgress] = useState(0);
   const [insideProgress, setInsideProgress] = useState(0);
   const [unitsProgress, setUnitsProgress] = useState(0);
+  const [resolvedPropertyId, setResolvedPropertyId] = useState<string>('');
+  const cachedUnitStatusMapRef = useRef<Record<string, boolean>>({});
+  const unitStatusRequestRef = useRef<{
+    requestKey: string;
+    promise: Promise<Record<string, boolean>> | null;
+    lastResolvedAt: number;
+  }>({
+    requestKey: '',
+    promise: null,
+    lastResolvedAt: 0,
+  });
+  const sectionSyncRequestRef = useRef<{
+    requestKey: string;
+    promise: Promise<void> | null;
+    lastResolvedAt: number;
+  }>({
+    requestKey: '',
+    promise: null,
+    lastResolvedAt: 0,
+  });
+
+  const totalUnitPossible = ((selectedUnits ? selectedUnits.length : 1) * UNIT_ITEMS.length) || 0;
+
+  const extractPropertyIdFromUnknownProperty = useCallback((propertyValue: any): string => {
+    if (propertyValue && typeof propertyValue === 'object') {
+      return normalizePropertyIdentifier(
+        propertyValue?._id || propertyValue?.id || propertyValue?.propertyId || ''
+      );
+    }
+
+    const propertyString = normalizePropertyIdentifier(propertyValue);
+    if (!propertyString) {
+      return '';
+    }
+
+    if (propertyString.startsWith('{') && propertyString.endsWith('}')) {
+      try {
+        const parsed = JSON.parse(propertyString);
+        return normalizePropertyIdentifier(parsed?._id || parsed?.id || parsed?.propertyId || '');
+      } catch {
+        return '';
+      }
+    }
+
+    return propertyString;
+  }, []);
+
+  const getDirectPropertyIdentifier = useCallback(() => {
+    const explicitRouteIdentifier = normalizePropertyIdentifier(routePropertyId);
+    if (explicitRouteIdentifier) {
+      return explicitRouteIdentifier;
+    }
+
+    return extractPropertyIdFromUnknownProperty(property);
+  }, [routePropertyId, property, extractPropertyIdFromUnknownProperty]);
+
+  const getPropertyIdentifier = useCallback(() => {
+    const directPropertyId = getDirectPropertyIdentifier();
+    return directPropertyId || resolvedPropertyId || 'unknown';
+  }, [getDirectPropertyIdentifier, resolvedPropertyId]);
+
+  const inferPropertyIdentifierFromGlobalProgress = useCallback(() => {
+    const normalizedBuildingId = String(buildingName || '').trim();
+    if (!normalizedBuildingId) {
+      return '';
+    }
+
+    const matchingEntries = Object.entries(globalInspectionProgress || {}).filter(([key, value]) => {
+      if (!key.startsWith('inspection_responses_')) {
+        return false;
+      }
+
+      if (!key.includes(`_${normalizedBuildingId}_`)) {
+        return false;
+      }
+
+      if (!value || typeof value !== 'object') {
+        return false;
+      }
+
+      return Object.keys(value as Record<string, any>).length > 0;
+    });
+
+    const prioritizedEntries = matchingEntries.sort(([keyA], [keyB]) => {
+      const lowerA = keyA.toLowerCase();
+      const lowerB = keyB.toLowerCase();
+
+      const score = (key: string) => {
+        if (key.includes('_outside')) return 3;
+        if (key.includes('_inside')) return 2;
+        if (key.includes('_unit_')) return 1;
+        return 0;
+      };
+
+      return score(lowerB) - score(lowerA);
+    });
+
+    for (const [key] of prioritizedEntries) {
+      const inferredPropertyId = extractPropertyIdFromProgressKey(key, normalizedBuildingId);
+      if (inferredPropertyId) {
+        return inferredPropertyId;
+      }
+    }
+
+    return '';
+  }, [buildingName]);
+
+  const resolvePropertyIdentifier = useCallback(async (): Promise<string> => {
+    const directPropertyId = getDirectPropertyIdentifier();
+    if (directPropertyId) {
+      setResolvedPropertyId(directPropertyId);
+      return directPropertyId;
+    }
+
+    const inferredFromGlobalProgress = inferPropertyIdentifierFromGlobalProgress();
+    if (inferredFromGlobalProgress) {
+      setResolvedPropertyId(inferredFromGlobalProgress);
+      return inferredFromGlobalProgress;
+    }
+
+    try {
+      const apiRes = await inspectionService.getAllProgress();
+      const allProgressRecords = Array.isArray(apiRes?.progress) ? apiRes.progress : [];
+
+      const selectedUnitTokens = new Set(
+        (selectedUnits || [])
+          .map((unit) => normalizeUnitIdentifier(unit))
+          .filter(Boolean)
+      );
+
+      const relevantProgressRecords = allProgressRecords
+        .filter((record: any) => doesProgressRecordMatchBuilding(record, buildingName))
+        .filter((record: any) => {
+          if (selectedUnitTokens.size === 0) {
+            return true;
+          }
+
+          const inspectionTypeToken = String(record?.inspectionType || '').trim();
+          if (!isUnitInspectionTypeToken(inspectionTypeToken)) {
+            return true;
+          }
+
+          const unitSuffix = extractUnitSuffixFromInspectionTypeToken(inspectionTypeToken);
+          if (!unitSuffix) {
+            return true;
+          }
+
+          return selectedUnitTokens.has(normalizeUnitIdentifier(unitSuffix));
+        })
+        .sort((a: any, b: any) => {
+          const aTime = new Date(a?.updatedAt || a?.createdAt || 0).getTime();
+          const bTime = new Date(b?.updatedAt || b?.createdAt || 0).getTime();
+          return bTime - aTime;
+        });
+
+      const inferredPropertyId = relevantProgressRecords
+        .map((record: any) => extractProgressRecordPropertyId(record))
+        .find(Boolean);
+
+      if (inferredPropertyId) {
+        setResolvedPropertyId(inferredPropertyId);
+        return inferredPropertyId;
+      }
+    } catch (error) {
+      console.log('Could not infer property identifier from progress records', error);
+    }
+
+    setResolvedPropertyId('unknown');
+    return 'unknown';
+  }, [getDirectPropertyIdentifier, selectedUnits, buildingName, inferPropertyIdentifierFromGlobalProgress]);
+
+  useEffect(() => {
+    const directPropertyId = getDirectPropertyIdentifier();
+    if (directPropertyId && directPropertyId !== resolvedPropertyId) {
+      setResolvedPropertyId(directPropertyId);
+    }
+  }, [getDirectPropertyIdentifier, resolvedPropertyId]);
+
+  const mergeUnitStatusMaps = useCallback((...statusMaps: Array<Record<string, boolean> | undefined>) => {
+    const merged: Record<string, boolean> = {};
+
+    statusMaps.forEach((statusMap) => {
+      if (!statusMap || typeof statusMap !== 'object') {
+        return;
+      }
+
+      Object.entries(statusMap).forEach(([unitKey, isCompleted]) => {
+        const normalizedUnitKey = normalizeUnitIdentifier(unitKey);
+        if (!normalizedUnitKey) {
+          return;
+        }
+
+        merged[normalizedUnitKey] = Boolean(merged[normalizedUnitKey] || isCompleted);
+      });
+    });
+
+    return merged;
+  }, []);
+
+  const getLocalCompletedUnitStatusMap = useCallback(async (propertyIdentifier?: string) => {
+    const propId = normalizePropertyIdentifier(propertyIdentifier || getPropertyIdentifier());
+    if (!propId) {
+      return {};
+    }
+
+    try {
+      const completedUnits = await getCompletedUnits(propId, String(buildingName || ''));
+      const localStatusMap: Record<string, boolean> = {};
+
+      (completedUnits || []).forEach((unitName) => {
+        const normalizedUnitKey = normalizeUnitIdentifier(unitName);
+        if (normalizedUnitKey) {
+          localStatusMap[normalizedUnitKey] = true;
+        }
+      });
+
+      return localStatusMap;
+    } catch (error) {
+      console.log('Could not load local completed units for categories screen', error);
+      return {};
+    }
+  }, [getPropertyIdentifier, buildingName]);
+
+  const hydrateSectionProgressFromDeviceCache = useCallback(async (propertyIdentifier?: string) => {
+    const propId = normalizePropertyIdentifier(propertyIdentifier || getPropertyIdentifier());
+    if (!propId) {
+      return;
+    }
+
+    const outsideKey = buildInspectionProgressKey({
+      propertyId: propId,
+      buildingId: buildingName,
+      inspectionType: 'Outside',
+    });
+
+    const insideKey = buildInspectionProgressKey({
+      propertyId: propId,
+      buildingId: buildingName,
+      inspectionType: 'Inside',
+    });
+
+    try {
+      const [outsideCached, insideCached] = await Promise.all([
+        AsyncStorage.getItem(outsideKey),
+        AsyncStorage.getItem(insideKey),
+      ]);
+
+      const applyCachedPayload = (targetKey: string, payload: string | null) => {
+        if (!payload) {
+          return;
+        }
+
+        try {
+          const parsed = JSON.parse(payload);
+          if (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) {
+            globalInspectionProgress[targetKey] = parsed;
+          }
+        } catch {
+          // Ignore malformed payloads and continue hydration.
+        }
+      };
+
+      applyCachedPayload(outsideKey, outsideCached);
+      applyCachedPayload(insideKey, insideCached);
+    } catch (cacheError) {
+      console.log('Could not hydrate section progress from device cache', cacheError);
+    }
+  }, [buildingName, getPropertyIdentifier]);
+
+  const fetchBackendUnitStatus = useCallback(async (propertyIdentifier?: string) => {
+    const propId = normalizePropertyIdentifier(propertyIdentifier || getPropertyIdentifier());
+    if (!propId) {
+      cachedUnitStatusMapRef.current = {};
+      return {};
+    }
+
+    const requestKey = `${propId}::${String(buildingName || '').trim()}`;
+    const now = Date.now();
+
+    if (
+      unitStatusRequestRef.current.requestKey === requestKey &&
+      unitStatusRequestRef.current.promise
+    ) {
+      return unitStatusRequestRef.current.promise;
+    }
+
+    if (
+      unitStatusRequestRef.current.requestKey === requestKey &&
+      now - unitStatusRequestRef.current.lastResolvedAt < 1500
+    ) {
+      return cachedUnitStatusMapRef.current;
+    }
+
+    const requestPromise = (async () => {
+      const backendUnitStatus = await inspectionService.getUnitInspectionStatus({
+        property_id: String(propId),
+        building_id: String(buildingName || ''),
+      });
+
+      const normalizedStatusMap: Record<string, boolean> = {};
+
+      if (backendUnitStatus?.unitStatusMap && typeof backendUnitStatus.unitStatusMap === 'object') {
+        Object.entries(backendUnitStatus.unitStatusMap).forEach(([unitKey, isInspected]) => {
+          const normalizedUnitKey = normalizeUnitIdentifier(unitKey);
+          if (normalizedUnitKey) {
+            normalizedStatusMap[normalizedUnitKey] = Boolean(isInspected);
+          }
+        });
+      }
+
+      if (Array.isArray(backendUnitStatus?.statuses)) {
+        backendUnitStatus.statuses.forEach((statusEntry) => {
+          const normalizedUnitKey = normalizeUnitIdentifier(
+            statusEntry?.normalizedUnitKey || statusEntry?.unitLabel
+          );
+
+          if (normalizedUnitKey) {
+            normalizedStatusMap[normalizedUnitKey] = Boolean(statusEntry?.isInspected);
+          }
+        });
+      }
+
+      cachedUnitStatusMapRef.current = normalizedStatusMap;
+      return normalizedStatusMap;
+    })();
+
+    unitStatusRequestRef.current = {
+      requestKey,
+      promise: requestPromise,
+      lastResolvedAt: unitStatusRequestRef.current.lastResolvedAt,
+    };
+
+    try {
+      const resolvedMap = await requestPromise;
+      unitStatusRequestRef.current = {
+        requestKey,
+        promise: null,
+        lastResolvedAt: Date.now(),
+      };
+      return resolvedMap;
+    } catch (error) {
+      unitStatusRequestRef.current = {
+        requestKey,
+        promise: null,
+        lastResolvedAt: Date.now(),
+      };
+      throw error;
+    }
+  }, [getPropertyIdentifier, buildingName]);
+
+  const syncOutsideInsideFromBackend = useCallback(async (propertyIdentifier?: string) => {
+    const propId = normalizePropertyIdentifier(propertyIdentifier || getPropertyIdentifier());
+    if (!propId) {
+      return;
+    }
+
+    const requestKey = `${propId}::${String(buildingName || '').trim()}::outside-inside`;
+    const now = Date.now();
+
+    if (
+      sectionSyncRequestRef.current.requestKey === requestKey &&
+      sectionSyncRequestRef.current.promise
+    ) {
+      return sectionSyncRequestRef.current.promise;
+    }
+
+    if (
+      sectionSyncRequestRef.current.requestKey === requestKey &&
+      now - sectionSyncRequestRef.current.lastResolvedAt < 1000
+    ) {
+      return;
+    }
+
+    const syncPromise = (async () => {
+      const sectionTypes: Array<'Outside' | 'Inside'> = ['Outside', 'Inside'];
+
+      const results = await Promise.allSettled(
+        sectionTypes.map((inspectionType) =>
+          inspectionService.getProgress({
+            property_id: propId,
+            unit_id: String(buildingName || ''),
+            inspection_type: inspectionType,
+          })
+        )
+      );
+
+      results.forEach((result, index) => {
+        if (result.status !== 'fulfilled') {
+          return;
+        }
+
+        const payload = result.value;
+        if (!payload?.items || typeof payload.items !== 'object' || Object.keys(payload.items).length === 0) {
+          return;
+        }
+
+        const inspectionType = sectionTypes[index];
+        const key = buildInspectionProgressKey({
+          propertyId: propId,
+          buildingId: buildingName,
+          inspectionType,
+          inspectionData: payload.inspectionData,
+        });
+
+        globalInspectionProgress[key] = payload.items;
+      });
+    })();
+
+    sectionSyncRequestRef.current = {
+      requestKey,
+      promise: syncPromise,
+      lastResolvedAt: sectionSyncRequestRef.current.lastResolvedAt,
+    };
+
+    try {
+      await syncPromise;
+      sectionSyncRequestRef.current = {
+        requestKey,
+        promise: null,
+        lastResolvedAt: Date.now(),
+      };
+    } catch {
+      sectionSyncRequestRef.current = {
+        requestKey,
+        promise: null,
+        lastResolvedAt: Date.now(),
+      };
+    }
+  }, [getPropertyIdentifier, buildingName]);
+
+  const updateLocalState = useCallback((propertyIdentifier?: string, backendStatusOverride?: Record<string, boolean>) => {
+    const propId = propertyIdentifier || getPropertyIdentifier();
+    const keyPrefix = `inspection_responses_${propId}_${buildingName}_`;
+
+    const progressEntries = Object.entries(globalInspectionProgress).filter(
+      ([key, value]) =>
+        key.startsWith(keyPrefix) &&
+        value &&
+        typeof value === 'object'
+    ) as Array<[string, Record<string, any>]>;
+
+    const outsideEntry = progressEntries.find(([key]) => {
+      const inspectionTypeToken = extractInspectionTypeTokenFromProgressKey(key, keyPrefix);
+      return isOutsideInspectionTypeToken(inspectionTypeToken);
+    });
+
+    const insideEntry = progressEntries.find(([key]) => {
+      const inspectionTypeToken = extractInspectionTypeTokenFromProgressKey(key, keyPrefix);
+      return isInsideInspectionTypeToken(inspectionTypeToken);
+    });
+
+    setOutsideProgress(outsideEntry ? Object.keys(outsideEntry[1] || {}).length : 0);
+    setInsideProgress(insideEntry ? Object.keys(insideEntry[1] || {}).length : 0);
+
+    const unitEntries = progressEntries.filter(([key]) => {
+      const inspectionTypeToken = extractInspectionTypeTokenFromProgressKey(key, keyPrefix);
+      return isUnitInspectionTypeToken(inspectionTypeToken);
+    });
+
+    let totalUn = 0;
+    const selectedUnitSet = new Set(
+      (selectedUnits || [])
+        .map((unit) => normalizeUnitIdentifier(unit))
+        .filter(Boolean)
+    );
+
+    if (unitEntries.length > 0) {
+      const sumEntryResponses = (entries: Array<[string, Record<string, any>]>) => {
+        return entries.reduce((sum, [, unitData]) => {
+          return sum + Object.keys(unitData || {}).length;
+        }, 0);
+      };
+
+      if (selectedUnitSet.size > 0) {
+        const matchedEntries = unitEntries.filter(([key]) => {
+          const inspectionTypeToken = extractInspectionTypeTokenFromProgressKey(key, keyPrefix);
+          const unitSuffix = extractUnitSuffixFromInspectionTypeToken(inspectionTypeToken);
+          return unitSuffix && selectedUnitSet.has(normalizeUnitIdentifier(unitSuffix));
+        });
+
+        totalUn = matchedEntries.length > 0
+          ? sumEntryResponses(matchedEntries)
+          : sumEntryResponses(unitEntries);
+      } else {
+        totalUn = sumEntryResponses(unitEntries);
+      }
+    }
+
+    const activeBackendStatusMap = backendStatusOverride || cachedUnitStatusMapRef.current;
+    const backendCompletedUnitsCount = selectedUnitSet.size > 0
+      ? Array.from(selectedUnitSet).filter((unitKey) => Boolean(activeBackendStatusMap[unitKey])).length
+      : Object.values(activeBackendStatusMap).filter(Boolean).length;
+
+    const backendDerivedProgress = backendCompletedUnitsCount * UNIT_ITEMS.length;
+    const effectiveUnitProgress = Math.min(
+      totalUnitPossible,
+      Math.max(totalUn, backendDerivedProgress)
+    );
+
+    setUnitsProgress(effectiveUnitProgress);
+  }, [buildingName, selectedUnits, getPropertyIdentifier, totalUnitPossible]);
 
   useFocusEffect(
     useCallback(() => {
+      let isCancelled = false;
+
       const fetchProgress = async () => {
         try {
-          const propId = property?._id || property?.id || property?.propertyId || 'unknown';
+          const quickPropertyId = normalizePropertyIdentifier(getPropertyIdentifier());
+          if (quickPropertyId) {
+            updateLocalState(quickPropertyId, cachedUnitStatusMapRef.current);
+          }
 
-          const updateLocalState = () => {
-            // Outside
-            const outKey = `inspection_responses_${propId}_${buildingName}_Outside`;
-            const outData = globalInspectionProgress[outKey];
-            if (outData) setOutsideProgress(Object.keys(outData).length);
-            else setOutsideProgress(0);
+          const propId = await resolvePropertyIdentifier();
 
-            // Inside
-            const inKey = `inspection_responses_${propId}_${buildingName}_Inside`;
-            const inData = globalInspectionProgress[inKey];
-            if (inData) setInsideProgress(Object.keys(inData).length);
-            else setInsideProgress(0);
+          await hydrateSectionProgressFromDeviceCache(propId);
+          updateLocalState(propId, cachedUnitStatusMapRef.current);
 
-            // Units
-            let totalUn = 0;
-            if (selectedUnits && selectedUnits.length > 0) {
-              for (const unit of selectedUnits) {
-                const unKey = `inspection_responses_${propId}_${buildingName}_Unit_${unit}`;
-                const unData = globalInspectionProgress[unKey];
-                if (unData) totalUn += Object.keys(unData).length;
-              }
-            }
-            setUnitsProgress(totalUn);
-          };
+          let latestBackendUnitStatusMap: Record<string, boolean> = {};
+          let latestLocalUnitStatusMap: Record<string, boolean> = {};
+
+          const backendStatusPromise = fetchBackendUnitStatus(propId)
+            .catch((statusError) => {
+              console.log('Could not sync backend unit status in categories screen', statusError);
+              return {};
+            });
+
+          try {
+            latestLocalUnitStatusMap = await getLocalCompletedUnitStatusMap(propId);
+          } catch (statusError) {
+            console.log('Could not sync local unit status in categories screen', statusError);
+          }
+
+          const initialStatusMap = mergeUnitStatusMaps(
+            cachedUnitStatusMapRef.current,
+            latestLocalUnitStatusMap
+          );
+          cachedUnitStatusMapRef.current = initialStatusMap;
 
           // Render instantly from memory first
-          updateLocalState();
+          updateLocalState(propId, initialStatusMap);
 
-          // Sync from API in case app was just opened or progress was saved via other screen/device
-          try {
-            const apiRes = await inspectionService.getAllProgress();
-            if (apiRes && apiRes.success && apiRes.progress) {
-              apiRes.progress.forEach((p: any) => {
-                const pId = p.propertyId?._id || p.propertyId || 'unknown';
-                const pIdStr = String(pId);
-                const pPropIdStr = p.propertyId?.propertyId ? String(p.propertyId.propertyId) : '';
+          // Lightweight targeted section sync (faster and less timeout-prone than full progress scan)
+          await syncOutsideInsideFromBackend(propId);
+          updateLocalState(propId, initialStatusMap);
 
-                const currentPropIdStr = String(propId);
-                const currentPropPropertyIdStr = property?.propertyId ? String(property.propertyId) : '';
+          if (!isCancelled) {
+            latestBackendUnitStatusMap = await backendStatusPromise;
 
-                const isMatch = (pIdStr === currentPropIdStr) ||
-                  (pPropIdStr && pPropIdStr === currentPropIdStr) ||
-                  (pIdStr && currentPropPropertyIdStr && pIdStr === currentPropPropertyIdStr) ||
-                  (pPropIdStr && currentPropPropertyIdStr && pPropIdStr === currentPropPropertyIdStr) ||
-                  (String(p.propertyId) === currentPropIdStr);
+            const refreshedStatusMap = mergeUnitStatusMaps(
+              latestBackendUnitStatusMap,
+              latestLocalUnitStatusMap
+            );
+            cachedUnitStatusMapRef.current = refreshedStatusMap;
 
-                if (isMatch && String(p.unitId) === String(buildingName)) {
-                  // For units, LocationInspectionScreen appends _[unit] to the name when creating the key
-                  const safeLoc = p.inspectionType === 'Unit' ? `Unit_${p.unitId}` : p.inspectionType;
-                  // Wait, actually LocationInspectionScreen uses actual Unit_1 etc for inspectionType if it is a unit! Or rather location: Unit, unit name appended.
-                  // Let's just use what p.inspectionType is, or recreate LocationInspectionScreen's key logic
-                  // Backend receives: inspection_type: "Outside" or "Unit_1" etc. Wait, LocationInspectionScreen saves `location` which for Unit is just "Unit".
-                  // Let's check api.post call in LocationInspectionScreen again just to be safe. But `p.inspectionType` IS that location.
-
-                  const key = `inspection_responses_${propId}_${p.unitId}_${p.inspectionType}`;
-                  if (p.responses && Object.keys(p.responses).length > 0) {
-                    globalInspectionProgress[key] = p.responses;
-                  }
-                }
-              });
-              updateLocalState();
-            }
-          } catch (e) {
-            console.log("Could not sync category progress from API", e);
+            updateLocalState(propId, refreshedStatusMap);
           }
 
         } catch (e) {
@@ -123,8 +671,95 @@ const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
       };
 
       fetchProgress();
-    }, [property, buildingName, selectedUnits])
+
+      return () => {
+        isCancelled = true;
+      };
+    }, [property, buildingName, selectedUnits, updateLocalState, fetchBackendUnitStatus, resolvePropertyIdentifier, getLocalCompletedUnitStatusMap, mergeUnitStatusMaps, getPropertyIdentifier, hydrateSectionProgressFromDeviceCache, syncOutsideInsideFromBackend])
   );
+
+  useEffect(() => {
+    const propId = getPropertyIdentifier();
+
+    const unsubscribe = progressSocketService.subscribe((progressUpdate) => {
+      const progressLikeRecord = {
+        propertyId: progressUpdate.propertyId,
+        buildingId: progressUpdate.buildingId,
+        unitId: progressUpdate.buildingId,
+        inspectionType: progressUpdate.inspectionType,
+      };
+
+      if (!doesProgressRecordMatchBuilding(progressLikeRecord, buildingName)) {
+        return;
+      }
+
+      const currentPropertyId = normalizePropertyIdentifier(propId);
+      const socketPropertyId = normalizePropertyIdentifier(progressUpdate.propertyId);
+      const matchesCurrentProperty = doesProgressRecordMatchProperty(progressLikeRecord, property);
+      const hasMatchingExplicitPropertyId =
+        !!currentPropertyId &&
+        !!socketPropertyId &&
+        currentPropertyId === socketPropertyId;
+      const canFallbackToSocketPropertyId = !currentPropertyId && !!socketPropertyId;
+      const shouldApplySocketProgress =
+        matchesCurrentProperty ||
+        hasMatchingExplicitPropertyId ||
+        canFallbackToSocketPropertyId;
+
+      const effectiveSocketPropertyId = currentPropertyId || socketPropertyId || normalizePropertyIdentifier(resolvedPropertyId);
+      const inspectionTypeToken = String(progressUpdate.inspectionType || '').trim();
+      const isUnitProgressUpdate = isUnitInspectionTypeToken(inspectionTypeToken);
+
+      if (shouldApplySocketProgress && effectiveSocketPropertyId) {
+        const key = buildInspectionProgressKey({
+          propertyId: effectiveSocketPropertyId,
+          buildingId: buildingName,
+          inspectionType: progressUpdate.inspectionType,
+        });
+
+        globalInspectionProgress[key] = progressUpdate.responses || {};
+      }
+
+      if (isUnitProgressUpdate) {
+        const syncUnitsFromBackend = async () => {
+          let effectivePropertyId = normalizePropertyIdentifier(propId);
+
+          if (!effectivePropertyId) {
+            effectivePropertyId =
+              normalizePropertyIdentifier(progressUpdate.propertyId) ||
+              normalizePropertyIdentifier(await resolvePropertyIdentifier());
+          }
+
+          if (!effectivePropertyId) {
+            updateLocalState(propId);
+            return;
+          }
+
+          const [latestBackendUnitStatusMap, latestLocalUnitStatusMap] = await Promise.all([
+            fetchBackendUnitStatus(effectivePropertyId),
+            getLocalCompletedUnitStatusMap(effectivePropertyId),
+          ]);
+          const mergedUnitStatusMap = mergeUnitStatusMaps(
+            latestBackendUnitStatusMap,
+            latestLocalUnitStatusMap
+          );
+          cachedUnitStatusMapRef.current = mergedUnitStatusMap;
+          updateLocalState(effectivePropertyId, mergedUnitStatusMap);
+        };
+
+        syncUnitsFromBackend()
+          .catch(() => {
+            updateLocalState(propId);
+          })
+          ;
+        return;
+      }
+
+      updateLocalState(effectiveSocketPropertyId || propId);
+    });
+
+    return unsubscribe;
+  }, [property, buildingName, getPropertyIdentifier, updateLocalState, fetchBackendUnitStatus, resolvePropertyIdentifier, getLocalCompletedUnitStatusMap, mergeUnitStatusMaps, resolvedPropertyId]);
 
   const openBuildingEditModal = () => {
     setTempBuildingName(buildingName);
@@ -269,13 +904,12 @@ const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
               <View style={styles.progressContainer}>
                 <View style={styles.progressBar}>
                   {(() => {
-                    const totalPossible = (selectedUnits ? selectedUnits.length : 1) * UNIT_ITEMS.length;
-                    const pct = Math.min(100, Math.round((unitsProgress / totalPossible) * 100)) || 0;
+                    const pct = Math.min(100, Math.round((unitsProgress / totalUnitPossible) * 100)) || 0;
                     return <View style={[styles.progressFill, { width: `${pct}%` }]} />;
                   })()}
                 </View>
                 <Text style={styles.progressText}>
-                  {unitsProgress}/{(selectedUnits ? selectedUnits.length : 1) * UNIT_ITEMS.length} • {Math.min(100, Math.round((unitsProgress / ((selectedUnits ? selectedUnits.length : 1) * UNIT_ITEMS.length)) * 100)) || 0}% Complete
+                  {unitsProgress}/{totalUnitPossible} • {Math.min(100, Math.round((unitsProgress / totalUnitPossible) * 100)) || 0}% Complete
                 </Text>
               </View>
             </View>

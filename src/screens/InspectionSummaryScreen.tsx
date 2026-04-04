@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -54,16 +54,143 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
   const [mergedDeficiencies, setMergedDeficiencies] = useState<any[]>(
     inspectionData?.deficiencies || []
   );
+  const [continuingInspection, setContinuingInspection] = useState(false);
+  const [continueToast, setContinueToast] = useState<{
+    visible: boolean;
+    message: string;
+    type: 'info' | 'success' | 'error';
+  }>({
+    visible: false,
+    message: '',
+    type: 'info',
+  });
+  const continueToastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (continueToastTimeoutRef.current) {
+        clearTimeout(continueToastTimeoutRef.current);
+        continueToastTimeoutRef.current = null;
+      }
+    };
+  }, []);
+
+  const showContinueToast = (
+    message: string,
+    type: 'info' | 'success' | 'error' = 'info',
+    autoHideMs: number = 1800
+  ) => {
+    if (continueToastTimeoutRef.current) {
+      clearTimeout(continueToastTimeoutRef.current);
+      continueToastTimeoutRef.current = null;
+    }
+
+    setContinueToast({ visible: true, message, type });
+
+    if (autoHideMs > 0) {
+      continueToastTimeoutRef.current = setTimeout(() => {
+        setContinueToast((prev) => ({ ...prev, visible: false }));
+        continueToastTimeoutRef.current = null;
+      }, autoHideMs);
+    }
+  };
 
   const normalizeKeyPart = (value: any): string => String(value ?? '').trim().toLowerCase();
 
-  const buildDeficiencyDedupeKey = (deficiencyItem: any, fallbackArea: string, fallbackUnit: string): string => {
-    if (deficiencyItem?.dedupeKey && typeof deficiencyItem.dedupeKey === 'string') {
-      return deficiencyItem.dedupeKey;
+  const normalizeLabelToken = (value: unknown): string =>
+    String(value ?? '')
+      .trim()
+      .toLowerCase()
+      .replace(/[\s_-]+/g, '');
+
+  const isPlaceholderLabel = (value: unknown): boolean => {
+    const token = normalizeLabelToken(value);
+    return (
+      !token ||
+      token === '-' ||
+      token === 'allunits' ||
+      token === 'allunit' ||
+      token === 'unknown' ||
+      token === 'null' ||
+      token === 'undefined' ||
+      token === 'property' ||
+      token === 'building' ||
+      token === 'unitmultiple'
+    );
+  };
+
+  const looksLikeBuildingLabel = (value: unknown): boolean => {
+    const label = String(value ?? '').trim();
+    if (!label) {
+      return false;
     }
 
-    const area = normalizeKeyPart(deficiencyItem?._area || fallbackArea || 'unknown-area');
-    const unit = normalizeKeyPart(deficiencyItem?._unit !== undefined ? deficiencyItem._unit : fallbackUnit);
+    return /^b\d+$/i.test(label) || /^building[\s_-]?[a-z0-9]+$/i.test(label);
+  };
+
+  const firstValidLabel = (values: unknown[]): string => {
+    for (const value of values) {
+      const label = String(value ?? '').trim();
+      if (label && !isPlaceholderLabel(label)) {
+        return label;
+      }
+    }
+
+    return '';
+  };
+
+  const resolveDeficiencyContext = (
+    deficiencyItem: any,
+    fallbackArea: string,
+    fallbackUnit: string,
+    previousItem?: any,
+    fallbackBuilding?: string
+  ): { area: string; unit: string; building: string } => {
+    const area = String(deficiencyItem?._area || previousItem?._area || fallbackArea || '').trim() || fallbackArea;
+    const areaToken = normalizeLabelToken(area);
+    const isInsideOutsideArea = areaToken.includes('inside') || areaToken.includes('outside');
+
+    const building = firstValidLabel([
+      deficiencyItem?.building,
+      deficiencyItem?.buildingName,
+      deficiencyItem?.buildingId,
+      previousItem?.building,
+      previousItem?.buildingName,
+      previousItem?.buildingId,
+      isInsideOutsideArea ? deficiencyItem?._unit : '',
+      isInsideOutsideArea && looksLikeBuildingLabel(deficiencyItem?.unit) ? deficiencyItem?.unit : '',
+      isInsideOutsideArea ? previousItem?._unit : '',
+      fallbackBuilding,
+    ]);
+
+    const unit = isInsideOutsideArea
+      ? (firstValidLabel([
+        deficiencyItem?._unit,
+        looksLikeBuildingLabel(deficiencyItem?.unit) ? deficiencyItem?.unit : '',
+        previousItem?._unit,
+        building,
+      ]) || '-')
+      : (firstValidLabel([
+        deficiencyItem?._unit,
+        deficiencyItem?.unit,
+        deficiencyItem?.unitId,
+        previousItem?._unit,
+        fallbackUnit,
+      ]) || fallbackUnit);
+
+    return { area, unit, building };
+  };
+
+  const buildDeficiencyDedupeKey = (
+    deficiencyItem: any,
+    fallbackArea: string,
+    fallbackUnit: string,
+    fallbackBuilding?: string
+  ): string => {
+    const context = resolveDeficiencyContext(deficiencyItem, fallbackArea, fallbackUnit, undefined, fallbackBuilding);
+    const area = normalizeKeyPart(context.area || fallbackArea || 'unknown-area');
+    const building = normalizeKeyPart(context.building || 'unknown-building');
+    const unit = normalizeKeyPart(context.unit || fallbackUnit || 'unknown-unit');
     const moduleId = normalizeKeyPart(
       deficiencyItem?.itemId ||
       deficiencyItem?.itemName ||
@@ -75,26 +202,50 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
       deficiencyItem?.deficiencyName ||
       (deficiencyItem?.isGeneralComment ? 'general comment' : 'unknown-deficiency')
     );
+    const deficiencyDetails = normalizeKeyPart(
+      deficiencyItem?.deficiency?.detail ||
+      deficiencyItem?.deficiencyDetails ||
+      deficiencyItem?.detail ||
+      deficiencyItem?.description ||
+      ''
+    );
+    const assetIdentity = normalizeKeyPart(
+      deficiencyItem?.deficiencyQRId ||
+      deficiencyItem?.imageUri ||
+      deficiencyItem?.imageUrl ||
+      deficiencyItem?.id ||
+      deficiencyItem?.analyzedAt ||
+      ''
+    );
 
-    return `${area}|${unit}|${moduleId}|${deficiencyName}`;
+    return `${area}|${building}|${unit}|${moduleId}|${deficiencyName}|${deficiencyDetails}|${assetIdentity || 'no-asset'}`;
   };
 
   const mergeDeficiencyLists = (
     existingList: any[] = [],
     incomingList: any[] = [],
     fallbackArea: string,
-    fallbackUnit: string
+    fallbackUnit: string,
+    fallbackBuilding?: string
   ): any[] => {
     const mergedByKey = new Map<string, any>();
 
     const upsert = (item: any) => {
-      const key = buildDeficiencyDedupeKey(item, fallbackArea, fallbackUnit);
+      const key = buildDeficiencyDedupeKey(item, fallbackArea, fallbackUnit, fallbackBuilding);
       const previous = mergedByKey.get(key) || {};
+      const context = resolveDeficiencyContext(item, fallbackArea, fallbackUnit, previous, fallbackBuilding);
       const merged = {
         ...previous,
         ...item,
-        _area: item?._area || previous?._area || fallbackArea,
-        _unit: item?._unit !== undefined ? item._unit : (previous?._unit !== undefined ? previous._unit : fallbackUnit),
+        _area: context.area,
+        _unit: context.unit,
+        building: firstValidLabel([
+          item?.building,
+          item?.buildingName,
+          item?.buildingId,
+          previous?.building,
+          context.building,
+        ]) || previous?.building,
         dedupeKey: key,
       };
       mergedByKey.set(key, merged);
@@ -104,6 +255,54 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
     incomingList.forEach(upsert);
 
     return Array.from(mergedByKey.values());
+  };
+
+  const scopeDeficienciesToBuilding = (
+    deficiencyList: any[] = [],
+    fallbackArea: string,
+    fallbackUnit: string,
+    fallbackBuilding: string
+  ): any[] => {
+    const targetBuildingToken = normalizeLabelToken(fallbackBuilding);
+
+    return deficiencyList
+      .map((item) => {
+        const context = resolveDeficiencyContext(item, fallbackArea, fallbackUnit, undefined, fallbackBuilding);
+        const resolvedBuilding = firstValidLabel([
+          item?.buildingInspectionId,
+          item?.building,
+          item?.buildingName,
+          item?.buildingId,
+          context.building,
+          fallbackBuilding,
+        ]);
+
+        return {
+          ...item,
+          _area: context.area,
+          _unit: context.unit,
+          building: resolvedBuilding || item?.building,
+          buildingInspectionId: firstValidLabel([item?.buildingInspectionId, resolvedBuilding, fallbackBuilding]) || undefined,
+        };
+      })
+      .filter((item) => {
+        if (!targetBuildingToken) {
+          return true;
+        }
+
+        const itemBuilding = firstValidLabel([
+          item?.buildingInspectionId,
+          item?.building,
+          item?.buildingName,
+          item?.buildingId,
+        ]);
+
+        if (!itemBuilding) {
+          return true;
+        }
+
+        return normalizeLabelToken(itemBuilding) === targetBuildingToken;
+      });
   };
 
   // On mount: load any previously saved deficiencies and merge with the new ones
@@ -139,12 +338,37 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
           ? resolvedBuildingLabel
           : (routeCurrentUnit || selectedUnits.join(', ') || 'Unit Multiple');
 
-        const incoming = (inspectionData?.deficiencies || []).map((d: any) => ({
-          ...d,
-          _area: d._area || currentArea,
-          _unit: d._unit !== undefined ? d._unit : currentUnitValue,
-          dedupeKey: buildDeficiencyDedupeKey(d, currentArea, currentUnitValue),
-        }));
+        const incoming = (inspectionData?.deficiencies || []).map((d: any) => {
+          const context = resolveDeficiencyContext(d, currentArea, currentUnitValue, undefined, resolvedBuildingLabel);
+          const building = firstValidLabel([
+            d?.buildingInspectionId,
+            d?.building,
+            d?.buildingName,
+            d?.buildingId,
+            context.building,
+            resolvedBuildingLabel,
+          ]) || d?.building;
+
+          return {
+            ...d,
+            _area: context.area,
+            _unit: context.unit,
+            building,
+            buildingInspectionId: firstValidLabel([d?.buildingInspectionId, building, resolvedBuildingLabel]) || undefined,
+            dedupeKey: buildDeficiencyDedupeKey(
+              {
+                ...d,
+                _area: context.area,
+                _unit: context.unit,
+                building,
+                buildingInspectionId: firstValidLabel([d?.buildingInspectionId, building, resolvedBuildingLabel]) || undefined,
+              },
+              currentArea,
+              currentUnitValue,
+              resolvedBuildingLabel
+            ),
+          };
+        });
 
         const propertySavedDeficiencies = (propertySaved?.deficiencies && Array.isArray(propertySaved.deficiencies))
           ? propertySaved.deficiencies
@@ -156,7 +380,8 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
           propertySavedDeficiencies,
           legacySavedDeficiencies,
           currentArea,
-          currentUnitValue
+          currentUnitValue,
+          resolvedBuildingLabel
         );
 
         const remoteDeficiencies = (remoteProgress?.inspectionData?.deficiencies && Array.isArray(remoteProgress.inspectionData.deficiencies))
@@ -169,13 +394,33 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
           remoteDeficiencies,
           legacyRemoteDeficiencies,
           currentArea,
-          currentUnitValue
+          currentUnitValue,
+          resolvedBuildingLabel
         );
 
-        const mergedLocalRemote = mergeDeficiencyLists(mergedRemoteDeficiencies, savedDeficiencies, currentArea, currentUnitValue);
-        const merged = mergeDeficiencyLists(mergedLocalRemote, incoming, currentArea, currentUnitValue);
-        if (merged.length > 0) {
-          setMergedDeficiencies(merged);
+        const mergedLocalRemote = mergeDeficiencyLists(
+          mergedRemoteDeficiencies,
+          savedDeficiencies,
+          currentArea,
+          currentUnitValue,
+          resolvedBuildingLabel
+        );
+        const merged = mergeDeficiencyLists(
+          mergedLocalRemote,
+          incoming,
+          currentArea,
+          currentUnitValue,
+          resolvedBuildingLabel
+        );
+        const scopedMerged = scopeDeficienciesToBuilding(
+          merged,
+          currentArea,
+          currentUnitValue,
+          resolvedBuildingLabel
+        );
+
+        if (scopedMerged.length > 0) {
+          setMergedDeficiencies(scopedMerged);
         }
       } catch (e) {
         console.warn('Could not load saved inspection data:', e);
@@ -238,6 +483,14 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
     : null;
 
   const handleContinueInspection = async () => {
+    if (continuingInspection) {
+      showContinueToast('Please wait, opening your inspection…', 'info', 1200);
+      return;
+    }
+
+    setContinuingInspection(true);
+    showContinueToast('Saving progress and preparing inspection…', 'info', 0);
+
     const nextArea: string = inspectionData?.isOutsideInspection
       ? 'Outside'
       : (inspectionData?.location === 'Inside' ? 'Inside' : 'Units');
@@ -251,8 +504,17 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
       const deficienciesWithImages = await Promise.all(
         mergedDeficiencies.map(async (defItem: any) => {
           // Keep existing _area if already stamped (from a previous session)
-          const area = defItem._area || nextArea;
-          const unit = defItem._unit !== undefined ? defItem._unit : nextUnit;
+          const context = resolveDeficiencyContext(defItem, nextArea, nextUnit, undefined, resolvedBuildingLabel);
+          const area = context.area;
+          const unit = context.unit;
+          const building = firstValidLabel([
+            defItem?.buildingInspectionId,
+            defItem?.building,
+            defItem?.buildingName,
+            defItem?.buildingId,
+            context.building,
+            resolvedBuildingLabel,
+          ]) || defItem?.building;
 
           // If already base64 or a remote URL, keep as-is
           if (
@@ -260,7 +522,14 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
             defItem.imageUri.startsWith('data:') ||
             defItem.imageUri.startsWith('http')
           ) {
-            return { ...defItem, _area: area, _unit: unit, imageUri: defItem.imageUri || defItem.imageUrl || null };
+            return {
+              ...defItem,
+              _area: area,
+              _unit: unit,
+              building,
+              buildingInspectionId: firstValidLabel([defItem?.buildingInspectionId, building, resolvedBuildingLabel]) || undefined,
+              imageUri: defItem.imageUri || defItem.imageUrl || null,
+            };
           }
           // Try to convert local file to base64
           if (Platform.OS !== 'web') {
@@ -271,7 +540,14 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
                   encoding: FileSystem.EncodingType.Base64,
                 });
                 if (base64 && base64.length > 100) {
-                  return { ...defItem, _area: area, _unit: unit, imageUri: `data:image/jpeg;base64,${base64}` };
+                  return {
+                    ...defItem,
+                    _area: area,
+                    _unit: unit,
+                    building,
+                    buildingInspectionId: firstValidLabel([defItem?.buildingInspectionId, building, resolvedBuildingLabel]) || undefined,
+                    imageUri: `data:image/jpeg;base64,${base64}`,
+                  };
                 }
               }
             } catch (imgErr) {
@@ -279,15 +555,34 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
             }
           }
           // Fall back to Cloudinary URL if local conversion fails
-          return { ...defItem, _area: area, _unit: unit, imageUri: defItem.imageUrl || null };
+          return {
+            ...defItem,
+            _area: area,
+            _unit: unit,
+            building,
+            buildingInspectionId: firstValidLabel([defItem?.buildingInspectionId, building, resolvedBuildingLabel]) || undefined,
+            imageUri: defItem.imageUrl || null,
+          };
         })
       );
 
-      const dedupedForSave = mergeDeficiencyLists([], deficienciesWithImages, nextArea, nextUnit);
+      const dedupedForSave = mergeDeficiencyLists(
+        [],
+        deficienciesWithImages,
+        nextArea,
+        nextUnit,
+        resolvedBuildingLabel
+      );
+      const scopedForSave = scopeDeficienciesToBuilding(
+        dedupedForSave,
+        nextArea,
+        nextUnit,
+        resolvedBuildingLabel
+      );
       const savedAt = new Date().toISOString();
 
       await storeData(propertyDraftSaveKey, {
-        deficiencies: dedupedForSave,
+        deficiencies: scopedForSave,
         savedAt,
       });
 
@@ -300,7 +595,7 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
         unit_id: summaryDraftUnitId,
         inspection_type: summaryDraftInspectionType,
         inspectionData: {
-          deficiencies: dedupedForSave,
+          deficiencies: scopedForSave,
           property: {
             _id: propertyId,
             name: property?.name || 'Property',
@@ -312,9 +607,13 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
         },
       });
 
-      setMergedDeficiencies(dedupedForSave);
+      setMergedDeficiencies(scopedForSave);
+      showContinueToast('Progress saved. Opening inspection…', 'success', 900);
     } catch (e) {
       console.warn('Could not save inspection data:', e);
+      showContinueToast('Opening inspection. Progress sync will retry later.', 'error', 1800);
+    } finally {
+      setContinuingInspection(false);
     }
 
     // Go back to the specific location inspection screen to continue answering items
@@ -493,11 +792,27 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
           : ((inspectionArea === 'Inside' || inspectionArea === 'Outside')
             ? buildingName
             : (selectedUnits.join(', ') || 'Unit Multiple'));
+        const defUnitLabel = String(defUnit ?? '').trim();
+        const defBuildingCandidates = [
+          defItem.building,
+          defItem.buildingName,
+          defItem.buildingId,
+          (inspectionArea === 'Inside' || inspectionArea === 'Outside') && looksLikeBuildingLabel(defUnitLabel)
+            ? defUnitLabel
+            : '',
+        ];
+        const defBuilding =
+          defBuildingCandidates
+            .map((candidate) => String(candidate ?? '').trim())
+            .find((label) => {
+              const normalized = label.toLowerCase().replace(/[\s_-]+/g, '');
+              return !!label && !['-', 'allunits', 'allunit', 'unknown', 'property', 'building', 'unitmultiple'].includes(normalized);
+            }) || '-';
 
         deficienciesArray.push({
           id: `${i + 1}`,
           deficiencyQRId: defItem.deficiencyQRId || `QR-${Math.floor(10000000 + Math.random() * 90000000)}`,
-          building: buildingName,
+          building: defBuilding,
           unit: defUnit,
           room: defItem.location || 'Multiple',
           area: inspectionArea,
@@ -535,7 +850,7 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
       generatedAt: new Date().toISOString(),
       metadata: {
         inspectionNo: inspectionId,
-        inspectionType: 'General NSPIRE' as const,
+        inspectionType: 'General INSPIRE' as const,
         escortName: 'Property Manager',
         propertyAddress: property.address || '',
         propertyName: property.name || 'Property',
@@ -614,7 +929,7 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
       if (Platform.OS !== 'web' && await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(result.uri, {
           mimeType: 'application/pdf',
-          dialogTitle: 'NSPIRE Inspection Report',
+          dialogTitle: 'INSPIRE Inspection Report',
           UTI: 'com.adobe.pdf',
         });
       }
@@ -660,14 +975,14 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
           a.href = url;
-          a.download = `NSPIRE-Report-${reportData.metadata.inspectionNo}.html`;
+          a.download = `INSPIRE-Report-${reportData.metadata.inspectionNo}.html`;
           a.click();
           setTimeout(() => URL.revokeObjectURL(url), 1000);
         }
         Alert.alert('HTML Report Ready', 'Report opened in a new browser tab.');
       } else {
         // On native: save to a temp file and share
-        const fileName = `NSPIRE-Report-${reportData.metadata.inspectionNo || Date.now()}.html`;
+        const fileName = `INSPIRE-Report-${reportData.metadata.inspectionNo || Date.now()}.html`;
         const filePath = (FileSystem.cacheDirectory || '') + fileName;
         await FileSystem.writeAsStringAsync(filePath, htmlContent, {
           encoding: FileSystem.EncodingType.UTF8,
@@ -675,7 +990,7 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
         if (await Sharing.isAvailableAsync()) {
           await Sharing.shareAsync(filePath, {
             mimeType: 'text/html',
-            dialogTitle: 'NSPIRE Inspection Report (HTML)',
+            dialogTitle: 'INSPIRE Inspection Report (HTML)',
             UTI: 'public.html',
           });
         }
@@ -801,7 +1116,7 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
 
       // Page heading row similar to report page layout
       const titleRowIndex = reportCloneRows.length;
-      reportCloneRows.push([new Date().toLocaleString(), '', 'NSPIRE Report', '', '', '', '']);
+      reportCloneRows.push([new Date().toLocaleString(), '', 'INSPIRE Report', '', '', '', '']);
       merges.push({ s: { r: 0, c: 2 }, e: { r: 0, c: 6 } });
       reportCloneRows.push([]);
 
@@ -898,10 +1213,8 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
 
       const palette = {
         blueBg: 'FF1F4E78',
-        yellowBg: 'FFFFF2CC',
         whiteBg: 'FFFFFFFF',
         whiteFont: 'FFFFFFFF',
-        blueFont: 'FF1F4E78',
         darkText: 'FF1F2937',
         border: 'FF9CA3AF',
       };
@@ -928,22 +1241,22 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
       };
 
       const headerStyle: any = {
-        font: { name: 'Calibri', sz: 11, bold: true, color: { rgb: palette.blueFont } },
-        fill: { patternType: 'solid', fgColor: { rgb: palette.yellowBg } },
+        font: { name: 'Calibri', sz: 11, bold: true, color: { rgb: palette.whiteFont } },
+        fill: { patternType: 'solid', fgColor: { rgb: palette.blueBg } },
         alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
         border: thinBorder,
       };
 
       const statementStyle: any = {
-        font: { name: 'Calibri', sz: 11, italic: true, color: { rgb: palette.blueFont } },
-        fill: { patternType: 'solid', fgColor: { rgb: palette.yellowBg } },
+        font: { name: 'Calibri', sz: 11, italic: true, color: { rgb: palette.darkText } },
+        fill: { patternType: 'solid', fgColor: { rgb: palette.whiteBg } },
         alignment: { horizontal: 'left', vertical: 'center', wrapText: true },
         border: thinBorder,
       };
 
       const titleDateStyle: any = {
-        font: { name: 'Calibri', sz: 11, bold: true, color: { rgb: palette.blueFont } },
-        fill: { patternType: 'solid', fgColor: { rgb: palette.yellowBg } },
+        font: { name: 'Calibri', sz: 11, bold: true, color: { rgb: palette.darkText } },
+        fill: { patternType: 'solid', fgColor: { rgb: palette.whiteBg } },
         alignment: { horizontal: 'left', vertical: 'center', wrapText: false },
         border: thinBorder,
       };
@@ -971,7 +1284,7 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
       detailRowIndexes.forEach((rowIndex) => applyRowStyle(rowIndex, bodyStyle));
       signatureRowIndexes.forEach((rowIndex) => applyRowStyle(rowIndex, headerStyle));
 
-      // Title row styling: left timestamp cell in yellow, merged title block in blue.
+      // Title row styling: left timestamp cell white, merged title block in blue.
       const timestampAddress = XLSX.utils.encode_cell({ r: titleRowIndex, c: 0 });
       if (reportCloneSheet[timestampAddress]) {
         (reportCloneSheet[timestampAddress] as any).s = titleDateStyle;
@@ -1002,11 +1315,15 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
         return { hpt: 18 };
       });
 
+      reportCloneSheet['!autofilter'] = {
+        ref: `${XLSX.utils.encode_cell({ r: deficiencyHeaderRowIndex, c: 0 })}:${XLSX.utils.encode_cell({ r: deficiencyHeaderRowIndex, c: totalColumns - 1 })}`,
+      };
+
       reportCloneSheet['!merges'] = merges;
 
-      XLSX.utils.book_append_sheet(workbook, reportCloneSheet, 'NSPIRE Report');
+      XLSX.utils.book_append_sheet(workbook, reportCloneSheet, 'INSPIRE Report');
 
-      const fileName = `NSPIRE-Report-${inspectionId}.xlsx`;
+      const fileName = `INSPIRE-Report-${inspectionId}.xlsx`;
 
       if (Platform.OS === 'web') {
         // Web: download the file
@@ -1028,7 +1345,7 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
         if (await Sharing.isAvailableAsync()) {
           await Sharing.shareAsync(filePath, {
             mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            dialogTitle: 'NSPIRE Inspection Report (Excel)',
+            dialogTitle: 'INSPIRE Inspection Report (Excel)',
             UTI: 'org.openxmlformats.spreadsheetml.sheet',
           });
         }
@@ -1129,11 +1446,21 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.continueButton}
+            style={[styles.continueButton, continuingInspection && styles.continueButtonDisabled]}
             onPress={handleContinueInspection}
+            disabled={continuingInspection}
           >
-            <Ionicons name="arrow-forward-circle-outline" size={20} color="#FFFFFF" />
-            <Text style={styles.continueButtonText}>Continue Inspection</Text>
+            {continuingInspection ? (
+              <>
+                <ActivityIndicator size="small" color="#FFFFFF" />
+                <Text style={styles.continueButtonText}>Continuing...</Text>
+              </>
+            ) : (
+              <>
+                <Ionicons name="arrow-forward-circle-outline" size={20} color="#FFFFFF" />
+                <Text style={styles.continueButtonText}>Continue Inspection</Text>
+              </>
+            )}
           </TouchableOpacity>
         </View>
 
@@ -1307,6 +1634,33 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
           </View>
         )}
       </ScrollView>
+
+      {continueToast.visible && (
+        <View
+          style={[
+            styles.continueToast,
+            continueToast.type === 'success' && styles.continueToastSuccess,
+            continueToast.type === 'error' && styles.continueToastError,
+          ]}
+        >
+          {continuingInspection ? (
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          ) : (
+            <Ionicons
+              name={(
+                continueToast.type === 'error'
+                  ? 'alert-circle-outline'
+                  : continueToast.type === 'success'
+                    ? 'checkmark-circle-outline'
+                    : 'time-outline'
+              ) as any}
+              size={18}
+              color="#FFFFFF"
+            />
+          )}
+          <Text style={styles.continueToastText}>{continueToast.message}</Text>
+        </View>
+      )}
 
       {/* Preview Report Modal */}
       <Modal
@@ -1805,10 +2159,45 @@ const styles = StyleSheet.create({
     gap: 8,
     marginTop: 12,
   },
+  continueButtonDisabled: {
+    opacity: 0.72,
+  },
   continueButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
+  },
+  continueToast: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    bottom: 20,
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#0F172A',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.22,
+    shadowRadius: 6,
+    elevation: 8,
+    zIndex: 20,
+  },
+  continueToastSuccess: {
+    backgroundColor: '#15803D',
+  },
+  continueToastError: {
+    backgroundColor: '#B91C1C',
+  },
+  continueToastText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+    flexShrink: 1,
   },
   // Preview Modal Styles
   previewModalContainer: {

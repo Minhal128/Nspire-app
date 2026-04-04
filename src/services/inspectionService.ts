@@ -85,6 +85,25 @@ export interface GetProgressPayload {
   inspection_type: string;
 }
 
+export interface GetUnitInspectionStatusPayload {
+  property_id: string;
+  building_id: string;
+}
+
+export interface UnitInspectionStatusResponse {
+  success: boolean;
+  propertyId?: string;
+  buildingId?: string;
+  statuses: Array<{
+    unitLabel: string;
+    normalizedUnitKey: string;
+    isInspected: boolean;
+    inspectedAt?: string;
+    sourceInspectionType?: string;
+  }>;
+  unitStatusMap: Record<string, boolean>;
+}
+
 class InspectionService {
   /**
    * Create a new inspection
@@ -136,6 +155,30 @@ class InspectionService {
     } catch (error: any) {
       console.error('Error fetching all progress:', error.message);
       return { success: false, progress: [] };
+    }
+  }
+
+  /**
+   * Get backend-managed inspected unit flags for a property/building
+   */
+  async getUnitInspectionStatus(
+    params: GetUnitInspectionStatusPayload
+  ): Promise<UnitInspectionStatusResponse> {
+    try {
+      const query = new URLSearchParams({
+        property_id: params.property_id,
+        building_id: params.building_id,
+      }).toString();
+
+      const response = await api.get<UnitInspectionStatusResponse>(`/inspections/unit-status?${query}`);
+      return response;
+    } catch (error: any) {
+      console.error('Error fetching unit inspection status:', error.message);
+      return {
+        success: false,
+        statuses: [],
+        unitStatusMap: {},
+      };
     }
   }
 

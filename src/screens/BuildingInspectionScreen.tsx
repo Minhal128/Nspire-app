@@ -21,6 +21,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../types/navigation';
 import offlineStorageService from '../services/offlineStorageService';
+import { globalInspectionProgress } from '../utils/globalState';
 import { generateNSPIREReport } from '../utils/nspireReportUtils';
 import { enhancedNspirePDFService } from '../services/enhancedNspirePDFService';
 import * as Sharing from 'expo-sharing';
@@ -276,6 +277,7 @@ export default function BuildingInspectionScreen() {
 
     navigation.navigate('InspectionCategories' as any, {
       property: property,
+      propertyId: String(property?._id || property?.id || property?.propertyId || ''),
       selectedUnits: buildingUnits,
       buildingId: building.buildingId,
     });
@@ -301,6 +303,70 @@ export default function BuildingInspectionScreen() {
       // Get offline sessions for this property
       const sessions = await offlineStorageService.getAllSessions();
       const propertyIdStr = String(property._id || property.propertyId || property.id);
+
+      type ProgressSectionToken = 'outside' | 'inside' | 'units';
+      const normalizeBuildingToken = (value: unknown): string => String(value || '').trim().toLowerCase();
+      const getSectionTokenFromInspectionType = (inspectionTypeValue: unknown): ProgressSectionToken | null => {
+        const token = String(inspectionTypeValue || '').trim().toLowerCase();
+        if (token.startsWith('outside')) return 'outside';
+        if (token.startsWith('inside')) return 'inside';
+        if (token.startsWith('unit')) return 'units';
+        return null;
+      };
+      const looksLikeBuildingLabel = (value: unknown): boolean => {
+        const label = String(value || '').trim();
+        if (!label) return false;
+        return /^b\d+$/i.test(label) || /^building[\s_-]?[a-z0-9]+$/i.test(label);
+      };
+      const normalizeAreaFromFinding = (finding: any): 'Outside' | 'Inside' | 'Unit' | 'General' => {
+        const token = String(
+          finding?._area || finding?.area || finding?.category || finding?.inspectionType || ''
+        )
+          .trim()
+          .toLowerCase()
+          .replace(/[\s_-]+/g, '');
+
+        if (token.includes('outside') || token.includes('site') || token.includes('exterior')) return 'Outside';
+        if (token.includes('inside') || token.includes('interior') || token.includes('common')) return 'Inside';
+        if (token.includes('unit')) return 'Unit';
+
+        const unitCandidate = String(finding?.unit || finding?._unit || finding?.unitId || '').trim();
+        if (unitCandidate && unitCandidate !== '-' && !looksLikeBuildingLabel(unitCandidate)) return 'Unit';
+
+        return 'General';
+      };
+      const resolveBuildingFromFinding = (finding: any, fallbackBuilding = ''): string => {
+        const areaValue = String(
+          finding?._area || finding?.area || finding?.category || finding?.inspectionType || ''
+        )
+          .trim()
+          .toLowerCase();
+        const isInsideOutside = areaValue.includes('inside') || areaValue.includes('outside');
+
+        const candidates = [
+          finding?.buildingInspectionId,
+          finding?.building_id,
+          finding?.building,
+          finding?.buildingName,
+          finding?.buildingId,
+          looksLikeBuildingLabel(finding?._unit) ? finding?._unit : '',
+          isInsideOutside && looksLikeBuildingLabel(finding?.unit) ? finding?.unit : '',
+          looksLikeBuildingLabel(fallbackBuilding) ? fallbackBuilding : '',
+        ]
+          .map((candidate) => String(candidate || '').trim())
+          .filter(Boolean);
+
+        return candidates[0] || '';
+      };
+      const remoteProgressSectionsByBuilding = new Map<string, Set<ProgressSectionToken>>();
+      const markRemoteProgressSection = (buildingName: string, sectionToken: ProgressSectionToken) => {
+        const buildingToken = normalizeBuildingToken(buildingName);
+        if (!buildingToken) return;
+        if (!remoteProgressSectionsByBuilding.has(buildingToken)) {
+          remoteProgressSectionsByBuilding.set(buildingToken, new Set<ProgressSectionToken>());
+        }
+        remoteProgressSectionsByBuilding.get(buildingToken)!.add(sectionToken);
+      };
 
       const propertySessions = sessions.filter(
         (s: any) => String(s.propertyId) === propertyIdStr
@@ -375,6 +441,68 @@ export default function BuildingInspectionScreen() {
             const inspectionTypeLower = inspectionType.toLowerCase();
             const isDraftOnly = inspectionTypeLower.startsWith('report_draft_');
 
+            if (isDraftOnly) {
+              const draftTypeMatch = inspectionType.match(/^REPORT_DRAFT_(.+)$/i);
+              const draftTypeBuildingCandidate = draftTypeMatch ? String(draftTypeMatch[1] || '').trim() : '';
+              const isPropertyWideDraft =
+                inspectionTypeLower === 'report_draft_property' ||
+                String(p?.unitId || '').trim().toLowerCase() === 'all_units';
+
+              const draftFallbackBuilding = !isPropertyWideDraft
+                ? [
+                  p?.inspectionData?.buildingId,
+                  p?.inspectionData?.buildingInspectionId,
+                  p?.buildingName,
+                  p?.unitId,
+                  draftTypeBuildingCandidate,
+                ]
+                  .map((candidate) => String(candidate || '').trim())
+                  .find((candidate) => looksLikeBuildingLabel(candidate)) || ''
+                : '';
+
+              let draftFindings: any[] = [];
+              if (p.inspectionData && Array.isArray(p.inspectionData.findings)) {
+                draftFindings = p.inspectionData.findings;
+              } else if (p.inspectionData && Array.isArray(p.inspectionData.deficiencies)) {
+                draftFindings = p.inspectionData.deficiencies;
+              } else if (Array.isArray(p.findings)) {
+                draftFindings = p.findings;
+              }
+
+              if (draftFindings.length > 0) {
+                draftFindings.forEach((f: any) => {
+                  const resolvedBuilding = resolveBuildingFromFinding(f, draftFallbackBuilding);
+                  const resolvedArea = normalizeAreaFromFinding(f);
+
+                  if (!resolvedBuilding || resolvedArea === 'General') {
+                    return;
+                  }
+
+                  const normalizedUnitCandidate = String(f?.unit || f?._unit || f?.unitId || '').trim();
+                  const normalizedUnit =
+                    normalizedUnitCandidate && !/^b\d+$/i.test(normalizedUnitCandidate)
+                      ? normalizedUnitCandidate
+                      : '-';
+
+                  allFindings.push({
+                    ...f,
+                    imageUri: f.imageUrl || f.imageUri || f?.photos?.[0]?.url || f?.deficiency?.imageUrl || f?.deficiency?.imageUri || '',
+                    building: resolvedBuilding,
+                    deficiencyDetails: getValidDetail(f.deficiencyDetails, f.description, f.detail, f?.deficiency?.detail, f.title, f?.deficiency?.title, f.name, f?.deficiency?.name, f.deficiencyName, f?.deficiency?.deficiencyName, 'Issue recorded'),
+                    deficiencyName: f.deficiencyName || f?.deficiency?.name || f.title || f?.deficiency?.title || f.name || 'Deficiency',
+                    codeReference: f.codeReference || f?.deficiency?.codeReference || f?.deficiency?.code || f.code || '',
+                    nspireCode: f.nspireCode || f?.deficiency?.code || '-',
+                    area: resolvedArea,
+                    unit: normalizedUnit,
+                  } as Finding);
+                });
+              }
+
+              return;
+            }
+
+            const sectionToken = getSectionTokenFromInspectionType(inspectionTypeLower);
+
             const rawBuildingName =
               (p.unitId && p.unitId !== '-')
                 ? String(p.unitId)
@@ -385,26 +513,33 @@ export default function BuildingInspectionScreen() {
               ? inspectionType.split('_').slice(1).join('_').trim()
               : '';
 
-            if (!isDraftOnly) {
-              const responses = p.responses && typeof p.responses === 'object' ? p.responses : {};
-              const answeredKeys = Object.keys(responses).filter((k) => {
-                const value = responses[k];
-                return value !== null && value !== undefined && String(value).trim() !== '';
-              });
+            const responses = p.responses && typeof p.responses === 'object' ? p.responses : {};
+            const answeredKeys = Object.keys(responses).filter((k) => {
+              const value = responses[k];
+              return value !== null && value !== undefined && String(value).trim() !== '';
+            });
 
-              if (inspectionTypeLower.startsWith('outside')) {
-                answeredKeys.forEach((k) => pushUnique(progressEntry.modules.Outside.submodules, outsideLookup[k] || k));
-              } else if (inspectionTypeLower.startsWith('inside')) {
-                answeredKeys.forEach((k) => pushUnique(progressEntry.modules.Inside.submodules, insideLookup[k] || k));
-              } else if (inspectionTypeLower.startsWith('unit')) {
-                answeredKeys.forEach((k) => pushUnique(progressEntry.modules.Units.submodules, unitLookup[k] || k));
+            if (answeredKeys.length > 0 && sectionToken) {
+              markRemoteProgressSection(rawBuildingName, sectionToken);
+            }
 
-                if (parsedUnitFromInspectionType) pushUnique(progressEntry.inspectedUnits, parsedUnitFromInspectionType);
-              }
+            if (inspectionTypeLower.startsWith('outside')) {
+              answeredKeys.forEach((k) => pushUnique(progressEntry.modules.Outside.submodules, outsideLookup[k] || k));
+            } else if (inspectionTypeLower.startsWith('inside')) {
+              answeredKeys.forEach((k) => pushUnique(progressEntry.modules.Inside.submodules, insideLookup[k] || k));
+            } else if (inspectionTypeLower.startsWith('unit')) {
+              answeredKeys.forEach((k) => pushUnique(progressEntry.modules.Units.submodules, unitLookup[k] || k));
 
-              progressEntry.out = progressEntry.modules.Outside.submodules.length;
-              progressEntry.in = progressEntry.modules.Inside.submodules.length;
-              progressEntry.un = progressEntry.inspectedUnits.length;
+              if (parsedUnitFromInspectionType) pushUnique(progressEntry.inspectedUnits, parsedUnitFromInspectionType);
+            }
+
+            progressEntry.out = progressEntry.modules.Outside.submodules.length;
+            progressEntry.in = progressEntry.modules.Inside.submodules.length;
+            progressEntry.un = progressEntry.inspectedUnits.length;
+
+            // Only include finding payloads from actively-answered inspection records.
+            if (answeredKeys.length === 0) {
+              return;
             }
 
             // Get findings from various possible structures
@@ -418,26 +553,58 @@ export default function BuildingInspectionScreen() {
             }
 
             if (findings.length > 0) {
-              allFindings.push(...findings.map((f: any) => ({
-                ...f,
-                imageUri: f.imageUrl || f.imageUri || f?.photos?.[0]?.url || f?.deficiency?.imageUrl || f?.deficiency?.imageUri || '',
-                building: (p.buildingName && p.buildingName !== '-')
-                  ? p.buildingName
-                  : ((p.unitId && p.unitId !== '-') ? p.unitId : 'Building'),
-                deficiencyDetails: getValidDetail(f.deficiencyDetails, f.description, f.detail, f?.deficiency?.detail, f.title, f?.deficiency?.title, f.name, f?.deficiency?.name, f.deficiencyName, f?.deficiency?.deficiencyName, 'Issue recorded'),
-                deficiencyName: f.deficiencyName || f?.deficiency?.name || f.title || f?.deficiency?.title || f.name || 'Deficiency',
-                codeReference: f.codeReference || f?.deficiency?.codeReference || f?.deficiency?.code || f.code || '',
-                nspireCode: f.nspireCode || f?.deficiency?.code || '-',
-                // If this progress record belongs to a Unit_* inspection,
-                // keep it as Unit even when nested finding payload says "Inside".
-                area: (inspectionTypeLower.startsWith('unit_') || inspectionTypeLower === 'unit')
-                  ? 'Unit'
-                  : (f.area || f.category || p.inspectionType || 'General'),
-                unit: (() => {
-                  const candidate = String(f.unit || f._unit || parsedUnitFromInspectionType || '').trim();
-                  return candidate && !/^b\d+$/i.test(candidate) ? candidate : '-';
-                })(),
-              })));
+              const recordBuildingLabel = String(rawBuildingName || '').trim();
+
+              const mappedFindings = findings
+                .map((f: any) => {
+                  const explicitFindingBuilding = [
+                    f?.buildingInspectionId,
+                    f?.building_id,
+                    f?.building,
+                    f?.buildingName,
+                    f?.buildingId,
+                    looksLikeBuildingLabel(f?._unit) ? f?._unit : '',
+                    looksLikeBuildingLabel(f?.unit) ? f?.unit : '',
+                  ]
+                    .map((candidate) => String(candidate || '').trim())
+                    .find((candidate) => !!candidate);
+
+                  if (
+                    explicitFindingBuilding &&
+                    recordBuildingLabel &&
+                    explicitFindingBuilding.toLowerCase() !== recordBuildingLabel.toLowerCase()
+                  ) {
+                    return null;
+                  }
+
+                  return {
+                    ...f,
+                    imageUri: f.imageUrl || f.imageUri || f?.photos?.[0]?.url || f?.deficiency?.imageUrl || f?.deficiency?.imageUri || '',
+                    building: (p.buildingName && p.buildingName !== '-')
+                      ? p.buildingName
+                      : ((p.unitId && p.unitId !== '-') ? p.unitId : 'Building'),
+                    deficiencyDetails: getValidDetail(f.deficiencyDetails, f.description, f.detail, f?.deficiency?.detail, f.title, f?.deficiency?.title, f.name, f?.deficiency?.name, f.deficiencyName, f?.deficiency?.deficiencyName, 'Issue recorded'),
+                    deficiencyName: f.deficiencyName || f?.deficiency?.name || f.title || f?.deficiency?.title || f.name || 'Deficiency',
+                    codeReference: f.codeReference || f?.deficiency?.codeReference || f?.deficiency?.code || f.code || '',
+                    nspireCode: f.nspireCode || f?.deficiency?.code || '-',
+                    // Strict section source of truth: use inspection_type from the record
+                    // so nested/stale finding payload cannot move rows across sections.
+                    area: inspectionTypeLower.startsWith('outside')
+                      ? 'Outside'
+                      : inspectionTypeLower.startsWith('inside')
+                        ? 'Inside'
+                        : inspectionTypeLower.startsWith('unit')
+                          ? 'Unit'
+                          : (f.area || f.category || p.inspectionType || 'General'),
+                    unit: (() => {
+                      const candidate = String(f.unit || f._unit || parsedUnitFromInspectionType || '').trim();
+                      return candidate && !/^b\d+$/i.test(candidate) ? candidate : '-';
+                    })(),
+                  } as Finding;
+                })
+                .filter((item): item is Finding => !!item);
+
+              allFindings.push(...mappedFindings);
             }
           });
         }
@@ -449,9 +616,20 @@ export default function BuildingInspectionScreen() {
       for (const session of propertySessions) {
         let bName = (session as any).buildingName || (session as any).buildingId || property?.name || 'Building';
         if (bName === '-') bName = 'Building';
+        const sessionBuildingLabel = String(bName || '').trim();
+
+        const sessionInspectionTypeRaw = String((session as any).inspectionType || '').trim();
+        const sessionInspectionType = sessionInspectionTypeRaw.toLowerCase();
+        const sessionSectionToken = getSectionTokenFromInspectionType(sessionInspectionType);
+        const remoteSectionsForBuilding = remoteProgressSectionsByBuilding.get(normalizeBuildingToken(bName));
+
+        // Avoid duplicate/stale section rehydration from local sessions when remote
+        // already has started data for the same section.
+        if (sessionSectionToken && remoteSectionsForBuilding?.has(sessionSectionToken)) {
+          continue;
+        }
 
         const progressEntry = ensureBuildingProgress(bName);
-        const sessionInspectionType = String((session as any).inspectionType || '').toLowerCase();
         const parsedUnitFromSessionType = sessionInspectionType.startsWith('unit_')
           ? sessionInspectionType.split('_').slice(1).join('_').trim()
           : '';
@@ -507,7 +685,11 @@ export default function BuildingInspectionScreen() {
 
               const cat = (f.category || img.roomCategory || (session as any).inspectionType || '').toLowerCase();
               let computedArea = 'General';
-              if (sessionInspectionType.startsWith('unit_') || sessionInspectionType === 'unit') {
+              if (sessionInspectionType.startsWith('outside')) {
+                computedArea = 'Outside';
+              } else if (sessionInspectionType.startsWith('inside')) {
+                computedArea = 'Inside';
+              } else if (sessionInspectionType.startsWith('unit')) {
                 computedArea = 'Unit';
               } else if (cat.includes('outside')) {
                 computedArea = 'Outside';
@@ -524,6 +706,26 @@ export default function BuildingInspectionScreen() {
               }
 
               const fData = (f as any).deficiency || f;
+              const explicitFindingBuilding = [
+                (f as any)?.buildingInspectionId,
+                (f as any)?.building_id,
+                (f as any)?.building,
+                (f as any)?.buildingName,
+                (f as any)?.buildingId,
+                looksLikeBuildingLabel((f as any)?._unit) ? (f as any)?._unit : '',
+                looksLikeBuildingLabel((f as any)?.unit) ? (f as any)?.unit : '',
+              ]
+                .map((candidate) => String(candidate || '').trim())
+                .find((candidate) => !!candidate);
+
+              if (
+                explicitFindingBuilding &&
+                sessionBuildingLabel &&
+                explicitFindingBuilding.toLowerCase() !== sessionBuildingLabel.toLowerCase()
+              ) {
+                continue;
+              }
+
               // Ensure deficiencyDetails has actual text from any available field
               const detailText = f.deficiencyDetails || f.detail || fData?.detail || f.description || fData?.description || fData?.name || fData?.title || '';
               allFindings.push({
@@ -633,6 +835,27 @@ export default function BuildingInspectionScreen() {
         });
       });
       */
+
+      const normalizeFindingToken = (value: unknown): string => String(value ?? '').trim().toLowerCase();
+      const dedupedFindings = new Map<string, Finding>();
+
+      allFindings.forEach((finding) => {
+        const key = [
+          normalizeFindingToken(finding.building),
+          normalizeFindingToken(finding.area),
+          normalizeFindingToken(finding.unit),
+          normalizeFindingToken(finding.deficiencyName),
+          normalizeFindingToken(finding.deficiencyDetails),
+          normalizeFindingToken(finding.nspireCode),
+          normalizeFindingToken(finding.imageUri),
+        ].join('|');
+
+        if (!dedupedFindings.has(key)) {
+          dedupedFindings.set(key, finding);
+        }
+      });
+
+      allFindings = Array.from(dedupedFindings.values());
 
       console.log(`[BuildingInspection] Total findings collected: ${allFindings.length}`);
 

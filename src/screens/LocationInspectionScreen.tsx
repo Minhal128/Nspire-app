@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
   Platform,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../types/navigation';
@@ -19,6 +20,8 @@ import { Ionicons } from '@expo/vector-icons';
 import ModalZoomWrapper from '../components/ModalZoomWrapper';
 import { OUTSIDE_ITEMS, INSIDE_ITEMS, UNIT_ITEMS, UNIT_LOCATIONS, InspectionResponse } from '../data/inspectionData';
 import api from '../services/api';
+import { canonicalizeInspectionType } from '../utils/inspectionProgressUtils';
+import { markUnitCompleted } from '../utils/unitInspectionStorage';
 
 type LocationInspectionScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -44,20 +47,34 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
   const [isLoaded, setIsLoaded] = useState(false);
 
   const safeLocationName = location === 'Unit' ? `Unit_${currentUnit || selectedUnits?.[0] || 'Unknown'}` : location;
-  const saveKey = `inspection_responses_${property?._id || property?.id || property?.propertyId || 'unknown'}_${buildingId}_${safeLocationName}`;
+  const canonicalInspectionType = canonicalizeInspectionType(safeLocationName, { currentUnit });
+  const saveKey = `inspection_responses_${property?._id || property?.id || property?.propertyId || 'unknown'}_${buildingId}_${canonicalInspectionType}`;
+
+  const persistResponsesToDevice = async (nextResponses: { [key: string]: ResponseType }) => {
+    try {
+      if (nextResponses && Object.keys(nextResponses).length > 0) {
+        await AsyncStorage.setItem(saveKey, JSON.stringify(nextResponses));
+      } else {
+        await AsyncStorage.removeItem(saveKey);
+      }
+    } catch (storageError) {
+      console.warn('Failed to persist inspection responses locally:', storageError);
+    }
+  };
 
   // Load responses from backend on mount
   useEffect(() => {
     const fetchProgress = async () => {
       try {
         const propertyId = property?._id || property?.id || property?.propertyId || 'unknown';
-        const response = await api.get(`/inspections/progress?property_id=${propertyId}&unit_id=${buildingId}&inspection_type=${safeLocationName}`);
+        const response = await api.get(`/inspections/progress?property_id=${propertyId}&unit_id=${buildingId}&inspection_type=${encodeURIComponent(canonicalInspectionType)}`);
         const result = response as any;
 
         // Handle payload shape mismatch (e.g. response.data.inspection_items vs saved key-value pairs)
         if (result?.items) {
           setResponses(result.items);
           globalInspectionProgress[saveKey] = result.items;
+          await persistResponsesToDevice(result.items);
         } else if (result?.data?.inspection_items) {
           // If the backend returns an array structure, convert it to the expected dictionary format
           if (Array.isArray(result.data.inspection_items)) {
@@ -67,16 +84,31 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
             });
             setResponses(mappedResponses);
             globalInspectionProgress[saveKey] = mappedResponses;
+            await persistResponsesToDevice(mappedResponses);
           } else {
             // Already a dictionary
             setResponses(result.data.inspection_items);
             globalInspectionProgress[saveKey] = result.data.inspection_items;
+            await persistResponsesToDevice(result.data.inspection_items);
           }
         } else {
           // Fallback to global state if API fails or during dev
           const saved = globalInspectionProgress[saveKey];
           if (saved) {
             setResponses(saved);
+          } else {
+            const locallySaved = await AsyncStorage.getItem(saveKey);
+            if (locallySaved) {
+              try {
+                const parsed = JSON.parse(locallySaved);
+                if (parsed && typeof parsed === 'object') {
+                  setResponses(parsed);
+                  globalInspectionProgress[saveKey] = parsed;
+                }
+              } catch (parseError) {
+                console.warn('Failed to parse locally saved progress:', parseError);
+              }
+            }
           }
         }
       } catch (error) {
@@ -88,6 +120,19 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
         const saved = globalInspectionProgress[saveKey];
         if (saved) {
           setResponses(saved);
+        } else {
+          const locallySaved = await AsyncStorage.getItem(saveKey);
+          if (locallySaved) {
+            try {
+              const parsed = JSON.parse(locallySaved);
+              if (parsed && typeof parsed === 'object') {
+                setResponses(parsed);
+                globalInspectionProgress[saveKey] = parsed;
+              }
+            } catch (parseError) {
+              console.warn('Failed to parse locally saved progress:', parseError);
+            }
+          }
         }
       } finally {
         setIsLoaded(true);
@@ -110,6 +155,7 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
       setResponses((prev) => {
         const newResponses = { ...prev };
         delete newResponses[itemId];
+        persistResponsesToDevice(newResponses).catch(() => undefined);
         return newResponses;
       });
       return;
@@ -125,6 +171,7 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
     // Save to global state so it's there when we return from DeficiencyDetail
     try {
       globalInspectionProgress[saveKey] = updatedResponses;
+      persistResponsesToDevice(updatedResponses).catch(() => undefined);
     } catch (e) {
       console.error('Error saving updated responses', e);
     }
@@ -161,6 +208,7 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
 
       try {
         globalInspectionProgress[saveKey] = updatedResponses;
+        persistResponsesToDevice(updatedResponses).catch(() => undefined);
       } catch (e) {
         console.error('Error saving recorded deficiency response', e);
       }
@@ -184,6 +232,8 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   const handleSaveProgress = async () => {
+    let remoteSaved = false;
+
     try {
       const propertyId = property?._id || property?.id || property?.propertyId || 'unknown';
 
@@ -194,21 +244,46 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
         delete globalInspectionProgress[saveKey];
       }
 
+      await persistResponsesToDevice(responses);
+
+      const isUnitLocation = location === 'Unit' || UNIT_LOCATIONS.includes(location);
+      const unitNameToMark = String(currentUnit || selectedUnits?.[0] || '').trim();
+      if (isUnitLocation && unitNameToMark && Object.keys(responses).length > 0) {
+        await markUnitCompleted(propertyId, String(buildingId || ''), unitNameToMark, {
+          inspectionType: canonicalInspectionType,
+          savedAt: new Date().toISOString(),
+        });
+      }
+
       // Save to remote backend
       await api.put('/inspections/progress', {
         property_id: propertyId,
         unit_id: buildingId,
-        inspection_type: safeLocationName,
-        responses: responses
+        building_id: buildingId,
+        buildingId,
+        inspection_type: canonicalInspectionType,
+        responses: responses,
+        inspectionData: {
+          buildingId,
+          location,
+          currentUnit: currentUnit || null,
+        },
       });
+
+      remoteSaved = true;
 
     } catch (e) {
       console.error('Error saving responses to backend:', e);
-      // We continue to the alert even if backend save fails so they aren't stuck, it's saved locally
+      // Keep local save; remote sync can recover later.
     }
 
+    const successTitle = remoteSaved ? 'Progress Saved' : 'Saved Locally';
+    const successMessage = remoteSaved
+      ? 'Your inspection progress has been saved successfully.'
+      : 'Your inspection progress is saved on this device. It will sync to server when connection is available.';
+
           if (Platform.OS === 'web') {
-        window.alert('Your inspection progress has been saved successfully.');
+        window.alert(successMessage);
         if (location === 'Unit' || isUnitLocation) {
           navigation.navigate('PropertyInfo', {
             property,
@@ -218,14 +293,15 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
         } else {
           navigation.navigate('InspectionCategories', {
             property,
+            propertyId: String(property?._id || property?.id || property?.propertyId || ''),
             selectedUnits,
             buildingId,
           });
         }
       } else {
         Alert.alert(
-          'Progress Saved',
-          'Your inspection progress has been saved successfully.',
+          successTitle,
+          successMessage,
           [
             {
               text: 'OK',
@@ -240,6 +316,7 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
                 } else {
                   navigation.navigate('InspectionCategories', {
                     property,
+                    propertyId: String(property?._id || property?.id || property?.propertyId || ''),
                     selectedUnits,
                     buildingId,
                   });
@@ -261,6 +338,7 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
       // Also clear from global state
       try {
         delete globalInspectionProgress[saveKey];
+        persistResponsesToDevice({}).catch(() => undefined);
       } catch (e) {
         console.error('Error clearing global inspection progress', e);
       }
@@ -274,6 +352,7 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
       // Save to global state so it persists when navigating back
       try {
         globalInspectionProgress[saveKey] = newResponses;
+        persistResponsesToDevice(newResponses).catch(() => undefined);
       } catch (e) {
         console.error('Error saving selected responses to global state', e);
       }
@@ -403,6 +482,7 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
                     setResponses(updatedResponses);
 
                     try { globalInspectionProgress[saveKey] = updatedResponses; } catch (e) { }
+                    persistResponsesToDevice(updatedResponses).catch(() => undefined);
 
                     navigation.navigate('DeficiencyDetail', {
                       property,
