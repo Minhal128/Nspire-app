@@ -301,6 +301,50 @@ export default function BuildingInspectionScreen() {
       setInspectorName(inspector);
       const propertyIdStr = String(property._id || property.propertyId || property.id);
 
+      let remoteProgressCache: { success: boolean; progress: any[] } | null = null;
+      let remoteProgressFetched = false;
+
+      const getRemoteProgressOnce = async (): Promise<{ success: boolean; progress: any[] }> => {
+        if (remoteProgressFetched) {
+          return remoteProgressCache || { success: false, progress: [] };
+        }
+
+        remoteProgressFetched = true;
+
+        // Fastest path: fetch only report drafts for this property.
+        const scopedDraftProgress = await inspectionService.getAllProgress({
+          propertyId: propertyIdStr,
+          draftOnly: true,
+          timeoutMs: 10000,
+        });
+
+        if (scopedDraftProgress.success && Array.isArray(scopedDraftProgress.progress) && scopedDraftProgress.progress.length > 0) {
+          remoteProgressCache = scopedDraftProgress;
+          return remoteProgressCache;
+        }
+
+        // Next fallback: full progress for this property only.
+        const scopedProgress = await inspectionService.getAllProgress({
+          propertyId: propertyIdStr,
+          timeoutMs: 15000,
+        });
+
+        // If scoped fetch already has data, use it.
+        if (scopedProgress.success && Array.isArray(scopedProgress.progress) && scopedProgress.progress.length > 0) {
+          remoteProgressCache = scopedProgress;
+          return remoteProgressCache;
+        }
+
+        // Legacy fallback: fetch all drafts (not all progress) when older records
+        // cannot be matched with strict property_id scoping.
+        remoteProgressCache = await inspectionService.getAllProgress({
+          draftOnly: true,
+          timeoutMs: 20000,
+        });
+
+        return remoteProgressCache;
+      };
+
       // Fast path: replicate Reports screen draft source selection by scanning all local drafts
       // and picking the latest non-empty draft for this property.
       const normalizeToken = (value: unknown): string => String(value || '').trim().toLowerCase();
@@ -455,7 +499,7 @@ export default function BuildingInspectionScreen() {
       // DB draft path (same source family used by Reports screen):
       // use REPORT_DRAFT_* from /inspections/progress for current property.
       try {
-        const progressRes = await inspectionService.getAllProgress();
+        const progressRes = await getRemoteProgressOnce();
         const backendDrafts = (progressRes?.progress || []).filter((p: any) => {
           const inspectionType = String(p?.inspectionType || '');
           if (!inspectionType.startsWith('REPORT_DRAFT_')) {
@@ -672,7 +716,7 @@ export default function BuildingInspectionScreen() {
 
       // Try to get remote progress
       try {
-        const remoteProgress = await inspectionService.getAllProgress();
+        const remoteProgress = await getRemoteProgressOnce();
 
         if (remoteProgress && remoteProgress.success && remoteProgress.progress) {
           remoteProgress.progress.forEach((p: any) => {

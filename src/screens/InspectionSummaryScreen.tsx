@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -21,6 +21,7 @@ import * as Sharing from 'expo-sharing';
 import * as XLSX from 'xlsx';
 import { enhancedNspirePDFService } from '../services/enhancedNspirePDFService';
 import { storeData, getData } from '../utils/storage';
+import { iapService, IAP_PRODUCT_ID } from '../utils/iapService';
 
 type InspectionSummaryScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -44,6 +45,13 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
   const [mergedDeficiencies, setMergedDeficiencies] = useState<any[]>(
     inspectionData?.deficiencies || []
   );
+
+  // ── IAP State ────────────────────────────────────────────────────
+  const [isReportUnlocked, setIsReportUnlocked] = useState(false);
+  const [paymentModalVisible, setPaymentModalVisible] = useState(false);
+  const [purchasing, setPurchasing] = useState(false);
+  const [checkingUnlock, setCheckingUnlock] = useState(true);
+  const pendingExportAction = useRef<'pdf' | 'html' | 'excel' | null>(null);
 
   // On mount: load any previously saved deficiencies and merge with the new ones
   useEffect(() => {
@@ -80,6 +88,118 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
     };
     loadAndMerge();
   }, []);
+
+  // ── IAP: initialise connection & check unlock status ─────────────
+  useEffect(() => {
+    let iapCleanup: (() => void) | null = null;
+
+    const initIAP = async () => {
+      // Check unlock status from backend first
+      try {
+        const unlocked = await iapService.checkUnlockStatus(inspectionId);
+        if (unlocked) {
+          setIsReportUnlocked(true);
+          setCheckingUnlock(false);
+          return; // Already paid — no need to set up IAP
+        }
+      } catch (_) {
+        // If backend check fails, continue with IAP init
+      }
+      setCheckingUnlock(false);
+
+      // Initialise IAP connection on native platforms
+      if (Platform.OS !== 'web') {
+        await iapService.init();
+
+        // Listen for purchase updates (handles deferred / interrupted purchases)
+        iapCleanup = iapService.registerListeners(
+          async (purchase) => {
+            if (purchase.productId === IAP_PRODUCT_ID && purchase.transactionReceipt) {
+              // Verify with backend
+              const result = await iapService.verifyAndUnlock(
+                inspectionId,
+                purchase.purchaseToken || purchase.transactionReceipt,
+              );
+              if (result.isReportUnlocked) {
+                setIsReportUnlocked(true);
+                await iapService.acknowledge(purchase);
+                Alert.alert('Payment Successful', 'Your report has been unlocked! You can now export the full report.');
+                // Auto-trigger pending export
+                if (pendingExportAction.current) {
+                  const action = pendingExportAction.current;
+                  pendingExportAction.current = null;
+                  setTimeout(() => {
+                    if (action === 'pdf') handleExportPDF();
+                    else if (action === 'html') handleExportHTML();
+                    else if (action === 'excel') handleExportExcel();
+                  }, 500);
+                }
+              } else {
+                Alert.alert('Verification Failed', result.message || 'Could not verify your purchase. Please contact support.');
+              }
+              setPurchasing(false);
+              setPaymentModalVisible(false);
+            }
+          },
+          (error) => {
+            console.error('IAP purchase error listener:', error);
+            setPurchasing(false);
+          },
+        );
+      } else {
+        setCheckingUnlock(false);
+      }
+    };
+
+    initIAP();
+
+    return () => {
+      iapCleanup?.();
+      iapService.destroy();
+    };
+  }, []);
+
+  // ── IAP: handle the purchase flow ────────────────────────────────
+  const handlePurchaseReport = async () => {
+    // On web, IAP is not available — inform user
+    if (Platform.OS === 'web') {
+      Alert.alert(
+        'Mobile Only',
+        'In-App Purchases are only available on the Android app. Please use the mobile app to purchase the report.',
+        [{ text: 'OK', onPress: () => setPaymentModalVisible(false) }],
+      );
+      return;
+    }
+
+    setPurchasing(true);
+    try {
+      const purchase = await iapService.purchaseReportUnlock();
+      if (!purchase) {
+        // User cancelled
+        setPurchasing(false);
+        return;
+      }
+      // The purchaseUpdatedListener above will handle verification
+    } catch (err: any) {
+      setPurchasing(false);
+      Alert.alert('Purchase Error', err.message || 'Something went wrong with the purchase. Please try again.');
+    }
+  };
+
+  /**
+   * Gate an export action behind payment.
+   * If unlocked, runs the callback directly.
+   * On web: always allow exports (IAP is native-only, payment happens on Android device).
+   * If locked on native: opens the payment modal and remembers which action to run after payment.
+   */
+  const gateExport = (action: 'pdf' | 'html' | 'excel', callback: () => void) => {
+    if (isReportUnlocked || Platform.OS === 'web') {
+      callback();
+    } else {
+      pendingExportAction.current = action;
+      setPaymentModalVisible(true);
+    }
+  };
 
   // Calculate actual deficiency counts from mergedDeficiencies
   const deficiencyCounts = {
@@ -178,7 +298,7 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
   };
 
   const handlePreviewReport = () => {
-    // Generate preview HTML
+    // Generate preview HTML — restricted to 2 pages when locked
     const html = generatePreviewHtml();
     setPreviewHtml(html);
     setPreviewModalVisible(true);
@@ -188,10 +308,17 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
     const propertyName = property.name || 'Property';
     const propertyAddress = property.address || '';
 
+    // ── Restrict preview to 2 deficiencies when report is locked ───
+    const PREVIEW_LIMIT = 2;
+    const previewDefs = isReportUnlocked
+      ? mergedDeficiencies
+      : mergedDeficiencies.slice(0, PREVIEW_LIMIT);
+    const isPreviewLimited = !isReportUnlocked && mergedDeficiencies.length > PREVIEW_LIMIT;
+
     // Generate deficiencies HTML
     let deficienciesHtml = '';
-    if (mergedDeficiencies.length > 0) {
-      deficienciesHtml = mergedDeficiencies.map((def: any, index: number) => {
+    if (previewDefs.length > 0) {
+      deficienciesHtml = previewDefs.map((def: any, index: number) => {
         const severity = def.deficiency?.aiSeverity || def.deficiency?.severity || 'Moderate';
         const severityColor =
           severity === 'Life-Threatening' ? '#DC2626' :
@@ -212,6 +339,16 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
     } else {
       deficienciesHtml = '<p style="color: #666; text-align: center; padding: 20px;">No deficiencies recorded</p>';
     }
+
+    // Paywall banner for locked reports
+    const paywallBannerHtml = isPreviewLimited ? `
+      <div style="background: linear-gradient(135deg, #0E7490 0%, #065666 100%); border-radius: 12px; padding: 24px; margin: 20px 0; text-align: center; color: white;">
+        <div style="font-size: 24px; margin-bottom: 8px;">🔒</div>
+        <div style="font-size: 18px; font-weight: 700; margin-bottom: 8px;">Preview Mode</div>
+        <div style="font-size: 14px; opacity: 0.9; margin-bottom: 4px;">Showing ${PREVIEW_LIMIT} of ${mergedDeficiencies.length} deficiencies</div>
+        <div style="font-size: 14px; opacity: 0.9;">Purchase the full report for <strong>$99</strong> to view all pages and export.</div>
+      </div>
+    ` : '';
 
     return `
       <!DOCTYPE html>
@@ -293,6 +430,7 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
         <div class="section">
           <div class="section-title">DEFICIENCIES</div>
           ${deficienciesHtml}
+          ${paywallBannerHtml}
         </div>
       </body>
       </html>
@@ -671,13 +809,14 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
 
           <TouchableOpacity
             style={styles.exportButton}
-            onPress={handleExportPDF}
+            onPress={() => gateExport('pdf', handleExportPDF)}
             disabled={exportingPDF}
           >
             {exportingPDF ? (
               <ActivityIndicator color="#FFFFFF" />
             ) : (
               <>
+                {!isReportUnlocked && <Ionicons name="lock-closed" size={16} color="#FFFFFF" style={{ marginRight: 4 }} />}
                 <Ionicons name="download-outline" size={20} color="#FFFFFF" />
                 <Text style={styles.exportButtonText}>Export PDF</Text>
               </>
@@ -686,13 +825,14 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
 
           <TouchableOpacity
             style={styles.htmlButton}
-            onPress={handleExportHTML}
+            onPress={() => gateExport('html', handleExportHTML)}
             disabled={exportingHTML}
           >
             {exportingHTML ? (
               <ActivityIndicator color="#0E7490" />
             ) : (
               <>
+                {!isReportUnlocked && <Ionicons name="lock-closed" size={16} color="#0E7490" style={{ marginRight: 4 }} />}
                 <Ionicons name="code-slash-outline" size={20} color="#0E7490" />
                 <Text style={styles.htmlButtonText}>Export HTML</Text>
               </>
@@ -701,13 +841,14 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
 
           <TouchableOpacity
             style={styles.excelButton}
-            onPress={handleExportExcel}
+            onPress={() => gateExport('excel', handleExportExcel)}
             disabled={exportingExcel}
           >
             {exportingExcel ? (
               <ActivityIndicator color="#217346" />
             ) : (
               <>
+                {!isReportUnlocked && <Ionicons name="lock-closed" size={16} color="#217346" style={{ marginRight: 4 }} />}
                 <Ionicons name="grid-outline" size={20} color="#217346" />
                 <Text style={styles.excelButtonText}>Export Excel</Text>
               </>
@@ -971,6 +1112,79 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
             </TouchableOpacity>
           </View>
         </SafeAreaView>
+      </Modal>
+
+      {/* ── Payment Modal ─────────────────────────────────────── */}
+      <Modal
+        visible={paymentModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => { if (!purchasing) setPaymentModalVisible(false); }}
+      >
+        <View style={styles.paymentOverlay}>
+          <View style={styles.paymentModal}>
+            {/* Close */}
+            <TouchableOpacity
+              style={styles.paymentCloseButton}
+              onPress={() => { if (!purchasing) setPaymentModalVisible(false); }}
+              disabled={purchasing}
+            >
+              <Ionicons name="close" size={24} color="#374151" />
+            </TouchableOpacity>
+
+            {/* Icon */}
+            <View style={styles.paymentIconContainer}>
+              <Ionicons name="document-text" size={48} color="#0E7490" />
+            </View>
+
+            <Text style={styles.paymentTitle}>Unlock Full Report</Text>
+            <Text style={styles.paymentDescription}>
+              Purchase access to generate and export the complete inspection report for this property, including all deficiencies, scores, and detailed analysis.
+            </Text>
+
+            {/* Price */}
+            <View style={styles.paymentPriceContainer}>
+              <Text style={styles.paymentPriceLabel}>One-time payment</Text>
+              <Text style={styles.paymentPrice}>$99</Text>
+              <Text style={styles.paymentPriceSub}>per property report</Text>
+            </View>
+
+            {/* Features */}
+            <View style={styles.paymentFeatures}>
+              {[
+                'Full PDF, HTML & Excel export',
+                'All deficiencies & images included',
+                'Complete scoring breakdown',
+                'Certification & compliance details',
+              ].map((feature, idx) => (
+                <View key={idx} style={styles.paymentFeatureRow}>
+                  <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+                  <Text style={styles.paymentFeatureText}>{feature}</Text>
+                </View>
+              ))}
+            </View>
+
+            {/* Buy button */}
+            <TouchableOpacity
+              style={[styles.paymentBuyButton, purchasing && styles.paymentBuyButtonDisabled]}
+              onPress={handlePurchaseReport}
+              disabled={purchasing}
+            >
+              {purchasing ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <>
+                  <Ionicons name="card-outline" size={20} color="#FFFFFF" />
+                  <Text style={styles.paymentBuyButtonText}>Purchase for $99</Text>
+                </>
+              )}
+            </TouchableOpacity>
+
+            <Text style={styles.paymentSecureText}>
+              🔒 Secure payment via Google Play
+            </Text>
+          </View>
+        </View>
       </Modal>
     </SafeAreaView>
   );
@@ -1494,6 +1708,118 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#FFFFFF',
+  },
+  // ── Payment Modal Styles ────────────────────────────────────────
+  paymentOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  paymentModal: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    paddingBottom: 40,
+    alignItems: 'center',
+  },
+  paymentCloseButton: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: '#F3F4F6',
+    zIndex: 10,
+  },
+  paymentIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#E0F7FA',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+    marginTop: 8,
+  },
+  paymentTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#1A1A1A',
+    marginBottom: 8,
+  },
+  paymentDescription: {
+    fontSize: 14,
+    color: '#666666',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 20,
+    paddingHorizontal: 8,
+  },
+  paymentPriceContainer: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  paymentPriceLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#999999',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 4,
+  },
+  paymentPrice: {
+    fontSize: 48,
+    fontWeight: '800',
+    color: '#0E7490',
+  },
+  paymentPriceSub: {
+    fontSize: 13,
+    color: '#999999',
+    marginTop: 2,
+  },
+  paymentFeatures: {
+    width: '100%',
+    marginBottom: 24,
+  },
+  paymentFeatureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 6,
+  },
+  paymentFeatureText: {
+    fontSize: 14,
+    color: '#374151',
+  },
+  paymentBuyButton: {
+    backgroundColor: '#0E7490',
+    borderRadius: 14,
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    width: '100%',
+    shadowColor: '#0E7490',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  paymentBuyButtonDisabled: {
+    opacity: 0.7,
+  },
+  paymentBuyButtonText: {
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '700',
+  },
+  paymentSecureText: {
+    fontSize: 12,
+    color: '#999999',
+    marginTop: 12,
   },
 });
 

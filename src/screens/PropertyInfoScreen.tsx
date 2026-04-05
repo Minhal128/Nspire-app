@@ -240,7 +240,10 @@ const PropertyInfoScreen: React.FC<Props> = ({ navigation, route }) => {
 
       // Sync progress from API to global memory so it reflects checkmarks properly
       try {
-        const apiRes = await inspectionService.getAllProgress();
+        const apiRes = await inspectionService.getAllProgress({
+          propertyId: String(propertyId),
+          timeoutMs: 12000,
+        });
         if (apiRes && apiRes.success && apiRes.progress) {
           const inferredFromProgress = resolveCompletedUnitsFromProgress(apiRes.progress);
 

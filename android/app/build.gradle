@@ -87,15 +87,16 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace 'com.inspire.app'
+    namespace 'com.inspire.minhal'
     defaultConfig {
-        applicationId 'com.inspire.app'
+        applicationId 'com.inspire.minhal'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0.0"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
+        missingDimensionStrategy "store", "play"
     }
     signingConfigs {
         debug {

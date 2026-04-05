@@ -228,8 +228,17 @@ const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
     }
 
     try {
-      const apiRes = await inspectionService.getAllProgress();
-      const allProgressRecords = Array.isArray(apiRes?.progress) ? apiRes.progress : [];
+      const draftHintRes = await inspectionService.getAllProgress({
+        inspectionTypePrefix: 'REPORT_DRAFT_PROPERTY',
+        timeoutMs: 10000,
+      });
+
+      let allProgressRecords = Array.isArray(draftHintRes?.progress) ? draftHintRes.progress : [];
+
+      if (allProgressRecords.length === 0) {
+        const apiRes = await inspectionService.getAllProgress({ timeoutMs: 15000 });
+        allProgressRecords = Array.isArray(apiRes?.progress) ? apiRes.progress : [];
+      }
 
       const selectedUnitTokens = new Set(
         (selectedUnits || [])

@@ -1,6 +1,7 @@
 {
   "expo": {
     "name": "Inspire",
+    "owner": "minhal.rizvi",
     "slug": "inspire-app",
     "version": "1.0.0",
     "orientation": "default",
@@ -73,7 +74,8 @@
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE",
         "android.permission.ACCESS_FINE_LOCATION",
-        "android.permission.ACCESS_COARSE_LOCATION"
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "com.android.vending.BILLING"
       ],
       "gradleProperties": {
         "kotlin.version": "2.0.21"
@@ -99,11 +101,11 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "9ac75db8-08de-43b1-b544-443c0cf8ee6c"
+        "projectId": "693d2364-f65e-4ab9-ad78-6ab27b7b2094"
       }
     },
     "updates": {
-      "url": "https://u.expo.dev/9ac75db8-08de-43b1-b544-443c0cf8ee6c"
+      "url": "https://u.expo.dev/693d2364-f65e-4ab9-ad78-6ab27b7b2094"
     }
   }
 }
