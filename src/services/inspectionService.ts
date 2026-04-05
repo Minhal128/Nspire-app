@@ -3,7 +3,9 @@
  * Handles all inspection-related API calls
  */
 
-import api, { Inspection } from './api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import api, { Inspection, API_CONFIG } from './api';
+import { StorageKeys } from '../utils/storage';
 
 export interface CreateInspectionData {
   property: string;
@@ -150,8 +152,49 @@ class InspectionService {
    */
   async getAllProgress(): Promise<{ success: boolean; progress: any[] }> {
     try {
-      const response = await api.get<{ success: boolean; progress: any[] }>('/inspections/progress');
-      return response;
+      const storedToken = await AsyncStorage.getItem(StorageKeys.USER_TOKEN);
+      let token: string | null = null;
+
+      if (storedToken) {
+        try {
+          token = JSON.parse(storedToken);
+        } catch {
+          token = storedToken;
+        }
+      }
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 120000);
+
+      try {
+        const response = await fetch(`${API_CONFIG.BASE_URL}/inspections/progress`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          signal: controller.signal,
+        });
+
+        const responseText = await response.text();
+        let data: any = {};
+        try {
+          data = responseText ? JSON.parse(responseText) : {};
+        } catch {
+          data = {};
+        }
+
+        if (!response.ok) {
+          throw new Error(data?.message || `HTTP ${response.status}`);
+        }
+
+        return {
+          success: !!data?.success,
+          progress: Array.isArray(data?.progress) ? data.progress : [],
+        };
+      } finally {
+        clearTimeout(timeoutId);
+      }
     } catch (error: any) {
       console.error('Error fetching all progress:', error.message);
       return { success: false, progress: [] };

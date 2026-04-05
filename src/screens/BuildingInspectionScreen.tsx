@@ -11,10 +11,9 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
-  Modal,
   Image,
 } from 'react-native';
-import { WebView } from 'react-native-webview';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -23,12 +22,14 @@ import { RootStackParamList } from '../types/navigation';
 import offlineStorageService from '../services/offlineStorageService';
 import { globalInspectionProgress } from '../utils/globalState';
 import { generateNSPIREReport } from '../utils/nspireReportUtils';
+import { buildInProgressReportHtml } from '../utils/reportPreviewUtils';
 import { enhancedNspirePDFService } from '../services/enhancedNspirePDFService';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
 import { OUTSIDE_ITEMS, INSIDE_ITEMS, UNIT_ITEMS } from '../data/inspectionData';
 import authService from '../services/authService';
 import { inspectionService } from '../services/inspectionService';
+import { useReportPreview } from '../contexts/ReportPreviewContext';
 
 type BuildingInspectionRouteProp = RouteProp<RootStackParamList, 'BuildingInspection'>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'BuildingInspection'>;
@@ -110,10 +111,9 @@ export default function BuildingInspectionScreen() {
 
   // Export state
   const [isExporting, setIsExporting] = useState(false);
-  const [showReportModal, setShowReportModal] = useState(false);
   const [reportFindings, setReportFindings] = useState<Finding[]>([]);
   const [inspectorName, setInspectorName] = useState('Inspector');
-  const [previewHtml, setPreviewHtml] = useState<string>('');
+  const { openReportPreview } = useReportPreview();
 
   // Track which field is actively being edited so we skip auto-save mid-typing
   const editTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -299,10 +299,240 @@ export default function BuildingInspectionScreen() {
         inspector = user.email.split('@')[0];
       }
       setInspectorName(inspector);
+      const propertyIdStr = String(property._id || property.propertyId || property.id);
+
+      // Fast path: replicate Reports screen draft source selection by scanning all local drafts
+      // and picking the latest non-empty draft for this property.
+      const normalizeToken = (value: unknown): string => String(value || '').trim().toLowerCase();
+      const propertyTokenSet = new Set<string>([
+        normalizeToken(property?._id),
+        normalizeToken(property?.id),
+        normalizeToken(property?.propertyId),
+        normalizeToken(property?.name),
+      ].filter(Boolean));
+
+      const mapDraftDeficienciesToFindings = (items: any[] = []): Finding[] => {
+        return items.map((f: any, idx: number) => {
+          const areaToken = String(f?._area || f?.area || '').trim().toLowerCase();
+          const resolvedArea = areaToken.includes('outside')
+            ? 'Outside'
+            : areaToken.includes('inside')
+              ? 'Inside'
+              : areaToken.includes('unit')
+                ? 'Unit'
+                : 'General';
+
+          const resolvedBuilding = String(
+            f?.buildingInspectionId ||
+            f?.building ||
+            f?.buildingName ||
+            f?.buildingId ||
+            'Building'
+          ).trim() || 'Building';
+
+          const unitCandidate = String(f?._unit || f?.unit || f?.unitId || '').trim();
+
+          return {
+            id: String(f?.id || `draft-${idx + 1}`),
+            title: f?.title || f?.deficiency?.name || f?.deficiencyName || 'Deficiency',
+            deficiencyName: f?.deficiencyName || f?.deficiency?.name || f?.title || f?.name || 'Deficiency',
+            deficiencyDetails: getValidDetail(
+              f?.deficiencyDetails,
+              f?.description,
+              f?.detail,
+              f?.deficiency?.detail,
+              f?.title,
+              f?.deficiency?.title,
+              f?.name,
+              f?.deficiency?.name,
+              'Issue recorded'
+            ),
+            severity: f?.severity || f?.deficiency?.severity || f?.deficiency?.aiSeverity || 'Moderate',
+            area: resolvedArea,
+            category: resolvedArea,
+            location: f?.location || f?.room || f?.itemName || f?.module || 'General',
+            building: resolvedBuilding,
+            unit: unitCandidate && !/^b\d+$/i.test(unitCandidate) ? unitCandidate : '-',
+            imageUri: f?.imageUri || f?.imageUrl || f?.deficiency?.imageUri || f?.deficiency?.imageUrl || '',
+            nspireCode: f?.nspireCode || f?.deficiency?.code || '-',
+            codeReference: f?.codeReference || f?.deficiency?.codeReference || '',
+            comments: f?.comments || f?.note || f?.deficiency?.aiAnalysis || '',
+            isGeneralComment: !!f?.isGeneralComment,
+          };
+        });
+      };
+
+      let bestDraftPayload: any | null = null;
+      let bestDraftTimestamp = 0;
+
+      try {
+        const keys = await AsyncStorage.getAllKeys();
+        const draftKeys = keys.filter((k) => k.startsWith('saved_inspection_'));
+
+        for (const key of draftKeys) {
+          const raw = await AsyncStorage.getItem(key);
+          if (!raw) continue;
+
+          let parsed: any;
+          try {
+            parsed = JSON.parse(raw);
+          } catch {
+            continue;
+          }
+
+          const keyParts = key.replace('saved_inspection_', '').split('_');
+          const keyPropertyToken = normalizeToken(keyParts[0]);
+          const payloadPropertyTokens = [
+            normalizeToken(parsed?.property?._id),
+            normalizeToken(parsed?.property?.id),
+            normalizeToken(parsed?.property?.propertyId),
+            normalizeToken(parsed?.property?.name),
+          ].filter(Boolean);
+
+          const isForCurrentProperty =
+            (keyPropertyToken && propertyTokenSet.has(keyPropertyToken)) ||
+            payloadPropertyTokens.some((token) => propertyTokenSet.has(token));
+
+          if (!isForCurrentProperty) continue;
+
+          const candidateDeficiencies =
+            (Array.isArray(parsed?.deficiencies) ? parsed.deficiencies : []).length > 0
+              ? parsed.deficiencies
+              : (Array.isArray(parsed?.findings) ? parsed.findings : []);
+
+          if (!Array.isArray(candidateDeficiencies) || candidateDeficiencies.length === 0) {
+            continue;
+          }
+
+          const candidateTimestamp = Date.parse(
+            String(parsed?.savedAt || parsed?.updatedAt || parsed?.createdAt || '')
+          );
+          const ts = Number.isFinite(candidateTimestamp) ? candidateTimestamp : 0;
+
+          if (!bestDraftPayload || ts >= bestDraftTimestamp) {
+            bestDraftPayload = parsed;
+            bestDraftTimestamp = ts;
+          }
+        }
+      } catch (draftScanErr) {
+        console.log('Could not scan local drafts for quick export:', draftScanErr);
+      }
+
+      if (bestDraftPayload) {
+        const draftDeficiencies =
+          (Array.isArray(bestDraftPayload?.deficiencies) ? bestDraftPayload.deficiencies : []).length > 0
+            ? bestDraftPayload.deficiencies
+            : (Array.isArray(bestDraftPayload?.findings) ? bestDraftPayload.findings : []);
+
+        if (draftDeficiencies.length > 0) {
+          const findingsFromDraft = mapDraftDeficienciesToFindings(draftDeficiencies);
+          setReportFindings(findingsFromDraft);
+
+          const quickReportData = {
+            ...(bestDraftPayload || {}),
+            property: bestDraftPayload?.property || property,
+            inspectorName: inspector,
+            date: new Date().toISOString(),
+            findings: findingsFromDraft,
+            deficiencies: findingsFromDraft,
+            status: 'in-progress',
+            selectedUnits: selectedUnits || bestDraftPayload?.selectedUnits || [],
+            progressData: bestDraftPayload?.progressData || bestDraftPayload?.inspectionData?.progressData || {},
+          };
+          const quickHtml = buildInProgressReportHtml(quickReportData);
+
+          openReportPreview({
+            title: `${property?.name || 'Property'} Report`,
+            html: quickHtml,
+            actionLabel: 'PDF',
+            onAction: handleGeneratePDF,
+          });
+
+          return;
+        }
+      }
+
+      // DB draft path (same source family used by Reports screen):
+      // use REPORT_DRAFT_* from /inspections/progress for current property.
+      try {
+        const progressRes = await inspectionService.getAllProgress();
+        const backendDrafts = (progressRes?.progress || []).filter((p: any) => {
+          const inspectionType = String(p?.inspectionType || '');
+          if (!inspectionType.startsWith('REPORT_DRAFT_')) {
+            return false;
+          }
+
+          const draftFindings = p?.inspectionData?.deficiencies || p?.inspectionData?.findings || [];
+          if (!Array.isArray(draftFindings) || draftFindings.length === 0) {
+            return false;
+          }
+
+          const propertyTokensFromDraft = [
+            normalizeToken(p?.propertyId?._id),
+            normalizeToken(p?.propertyId?.id),
+            normalizeToken(p?.propertyId?.propertyId),
+            normalizeToken(p?.propertyId),
+            normalizeToken(p?.inspectionData?.property?._id),
+            normalizeToken(p?.inspectionData?.property?.id),
+            normalizeToken(p?.inspectionData?.property?.propertyId),
+            normalizeToken(p?.inspectionData?.property?.name),
+            normalizeToken(p?.propertyId?.name),
+          ].filter(Boolean);
+
+          return propertyTokensFromDraft.some((token) => propertyTokenSet.has(token));
+        });
+
+        if (backendDrafts.length > 0) {
+          const latestBackendDraft = backendDrafts.sort((a: any, b: any) => {
+            const tA = Date.parse(String(a?.updatedAt || a?.createdAt || a?.inspectionData?.savedAt || 0));
+            const tB = Date.parse(String(b?.updatedAt || b?.createdAt || b?.inspectionData?.savedAt || 0));
+            return (Number.isFinite(tB) ? tB : 0) - (Number.isFinite(tA) ? tA : 0);
+          })[0];
+
+          const backendFindingsRaw = latestBackendDraft?.inspectionData?.deficiencies || latestBackendDraft?.inspectionData?.findings || [];
+          const backendFindings = mapDraftDeficienciesToFindings(backendFindingsRaw);
+
+          if (backendFindings.length > 0) {
+            setReportFindings(backendFindings);
+
+            const backendReportData = {
+              ...(latestBackendDraft?.inspectionData || {}),
+              property: latestBackendDraft?.inspectionData?.property || property,
+              inspectorName: inspector,
+              findings: backendFindings,
+              deficiencies: backendFindings,
+              status: 'in-progress',
+              selectedUnits: selectedUnits || latestBackendDraft?.inspectionData?.selectedUnits || [],
+              progressData: latestBackendDraft?.inspectionData?.progressData || {},
+            };
+
+            const backendHtml = buildInProgressReportHtml(backendReportData);
+
+            openReportPreview({
+              title: `${property?.name || 'Property'} Report`,
+              html: backendHtml,
+              actionLabel: 'PDF',
+              onAction: handleGeneratePDF,
+            });
+
+            return;
+          }
+        }
+      } catch (backendDraftErr) {
+        console.log('Error loading backend drafts for export preview:', backendDraftErr);
+      }
 
       // Get offline sessions for this property
       const sessions = await offlineStorageService.getAllSessions();
-      const propertyIdStr = String(property._id || property.propertyId || property.id);
+      const propertyIdTokens = new Set<string>([
+        normalizeToken(property?._id),
+        normalizeToken(property?.id),
+        normalizeToken(property?.propertyId),
+      ].filter(Boolean));
+      const propertyNameTokens = new Set<string>([
+        normalizeToken(property?.name),
+        normalizeToken((property as any)?.propertyName),
+      ].filter(Boolean));
 
       type ProgressSectionToken = 'outside' | 'inside' | 'units';
       const normalizeBuildingToken = (value: unknown): string => String(value || '').trim().toLowerCase();
@@ -368,9 +598,23 @@ export default function BuildingInspectionScreen() {
         remoteProgressSectionsByBuilding.get(buildingToken)!.add(sectionToken);
       };
 
-      const propertySessions = sessions.filter(
-        (s: any) => String(s.propertyId) === propertyIdStr
-      );
+      const propertySessions = sessions.filter((s: any) => {
+        const sessionTokens = [
+          normalizeToken(s?.propertyId),
+          normalizeToken(s?.property?._id),
+          normalizeToken(s?.property?.id),
+          normalizeToken(s?.property?.propertyId),
+        ].filter(Boolean);
+        const sessionNameTokens = [
+          normalizeToken(s?.propertyName),
+          normalizeToken(s?.property?.name),
+        ].filter(Boolean);
+
+        return (
+          sessionTokens.some((token) => propertyIdTokens.has(token)) ||
+          sessionNameTokens.some((token) => propertyNameTokens.has(token))
+        );
+      });
 
       const outsideLookup: Record<string, string> = (OUTSIDE_ITEMS as any[]).reduce((acc: Record<string, string>, item: any) => {
         const key = String(item?.id || item?.itemId || item?.name || '').trim();
@@ -432,10 +676,23 @@ export default function BuildingInspectionScreen() {
 
         if (remoteProgress && remoteProgress.success && remoteProgress.progress) {
           remoteProgress.progress.forEach((p: any) => {
-            const pId = p.propertyId?._id || p.propertyId || 'unknown';
-            const pIdStr = String(pId);
+            const remotePropertyTokens = [
+              normalizeToken(p?.propertyId?._id),
+              normalizeToken(p?.propertyId?.id),
+              normalizeToken(p?.propertyId?.propertyId),
+              normalizeToken(p?.propertyId),
+              normalizeToken(p?.property_id),
+            ].filter(Boolean);
+            const remotePropertyNameTokens = [
+              normalizeToken(p?.propertyId?.name),
+              normalizeToken(p?.propertyName),
+              normalizeToken(p?.inspectionData?.property?.name),
+            ].filter(Boolean);
 
-            if (pIdStr !== propertyIdStr) return;
+            if (
+              !remotePropertyTokens.some((token) => propertyIdTokens.has(token)) &&
+              !remotePropertyNameTokens.some((token) => propertyNameTokens.has(token))
+            ) return;
 
             const inspectionType = String(p.inspectionType || '').trim();
             const inspectionTypeLower = inspectionType.toLowerCase();
@@ -752,6 +1009,135 @@ export default function BuildingInspectionScreen() {
         }
       }
 
+      // Fallback: derive started sections from in-memory responses when
+      // remote progress and offline session payloads are not available.
+      if (Object.keys(globalInspectionProgress).length > 0) {
+        const responseEntries = Object.entries(globalInspectionProgress);
+
+        for (const [key, value] of responseEntries) {
+          if (!key.startsWith('inspection_responses_')) {
+            continue;
+          }
+
+          const markerIndex = key.indexOf('_', 'inspection_responses_'.length);
+          if (markerIndex <= 'inspection_responses_'.length) {
+            continue;
+          }
+
+          const keyPropertyId = normalizeToken(key.slice('inspection_responses_'.length, markerIndex));
+          if (!propertyIdTokens.has(keyPropertyId)) {
+            continue;
+          }
+
+          const tail = key.slice(markerIndex + 1);
+          const tailParts = tail.split('_').filter(Boolean);
+          if (tailParts.length < 2) {
+            continue;
+          }
+
+          const buildingToken = tailParts[0];
+          const areaToken = normalizeToken(tailParts[1]);
+
+          const responsesObj = value && typeof value === 'object' ? (value as Record<string, any>) : {};
+          const answeredKeys = Object.keys(responsesObj).filter((responseKey) => {
+            const responseValue = responsesObj[responseKey];
+            return responseValue !== null && responseValue !== undefined && String(responseValue).trim() !== '';
+          });
+
+          if (answeredKeys.length === 0) {
+            continue;
+          }
+
+          const progressEntry = ensureBuildingProgress(buildingToken);
+
+          if (areaToken === 'outside') {
+            answeredKeys.forEach((k) => pushUnique(progressEntry.modules.Outside.submodules, outsideLookup[k] || k));
+          } else if (areaToken === 'inside') {
+            answeredKeys.forEach((k) => pushUnique(progressEntry.modules.Inside.submodules, insideLookup[k] || k));
+          } else if (areaToken === 'unit') {
+            answeredKeys.forEach((k) => pushUnique(progressEntry.modules.Units.submodules, unitLookup[k] || k));
+            const parsedUnit = tailParts.length > 2 ? tailParts.slice(2).join('_').trim() : '';
+            if (parsedUnit) {
+              pushUnique(progressEntry.inspectedUnits, parsedUnit);
+            }
+          }
+
+          progressEntry.out = progressEntry.modules.Outside.submodules.length;
+          progressEntry.in = progressEntry.modules.Inside.submodules.length;
+          progressEntry.un = progressEntry.inspectedUnits.length;
+        }
+      }
+
+      // Persistent fallback: use device-saved section responses (same source used by report flow)
+      // to ensure "Export In Progress" always reflects started sections.
+      try {
+        const allKeys = await AsyncStorage.getAllKeys();
+        const responseKeys = allKeys.filter((key) => key.startsWith('inspection_responses_'));
+
+        for (const key of responseKeys) {
+          const markerIndex = key.indexOf('_', 'inspection_responses_'.length);
+          if (markerIndex <= 'inspection_responses_'.length) {
+            continue;
+          }
+
+          const keyPropertyId = normalizeToken(key.slice('inspection_responses_'.length, markerIndex));
+          if (!propertyIdTokens.has(keyPropertyId)) {
+            continue;
+          }
+
+          const storedRaw = await AsyncStorage.getItem(key);
+          if (!storedRaw) {
+            continue;
+          }
+
+          let storedResponses: Record<string, any> = {};
+          try {
+            const parsed = JSON.parse(storedRaw);
+            if (parsed && typeof parsed === 'object') {
+              storedResponses = parsed;
+            }
+          } catch {
+            continue;
+          }
+
+          const answeredKeys = Object.keys(storedResponses).filter((responseKey) => {
+            const responseValue = storedResponses[responseKey];
+            return responseValue !== null && responseValue !== undefined && String(responseValue).trim() !== '';
+          });
+          if (answeredKeys.length === 0) {
+            continue;
+          }
+
+          const tail = key.slice(markerIndex + 1);
+          const tailParts = tail.split('_').filter(Boolean);
+          if (tailParts.length < 2) {
+            continue;
+          }
+
+          const buildingToken = tailParts[0];
+          const areaToken = normalizeToken(tailParts[1]);
+          const progressEntry = ensureBuildingProgress(buildingToken);
+
+          if (areaToken === 'outside') {
+            answeredKeys.forEach((k) => pushUnique(progressEntry.modules.Outside.submodules, outsideLookup[k] || k));
+          } else if (areaToken === 'inside') {
+            answeredKeys.forEach((k) => pushUnique(progressEntry.modules.Inside.submodules, insideLookup[k] || k));
+          } else if (areaToken === 'unit') {
+            answeredKeys.forEach((k) => pushUnique(progressEntry.modules.Units.submodules, unitLookup[k] || k));
+            const parsedUnit = tailParts.length > 2 ? tailParts.slice(2).join('_').trim() : '';
+            if (parsedUnit) {
+              pushUnique(progressEntry.inspectedUnits, parsedUnit);
+            }
+          }
+
+          progressEntry.out = progressEntry.modules.Outside.submodules.length;
+          progressEntry.in = progressEntry.modules.Inside.submodules.length;
+          progressEntry.un = progressEntry.inspectedUnits.length;
+        }
+      } catch (storageError) {
+        console.log('Could not read persisted inspection response keys:', storageError);
+      }
+
       // Add OD responses from globalInspectionProgress that don't have detailed findings
       // This ensures items marked as "ALL OD" (without photos) appear in the report
       // NOTE: Disabled per client request to exclude ALL/OD-only entries from reports.
@@ -885,23 +1271,14 @@ export default function BuildingInspectionScreen() {
         }
       };
 
-      const nspireReport = generateNSPIREReport(reportData as any);
-      nspireReport.metadata.inspectorName = inspector;
-      nspireReport.metadata.inspectionNo = "INSP-" + Date.now().toString(36).toUpperCase();
+      const html = buildInProgressReportHtml(reportData);
 
-      const html = enhancedNspirePDFService.generateEnhancedHTMLPreview(nspireReport as any, {
-        includeImages: true,
-        imageQuality: 'high',
-        colorCodingSeverity: true,
-        includeSummaryPage: true,
-        includeDetailedDeficiencies: true,
-        includeCertification: true,
-        pageSize: 'letter',
-        orientation: 'portrait',
-      } as any);
-
-      setPreviewHtml(html);
-      setShowReportModal(true);
+      openReportPreview({
+        title: 'NSPIRE Report',
+        html,
+        actionLabel: 'PDF',
+        onAction: handleGeneratePDF,
+      });
     } catch (err: any) {
       console.error('Failed to load inspection data:', err);
       Alert.alert('Error', `Failed to load inspection data: ${err.message}`);
@@ -1126,52 +1503,6 @@ export default function BuildingInspectionScreen() {
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
-
-      {/* NSPIRE Report Modal */}
-      <Modal
-        visible={showReportModal}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setShowReportModal(false)}
-      >
-        <SafeAreaView style={styles.modalContainer}>
-          {/* Modal Header */}
-          <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setShowReportModal(false)}>
-              <Ionicons name="close" size={28} color="#1F2937" />
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>NSPIRE Report</Text>
-            <TouchableOpacity
-              style={styles.pdfButton}
-              onPress={handleGeneratePDF}
-              disabled={isExporting}
-            >
-              {isExporting ? (
-                <ActivityIndicator color="#FFFFFF" size="small" />
-              ) : (
-                <Text style={styles.pdfButtonText}>PDF</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-
-          {/* Report Content */}
-          <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
-            <WebView
-              source={{ html: previewHtml }}
-              style={{ flex: 1 }}
-              originWhitelist={['*']}
-              scalesPageToFit={true}
-              javaScriptEnabled={true}
-              domStorageEnabled={true}
-              startInLoadingState={true}
-              allowFileAccess={true}
-              allowFileAccessFromFileURLs={true}
-              allowUniversalAccessFromFileURLs={true}
-              mixedContentMode="always"
-            />
-          </View>
-        </SafeAreaView>
-      </Modal>
     </SafeAreaView>
   );
 }

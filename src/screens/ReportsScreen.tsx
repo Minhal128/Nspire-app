@@ -20,14 +20,15 @@ import Sidebar from '../components/Sidebar';
 import IOSPickerModal from '../components/IOSPickerModal';
 import { inspectionService, propertyService, authService } from '../services';
 import { Inspection, Property } from '../services/api';
-import { WebView } from 'react-native-webview';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system/legacy';
 import { globalInspectionProgress } from '../utils/globalState';
 import { buildInspectionProgressKey } from '../utils/inspectionProgressUtils';
 import { generateNSPIREReport } from '../utils/nspireReportUtils';
+import { buildInProgressReportHtml } from '../utils/reportPreviewUtils';
 import { enhancedNspirePDFService } from '../services/enhancedNspirePDFService';
 import { progressSocketService } from '../services/progressSocketService';
+import { useReportPreview } from '../contexts/ReportPreviewContext';
 
 // Status options for picker
 const STATUS_OPTIONS = [
@@ -80,9 +81,6 @@ interface Report {
 
 export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreenProps) {
   const [sidebarVisible, setSidebarVisible] = useState(false);
-  const [previewModalVisible, setPreviewModalVisible] = useState(false);
-  const [previewHtml, setPreviewHtml] = useState('');
-  const [currentReportTitle, setCurrentReportTitle] = useState('');
   const [searchText, setSearchText] = useState('');
   const [propertyName, setPropertyName] = useState('');
   const [dateRange, setDateRange] = useState('');
@@ -92,6 +90,7 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
   const [reports, setReports] = useState<Report[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [user, setUser] = useState<any>(null);
+  const { openReportPreview } = useReportPreview();
   const socketRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // iOS Picker Modal visibility states
@@ -410,7 +409,7 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
             const extractedUnitId = keyParts.length > 1 ? keyParts.slice(1).join('_') : '';
             const normalizedExtractedPropertyId =
               extractedPropertyId &&
-              !['unknown', 'null', 'undefined'].includes(extractedPropertyId.trim().toLowerCase())
+                !['unknown', 'null', 'undefined'].includes(extractedPropertyId.trim().toLowerCase())
                 ? extractedPropertyId
                 : '';
 
@@ -1323,7 +1322,6 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
   const handleViewReport = async (report: Report) => {
     try {
       setLoading(true);
-      setCurrentReportTitle(`${report.property} Report`);
 
       const reportData = { ...report.rawData } as any;
       if (typeof reportData.property === 'string') {
@@ -1385,26 +1383,12 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
         }
       }
 
-      const nspireReport = generateNSPIREReport(reportData);
-      // Force the same visual template used by "Export In Progress"
-      (nspireReport as any).metadata = {
-        ...(nspireReport as any).metadata,
-        status: 'in-progress',
-      };
+      const html = buildInProgressReportHtml(reportData);
 
-      const html = enhancedNspirePDFService.generateEnhancedHTMLPreview(nspireReport as any, {
-        includeImages: true,
-        imageQuality: 'high',
-        colorCodingSeverity: true,
-        includeSummaryPage: true,
-        includeDetailedDeficiencies: true,
-        includeCertification: true,
-        pageSize: 'letter',
-        orientation: 'portrait',
-      } as any);
-
-      setPreviewHtml(html);
-      setPreviewModalVisible(true);
+      openReportPreview({
+        title: `${report.property} Report`,
+        html,
+      });
     } catch (err: any) {
       console.error('Failed to generate preview', err);
       Alert.alert('Error', `Failed to generate report preview: ${err.message}`);
@@ -1974,36 +1958,6 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
         onSelect={setStatus}
         onClose={() => setStatusPickerVisible(false)}
       />
-      <Modal
-        visible={previewModalVisible}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setPreviewModalVisible(false)}
-      >
-        <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }}>
-          <View style={{
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            padding: 16,
-            borderBottomWidth: 1,
-            borderBottomColor: '#E5E7EB'
-          }}>
-            <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#1F2937' }} numberOfLines={1}>
-              {currentReportTitle || 'Report Preview'}
-            </Text>
-            <TouchableOpacity onPress={() => setPreviewModalVisible(false)}>
-              <Ionicons name="close" size={28} color="#6B7280" />
-            </TouchableOpacity>
-          </View>
-          <WebView
-            source={{ html: previewHtml }}
-            style={{ flex: 1 }}
-            originWhitelist={['*']}
-            showsVerticalScrollIndicator={true}
-          />
-        </SafeAreaView>
-      </Modal>
     </>
   );
 }

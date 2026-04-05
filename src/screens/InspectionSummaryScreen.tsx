@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -18,10 +18,9 @@ import { RootStackParamList } from '../types/navigation';
 import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
-import * as XLSX from 'xlsx-js-style';
+import * as XLSX from 'xlsx';
 import { enhancedNspirePDFService } from '../services/enhancedNspirePDFService';
-import { storeData, getData, removeData } from '../utils/storage';
-import { inspectionService } from '../services/inspectionService';
+import { storeData, getData } from '../utils/storage';
 
 type InspectionSummaryScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -36,15 +35,6 @@ interface Props {
 
 const InspectionSummaryScreen = ({ navigation, route }: Props) => {
   const { property, selectedUnits, buildingId, inspectionData, currentUnit: routeCurrentUnit } = route.params;
-  const propertyId = property?._id || property?.id || property?.propertyId || 'unknown';
-  const resolvedBuildingLabel = String(
-    buildingId || property?.building || property?.buildingName || 'Building'
-  ).trim();
-  const summaryDraftInspectionType = 'REPORT_DRAFT_PROPERTY';
-  const summaryDraftUnitId = 'ALL_UNITS';
-  const propertyDraftSaveKey = `saved_inspection_${propertyId}`;
-  const legacyBuildingDraftSaveKey = `saved_inspection_${propertyId}_${buildingId}`;
-  const legacySummaryDraftInspectionType = `REPORT_DRAFT_${String(buildingId)}`;
   const [activeTab, setActiveTab] = useState<'summary' | 'deficiencies'>('summary');
   const [exportingPDF, setExportingPDF] = useState(false);
   const [exportingHTML, setExportingHTML] = useState(false);
@@ -54,388 +44,42 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
   const [mergedDeficiencies, setMergedDeficiencies] = useState<any[]>(
     inspectionData?.deficiencies || []
   );
-  const [continuingInspection, setContinuingInspection] = useState(false);
-  const [continueToast, setContinueToast] = useState<{
-    visible: boolean;
-    message: string;
-    type: 'info' | 'success' | 'error';
-  }>({
-    visible: false,
-    message: '',
-    type: 'info',
-  });
-  const continueToastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (continueToastTimeoutRef.current) {
-        clearTimeout(continueToastTimeoutRef.current);
-        continueToastTimeoutRef.current = null;
-      }
-    };
-  }, []);
-
-  const showContinueToast = (
-    message: string,
-    type: 'info' | 'success' | 'error' = 'info',
-    autoHideMs: number = 1800
-  ) => {
-    if (continueToastTimeoutRef.current) {
-      clearTimeout(continueToastTimeoutRef.current);
-      continueToastTimeoutRef.current = null;
-    }
-
-    setContinueToast({ visible: true, message, type });
-
-    if (autoHideMs > 0) {
-      continueToastTimeoutRef.current = setTimeout(() => {
-        setContinueToast((prev) => ({ ...prev, visible: false }));
-        continueToastTimeoutRef.current = null;
-      }, autoHideMs);
-    }
-  };
-
-  const normalizeKeyPart = (value: any): string => String(value ?? '').trim().toLowerCase();
-
-  const normalizeLabelToken = (value: unknown): string =>
-    String(value ?? '')
-      .trim()
-      .toLowerCase()
-      .replace(/[\s_-]+/g, '');
-
-  const isPlaceholderLabel = (value: unknown): boolean => {
-    const token = normalizeLabelToken(value);
-    return (
-      !token ||
-      token === '-' ||
-      token === 'allunits' ||
-      token === 'allunit' ||
-      token === 'unknown' ||
-      token === 'null' ||
-      token === 'undefined' ||
-      token === 'property' ||
-      token === 'building' ||
-      token === 'unitmultiple'
-    );
-  };
-
-  const looksLikeBuildingLabel = (value: unknown): boolean => {
-    const label = String(value ?? '').trim();
-    if (!label) {
-      return false;
-    }
-
-    return /^b\d+$/i.test(label) || /^building[\s_-]?[a-z0-9]+$/i.test(label);
-  };
-
-  const firstValidLabel = (values: unknown[]): string => {
-    for (const value of values) {
-      const label = String(value ?? '').trim();
-      if (label && !isPlaceholderLabel(label)) {
-        return label;
-      }
-    }
-
-    return '';
-  };
-
-  const resolveDeficiencyContext = (
-    deficiencyItem: any,
-    fallbackArea: string,
-    fallbackUnit: string,
-    previousItem?: any,
-    fallbackBuilding?: string
-  ): { area: string; unit: string; building: string } => {
-    const area = String(deficiencyItem?._area || previousItem?._area || fallbackArea || '').trim() || fallbackArea;
-    const areaToken = normalizeLabelToken(area);
-    const isInsideOutsideArea = areaToken.includes('inside') || areaToken.includes('outside');
-
-    const building = firstValidLabel([
-      deficiencyItem?.building,
-      deficiencyItem?.buildingName,
-      deficiencyItem?.buildingId,
-      previousItem?.building,
-      previousItem?.buildingName,
-      previousItem?.buildingId,
-      isInsideOutsideArea ? deficiencyItem?._unit : '',
-      isInsideOutsideArea && looksLikeBuildingLabel(deficiencyItem?.unit) ? deficiencyItem?.unit : '',
-      isInsideOutsideArea ? previousItem?._unit : '',
-      fallbackBuilding,
-    ]);
-
-    const unit = isInsideOutsideArea
-      ? (firstValidLabel([
-        deficiencyItem?._unit,
-        looksLikeBuildingLabel(deficiencyItem?.unit) ? deficiencyItem?.unit : '',
-        previousItem?._unit,
-        building,
-      ]) || '-')
-      : (firstValidLabel([
-        deficiencyItem?._unit,
-        deficiencyItem?.unit,
-        deficiencyItem?.unitId,
-        previousItem?._unit,
-        fallbackUnit,
-      ]) || fallbackUnit);
-
-    return { area, unit, building };
-  };
-
-  const buildDeficiencyDedupeKey = (
-    deficiencyItem: any,
-    fallbackArea: string,
-    fallbackUnit: string,
-    fallbackBuilding?: string
-  ): string => {
-    const context = resolveDeficiencyContext(deficiencyItem, fallbackArea, fallbackUnit, undefined, fallbackBuilding);
-    const area = normalizeKeyPart(context.area || fallbackArea || 'unknown-area');
-    const building = normalizeKeyPart(context.building || 'unknown-building');
-    const unit = normalizeKeyPart(context.unit || fallbackUnit || 'unknown-unit');
-    const moduleId = normalizeKeyPart(
-      deficiencyItem?.itemId ||
-      deficiencyItem?.itemName ||
-      deficiencyItem?.deficiencyQRId ||
-      'unknown-item'
-    );
-    const deficiencyName = normalizeKeyPart(
-      deficiencyItem?.deficiency?.name ||
-      deficiencyItem?.deficiencyName ||
-      (deficiencyItem?.isGeneralComment ? 'general comment' : 'unknown-deficiency')
-    );
-    const deficiencyDetails = normalizeKeyPart(
-      deficiencyItem?.deficiency?.detail ||
-      deficiencyItem?.deficiencyDetails ||
-      deficiencyItem?.detail ||
-      deficiencyItem?.description ||
-      ''
-    );
-    const assetIdentity = normalizeKeyPart(
-      deficiencyItem?.deficiencyQRId ||
-      deficiencyItem?.imageUri ||
-      deficiencyItem?.imageUrl ||
-      deficiencyItem?.id ||
-      deficiencyItem?.analyzedAt ||
-      ''
-    );
-
-    return `${area}|${building}|${unit}|${moduleId}|${deficiencyName}|${deficiencyDetails}|${assetIdentity || 'no-asset'}`;
-  };
-
-  const mergeDeficiencyLists = (
-    existingList: any[] = [],
-    incomingList: any[] = [],
-    fallbackArea: string,
-    fallbackUnit: string,
-    fallbackBuilding?: string
-  ): any[] => {
-    const mergedByKey = new Map<string, any>();
-
-    const upsert = (item: any) => {
-      const key = buildDeficiencyDedupeKey(item, fallbackArea, fallbackUnit, fallbackBuilding);
-      const previous = mergedByKey.get(key) || {};
-      const context = resolveDeficiencyContext(item, fallbackArea, fallbackUnit, previous, fallbackBuilding);
-      const merged = {
-        ...previous,
-        ...item,
-        _area: context.area,
-        _unit: context.unit,
-        building: firstValidLabel([
-          item?.building,
-          item?.buildingName,
-          item?.buildingId,
-          previous?.building,
-          context.building,
-        ]) || previous?.building,
-        dedupeKey: key,
-      };
-      mergedByKey.set(key, merged);
-    };
-
-    existingList.forEach(upsert);
-    incomingList.forEach(upsert);
-
-    return Array.from(mergedByKey.values());
-  };
-
-  const scopeDeficienciesToBuilding = (
-    deficiencyList: any[] = [],
-    fallbackArea: string,
-    fallbackUnit: string,
-    fallbackBuilding: string
-  ): any[] => {
-    const targetBuildingToken = normalizeLabelToken(fallbackBuilding);
-
-    return deficiencyList
-      .map((item) => {
-        const context = resolveDeficiencyContext(item, fallbackArea, fallbackUnit, undefined, fallbackBuilding);
-        const resolvedBuilding = firstValidLabel([
-          item?.buildingInspectionId,
-          item?.building,
-          item?.buildingName,
-          item?.buildingId,
-          context.building,
-          fallbackBuilding,
-        ]);
-
-        return {
-          ...item,
-          _area: context.area,
-          _unit: context.unit,
-          building: resolvedBuilding || item?.building,
-          buildingInspectionId: firstValidLabel([item?.buildingInspectionId, resolvedBuilding, fallbackBuilding]) || undefined,
-        };
-      })
-      .filter((item) => {
-        if (!targetBuildingToken) {
-          return true;
-        }
-
-        const itemBuilding = firstValidLabel([
-          item?.buildingInspectionId,
-          item?.building,
-          item?.buildingName,
-          item?.buildingId,
-        ]);
-
-        if (!itemBuilding) {
-          return true;
-        }
-
-        return normalizeLabelToken(itemBuilding) === targetBuildingToken;
-      });
-  };
 
   // On mount: load any previously saved deficiencies and merge with the new ones
   useEffect(() => {
     const loadAndMerge = async () => {
       try {
-        const [propertySaved, legacySaved, remoteProgress, legacyRemoteProgress] = await Promise.all([
-          getData(propertyDraftSaveKey),
-          legacyBuildingDraftSaveKey !== propertyDraftSaveKey
-            ? getData(legacyBuildingDraftSaveKey).catch(() => null)
-            : Promise.resolve(null),
-          inspectionService
-            .getProgress({
-              property_id: String(propertyId),
-              unit_id: summaryDraftUnitId,
-              inspection_type: summaryDraftInspectionType,
-            })
-            .catch(() => ({ items: {}, inspectionData: {} })),
-          inspectionService
-            .getProgress({
-              property_id: String(propertyId),
-              unit_id: String(buildingId),
-              inspection_type: legacySummaryDraftInspectionType,
-            })
-            .catch(() => ({ items: {}, inspectionData: {} })),
-        ]);
+        const saveKey = `saved_inspection_${property?._id || property?.id || property?.propertyId || 'unknown'}_${buildingId}`;
+        const saved = await getData(saveKey);
 
         // Stamp _area / _unit on incoming deficiencies from the CURRENT session
         const currentArea: string = inspectionData?.isOutsideInspection
           ? 'Outside'
           : (inspectionData?.location === 'Inside' ? 'Inside' : 'Units');
-        const currentUnitValue = (currentArea === 'Inside' || currentArea === 'Outside')
-          ? resolvedBuildingLabel
-          : (routeCurrentUnit || selectedUnits.join(', ') || 'Unit Multiple');
+        const currentUnit = (currentArea === 'Inside' || currentArea === 'Outside')
+          ? '-'
+          : (selectedUnits.join(', ') || 'Unit Multiple');
 
-        const incoming = (inspectionData?.deficiencies || []).map((d: any) => {
-          const context = resolveDeficiencyContext(d, currentArea, currentUnitValue, undefined, resolvedBuildingLabel);
-          const building = firstValidLabel([
-            d?.buildingInspectionId,
-            d?.building,
-            d?.buildingName,
-            d?.buildingId,
-            context.building,
-            resolvedBuildingLabel,
-          ]) || d?.building;
+        const incoming = (inspectionData?.deficiencies || []).map((d: any) => ({
+          ...d,
+          _area: d._area || currentArea,
+          _unit: d._unit !== undefined ? d._unit : currentUnit,
+        }));
 
-          return {
-            ...d,
-            _area: context.area,
-            _unit: context.unit,
-            building,
-            buildingInspectionId: firstValidLabel([d?.buildingInspectionId, building, resolvedBuildingLabel]) || undefined,
-            dedupeKey: buildDeficiencyDedupeKey(
-              {
-                ...d,
-                _area: context.area,
-                _unit: context.unit,
-                building,
-                buildingInspectionId: firstValidLabel([d?.buildingInspectionId, building, resolvedBuildingLabel]) || undefined,
-              },
-              currentArea,
-              currentUnitValue,
-              resolvedBuildingLabel
-            ),
-          };
-        });
-
-        const propertySavedDeficiencies = (propertySaved?.deficiencies && Array.isArray(propertySaved.deficiencies))
-          ? propertySaved.deficiencies
-          : [];
-        const legacySavedDeficiencies = (legacySaved?.deficiencies && Array.isArray(legacySaved.deficiencies))
-          ? legacySaved.deficiencies
-          : [];
-        const savedDeficiencies = mergeDeficiencyLists(
-          propertySavedDeficiencies,
-          legacySavedDeficiencies,
-          currentArea,
-          currentUnitValue,
-          resolvedBuildingLabel
-        );
-
-        const remoteDeficiencies = (remoteProgress?.inspectionData?.deficiencies && Array.isArray(remoteProgress.inspectionData.deficiencies))
-          ? remoteProgress.inspectionData.deficiencies
-          : [];
-        const legacyRemoteDeficiencies = (legacyRemoteProgress?.inspectionData?.deficiencies && Array.isArray(legacyRemoteProgress.inspectionData.deficiencies))
-          ? legacyRemoteProgress.inspectionData.deficiencies
-          : [];
-        const mergedRemoteDeficiencies = mergeDeficiencyLists(
-          remoteDeficiencies,
-          legacyRemoteDeficiencies,
-          currentArea,
-          currentUnitValue,
-          resolvedBuildingLabel
-        );
-
-        const mergedLocalRemote = mergeDeficiencyLists(
-          mergedRemoteDeficiencies,
-          savedDeficiencies,
-          currentArea,
-          currentUnitValue,
-          resolvedBuildingLabel
-        );
-        const merged = mergeDeficiencyLists(
-          mergedLocalRemote,
-          incoming,
-          currentArea,
-          currentUnitValue,
-          resolvedBuildingLabel
-        );
-        const scopedMerged = scopeDeficienciesToBuilding(
-          merged,
-          currentArea,
-          currentUnitValue,
-          resolvedBuildingLabel
-        );
-
-        if (scopedMerged.length > 0) {
-          setMergedDeficiencies(scopedMerged);
+        if (saved?.deficiencies && Array.isArray(saved.deficiencies) && saved.deficiencies.length > 0) {
+          // Deduplicate by deficiencyQRId; saved ones first, then new ones not already present
+          const existingIds = new Set(saved.deficiencies.map((d: any) => d.deficiencyQRId).filter(Boolean));
+          const uniqueNew = incoming.filter((d: any) => !existingIds.has(d.deficiencyQRId));
+          setMergedDeficiencies([...saved.deficiencies, ...uniqueNew]);
+        } else if (incoming.length > 0) {
+          setMergedDeficiencies(incoming);
         }
       } catch (e) {
         console.warn('Could not load saved inspection data:', e);
       }
     };
     loadAndMerge();
-  }, [
-    propertyId,
-    buildingId,
-    propertyDraftSaveKey,
-    legacyBuildingDraftSaveKey,
-    summaryDraftUnitId,
-    summaryDraftInspectionType,
-    legacySummaryDraftInspectionType,
-  ]);
+  }, []);
 
   // Calculate actual deficiency counts from mergedDeficiencies
   const deficiencyCounts = {
@@ -468,53 +112,24 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
   const inspectionId = `697e0d82e115b966d90cc009`;
   const inspectionDate = new Date().toLocaleDateString();
 
-  const isUnitContextInspection =
-    ['unit', 'units'].includes(String(inspectionData?.location || '').toLowerCase()) ||
-    mergedDeficiencies.some((d: any) => String(d?._area || '').toLowerCase() === 'unit' || (d?._unit && d._unit !== '-'));
-
-  const inspectedUnitSet = new Set(
-    mergedDeficiencies
-      .map((d: any) => String(d?._unit || '').trim())
-      .filter((u: string) => !!u && u !== '-' && u.toLowerCase() !== 'unit multiple')
-  );
-
-  const inspectedUnitsCount = isUnitContextInspection
-    ? (inspectedUnitSet.size > 0 ? inspectedUnitSet.size : (routeCurrentUnit ? 1 : ((selectedUnits?.length || 0) === 1 ? 1 : null)))
-    : null;
-
   const handleContinueInspection = async () => {
-    if (continuingInspection) {
-      showContinueToast('Please wait, opening your inspection…', 'info', 1200);
-      return;
-    }
-
-    setContinuingInspection(true);
-    showContinueToast('Saving progress and preparing inspection…', 'info', 0);
-
     const nextArea: string = inspectionData?.isOutsideInspection
       ? 'Outside'
       : (inspectionData?.location === 'Inside' ? 'Inside' : 'Units');
     const nextUnit = (nextArea === 'Inside' || nextArea === 'Outside')
-      ? resolvedBuildingLabel
+      ? '-'
       : (selectedUnits.join(', ') || routeCurrentUnit || 'Unit Multiple');
 
     try {
+      const saveKey = `saved_inspection_${property?._id || property?.id || 'unknown'}_${buildingId}`;
+
       // Convert local image URIs to base64 so images survive navigation,
       // and stamp _area / _unit on each deficiency so they survive future merges
       const deficienciesWithImages = await Promise.all(
         mergedDeficiencies.map(async (defItem: any) => {
           // Keep existing _area if already stamped (from a previous session)
-          const context = resolveDeficiencyContext(defItem, nextArea, nextUnit, undefined, resolvedBuildingLabel);
-          const area = context.area;
-          const unit = context.unit;
-          const building = firstValidLabel([
-            defItem?.buildingInspectionId,
-            defItem?.building,
-            defItem?.buildingName,
-            defItem?.buildingId,
-            context.building,
-            resolvedBuildingLabel,
-          ]) || defItem?.building;
+          const area = defItem._area || nextArea;
+          const unit = defItem._unit !== undefined ? defItem._unit : nextUnit;
 
           // If already base64 or a remote URL, keep as-is
           if (
@@ -522,14 +137,7 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
             defItem.imageUri.startsWith('data:') ||
             defItem.imageUri.startsWith('http')
           ) {
-            return {
-              ...defItem,
-              _area: area,
-              _unit: unit,
-              building,
-              buildingInspectionId: firstValidLabel([defItem?.buildingInspectionId, building, resolvedBuildingLabel]) || undefined,
-              imageUri: defItem.imageUri || defItem.imageUrl || null,
-            };
+            return { ...defItem, _area: area, _unit: unit, imageUri: defItem.imageUri || defItem.imageUrl || null };
           }
           // Try to convert local file to base64
           if (Platform.OS !== 'web') {
@@ -540,14 +148,7 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
                   encoding: FileSystem.EncodingType.Base64,
                 });
                 if (base64 && base64.length > 100) {
-                  return {
-                    ...defItem,
-                    _area: area,
-                    _unit: unit,
-                    building,
-                    buildingInspectionId: firstValidLabel([defItem?.buildingInspectionId, building, resolvedBuildingLabel]) || undefined,
-                    imageUri: `data:image/jpeg;base64,${base64}`,
-                  };
+                  return { ...defItem, _area: area, _unit: unit, imageUri: `data:image/jpeg;base64,${base64}` };
                 }
               }
             } catch (imgErr) {
@@ -555,65 +156,15 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
             }
           }
           // Fall back to Cloudinary URL if local conversion fails
-          return {
-            ...defItem,
-            _area: area,
-            _unit: unit,
-            building,
-            buildingInspectionId: firstValidLabel([defItem?.buildingInspectionId, building, resolvedBuildingLabel]) || undefined,
-            imageUri: defItem.imageUrl || null,
-          };
+          return { ...defItem, _area: area, _unit: unit, imageUri: defItem.imageUrl || null };
         })
       );
-
-      const dedupedForSave = mergeDeficiencyLists(
-        [],
-        deficienciesWithImages,
-        nextArea,
-        nextUnit,
-        resolvedBuildingLabel
-      );
-      const scopedForSave = scopeDeficienciesToBuilding(
-        dedupedForSave,
-        nextArea,
-        nextUnit,
-        resolvedBuildingLabel
-      );
-      const savedAt = new Date().toISOString();
-
-      await storeData(propertyDraftSaveKey, {
-        deficiencies: scopedForSave,
-        savedAt,
+      await storeData(saveKey, {
+        deficiencies: deficienciesWithImages,
+        savedAt: new Date().toISOString(),
       });
-
-      if (legacyBuildingDraftSaveKey !== propertyDraftSaveKey) {
-        await removeData(legacyBuildingDraftSaveKey).catch(() => undefined);
-      }
-
-      await inspectionService.saveProgress({
-        property_id: String(propertyId),
-        unit_id: summaryDraftUnitId,
-        inspection_type: summaryDraftInspectionType,
-        inspectionData: {
-          deficiencies: scopedForSave,
-          property: {
-            _id: propertyId,
-            name: property?.name || 'Property',
-          },
-          buildingId: resolvedBuildingLabel,
-          unit: nextUnit,
-          inspectionType: 'Draft Inspection',
-          savedAt,
-        },
-      });
-
-      setMergedDeficiencies(scopedForSave);
-      showContinueToast('Progress saved. Opening inspection…', 'success', 900);
     } catch (e) {
       console.warn('Could not save inspection data:', e);
-      showContinueToast('Opening inspection. Progress sync will retry later.', 'error', 1800);
-    } finally {
-      setContinuingInspection(false);
     }
 
     // Go back to the specific location inspection screen to continue answering items
@@ -751,7 +302,7 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
   // ── Shared helper: build the full reportData object from current state ─────
   const buildReportData = async () => {
     const deficienciesArray: any[] = [];
-    const buildingName = resolvedBuildingLabel || 'Building';
+    const buildingName = property.name || buildingId || 'B1';
 
     if (mergedDeficiencies.length > 0) {
       for (let i = 0; i < mergedDeficiencies.length; i++) {
@@ -790,33 +341,16 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
         const defUnit: string = defItem._unit !== undefined
           ? defItem._unit
           : ((inspectionArea === 'Inside' || inspectionArea === 'Outside')
-            ? buildingName
+            ? '-'
             : (selectedUnits.join(', ') || 'Unit Multiple'));
-        const defUnitLabel = String(defUnit ?? '').trim();
-        const defBuildingCandidates = [
-          defItem.building,
-          defItem.buildingName,
-          defItem.buildingId,
-          (inspectionArea === 'Inside' || inspectionArea === 'Outside') && looksLikeBuildingLabel(defUnitLabel)
-            ? defUnitLabel
-            : '',
-        ];
-        const defBuilding =
-          defBuildingCandidates
-            .map((candidate) => String(candidate ?? '').trim())
-            .find((label) => {
-              const normalized = label.toLowerCase().replace(/[\s_-]+/g, '');
-              return !!label && !['-', 'allunits', 'allunit', 'unknown', 'property', 'building', 'unitmultiple'].includes(normalized);
-            }) || '-';
 
         deficienciesArray.push({
           id: `${i + 1}`,
           deficiencyQRId: defItem.deficiencyQRId || `QR-${Math.floor(10000000 + Math.random() * 90000000)}`,
-          building: defBuilding,
+          building: buildingName,
           unit: defUnit,
           room: defItem.location || 'Multiple',
           area: inspectionArea,
-          module: defItem.itemName || defItem.module || defItem.submodule || '',
           isGeneralComment: isGC,
           deficiencyName: isGC ? 'General Comment' : (deficiency.name || 'Deficiency'),
           nspireCode: isGC ? '-' : (deficiency.code || 'U-1'),
@@ -850,7 +384,7 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
       generatedAt: new Date().toISOString(),
       metadata: {
         inspectionNo: inspectionId,
-        inspectionType: 'General INSPIRE' as const,
+        inspectionType: 'General NSPIRE' as const,
         escortName: 'Property Manager',
         propertyAddress: property.address || '',
         propertyName: property.name || 'Property',
@@ -929,7 +463,7 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
       if (Platform.OS !== 'web' && await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(result.uri, {
           mimeType: 'application/pdf',
-          dialogTitle: 'INSPIRE Inspection Report',
+          dialogTitle: 'NSPIRE Inspection Report',
           UTI: 'com.adobe.pdf',
         });
       }
@@ -975,14 +509,14 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
           a.href = url;
-          a.download = `INSPIRE-Report-${reportData.metadata.inspectionNo}.html`;
+          a.download = `NSPIRE-Report-${reportData.metadata.inspectionNo}.html`;
           a.click();
           setTimeout(() => URL.revokeObjectURL(url), 1000);
         }
         Alert.alert('HTML Report Ready', 'Report opened in a new browser tab.');
       } else {
         // On native: save to a temp file and share
-        const fileName = `INSPIRE-Report-${reportData.metadata.inspectionNo || Date.now()}.html`;
+        const fileName = `NSPIRE-Report-${reportData.metadata.inspectionNo || Date.now()}.html`;
         const filePath = (FileSystem.cacheDirectory || '') + fileName;
         await FileSystem.writeAsStringAsync(filePath, htmlContent, {
           encoding: FileSystem.EncodingType.UTF8,
@@ -990,7 +524,7 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
         if (await Sharing.isAvailableAsync()) {
           await Sharing.shareAsync(filePath, {
             mimeType: 'text/html',
-            dialogTitle: 'INSPIRE Inspection Report (HTML)',
+            dialogTitle: 'NSPIRE Inspection Report (HTML)',
             UTI: 'public.html',
           });
         }
@@ -1011,319 +545,62 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
     try {
       const reportData = await buildReportData();
 
-      // Create workbook with report-clone layout
+      // Create workbook with multiple sheets
       const workbook = XLSX.utils.book_new();
 
-      type DefGroupKey = 'Outside' | 'Inside' | 'Units' | 'GeneralComment';
-      type GroupedDef = { def: any; isRepeat: boolean };
-
-      const detailsSeen = new Map<string, number>();
-      const repeatFlags = (reportData.deficiencies || []).map((def: any) => {
-        const key = String(def?.deficiencyDetails || '').trim().toLowerCase();
-        if (!key) return false;
-        const count = detailsSeen.get(key) || 0;
-        detailsSeen.set(key, count + 1);
-        return count > 0;
-      });
-
-      const buildingsMap = new Map<string, Map<DefGroupKey, GroupedDef[]>>();
-
-      (reportData.deficiencies || []).forEach((def: any, idx: number) => {
-        const building = (def?.building && def.building !== '-') ? String(def.building) : 'Building';
-        if (!buildingsMap.has(building)) {
-          buildingsMap.set(building, new Map<DefGroupKey, GroupedDef[]>());
-        }
-
-        const isGeneralComment =
-          !!def?.isGeneralComment ||
-          String(def?.deficiencyName || '').trim().toLowerCase() === 'general comment';
-
-        let key: DefGroupKey;
-        if (isGeneralComment) {
-          key = 'GeneralComment';
-        } else {
-          const area = String(def?.area || '').toLowerCase();
-          if (area.includes('outside')) key = 'Outside';
-          else if (area.includes('inside')) key = 'Inside';
-          else key = 'Units';
-        }
-
-        const buildingGroups = buildingsMap.get(building)!;
-        if (!buildingGroups.has(key)) {
-          buildingGroups.set(key, []);
-        }
-        buildingGroups.get(key)!.push({
-          def,
-          isRepeat: !!def?.repeatIndicator || repeatFlags[idx],
-        });
-      });
-
-      const orderedSections: DefGroupKey[] = ['Outside', 'Inside', 'Units', 'GeneralComment'];
-      const sortedBuildings = Array.from(buildingsMap.keys()).sort((a, b) => a.localeCompare(b));
-
-      const tableHeaders = [
-        'Deficiency Details',
-        'Code of Reference',
-        'Deficiency Picture',
-        'Deduction Pts.',
-        'Repeat Indicator',
-        'Severity',
-        'Note',
+      // Sheet 1: Summary
+      const summaryData = [
+        ['NSPIRE INSPECTION REPORT'],
+        [],
+        ['Property Name', reportData.metadata.propertyName || ''],
+        ['Property Address', reportData.metadata.propertyAddress || ''],
+        ['Inspection Number', reportData.metadata.inspectionNo || ''],
+        ['Inspection Date', reportData.metadata.startDate || ''],
+        ['Inspector', reportData.metadata.inspectorName || ''],
+        [],
+        ['SCORES'],
+        ['Preliminary Score', reportData.metadata.preliminaryScore || 'N/A'],
+        ['Calculated Score', reportData.metadata.calculatedScore || 'N/A'],
+        ['Final Score', reportData.metadata.finalScore || 'N/A'],
+        [],
+        ['DEFICIENCY SUMMARY'],
+        ['Life Threatening', reportData.summary?.lifeThreatening || 0],
+        ['Severe', reportData.summary?.severe || 0],
+        ['Moderate', reportData.summary?.moderate || 0],
+        ['Low', reportData.summary?.low || 0],
+        ['Total Deficiencies', reportData.summary?.total || 0],
       ];
+      const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
+      summarySheet['!cols'] = [{ wch: 25 }, { wch: 40 }];
+      XLSX.utils.book_append_sheet(workbook, summarySheet, 'Summary');
 
-      const reportCloneRows: any[][] = [];
-      const merges: any[] = [];
-      const totalColumns = tableHeaders.length;
-      const sectionRowIndexes = new Set<number>();
-      const headerRowIndexes = new Set<number>();
-      const detailRowIndexes = new Set<number>();
-      const statementRowIndexes = new Set<number>();
-      const signatureRowIndexes = new Set<number>();
-      const imageRowIndexes = new Set<number>();
-
-      const pushMergedLabelRow = (label: string, kind: 'section' | 'statement' = 'section') => {
-        const rowIndex = reportCloneRows.length;
-        reportCloneRows.push([label, ...Array(totalColumns - 1).fill('')]);
-        merges.push({ s: { r: rowIndex, c: 0 }, e: { r: rowIndex, c: totalColumns - 1 } });
-        if (kind === 'statement') {
-          statementRowIndexes.add(rowIndex);
-        } else {
-          sectionRowIndexes.add(rowIndex);
-        }
-      };
-
-      const codeReferenceLabel = (def: any): string => {
-        const nspireCode = String(def?.nspireCode || '').trim();
-        const rawRef = typeof def?.codeReference === 'string'
-          ? def.codeReference
-          : (def?.codeReference?.text || def?.codeReference?.source || '');
-        if (nspireCode && nspireCode !== '-') return nspireCode;
-        return rawRef ? 'How to Inspect' : '-';
-      };
-
-      const imageCellValue = (def: any): any => {
-        const imageUri = String(def?.imageUri || '').trim();
-        if (!imageUri) return 'Photo not attached';
-        if (imageUri.startsWith('http://') || imageUri.startsWith('https://')) {
-          const safeUrl = imageUri.replace(/"/g, '""');
-          // Excel compatibility: show inline preview where IMAGE is supported,
-          // and gracefully fall back to a clickable link where it is not.
-          return { f: `IFERROR(_xlfn.IMAGE("${safeUrl}"),HYPERLINK("${safeUrl}","View Image"))` };
-        }
-        if (imageUri.startsWith('data:')) return 'Embedded photo attached';
-        return 'Photo attached';
-      };
-
-      // Page heading row similar to report page layout
-      const titleRowIndex = reportCloneRows.length;
-      reportCloneRows.push([new Date().toLocaleString(), '', 'INSPIRE Report', '', '', '', '']);
-      merges.push({ s: { r: 0, c: 2 }, e: { r: 0, c: 6 } });
-      reportCloneRows.push([]);
-
-      // Deficiency table header (matching page 2 structure)
-      const deficiencyHeaderRowIndex = reportCloneRows.length;
-      reportCloneRows.push(tableHeaders);
-      headerRowIndexes.add(deficiencyHeaderRowIndex);
-
-      if (sortedBuildings.length === 0) {
-        pushMergedLabelRow('No inspectable data available.');
-      } else {
-        sortedBuildings.forEach((building) => {
-          const buildingGroups = buildingsMap.get(building)!;
-
-          orderedSections.forEach((sectionKey) => {
-            const items = buildingGroups.get(sectionKey) || [];
-            if (items.length === 0) return;
-
-            const sectionLabel = sectionKey === 'GeneralComment'
-              ? 'General Comment'
-              : `${sectionKey} (Building - ${building})`;
-
-            pushMergedLabelRow(sectionLabel);
-
-            items.forEach(({ def, isRepeat }) => {
-              const isGC = !!def?.isGeneralComment || String(def?.deficiencyName || '').toLowerCase() === 'general comment';
-              const detailPrefix = isGC
-                ? '-'
-                : ((def?.deficiencyName && def.deficiencyName !== 'Deficiency' && def.deficiencyName !== 'General Comment')
-                  ? `${def.deficiencyName}: `
-                  : '');
-              const detailText = isGC
-                ? '-'
-                : `${detailPrefix}${String(def?.deficiencyDetails || 'No details available')}`;
-
-              const detailRowIndex = reportCloneRows.length;
-              reportCloneRows.push([
-                detailText,
-                isGC ? '-' : codeReferenceLabel(def),
-                imageCellValue(def),
-                isGC ? '-' : (def?.deductionPts ?? '-'),
-                isGC ? '-' : (isRepeat ? 'Repeat' : 'Not Repeat'),
-                isGC ? '-' : (def?.severity || '-'),
-                def?.note || def?.comments || '-',
-              ]);
-              detailRowIndexes.add(detailRowIndex);
-              if (typeof def?.imageUri === 'string' && /^https?:\/\//i.test(def.imageUri.trim())) {
-                imageRowIndexes.add(detailRowIndex);
-              }
-            });
-          });
-        });
-      }
-
-      reportCloneRows.push([]);
-
-      // Certificates block (matching report)
-      pushMergedLabelRow('Certificates');
-      const certificateHeaderRowIndex = reportCloneRows.length;
-      reportCloneRows.push(['Certificate Type', 'Status', 'Comment', '', '', '', '']);
-      headerRowIndexes.add(certificateHeaderRowIndex);
-      [
-        ['Elevator', 'N/A', 'No elevator present'],
-        ['Boiler', 'Current', 'Valid until 2026'],
-        ['Lead-Based Paint', 'Current', 'Compliant'],
-        ['Fire Alarm', 'Current', 'Tested monthly'],
-        ['Sprinkler', 'N/A', 'Not required'],
-      ].forEach((row) => {
-        const certDataRowIndex = reportCloneRows.length;
-        reportCloneRows.push([row[0], row[1], row[2], '', '', '', '']);
-        detailRowIndexes.add(certDataRowIndex);
-      });
-
-      reportCloneRows.push([]);
-
-      // Inspector Certification block
-      pushMergedLabelRow('Inspector Certification');
-      pushMergedLabelRow('I certify this inspection was conducted per INSPIRE standards.', 'statement');
-      reportCloneRows.push([]);
-      const signatureRowIndex = reportCloneRows.length;
-      reportCloneRows.push([
-        'Inspector Signature',
-        reportData.metadata.inspectorName || 'Current User',
-        '',
-        '',
-        '',
-        'Date',
-        reportData.metadata.startDate || inspectionDate,
+      // Sheet 2: Deficiencies
+      const deficiencyHeaders = [
+        'Room', 'Building', 'Unit', 'Area', 'Deficiency',
+        'NSPIRE Code', 'Severity', 'Deduction', 'Status', 'Details', 'Date'
+      ];
+      const deficiencyRows = (reportData.deficiencies || []).map((def: any) => [
+        def.room || '',
+        def.building || '',
+        def.unit || '',
+        def.area || '',
+        def.deficiencyName || '',
+        def.nspireCode || '',
+        def.severity || '',
+        def.deductionPts || '',
+        def.status || '',
+        def.deficiencyDetails || '',
+        def.inspectedDate || '',
       ]);
-      signatureRowIndexes.add(signatureRowIndex);
-      detailRowIndexes.add(signatureRowIndex);
-
-      const reportCloneSheet = XLSX.utils.aoa_to_sheet(reportCloneRows);
-
-      const palette = {
-        blueBg: 'FF1F4E78',
-        whiteBg: 'FFFFFFFF',
-        whiteFont: 'FFFFFFFF',
-        darkText: 'FF1F2937',
-        border: 'FF9CA3AF',
-      };
-
-      const thinBorder = {
-        top: { style: 'thin', color: { rgb: palette.border } },
-        right: { style: 'thin', color: { rgb: palette.border } },
-        bottom: { style: 'thin', color: { rgb: palette.border } },
-        left: { style: 'thin', color: { rgb: palette.border } },
-      };
-
-      const bodyStyle: any = {
-        font: { name: 'Calibri', sz: 11, color: { rgb: palette.darkText } },
-        fill: { patternType: 'solid', fgColor: { rgb: palette.whiteBg } },
-        alignment: { horizontal: 'left', vertical: 'top', wrapText: true },
-        border: thinBorder,
-      };
-
-      const sectionStyle: any = {
-        font: { name: 'Calibri', sz: 11, bold: true, color: { rgb: palette.whiteFont } },
-        fill: { patternType: 'solid', fgColor: { rgb: palette.blueBg } },
-        alignment: { horizontal: 'left', vertical: 'center', wrapText: true },
-        border: thinBorder,
-      };
-
-      const headerStyle: any = {
-        font: { name: 'Calibri', sz: 11, bold: true, color: { rgb: palette.whiteFont } },
-        fill: { patternType: 'solid', fgColor: { rgb: palette.blueBg } },
-        alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
-        border: thinBorder,
-      };
-
-      const statementStyle: any = {
-        font: { name: 'Calibri', sz: 11, italic: true, color: { rgb: palette.darkText } },
-        fill: { patternType: 'solid', fgColor: { rgb: palette.whiteBg } },
-        alignment: { horizontal: 'left', vertical: 'center', wrapText: true },
-        border: thinBorder,
-      };
-
-      const titleDateStyle: any = {
-        font: { name: 'Calibri', sz: 11, bold: true, color: { rgb: palette.darkText } },
-        fill: { patternType: 'solid', fgColor: { rgb: palette.whiteBg } },
-        alignment: { horizontal: 'left', vertical: 'center', wrapText: false },
-        border: thinBorder,
-      };
-
-      const titleMainStyle: any = {
-        font: { name: 'Calibri', sz: 14, bold: true, color: { rgb: palette.whiteFont } },
-        fill: { patternType: 'solid', fgColor: { rgb: palette.blueBg } },
-        alignment: { horizontal: 'center', vertical: 'center', wrapText: false },
-        border: thinBorder,
-      };
-
-      const applyRowStyle = (rowIndex: number, style: any) => {
-        for (let col = 0; col < totalColumns; col++) {
-          const address = XLSX.utils.encode_cell({ r: rowIndex, c: col });
-          if (!reportCloneSheet[address]) {
-            reportCloneSheet[address] = { t: 's', v: '' } as any;
-          }
-          (reportCloneSheet[address] as any).s = style;
-        }
-      };
-
-      headerRowIndexes.forEach((rowIndex) => applyRowStyle(rowIndex, headerStyle));
-      sectionRowIndexes.forEach((rowIndex) => applyRowStyle(rowIndex, sectionStyle));
-      statementRowIndexes.forEach((rowIndex) => applyRowStyle(rowIndex, statementStyle));
-      detailRowIndexes.forEach((rowIndex) => applyRowStyle(rowIndex, bodyStyle));
-      signatureRowIndexes.forEach((rowIndex) => applyRowStyle(rowIndex, headerStyle));
-
-      // Title row styling: left timestamp cell white, merged title block in blue.
-      const timestampAddress = XLSX.utils.encode_cell({ r: titleRowIndex, c: 0 });
-      if (reportCloneSheet[timestampAddress]) {
-        (reportCloneSheet[timestampAddress] as any).s = titleDateStyle;
-      }
-      for (let col = 1; col < totalColumns; col++) {
-        const address = XLSX.utils.encode_cell({ r: titleRowIndex, c: col });
-        if (!reportCloneSheet[address]) {
-          reportCloneSheet[address] = { t: 's', v: '' } as any;
-        }
-        (reportCloneSheet[address] as any).s = (col >= 2) ? titleMainStyle : titleDateStyle;
-      }
-
-      reportCloneSheet['!cols'] = [
-        { wch: 45 }, // Deficiency Details
-        { wch: 16 }, // Code of Reference
-        { wch: 24 }, // Deficiency Picture
-        { wch: 12 }, // Deduction
-        { wch: 14 }, // Repeat
-        { wch: 12 }, // Severity
-        { wch: 30 }, // Note
+      const deficiencyData = [deficiencyHeaders, ...deficiencyRows];
+      const deficiencySheet = XLSX.utils.aoa_to_sheet(deficiencyData);
+      deficiencySheet['!cols'] = [
+        { wch: 15 }, { wch: 12 }, { wch: 10 }, { wch: 12 }, { wch: 25 },
+        { wch: 15 }, { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 30 }, { wch: 12 }
       ];
+      XLSX.utils.book_append_sheet(workbook, deficiencySheet, 'Deficiencies');
 
-      reportCloneSheet['!rows'] = reportCloneRows.map((_, idx) => {
-        if (idx === titleRowIndex) return { hpt: 24 };
-        if (headerRowIndexes.has(idx)) return { hpt: 22 };
-        if (sectionRowIndexes.has(idx) || statementRowIndexes.has(idx)) return { hpt: 20 };
-        if (imageRowIndexes.has(idx)) return { hpt: 90 };
-        return { hpt: 18 };
-      });
-
-      reportCloneSheet['!autofilter'] = {
-        ref: `${XLSX.utils.encode_cell({ r: deficiencyHeaderRowIndex, c: 0 })}:${XLSX.utils.encode_cell({ r: deficiencyHeaderRowIndex, c: totalColumns - 1 })}`,
-      };
-
-      reportCloneSheet['!merges'] = merges;
-
-      XLSX.utils.book_append_sheet(workbook, reportCloneSheet, 'INSPIRE Report');
-
-      const fileName = `INSPIRE-Report-${inspectionId}.xlsx`;
+      const fileName = `NSPIRE-Report-${inspectionId}.xlsx`;
 
       if (Platform.OS === 'web') {
         // Web: download the file
@@ -1345,7 +622,7 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
         if (await Sharing.isAvailableAsync()) {
           await Sharing.shareAsync(filePath, {
             mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            dialogTitle: 'INSPIRE Inspection Report (Excel)',
+            dialogTitle: 'NSPIRE Inspection Report (Excel)',
             UTI: 'org.openxmlformats.spreadsheetml.sheet',
           });
         }
@@ -1446,21 +723,11 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.continueButton, continuingInspection && styles.continueButtonDisabled]}
+            style={styles.continueButton}
             onPress={handleContinueInspection}
-            disabled={continuingInspection}
           >
-            {continuingInspection ? (
-              <>
-                <ActivityIndicator size="small" color="#FFFFFF" />
-                <Text style={styles.continueButtonText}>Continuing...</Text>
-              </>
-            ) : (
-              <>
-                <Ionicons name="arrow-forward-circle-outline" size={20} color="#FFFFFF" />
-                <Text style={styles.continueButtonText}>Continue Inspection</Text>
-              </>
-            )}
+            <Ionicons name="arrow-forward-circle-outline" size={20} color="#FFFFFF" />
+            <Text style={styles.continueButtonText}>Continue Inspection</Text>
           </TouchableOpacity>
         </View>
 
@@ -1550,12 +817,10 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
                 <Text style={styles.detailValue}>{buildingId}</Text>
               </View>
 
-              {inspectedUnitsCount !== null && (
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Units Inspected:</Text>
-                  <Text style={styles.detailValue}>{inspectedUnitsCount}</Text>
-                </View>
-              )}
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Units Inspected:</Text>
+                <Text style={styles.detailValue}>{selectedUnits.length}</Text>
+              </View>
 
               <View style={styles.detailRow}>
                 <Text style={styles.detailLabel}>Inspector:</Text>
@@ -1574,7 +839,7 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
 
             {mergedDeficiencies.length > 0 ? (
               mergedDeficiencies.map((defItem: any, index: number) => (
-                <View key={defItem.dedupeKey || defItem.deficiencyQRId || `${defItem.itemId || defItem.itemName || 'def'}-${index}`} style={[styles.deficiencyDetailCard, index > 0 && { marginTop: 16 }]}>
+                <View key={index} style={[styles.deficiencyDetailCard, index > 0 && { marginTop: 16 }]}>
                   {(() => {
                     const deficiency = defItem?.deficiency || {};
                     const severity = deficiency.aiSeverity || deficiency.severity || 'Moderate';
@@ -1634,33 +899,6 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
           </View>
         )}
       </ScrollView>
-
-      {continueToast.visible && (
-        <View
-          style={[
-            styles.continueToast,
-            continueToast.type === 'success' && styles.continueToastSuccess,
-            continueToast.type === 'error' && styles.continueToastError,
-          ]}
-        >
-          {continuingInspection ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
-          ) : (
-            <Ionicons
-              name={(
-                continueToast.type === 'error'
-                  ? 'alert-circle-outline'
-                  : continueToast.type === 'success'
-                    ? 'checkmark-circle-outline'
-                    : 'time-outline'
-              ) as any}
-              size={18}
-              color="#FFFFFF"
-            />
-          )}
-          <Text style={styles.continueToastText}>{continueToast.message}</Text>
-        </View>
-      )}
 
       {/* Preview Report Modal */}
       <Modal
@@ -2159,45 +1397,10 @@ const styles = StyleSheet.create({
     gap: 8,
     marginTop: 12,
   },
-  continueButtonDisabled: {
-    opacity: 0.72,
-  },
   continueButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
-  },
-  continueToast: {
-    position: 'absolute',
-    left: 16,
-    right: 16,
-    bottom: 20,
-    borderRadius: 14,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: '#0F172A',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.22,
-    shadowRadius: 6,
-    elevation: 8,
-    zIndex: 20,
-  },
-  continueToastSuccess: {
-    backgroundColor: '#15803D',
-  },
-  continueToastError: {
-    backgroundColor: '#B91C1C',
-  },
-  continueToastText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-    flexShrink: 1,
   },
   // Preview Modal Styles
   previewModalContainer: {

@@ -10,6 +10,7 @@ import * as LocalAuthentication from 'expo-local-authentication';
 import { Ionicons } from '@expo/vector-icons';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { ZoomProvider } from './src/contexts/ZoomContext';
+import { ReportPreviewProvider } from './src/contexts/ReportPreviewContext';
 import ZoomWrapper from './src/components/ZoomWrapper';
 
 // Import screens
@@ -90,11 +91,11 @@ export type RootStackParamList = {
   InspectionCategories: { property: any; selectedUnits: string[]; buildingId: string; currentUnit?: string };
   UnitLocations: { property: any; selectedUnits: string[]; buildingId: string };
   LocationInspection: { property: any; selectedUnits: string[]; buildingId: string; location: string };
-  DeficiencyDetail: { 
-    property: any; 
-    selectedUnits: string[]; 
-    buildingId: string; 
-    location: string; 
+  DeficiencyDetail: {
+    property: any;
+    selectedUnits: string[];
+    buildingId: string;
+    location: string;
     itemId: string;
     itemName: string;
   };
@@ -316,74 +317,76 @@ export default function App() {
             publishableKey={process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!}
             tokenCache={tokenCache}
           >
-            <StatusBar style="dark" />
-            <NavigationContainer
-        linking={linking}
-        fallback={<LoadingScreen />}
-        onReady={onReady}
-      >
-        <Stack.Navigator
-          initialRouteName={initialRoute}
-          screenOptions={{
-            headerShown: false,
-            contentStyle: { backgroundColor: "#97F0FF" },
-          }}
-        >
-          <Stack.Screen name="Boarding" component={BoardingScreen} />
-          <Stack.Screen name="SignIn" component={SignInScreen} />
-          <Stack.Screen name="SignUp" component={SignUpScreen} />
-          <Stack.Screen name="EmailVerification" component={EmailVerificationScreen} />
-          <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
-          <Stack.Screen name="Notifications" component={NotificationScreen} />
-          <Stack.Screen name="Dashboard" component={DashboardScreen} />
-          <Stack.Screen name="MyInspections" component={MyInspectionsScreen} />
-          <Stack.Screen name="Reports" component={ReportsScreen} />
-          <Stack.Screen name="InspectionStatus" component={InspectionStatusScreen} />
-          <Stack.Screen name="ManagementReports" component={ManagementReportsScreen} />
-          <Stack.Screen name="AddProperty" component={AddPropertyScreen} />
-          <Stack.Screen
-            name="RequestInspection"
-            component={RequestInspectionScreen}
-          />
-          <Stack.Screen name="EditProperty" component={EditPropertyScreen} />
-          <Stack.Screen name="Analytics" component={AnalyticsScreen} />
-          <Stack.Screen
-            name="UnitInspection"
-            component={UnitInspectionScreen}
-          />
-          <Stack.Screen
-            name="InspectionChecklist"
-            component={InspectionChecklistScreen}
-          />
-          <Stack.Screen name="Settings" component={SettingsScreen} />
-          <Stack.Screen
-            name="ManagementDashboard"
-            component={ManagementDashboardScreen}
-          />
-          <Stack.Screen name="ReportDetail" component={ReportDetailScreen} />
-          <Stack.Screen
-            name="OrderDashboard"
-            component={OrderDashboardScreen}
-          />
-          <Stack.Screen name="Others" component={OthersScreen} />
-          <Stack.Screen name="LocationStats" component={LocationStatsScreen} />
-          <Stack.Screen name="AIInspection" component={InspectionCategoryScreen} />
-          <Stack.Screen name="ModuleSelection" component={ModuleSelectionScreen} />
-          <Stack.Screen name="DeficiencyFilling" component={DeficiencyFillingScreen} />
-          <Stack.Screen name="InspectionSummary" component={InspectionSummaryScreen} />
-          <Stack.Screen name="LegacyAIInspection" component={AIInspectionScreen} />
-          <Stack.Screen name="InspectionReport" component={InspectionReportScreen} />
-          <Stack.Screen name="NSPIREReport" component={NSPIREReportScreen} />
-          <Stack.Screen name="PropertyInfo" component={PropertyInfoScreen} />
-          <Stack.Screen name="InspectionCategories" component={InspectionCategoriesScreen} />
-          <Stack.Screen name="UnitLocations" component={UnitLocationsScreen} />
-          <Stack.Screen name="LocationInspection" component={LocationInspectionScreen} />
-          <Stack.Screen name="DeficiencyDetail" component={DeficiencyDetailScreen} />
-          <Stack.Screen name="PropertyDetails" component={PropertyDetailsScreen} />
-          <Stack.Screen name="BuildingInspection" component={BuildingInspectionScreen} />
-        </Stack.Navigator>
-      </NavigationContainer>
-    </ClerkProvider>
+            <ReportPreviewProvider>
+              <StatusBar style="dark" />
+              <NavigationContainer
+                linking={linking}
+                fallback={<LoadingScreen />}
+                onReady={onReady}
+              >
+                <Stack.Navigator
+                  initialRouteName={initialRoute}
+                  screenOptions={{
+                    headerShown: false,
+                    contentStyle: { backgroundColor: "#97F0FF" },
+                  }}
+                >
+                  <Stack.Screen name="Boarding" component={BoardingScreen} />
+                  <Stack.Screen name="SignIn" component={SignInScreen} />
+                  <Stack.Screen name="SignUp" component={SignUpScreen} />
+                  <Stack.Screen name="EmailVerification" component={EmailVerificationScreen} />
+                  <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+                  <Stack.Screen name="Notifications" component={NotificationScreen} />
+                  <Stack.Screen name="Dashboard" component={DashboardScreen} />
+                  <Stack.Screen name="MyInspections" component={MyInspectionsScreen} />
+                  <Stack.Screen name="Reports" component={ReportsScreen} />
+                  <Stack.Screen name="InspectionStatus" component={InspectionStatusScreen} />
+                  <Stack.Screen name="ManagementReports" component={ManagementReportsScreen} />
+                  <Stack.Screen name="AddProperty" component={AddPropertyScreen} />
+                  <Stack.Screen
+                    name="RequestInspection"
+                    component={RequestInspectionScreen}
+                  />
+                  <Stack.Screen name="EditProperty" component={EditPropertyScreen} />
+                  <Stack.Screen name="Analytics" component={AnalyticsScreen} />
+                  <Stack.Screen
+                    name="UnitInspection"
+                    component={UnitInspectionScreen}
+                  />
+                  <Stack.Screen
+                    name="InspectionChecklist"
+                    component={InspectionChecklistScreen}
+                  />
+                  <Stack.Screen name="Settings" component={SettingsScreen} />
+                  <Stack.Screen
+                    name="ManagementDashboard"
+                    component={ManagementDashboardScreen}
+                  />
+                  <Stack.Screen name="ReportDetail" component={ReportDetailScreen} />
+                  <Stack.Screen
+                    name="OrderDashboard"
+                    component={OrderDashboardScreen}
+                  />
+                  <Stack.Screen name="Others" component={OthersScreen} />
+                  <Stack.Screen name="LocationStats" component={LocationStatsScreen} />
+                  <Stack.Screen name="AIInspection" component={InspectionCategoryScreen} />
+                  <Stack.Screen name="ModuleSelection" component={ModuleSelectionScreen} />
+                  <Stack.Screen name="DeficiencyFilling" component={DeficiencyFillingScreen} />
+                  <Stack.Screen name="InspectionSummary" component={InspectionSummaryScreen} />
+                  <Stack.Screen name="LegacyAIInspection" component={AIInspectionScreen} />
+                  <Stack.Screen name="InspectionReport" component={InspectionReportScreen} />
+                  <Stack.Screen name="NSPIREReport" component={NSPIREReportScreen} />
+                  <Stack.Screen name="PropertyInfo" component={PropertyInfoScreen} />
+                  <Stack.Screen name="InspectionCategories" component={InspectionCategoriesScreen} />
+                  <Stack.Screen name="UnitLocations" component={UnitLocationsScreen} />
+                  <Stack.Screen name="LocationInspection" component={LocationInspectionScreen} />
+                  <Stack.Screen name="DeficiencyDetail" component={DeficiencyDetailScreen} />
+                  <Stack.Screen name="PropertyDetails" component={PropertyDetailsScreen} />
+                  <Stack.Screen name="BuildingInspection" component={BuildingInspectionScreen} />
+                </Stack.Navigator>
+              </NavigationContainer>
+            </ReportPreviewProvider>
+          </ClerkProvider>
         </ZoomWrapper>
       </ZoomProvider>
     </GestureHandlerRootView>
