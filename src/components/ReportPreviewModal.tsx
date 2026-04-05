@@ -31,7 +31,7 @@ export default function ReportPreviewModal({
     const [actionLoading, setActionLoading] = useState(false);
 
     const handleAction = async () => {
-        if (!onAction || actionLoading) return;
+        if (!onAction || actionLoading || typeof onAction !== 'function') return;
 
         try {
             setActionLoading(true);

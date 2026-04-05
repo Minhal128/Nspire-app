@@ -13,6 +13,7 @@ import {
   Linking,
   ActivityIndicator,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../types/navigation';
@@ -705,6 +706,137 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
       const propertyIdentifier = String(property?._id || property?.id || property?.propertyId || 'unknown');
       const draftSavedAt = new Date().toISOString();
+
+      const mergeDraftDeficiencies = (existingEntries: any[] = [], incomingEntries: any[] = []) => {
+        const merged = new Map<string, any>();
+
+        const normalizeKeyToken = (value: unknown): string => String(value ?? '').trim().toLowerCase();
+
+        const buildMergeKey = (entry: any, index: number): string => {
+          const stableId = normalizeKeyToken(
+            entry?.dedupeKey ||
+            entry?.deficiencyQRId ||
+            entry?.id ||
+            entry?._id ||
+            ''
+          );
+
+          if (stableId && !['unknown', 'null', 'undefined'].includes(stableId)) {
+            return `id|${stableId}`;
+          }
+
+          const area = normalizeKeyToken(entry?._area || entry?.area || normalizedArea || '');
+          const unit = normalizeKeyToken(entry?._unit || entry?.unit || normalizedUnit || '');
+          const item = normalizeKeyToken(entry?.itemId || entry?.itemName || itemId || itemName || '');
+          const deficiencyName = normalizeKeyToken(
+            entry?.deficiency?.name ||
+            entry?.deficiencyName ||
+            entry?.name ||
+            entry?.title ||
+            currentDeficiency?.name ||
+            ''
+          );
+          const deficiencyDetail = normalizeKeyToken(
+            entry?.deficiency?.detail ||
+            entry?.deficiencyDetails ||
+            entry?.detail ||
+            entry?.description ||
+            ''
+          );
+
+          return `${area}|${unit}|${item}|${deficiencyName}|${deficiencyDetail}|${index}`;
+        };
+
+        [...existingEntries, ...incomingEntries].forEach((entry, index) => {
+          if (!entry || typeof entry !== 'object') {
+            return;
+          }
+
+          const key = buildMergeKey(entry, index);
+          const previous = merged.get(key) || {};
+
+          merged.set(key, {
+            ...previous,
+            ...entry,
+            _area: entry?._area || previous?._area || normalizedArea,
+            _unit: entry?._unit || previous?._unit || normalizedUnit,
+            building: entry?.building || previous?.building || normalizedBuildingLabel || undefined,
+            buildingInspectionId:
+              entry?.buildingInspectionId ||
+              previous?.buildingInspectionId ||
+              normalizedBuildingLabel ||
+              undefined,
+            updatedAt: draftSavedAt,
+          });
+        });
+
+        return Array.from(merged.values());
+      };
+
+      const mergeNotes = (existingNote: unknown, incomingNote: unknown): string => {
+        const notes = [
+          String(existingNote ?? '').trim(),
+          String(incomingNote ?? '').trim(),
+        ].filter(Boolean);
+
+        return Array.from(new Set(notes)).join('\n\n');
+      };
+
+      try {
+        const buildingToken = String(normalizedBuildingLabel || buildingId || 'Building').trim() || 'Building';
+        const draftStorageKeys = Array.from(new Set([
+          `saved_inspection_${propertyIdentifier}`,
+          `saved_inspection_${propertyIdentifier}_${buildingToken}`,
+        ]));
+
+        for (const storageKey of draftStorageKeys) {
+          const existingRaw = await AsyncStorage.getItem(storageKey);
+          let existingPayload: any = {};
+
+          if (existingRaw) {
+            try {
+              existingPayload = JSON.parse(existingRaw) || {};
+            } catch {
+              existingPayload = {};
+            }
+          }
+
+          const existingDeficiencies =
+            (Array.isArray(existingPayload?.deficiencies) ? existingPayload.deficiencies : []).length > 0
+              ? existingPayload.deficiencies
+              : (Array.isArray(existingPayload?.findings) ? existingPayload.findings : []);
+
+          const mergedDeficiencies = mergeDraftDeficiencies(existingDeficiencies, analyzedDeficiencies);
+
+          const mergedPayload = {
+            ...existingPayload,
+            property: {
+              ...(existingPayload?.property && typeof existingPayload.property === 'object' ? existingPayload.property : {}),
+              ...(property && typeof property === 'object' ? property : {}),
+              _id: propertyIdentifier,
+              id: propertyIdentifier,
+              propertyId: property?.propertyId || existingPayload?.property?.propertyId,
+              name: property?.name || existingPayload?.property?.name || 'Property',
+            },
+            buildingId: normalizedBuildingLabel || existingPayload?.buildingId || buildingToken,
+            building: normalizedBuildingLabel || existingPayload?.building || buildingToken,
+            buildingInspectionId: normalizedBuildingLabel || existingPayload?.buildingInspectionId || buildingToken,
+            unit: normalizedUnit,
+            inspectionType: 'REPORT_DRAFT_PROPERTY',
+            selectedUnits: Array.isArray(selectedUnits) ? selectedUnits : (existingPayload?.selectedUnits || []),
+            currentUnit: currentUnit || existingPayload?.currentUnit || null,
+            deficiencies: mergedDeficiencies,
+            findings: mergedDeficiencies,
+            notes: mergeNotes(existingPayload?.notes, note),
+            savedAt: draftSavedAt,
+            updatedAt: draftSavedAt,
+          };
+
+          await AsyncStorage.setItem(storageKey, JSON.stringify(mergedPayload));
+        }
+      } catch (localDraftError) {
+        console.warn('Could not persist local draft snapshot from detail screen:', localDraftError);
+      }
 
       try {
         await inspectionService.saveProgress({

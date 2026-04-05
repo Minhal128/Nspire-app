@@ -115,6 +115,7 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
 
       let inspectionsData: any = { inspections: [] };
       let propertiesData: any = { properties: [] };
+      let allProgressRecords: any[] = [];
 
       // Try to load inspections - handle errors gracefully
       try {
@@ -454,8 +455,8 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
 
       // Add DB-synced drafts from inspection progress (tied to logged-in user)
       try {
-        const progressRes = await inspectionService.getAllProgress();
-        const allProgressRecords = progressRes?.progress || [];
+        const progressRes = await inspectionService.getAllProgress({ timeoutMs: 20000 });
+        allProgressRecords = Array.isArray(progressRes?.progress) ? progressRes.progress : [];
 
         allProgressRecords.forEach((progressItem: any) => {
           const progressPropertyId = String(
@@ -490,7 +491,11 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
 
         backendDrafts.forEach((p: any) => {
           const propertyObj = p.propertyId;
-          const extractedPropertyId = propertyObj?._id || propertyObj || p?.inspectionData?.property?._id || '';
+          const extractedPropertyId =
+            propertyObj?._id ||
+            (typeof propertyObj === 'string' ? propertyObj : '') ||
+            p?.inspectionData?.property?._id ||
+            '';
           const foundProp = (propertiesData.properties || propertiesData || []).find((prop: any) =>
             prop._id === extractedPropertyId || prop.id === extractedPropertyId
           );
@@ -545,6 +550,190 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
         });
       } catch (backendDraftErr) {
         console.log('Error loading backend drafts:', backendDraftErr);
+      }
+
+      // Fallback: if a property has active inspection progress but no completed/draft report yet,
+      // surface it in Reports so inspectors can still access in-progress output.
+      try {
+        const existingPropertyIds = new Set(
+          mappedReports
+            .map((report) => String(report.propertyId || '').trim())
+            .filter((token) => !!token)
+        );
+
+        const progressFallbackMap = new Map<
+          string,
+          {
+            propertyId: string;
+            propertyName: string;
+            propertyObj: any;
+            buildingLabel: string;
+            latestTimestamp: number;
+            notes: string[];
+            findings: any[];
+            selectedUnits: Set<string>;
+          }
+        >();
+
+        const isMeaningfulResponseValue = (value: unknown): boolean => {
+          return value !== null && value !== undefined && String(value).trim() !== '';
+        };
+
+        allProgressRecords.forEach((progressItem: any) => {
+          const inspectionTypeToken = String(progressItem?.inspectionType || '').trim();
+          if (!inspectionTypeToken) {
+            return;
+          }
+
+          // Drafts are handled above; this fallback is for section/unit progress records.
+          if (inspectionTypeToken.toUpperCase().startsWith('REPORT_DRAFT_')) {
+            return;
+          }
+
+          const responses =
+            progressItem?.responses && typeof progressItem.responses === 'object'
+              ? progressItem.responses
+              : {};
+          const answeredCount = Object.values(responses).filter(isMeaningfulResponseValue).length;
+
+          const progressFindings = Array.isArray(progressItem?.inspectionData?.deficiencies)
+            ? progressItem.inspectionData.deficiencies
+            : (Array.isArray(progressItem?.inspectionData?.findings)
+              ? progressItem.inspectionData.findings
+              : []);
+
+          if (answeredCount === 0 && progressFindings.length === 0) {
+            return;
+          }
+
+          const progressPropertyObj = progressItem?.propertyId;
+          const progressPropertyId = String(
+            progressPropertyObj?._id ||
+            (typeof progressPropertyObj === 'string' ? progressPropertyObj : '') ||
+            progressItem?.inspectionData?.property?._id ||
+            ''
+          ).trim();
+
+          if (!progressPropertyId) {
+            return;
+          }
+
+          // If this property already has a report card from completed inspections or drafts,
+          // avoid duplicating by injecting this fallback.
+          if (existingPropertyIds.has(progressPropertyId)) {
+            return;
+          }
+
+          const foundProp = (propertiesData.properties || propertiesData || []).find((prop: any) =>
+            prop._id === progressPropertyId || prop.id === progressPropertyId
+          );
+
+          const resolvedPropertyName =
+            progressPropertyObj?.name ||
+            progressItem?.inspectionData?.property?.name ||
+            foundProp?.name ||
+            'In-Progress Property';
+
+          const buildingLabel = buildMergedBuildingLabel([
+            progressItem?.buildingId,
+            progressItem?.inspectionData?.buildingId,
+            progressItem?.inspectionData?.building,
+            progressItem?.inspectionData?.buildingName,
+            progressItem?.unitId,
+          ]);
+
+          const fallbackKey = `${progressPropertyId}::${normalizeUnitToken(buildingLabel || '-')}`;
+
+          if (!progressFallbackMap.has(fallbackKey)) {
+            progressFallbackMap.set(fallbackKey, {
+              propertyId: progressPropertyId,
+              propertyName: resolvedPropertyName,
+              propertyObj: foundProp || progressItem?.inspectionData?.property || { _id: progressPropertyId, name: resolvedPropertyName },
+              buildingLabel: buildingLabel || '-',
+              latestTimestamp: 0,
+              notes: [],
+              findings: [],
+              selectedUnits: new Set<string>(),
+            });
+          }
+
+          const aggregate = progressFallbackMap.get(fallbackKey)!;
+
+          const recordTimestamp = Date.parse(
+            String(progressItem?.updatedAt || progressItem?.createdAt || progressItem?.inspectionData?.savedAt || 0)
+          );
+          if (Number.isFinite(recordTimestamp) && recordTimestamp > aggregate.latestTimestamp) {
+            aggregate.latestTimestamp = recordTimestamp;
+          }
+
+          const noteCandidate = normalizeNoteForMerge(progressItem?.inspectionData?.notes);
+          if (noteCandidate) {
+            aggregate.notes.push(noteCandidate);
+          }
+
+          if (progressFindings.length > 0) {
+            aggregate.findings.push(...progressFindings);
+          }
+
+          const unitFromType = extractUnitFromInspectionType(inspectionTypeToken);
+          if (unitFromType && !isPlaceholderUnitLabel(unitFromType) && !looksLikeBuildingLabel(unitFromType)) {
+            aggregate.selectedUnits.add(unitFromType);
+          }
+
+          const currentUnitCandidate = normalizeUnitLabel(progressItem?.inspectionData?.currentUnit);
+          if (currentUnitCandidate && !isPlaceholderUnitLabel(currentUnitCandidate) && !looksLikeBuildingLabel(currentUnitCandidate)) {
+            aggregate.selectedUnits.add(currentUnitCandidate);
+          }
+        });
+
+        progressFallbackMap.forEach((aggregate) => {
+          const fallbackFindings = aggregate.findings.filter(Boolean);
+          const criticalDeficiencies = fallbackFindings.filter((finding: any) => {
+            const severityToken = String(
+              finding?.severity ||
+              finding?.deficiency?.severity ||
+              finding?.deficiency?.aiSeverity ||
+              ''
+            ).toLowerCase();
+
+            return severityToken === 'critical' || severityToken === 'life-threatening' || severityToken === 'severe';
+          }).length;
+
+          const mergedNotes = Array.from(new Set(aggregate.notes)).join('\n\n');
+          const resolvedDate = aggregate.latestTimestamp > 0
+            ? new Date(aggregate.latestTimestamp)
+            : new Date();
+
+          mappedReports.push({
+            id: `progress_${aggregate.propertyId}_${normalizeUnitToken(aggregate.buildingLabel || 'building')}`,
+            property: aggregate.propertyName,
+            propertyId: aggregate.propertyId,
+            unit: aggregate.buildingLabel,
+            inspector: storedUser?.fullName || 'Inspector',
+            date: resolvedDate.toLocaleDateString('en-US', {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric',
+            }) + ' (Draft)',
+            complianceScore: 'Unpaid',
+            inspectionType: 'In-Progress Inspection',
+            totalDeficiencies: fallbackFindings.length,
+            criticalDeficiencies,
+            notes: mergedNotes,
+            rawData: {
+              property: aggregate.propertyObj,
+              findings: fallbackFindings,
+              deficiencies: fallbackFindings,
+              selectedUnits: Array.from(aggregate.selectedUnits),
+              notes: mergedNotes,
+              updatedAt: resolvedDate.toISOString(),
+              inspectionType: 'In-Progress Inspection',
+              status: 'in-progress',
+            } as any,
+          });
+        });
+      } catch (progressFallbackErr) {
+        console.log('Error creating progress fallback reports:', progressFallbackErr);
       }
 
       const getPropertyGroupKey = (report: Report): string => {

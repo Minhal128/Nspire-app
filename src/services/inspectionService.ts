@@ -150,7 +150,13 @@ class InspectionService {
   /**
    * Get all inspection progress drafts for the current inspector
    */
-  async getAllProgress(): Promise<{ success: boolean; progress: any[] }> {
+  async getAllProgress(options?: {
+    propertyId?: string;
+    timeoutMs?: number;
+    draftOnly?: boolean;
+    inspectionTypePrefix?: string;
+    includeProperty?: boolean;
+  }): Promise<{ success: boolean; progress: any[] }> {
     try {
       const storedToken = await AsyncStorage.getItem(StorageKeys.USER_TOKEN);
       let token: string | null = null;
@@ -163,37 +169,78 @@ class InspectionService {
         }
       }
 
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 120000);
+      const timeoutMs = Math.min(Math.max(options?.timeoutMs ?? 15000, 5000), 90000);
+      const queryParams = new URLSearchParams();
+
+      if (options?.propertyId) {
+        queryParams.append('property_id', options.propertyId);
+      }
+
+      if (options?.draftOnly) {
+        queryParams.append('draft_only', 'true');
+      }
+
+      if (options?.inspectionTypePrefix) {
+        queryParams.append('inspection_type_prefix', options.inspectionTypePrefix);
+      }
+
+      if (options?.includeProperty) {
+        queryParams.append('include_property', 'true');
+      }
+
+      const queryString = queryParams.toString();
+      const endpoint = `${API_CONFIG.BASE_URL}/inspections/progress${queryString ? `?${queryString}` : ''}`;
+
+      const fetchProgressWithTimeout = async (requestTimeoutMs: number) => {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), requestTimeoutMs);
+
+        try {
+          const response = await fetch(endpoint, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+            signal: controller.signal,
+          });
+
+          const responseText = await response.text();
+          let data: any = {};
+          try {
+            data = responseText ? JSON.parse(responseText) : {};
+          } catch {
+            data = {};
+          }
+
+          if (!response.ok) {
+            throw new Error(data?.message || `HTTP ${response.status}`);
+          }
+
+          return {
+            success: !!data?.success,
+            progress: Array.isArray(data?.progress) ? data.progress : [],
+          };
+        } finally {
+          clearTimeout(timeoutId);
+        }
+      };
+
+      const isAbortLikeError = (error: any) => {
+        const errorName = String(error?.name || '').toLowerCase();
+        const errorMessage = String(error?.message || '').toLowerCase();
+        return errorName.includes('abort') || errorMessage.includes('abort');
+      };
 
       try {
-        const response = await fetch(`${API_CONFIG.BASE_URL}/inspections/progress`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-          signal: controller.signal,
-        });
-
-        const responseText = await response.text();
-        let data: any = {};
-        try {
-          data = responseText ? JSON.parse(responseText) : {};
-        } catch {
-          data = {};
+        return await fetchProgressWithTimeout(timeoutMs);
+      } catch (primaryError: any) {
+        if (isAbortLikeError(primaryError) && timeoutMs < 45000) {
+          console.warn(`Progress fetch timed out at ${timeoutMs}ms, retrying once with a longer timeout...`);
+          return await fetchProgressWithTimeout(45000);
         }
 
-        if (!response.ok) {
-          throw new Error(data?.message || `HTTP ${response.status}`);
-        }
-
-        return {
-          success: !!data?.success,
-          progress: Array.isArray(data?.progress) ? data.progress : [],
-        };
-      } finally {
-        clearTimeout(timeoutId);
+        throw primaryError;
       }
     } catch (error: any) {
       console.error('Error fetching all progress:', error.message);

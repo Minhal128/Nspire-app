@@ -32,7 +32,7 @@ export function ReportPreviewProvider({ children }: { children: React.ReactNode 
         setTitle(payload.title || 'Report Preview');
         setHtml(payload.html || '');
         setActionLabel(payload.actionLabel);
-        setOnAction(payload.onAction || null);
+        setOnAction(() => (typeof payload.onAction === 'function' ? payload.onAction : null));
         setVisible(true);
     }, []);
 

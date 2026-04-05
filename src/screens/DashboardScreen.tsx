@@ -85,7 +85,6 @@ export default function DashboardScreen({
   navigation,
   onMenuPress,
 }: DashboardScreenProps) {
-  console.log('DashboardScreen: Component mounted');
   const { signOut } = useClerk();
 
   const [sidebarVisible, setSidebarVisible] = useState(false);
