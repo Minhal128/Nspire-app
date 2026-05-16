@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Inspire",
-    "owner": "minhal.rizvi",
+    "owner": "minhal786",
     "slug": "inspire-app",
     "version": "1.0.0",
     "orientation": "default",
@@ -19,7 +19,7 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.inspire.app",
+      "bundleIdentifier": "com.minhal.inspire",
       "requiresFullScreen": false,
       "associatedDomains": [
         "applinks:inspire.app",
@@ -30,15 +30,14 @@
         "NSCameraUsageDescription": "This app uses the camera for document scanning and property inspection.",
         "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to save and upload inspection photos.",
         "NSLocationWhenInUseUsageDescription": "This app uses your location to tag property inspections."
-      },
-      "appleTeamId": "RFK8X7U53N"
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./inspire_logo.png",
         "backgroundColor": "#97F0FF"
       },
-      "package": "com.inspire.minhal",
+      "package": "com.minhal.inspire",
       "intentFilters": [
         {
           "action": "VIEW",
@@ -102,11 +101,8 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "693d2364-f65e-4ab9-ad78-6ab27b7b2094"
+        "projectId": "b6da6ad6-b8b1-44a0-904d-6291c05042c7"
       }
-    },
-    "updates": {
-      "url": "https://u.expo.dev/693d2364-f65e-4ab9-ad78-6ab27b7b2094"
     }
   }
 }

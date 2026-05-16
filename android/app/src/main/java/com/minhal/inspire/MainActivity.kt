@@ -1,4 +1,4 @@
-package com.inspire.minhal
+package com.minhal.inspire
 
 import android.os.Build
 import android.os.Bundle

@@ -42,6 +42,7 @@ class IAPService {
   /**
    * Initialise the IAP connection.
    * Call this once when the relevant screen mounts.
+   * Wrapped in try-catch to prevent crashes if Google Play is unavailable.
    */
   async init(): Promise<boolean> {
     if (Platform.OS === 'web') {
@@ -54,8 +55,8 @@ class IAPService {
       this.connected = true;
       console.log('IAP: Connection established', result);
       return true;
-    } catch (err) {
-      console.error('IAP: Connection failed', err);
+    } catch (err: any) {
+      console.warn('IAP: Connection failed (Google Play may not be available)', err?.message || err);
       this.connected = false;
       return false;
     }
@@ -63,10 +64,11 @@ class IAPService {
 
   /**
    * Fetch the available products (should return the $99 report SKU).
+   * Gracefully handles errors without crashing.
    */
   async getReportProduct(): Promise<Product | null> {
     if (!this.connected) {
-      console.warn('IAP: Not connected – call init() first');
+      console.warn('IAP: Not connected – skipping product fetch');
       return null;
     }
 
@@ -74,8 +76,8 @@ class IAPService {
       const products = await fetchProducts({ skus: IAP_SKUS });
       console.log('IAP: Products fetched', products);
       return products && products.length > 0 ? products[0] : null;
-    } catch (err) {
-      console.error('IAP: Failed to fetch products', err);
+    } catch (err: any) {
+      console.warn('IAP: Failed to fetch products (Play Store may not be available)', err?.message || err);
       return null;
     }
   }
@@ -83,6 +85,7 @@ class IAPService {
   /**
    * Purchase the report unlock product.
    * Returns the purchase object on success, null on failure/cancel.
+   * Handles various error codes gracefully.
    */
   async purchaseReportUnlock(): Promise<ProductPurchase | null> {
     if (!this.connected) {
@@ -115,12 +118,15 @@ class IAPService {
 
       return (purchaseResult.purchase as any) || null;
     } catch (err: any) {
-      if (err?.code === 'E_USER_CANCELLED') {
+      const errorCode = err?.code || err?.message;
+      if (errorCode === 'E_USER_CANCELLED' || errorCode === 'RESULT_USER_CANCELED') {
         console.log('IAP: User cancelled purchase');
         return null;
       }
-      console.error('IAP: Purchase error', err);
-      throw err;
+      console.warn('IAP: Purchase error', err?.message || err);
+      // Return null instead of throwing to prevent crashes
+      // The calling component handles the error state
+      return null;
     }
   }
 
@@ -140,7 +146,7 @@ class IAPService {
           inspectionId,
           purchaseToken,
           productId,
-          packageName: 'com.inspire.minhal',
+          packageName: 'com.minhal.inspire',
         },
       );
 
@@ -167,13 +173,14 @@ class IAPService {
     try {
       await finishTransaction({ purchase, isConsumable: true });
       console.log('IAP: Transaction finished');
-    } catch (err) {
-      console.error('IAP: Failed to finish transaction', err);
+    } catch (err: any) {
+      console.warn('IAP: Failed to finish transaction (non-critical)', err?.message || err);
     }
   }
 
   /**
    * Check if a report is already unlocked via the backend.
+   * Returns false on any error to allow normal purchase flow.
    */
   async checkUnlockStatus(inspectionId: string): Promise<boolean> {
     try {
@@ -181,8 +188,9 @@ class IAPService {
         `/payments/check-unlock/${inspectionId}`,
       );
       return response.isReportUnlocked ?? false;
-    } catch (err) {
-      console.error('IAP: Failed to check unlock status', err);
+    } catch (err: any) {
+      // Silently fail - user can still proceed with purchase
+      console.warn('IAP: Backend unlock check failed (allowing normal flow)', err?.message || err);
       return false;
     }
   }

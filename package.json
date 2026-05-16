@@ -8,6 +8,8 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "prebuild": "expo prebuild",
+    "eas-build-post-install": "node fix_iap_android.js",
+    "postinstall": "node fix_iap_android.js",
     "clean": "expo start --clear"
   },
   "dependencies": {

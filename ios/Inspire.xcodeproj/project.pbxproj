@@ -398,7 +398,6 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = RFK8X7U53N;
 				INFOPLIST_FILE = Inspire/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -412,7 +411,7 @@
 					"-lc++",
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
-				PRODUCT_BUNDLE_IDENTIFIER = com.inspire.app;
+				PRODUCT_BUNDLE_IDENTIFIER = com.minhal.inspire;
 				PRODUCT_NAME = Inspire;
 				SWIFT_OBJC_BRIDGING_HEADER = "Inspire/Inspire-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
