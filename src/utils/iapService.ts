@@ -11,7 +11,7 @@ import { Platform } from 'react-native';
 import {
   initConnection,
   endConnection,
-  getProducts,
+  fetchProducts,
   requestPurchase,
   finishTransaction,
   purchaseUpdatedListener,
@@ -71,9 +71,9 @@ class IAPService {
     }
 
     try {
-      const products = await getProducts({ skus: IAP_SKUS });
+      const products = await fetchProducts({ skus: IAP_SKUS });
       console.log('IAP: Products fetched', products);
-      return products.length > 0 ? products[0] : null;
+      return products && products.length > 0 ? products[0] : null;
     } catch (err) {
       console.error('IAP: Failed to fetch products', err);
       return null;
@@ -91,16 +91,29 @@ class IAPService {
     }
 
     try {
-      const purchase = await requestPurchase({
-        skus: [IAP_PRODUCT_ID],
-        andDangerouslyFinishTransactionAutomaticallyIOS: false,
+      const purchaseResult = await requestPurchase({
+        type: 'in-app',
+        request: {
+          google: {
+            skus: [IAP_PRODUCT_ID],
+          },
+          apple: {
+            sku: IAP_PRODUCT_ID,
+            andDangerouslyFinishTransactionAutomatically: false,
+          },
+        },
       });
 
-      // requestPurchase can return an array or a single object
-      if (Array.isArray(purchase)) {
-        return purchase.length > 0 ? purchase[0] : null;
+      // In version 15+, requestPurchase returns a NitroPurchaseResult
+      if (!purchaseResult || purchaseResult.type === 'null') {
+        return null;
       }
-      return purchase || null;
+
+      if (purchaseResult.type === 'multiple') {
+        return purchaseResult.purchases.length > 0 ? (purchaseResult.purchases[0] as any) : null;
+      }
+
+      return (purchaseResult.purchase as any) || null;
     } catch (err: any) {
       if (err?.code === 'E_USER_CANCELLED') {
         console.log('IAP: User cancelled purchase');

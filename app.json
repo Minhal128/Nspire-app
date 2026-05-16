@@ -76,10 +76,7 @@
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.ACCESS_COARSE_LOCATION",
         "com.android.vending.BILLING"
-      ],
-      "gradleProperties": {
-        "kotlin.version": "2.0.21"
-      }
+      ]
     },
     "web": {
       "favicon": "./inspire_logo.png",
@@ -94,7 +91,11 @@
             "deploymentTarget": "15.1"
           },
           "android": {
-            "usesCleartextTraffic": true
+            "usesCleartextTraffic": true,
+            "compileSdkVersion": 35,
+            "targetSdkVersion": 35,
+            "buildToolsVersion": "35.0.0",
+            "kotlinVersion": "2.1.20"
           }
         }
       ]
