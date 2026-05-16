@@ -28,7 +28,7 @@
         <key>CFBundleURLSchemes</key>
         <array>
           <string>inspire</string>
-          <string>com.inspire.app</string>
+          <string>com.minhal.inspire</string>
         </array>
       </dict>
       <dict>

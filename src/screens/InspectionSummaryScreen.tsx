@@ -46,6 +46,9 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
     inspectionData?.deficiencies || []
   );
 
+  const inspectionId = `697e0d82e115b966d90cc009`;
+  const inspectionDate = new Date().toLocaleDateString();
+
   // ── IAP State ────────────────────────────────────────────────────
   const [isReportUnlocked, setIsReportUnlocked] = useState(false);
   const [paymentModalVisible, setPaymentModalVisible] = useState(false);
@@ -92,68 +95,92 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
   // ── IAP: initialise connection & check unlock status ─────────────
   useEffect(() => {
     let iapCleanup: (() => void) | null = null;
+    let mounted = true;
+    let unlockCheckTimeout: ReturnType<typeof setTimeout> | null = null;
 
     const initIAP = async () => {
-      // Check unlock status from backend first
       try {
-        const unlocked = await iapService.checkUnlockStatus(inspectionId);
-        if (unlocked) {
-          setIsReportUnlocked(true);
-          setCheckingUnlock(false);
-          return; // Already paid — no need to set up IAP
-        }
-      } catch (_) {
-        // If backend check fails, continue with IAP init
-      }
-      setCheckingUnlock(false);
+        // Initialize IAP connection on native platforms immediately (non-blocking)
+        if (Platform.OS !== 'web') {
+          const iapInitialized = await iapService.init();
 
-      // Initialise IAP connection on native platforms
-      if (Platform.OS !== 'web') {
-        await iapService.init();
-
-        // Listen for purchase updates (handles deferred / interrupted purchases)
-        iapCleanup = iapService.registerListeners(
-          async (purchase) => {
-            if (purchase.productId === IAP_PRODUCT_ID && purchase.transactionReceipt) {
-              // Verify with backend
-              const result = await iapService.verifyAndUnlock(
-                inspectionId,
-                purchase.purchaseToken || purchase.transactionReceipt,
-              );
-              if (result.isReportUnlocked) {
-                setIsReportUnlocked(true);
-                await iapService.acknowledge(purchase);
-                Alert.alert('Payment Successful', 'Your report has been unlocked! You can now export the full report.');
-                // Auto-trigger pending export
-                if (pendingExportAction.current) {
-                  const action = pendingExportAction.current;
-                  pendingExportAction.current = null;
-                  setTimeout(() => {
-                    if (action === 'pdf') handleExportPDF();
-                    else if (action === 'html') handleExportHTML();
-                    else if (action === 'excel') handleExportExcel();
-                  }, 500);
-                }
-              } else {
-                Alert.alert('Verification Failed', result.message || 'Could not verify your purchase. Please contact support.');
-              }
-              setPurchasing(false);
-              setPaymentModalVisible(false);
+          if (iapInitialized && mounted) {
+            // Fetch product details to "warm up" cache and verify SKU
+            const product = await iapService.getReportProduct();
+            if (product) {
+              console.log('IAP: Product found:', product.productId, product.price);
+            } else {
+              console.warn('IAP: Product NOT found. Check SKU and Play Console status.');
             }
-          },
-          (error) => {
-            console.error('IAP purchase error listener:', error);
-            setPurchasing(false);
-          },
-        );
-      } else {
-        setCheckingUnlock(false);
+
+            // Listen for purchase updates (handles deferred / interrupted purchases)
+            iapCleanup = iapService.registerListeners(
+              async (purchase) => {
+                if (!mounted) return;
+                if (purchase.productId === IAP_PRODUCT_ID && purchase.transactionReceipt) {
+                  // Verify with backend
+                  const result = await iapService.verifyAndUnlock(
+                    inspectionId,
+                    purchase.purchaseToken || purchase.transactionReceipt,
+                  );
+                  if (result.isReportUnlocked) {
+                    setIsReportUnlocked(true);
+                    await iapService.acknowledge(purchase);
+                    Alert.alert('Payment Successful', 'Your report has been unlocked! You can now export the full report.');
+                    // Auto-trigger pending export
+                    if (pendingExportAction.current) {
+                      const action = pendingExportAction.current;
+                      pendingExportAction.current = null;
+                      setTimeout(() => {
+                        if (action === 'pdf') handleExportPDF();
+                        else if (action === 'html') handleExportHTML();
+                        else if (action === 'excel') handleExportExcel();
+                      }, 500);
+                    }
+                  } else {
+                    Alert.alert('Verification Failed', result.message || 'Could not verify your purchase. Please contact support.');
+                  }
+                  setPurchasing(false);
+                  setPaymentModalVisible(false);
+                }
+              },
+              (error) => {
+                console.error('IAP purchase error listener:', error);
+                setPurchasing(false);
+              },
+            );
+          }
+        }
+
+        // Check unlock status from backend in background (non-blocking)
+        setCheckingUnlock(true);
+        unlockCheckTimeout = setTimeout(async () => {
+          try {
+            const unlocked = await iapService.checkUnlockStatus(inspectionId);
+            if (mounted && unlocked) {
+              setIsReportUnlocked(true);
+            }
+          } catch (_) {
+            // Backend check failed - user can still try to purchase
+          }
+          if (mounted) {
+            setCheckingUnlock(false);
+          }
+        }, 100); // Small delay to allow UI to render first
+      } catch (err) {
+        // Prevent any IAP errors from crashing the app
+        console.warn('IAP initialization error (non-fatal):', err);
+        if (mounted) {
+          setCheckingUnlock(false);
+        }
       }
     };
 
     initIAP();
 
     return () => {
+      mounted = false;
+      if (unlockCheckTimeout) clearTimeout(unlockCheckTimeout);
       iapCleanup?.();
       iapService.destroy();
     };
@@ -175,14 +202,16 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
     try {
       const purchase = await iapService.purchaseReportUnlock();
       if (!purchase) {
-        // User cancelled
+        // User cancelled or purchase failed - reset state but keep modal open
         setPurchasing(false);
         return;
       }
       // The purchaseUpdatedListener above will handle verification
     } catch (err: any) {
       setPurchasing(false);
-      Alert.alert('Purchase Error', err.message || 'Something went wrong with the purchase. Please try again.');
+      const errorMsg = err?.message || 'Something went wrong with the purchase.';
+      // Don't show blocking error - user can retry
+      console.warn('Purchase error:', errorMsg);
     }
   };
 
@@ -228,9 +257,6 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
   const calculatedScore = preliminaryScore;
   const finalScore = Math.max(0, preliminaryScore - 5); // Slight adjustment for final
   const isPassing = finalScore >= 60;
-
-  const inspectionId = `697e0d82e115b966d90cc009`;
-  const inspectionDate = new Date().toLocaleDateString();
 
   const handleContinueInspection = async () => {
     const nextArea: string = inspectionData?.isOutsideInspection
