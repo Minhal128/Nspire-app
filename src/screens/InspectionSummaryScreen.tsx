@@ -35,7 +35,7 @@ interface Props {
 }
 
 const InspectionSummaryScreen = ({ navigation, route }: Props) => {
-  const { property, selectedUnits, buildingId, inspectionData, currentUnit: routeCurrentUnit } = route.params;
+  const { property, selectedUnits, buildingId, inspectionData, currentUnit: routeCurrentUnit, inspectionId: routeInspectionId } = route.params;
   const [activeTab, setActiveTab] = useState<'summary' | 'deficiencies'>('summary');
   const [exportingPDF, setExportingPDF] = useState(false);
   const [exportingHTML, setExportingHTML] = useState(false);
@@ -46,7 +46,10 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
     inspectionData?.deficiencies || []
   );
 
-  const inspectionId = `697e0d82e115b966d90cc009`;
+  // Use the real inspection ID from route params, or derive a stable per-property+building ID.
+  // Never use a hardcoded ID — that causes all inspections to share the same unlock record.
+  const propertyId = property?._id || property?.id || property?.propertyId || 'unknown';
+  const inspectionId = routeInspectionId || `${propertyId}_${buildingId || 'default'}`;
   const inspectionDate = new Date().toLocaleDateString();
 
   // ── IAP State ────────────────────────────────────────────────────
@@ -481,19 +484,28 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
         let imageBase64: string | null = null;
         const cloudinaryUrl = defItem.imageUrl || null;
 
-        if (defItem.imageUri && Platform.OS !== 'web') {
-          try {
-            const fileInfo = await FileSystem.getInfoAsync(defItem.imageUri);
-            if (fileInfo.exists) {
-              const base64 = await FileSystem.readAsStringAsync(defItem.imageUri, {
-                encoding: FileSystem.EncodingType.Base64,
-              });
-              if (base64 && base64.length > 100) {
-                imageBase64 = `data:image/jpeg;base64,${base64}`;
+        if (defItem.imageUri) {
+          if (defItem.imageUri.startsWith('data:')) {
+            // Already a base64 data URL — use directly (saved by handleContinueInspection)
+            imageBase64 = defItem.imageUri;
+          } else if (defItem.imageUri.startsWith('http://') || defItem.imageUri.startsWith('https://')) {
+            // Remote URL (Cloudinary etc.) — PDF service will download it
+            imageBase64 = defItem.imageUri;
+          } else if (Platform.OS !== 'web') {
+            // Local file path — convert to base64
+            try {
+              const fileInfo = await FileSystem.getInfoAsync(defItem.imageUri);
+              if (fileInfo.exists) {
+                const base64 = await FileSystem.readAsStringAsync(defItem.imageUri, {
+                  encoding: FileSystem.EncodingType.Base64,
+                });
+                if (base64 && base64.length > 100) {
+                  imageBase64 = `data:image/jpeg;base64,${base64}`;
+                }
               }
+            } catch (imgError) {
+              console.error('Error converting image to base64:', imgError);
             }
-          } catch (imgError) {
-            console.error('Error converting image to base64:', imgError);
           }
         }
 
