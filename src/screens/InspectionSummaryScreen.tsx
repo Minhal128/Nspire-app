@@ -58,6 +58,13 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
   const [purchasing, setPurchasing] = useState(false);
   const [checkingUnlock, setCheckingUnlock] = useState(true);
   const pendingExportAction = useRef<'pdf' | 'html' | 'excel' | null>(null);
+  // Holds latest export function references so the purchase listener (a stale
+  // closure from useEffect []) always calls the current render's version.
+  const exportFnRefs = useRef<{ pdf: () => void; html: () => void; excel: () => void }>({
+    pdf: () => {},
+    html: () => {},
+    excel: () => {},
+  });
 
   // On mount: load any previously saved deficiencies and merge with the new ones
   useEffect(() => {
@@ -121,6 +128,11 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
               async (purchase) => {
                 if (!mounted) return;
                 if (purchase.productId === IAP_PRODUCT_ID && purchase.transactionReceipt) {
+                  // Consume the transaction immediately so Google Play marks it
+                  // as available again — this prevents "You already own this item"
+                  // errors when purchasing reports for different inspections.
+                  await iapService.acknowledge(purchase);
+
                   // Verify with backend
                   const result = await iapService.verifyAndUnlock(
                     inspectionId,
@@ -128,16 +140,15 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
                   );
                   if (result.isReportUnlocked) {
                     setIsReportUnlocked(true);
-                    await iapService.acknowledge(purchase);
                     Alert.alert('Payment Successful', 'Your report has been unlocked! You can now export the full report.');
-                    // Auto-trigger pending export
+                    // Auto-trigger pending export via ref so we get the latest function
                     if (pendingExportAction.current) {
                       const action = pendingExportAction.current;
                       pendingExportAction.current = null;
                       setTimeout(() => {
-                        if (action === 'pdf') handleExportPDF();
-                        else if (action === 'html') handleExportHTML();
-                        else if (action === 'excel') handleExportExcel();
+                        if (action === 'pdf') exportFnRefs.current.pdf();
+                        else if (action === 'html') exportFnRefs.current.html();
+                        else if (action === 'excel') exportFnRefs.current.excel();
                       }, 500);
                     }
                   } else {
@@ -813,6 +824,11 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
       setExportingExcel(false);
     }
   };
+
+  // Keep refs in sync with the latest function versions on every render.
+  exportFnRefs.current.pdf = handleExportPDF;
+  exportFnRefs.current.html = handleExportHTML;
+  exportFnRefs.current.excel = handleExportExcel;
 
   return (
     <SafeAreaView style={styles.container}>
