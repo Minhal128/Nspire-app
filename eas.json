@@ -1,7 +1,7 @@
 {
   "cli": {
     "version": ">= 16.26.0",
-    "appVersionSource": "remote"
+    "appVersionSource": "local"
   },
   "build": {
     "development": {
@@ -11,11 +11,24 @@
     },
     "preview": {
       "distribution": "internal",
-      "channel": "preview"
+      "channel": "preview",
+      "android": {
+        "gradleCommand": ":app:assemblePlayRelease"
+      }
     },
     "production": {
       "autoIncrement": true,
-      "channel": "production"
+      "channel": "production",
+      "android": {
+        "gradleCommand": ":app:bundlePlayRelease"
+      }
+    },
+    "amazon": {
+      "autoIncrement": true,
+      "channel": "production",
+      "android": {
+        "gradleCommand": ":app:bundleAmazonRelease"
+      }
     }
   },
   "submit": {

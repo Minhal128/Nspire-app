@@ -3,17 +3,12 @@
     "name": "Inspire",
     "owner": "minhal786",
     "slug": "inspire-app",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "default",
     "icon": "./inspire_logo.png",
     "userInterfaceStyle": "automatic",
     "runtimeVersion": "1.0.0",
     "scheme": "inspire",
-    "splash": {
-      "image": "./inspire_logo.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#97F0FF"
-    },
     "assetBundlePatterns": [
       "**/*"
     ],
@@ -33,6 +28,7 @@
       }
     },
     "android": {
+      "versionCode": 20,
       "adaptiveIcon": {
         "foregroundImage": "./inspire_logo.png",
         "backgroundColor": "#97F0FF"

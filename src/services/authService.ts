@@ -224,7 +224,7 @@ class AuthService {
       try {
         const isValid = await Promise.race([
           this.verifyToken(),
-          new Promise<boolean>((resolve) => setTimeout(() => resolve(true), 5000)) // 5s timeout, assume valid if offline
+          new Promise<boolean>((resolve) => setTimeout(() => resolve(true), 1500)) // 1.5s timeout, assume valid if offline
         ]);
 
         if (!isValid) {

@@ -89,11 +89,17 @@ class IAPService {
    */
   async purchaseReportUnlock(): Promise<ProductPurchase | null> {
     if (!this.connected) {
-      console.warn('IAP: Not connected – call init() first');
-      return null;
+      console.warn('IAP: Not connected – trying to reconnect');
+      const initialized = await this.init();
+      if (!initialized) {
+        throw new Error('Google Play Store is not available. Please ensure you have a working internet connection and Google Play Services.');
+      }
     }
 
     try {
+      console.log('IAP: Requesting purchase for SKU:', IAP_PRODUCT_ID);
+
+      // For react-native-iap v15+ (Nitro API)
       const purchaseResult = await requestPurchase({
         type: 'in-app',
         request: {
@@ -107,8 +113,10 @@ class IAPService {
         },
       });
 
-      // In version 15+, requestPurchase returns a NitroPurchaseResult
+      console.log('IAP: Purchase response received:', JSON.stringify(purchaseResult));
+
       if (!purchaseResult || purchaseResult.type === 'null') {
+        console.log('IAP: Purchase result is null (user cancelled or product not found)');
         return null;
       }
 
@@ -119,14 +127,14 @@ class IAPService {
       return (purchaseResult.purchase as any) || null;
     } catch (err: any) {
       const errorCode = err?.code || err?.message;
+      console.warn('IAP: Purchase error details:', err);
+
       if (errorCode === 'E_USER_CANCELLED' || errorCode === 'RESULT_USER_CANCELED') {
         console.log('IAP: User cancelled purchase');
         return null;
       }
-      console.warn('IAP: Purchase error', err?.message || err);
-      // Return null instead of throwing to prevent crashes
-      // The calling component handles the error state
-      return null;
+
+      throw new Error(`Purchase failed: ${err?.message || 'Unknown error'}`);
     }
   }
 

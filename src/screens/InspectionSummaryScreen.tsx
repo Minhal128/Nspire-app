@@ -200,18 +200,22 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
 
     setPurchasing(true);
     try {
+      console.log('InspectionSummary: Starting purchase flow...');
       const purchase = await iapService.purchaseReportUnlock();
+
       if (!purchase) {
-        // User cancelled or purchase failed - reset state but keep modal open
+        console.log('InspectionSummary: Purchase returned null');
         setPurchasing(false);
         return;
       }
-      // The purchaseUpdatedListener above will handle verification
+
+      console.log('InspectionSummary: Purchase initiated successfully');
+      // The purchaseUpdatedListener in useEffect handles verification
     } catch (err: any) {
       setPurchasing(false);
       const errorMsg = err?.message || 'Something went wrong with the purchase.';
-      // Don't show blocking error - user can retry
-      console.warn('Purchase error:', errorMsg);
+      console.error('InspectionSummary: Purchase error:', errorMsg);
+      Alert.alert('Purchase Error', errorMsg);
     }
   };
 
