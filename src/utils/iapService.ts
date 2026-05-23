@@ -16,6 +16,7 @@ import {
   finishTransaction,
   purchaseUpdatedListener,
   purchaseErrorListener,
+  getAvailablePurchases,
   type ProductPurchase,
   type PurchaseError,
   type Product,
@@ -126,8 +127,20 @@ class IAPService {
 
       return (purchaseResult.purchase as any) || null;
     } catch (err: any) {
-      const errorCode = err?.code || err?.message;
+      const errorCode = err?.code || err?.message || '';
       console.warn('IAP: Purchase error details:', err);
+
+      // Handle "Already Owned" error - happens if a consumable wasn't finished
+      if (errorCode.includes('E_ALREADY_OWNED') || errorCode.includes('7') || err?.responseCode === 7) {
+        console.log('IAP: Item already owned. Attempting to retrieve existing purchase...');
+        const availablePurchases = await getAvailablePurchases();
+        const existingPurchase = availablePurchases.find(p => p.productId === IAP_PRODUCT_ID);
+
+        if (existingPurchase) {
+          console.log('IAP: Found existing unconsumed purchase:', existingPurchase.transactionId);
+          return existingPurchase as ProductPurchase;
+        }
+      }
 
       if (errorCode === 'E_USER_CANCELLED' || errorCode === 'RESULT_USER_CANCELED') {
         console.log('IAP: User cancelled purchase');
@@ -135,6 +148,20 @@ class IAPService {
       }
 
       throw new Error(`Purchase failed: ${err?.message || 'Unknown error'}`);
+    }
+  }
+
+  /**
+   * Get all unconsumed purchases.
+   */
+  async getUnconsumedPurchases(): Promise<ProductPurchase[]> {
+    if (!this.connected) return [];
+    try {
+      const purchases = await getAvailablePurchases();
+      return (purchases as ProductPurchase[]) || [];
+    } catch (err) {
+      console.warn('IAP: Failed to get available purchases', err);
+      return [];
     }
   }
 

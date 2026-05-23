@@ -585,9 +585,12 @@ function generateEnhancedDeficiencyTable(
         if (normalized.startsWith('data:')) {
           // Already a base64 data URI — use directly
           imgSrc = normalized;
+        } else if (normalized.startsWith('http://') || normalized.startsWith('https://')) {
+          // Remote URL — try base64 first, fall back to original URL
+          imgSrc = imageMap.get(normalized) || normalized;
         } else {
-          // Look up from the preloaded image map
-          imgSrc = imageMap.get(normalized) || (normalized.startsWith('http') ? normalized : '');
+          // Local file or other — try from map
+          imgSrc = imageMap.get(normalized) || '';
         }
       }
       const imgCell = imgSrc
@@ -1224,8 +1227,10 @@ function generateInProgressDeficiencyTable(
               const normalized = String(def.imageUri).trim();
               if (normalized.startsWith('data:')) {
                 imgSrc = normalized;
+              } else if (normalized.startsWith('http://') || normalized.startsWith('https://')) {
+                imgSrc = imageMap.get(normalized) || normalized;
               } else {
-                imgSrc = imageMap.get(normalized) || (normalized.startsWith('http') ? normalized : '');
+                imgSrc = imageMap.get(normalized) || '';
               }
             }
 
@@ -1279,8 +1284,10 @@ function generateInProgressDeficiencyTable(
             const normalized = String(def.imageUri).trim();
             if (normalized.startsWith('data:')) {
               imgSrc = normalized;
+            } else if (normalized.startsWith('http://') || normalized.startsWith('https://')) {
+              imgSrc = imageMap.get(normalized) || normalized;
             } else {
-              imgSrc = imageMap.get(normalized) || (normalized.startsWith('http') ? normalized : '');
+              imgSrc = imageMap.get(normalized) || '';
             }
           }
           const imgCell = imgSrc

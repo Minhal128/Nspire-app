@@ -59,6 +59,45 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
   const [checkingUnlock, setCheckingUnlock] = useState(true);
   const pendingExportAction = useRef<'pdf' | 'html' | 'excel' | null>(null);
 
+  // ── IAP: Verification Helper ────────────────────────────────────
+  const verifyPurchase = async (purchase: any) => {
+    if (purchase.productId === IAP_PRODUCT_ID && purchase.transactionReceipt) {
+      try {
+        setPurchasing(true);
+        // Verify with backend
+        const result = await iapService.verifyAndUnlock(
+          inspectionId,
+          purchase.purchaseToken || purchase.transactionReceipt,
+        );
+
+        if (result.isReportUnlocked) {
+          setIsReportUnlocked(true);
+          await iapService.acknowledge(purchase);
+          Alert.alert('Payment Successful', 'Your report has been unlocked! You can now export the full report.');
+
+          // Auto-trigger pending export
+          if (pendingExportAction.current) {
+            const action = pendingExportAction.current;
+            pendingExportAction.current = null;
+            setTimeout(() => {
+              if (action === 'pdf') handleExportPDF();
+              else if (action === 'html') handleExportHTML();
+              else if (action === 'excel') handleExportExcel();
+            }, 500);
+          }
+        } else {
+          Alert.alert('Verification Failed', result.message || 'Could not verify your purchase. Please contact support.');
+        }
+      } catch (err) {
+        console.error('Verification error:', err);
+        Alert.alert('Error', 'An error occurred during verification.');
+      } finally {
+        setPurchasing(false);
+        setPaymentModalVisible(false);
+      }
+    }
+  };
+
   // On mount: load any previously saved deficiencies and merge with the new ones
   useEffect(() => {
     const loadAndMerge = async () => {
@@ -120,38 +159,37 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
             iapCleanup = iapService.registerListeners(
               async (purchase) => {
                 if (!mounted) return;
-                if (purchase.productId === IAP_PRODUCT_ID && purchase.transactionReceipt) {
-                  // Verify with backend
-                  const result = await iapService.verifyAndUnlock(
-                    inspectionId,
-                    purchase.purchaseToken || purchase.transactionReceipt,
-                  );
-                  if (result.isReportUnlocked) {
-                    setIsReportUnlocked(true);
-                    await iapService.acknowledge(purchase);
-                    Alert.alert('Payment Successful', 'Your report has been unlocked! You can now export the full report.');
-                    // Auto-trigger pending export
-                    if (pendingExportAction.current) {
-                      const action = pendingExportAction.current;
-                      pendingExportAction.current = null;
-                      setTimeout(() => {
-                        if (action === 'pdf') handleExportPDF();
-                        else if (action === 'html') handleExportHTML();
-                        else if (action === 'excel') handleExportExcel();
-                      }, 500);
-                    }
-                  } else {
-                    Alert.alert('Verification Failed', result.message || 'Could not verify your purchase. Please contact support.');
-                  }
-                  setPurchasing(false);
-                  setPaymentModalVisible(false);
-                }
+                await verifyPurchase(purchase);
               },
               (error) => {
                 console.error('IAP purchase error listener:', error);
                 setPurchasing(false);
               },
             );
+
+            // Check for any unconsumed purchases that might have been interrupted
+            try {
+              const availablePurchases = await iapService.getUnconsumedPurchases();
+              const existingPurchase = availablePurchases.find(
+                (p) => p.productId === IAP_PRODUCT_ID
+              );
+              if (existingPurchase && mounted) {
+                console.log('IAP: Found unconsumed purchase on init, attempting to recover...');
+                // Don't use verifyPurchase directly here because it has Alerts
+                // Just do a silent verification if possible, or use a flag
+                const result = await iapService.verifyAndUnlock(
+                  inspectionId,
+                  existingPurchase.purchaseToken || existingPurchase.transactionReceipt || '',
+                );
+                if (result.isReportUnlocked && mounted) {
+                  setIsReportUnlocked(true);
+                  await iapService.acknowledge(existingPurchase);
+                  console.log('IAP: Recovered purchase successfully');
+                }
+              }
+            } catch (recoveryErr) {
+              console.warn('IAP recovery check failed:', recoveryErr);
+            }
           }
         }
 
@@ -213,7 +251,9 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
       }
 
       console.log('InspectionSummary: Purchase initiated successfully');
-      // The purchaseUpdatedListener in useEffect handles verification
+      // If a purchase object was returned directly (e.g. from existing unconsumed purchase),
+      // we process it here. The listener will also catch new purchases.
+      await verifyPurchase(purchase);
     } catch (err: any) {
       setPurchasing(false);
       const errorMsg = err?.message || 'Something went wrong with the purchase.';
@@ -309,7 +349,7 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
             }
           }
           // Fall back to Cloudinary URL if local conversion fails
-          return { ...defItem, _area: area, _unit: unit, imageUri: defItem.imageUrl || null };
+          return { ...defItem, _area: area, _unit: unit, imageUri: defItem.imageUri || defItem.imageUrl || null };
         })
       );
       await storeData(saveKey, {
@@ -509,7 +549,7 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
           }
         }
 
-        const finalImageUri = imageBase64 || cloudinaryUrl || null;
+        const finalImageUri = imageBase64 || cloudinaryUrl || defItem.imageUri || null;
         // Use per-deficiency saved area (_area) if available (set when continuing inspection),
         // otherwise fall back to the current session's area from inspectionData.
         const inspectionArea: string = defItem._area
