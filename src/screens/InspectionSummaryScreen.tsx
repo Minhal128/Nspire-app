@@ -58,6 +58,13 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
   const [purchasing, setPurchasing] = useState(false);
   const [checkingUnlock, setCheckingUnlock] = useState(true);
   const pendingExportAction = useRef<'pdf' | 'html' | 'excel' | null>(null);
+  // Holds latest export function references so the purchase listener (a stale
+  // closure from useEffect []) always calls the current render's version.
+  const exportFnRefs = useRef<{ pdf: () => void; html: () => void; excel: () => void }>({
+    pdf: () => {},
+    html: () => {},
+    excel: () => {},
+  });
 
   // ── IAP: Verification Helper ────────────────────────────────────
   const verifyPurchase = async (purchase: any) => {
@@ -159,7 +166,40 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
             iapCleanup = iapService.registerListeners(
               async (purchase) => {
                 if (!mounted) return;
+<<<<<<< HEAD
                 await verifyPurchase(purchase);
+=======
+                if (purchase.productId === IAP_PRODUCT_ID && purchase.transactionReceipt) {
+                  // Consume the transaction immediately so Google Play marks it
+                  // as available again — this prevents "You already own this item"
+                  // errors when purchasing reports for different inspections.
+                  await iapService.acknowledge(purchase);
+
+                  // Verify with backend
+                  const result = await iapService.verifyAndUnlock(
+                    inspectionId,
+                    purchase.purchaseToken || purchase.transactionReceipt,
+                  );
+                  if (result.isReportUnlocked) {
+                    setIsReportUnlocked(true);
+                    Alert.alert('Payment Successful', 'Your report has been unlocked! You can now export the full report.');
+                    // Auto-trigger pending export via ref so we get the latest function
+                    if (pendingExportAction.current) {
+                      const action = pendingExportAction.current;
+                      pendingExportAction.current = null;
+                      setTimeout(() => {
+                        if (action === 'pdf') exportFnRefs.current.pdf();
+                        else if (action === 'html') exportFnRefs.current.html();
+                        else if (action === 'excel') exportFnRefs.current.excel();
+                      }, 500);
+                    }
+                  } else {
+                    Alert.alert('Verification Failed', result.message || 'Could not verify your purchase. Please contact support.');
+                  }
+                  setPurchasing(false);
+                  setPaymentModalVisible(false);
+                }
+>>>>>>> ec2dfb5a74bcd61909a00036e7b4d72be7eb9cc5
               },
               (error) => {
                 console.error('IAP purchase error listener:', error);
@@ -857,6 +897,11 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
       setExportingExcel(false);
     }
   };
+
+  // Keep refs in sync with the latest function versions on every render.
+  exportFnRefs.current.pdf = handleExportPDF;
+  exportFnRefs.current.html = handleExportHTML;
+  exportFnRefs.current.excel = handleExportExcel;
 
   return (
     <SafeAreaView style={styles.container}>
