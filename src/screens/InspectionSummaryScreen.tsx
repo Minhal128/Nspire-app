@@ -66,6 +66,11 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
     excel: () => {},
   });
 
+  // ── Auto-show payment modal when user is coming from inspection flow ──
+  // If there are deficiencies and user navigates here via inspection, show payment modal
+  const [showPaymentOnMount, setShowPaymentOnMount] = useState(false);
+  const hasDeficienciesToExport = mergedDeficiencies.length > 0;
+
   // ── IAP: Verification Helper ────────────────────────────────────
   const verifyPurchase = async (purchase: any) => {
     if (purchase.productId === IAP_PRODUCT_ID && purchase.transactionReceipt) {
@@ -247,12 +252,20 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
         }
 
         // Check unlock status from backend in background (non-blocking)
+        // This now checks BOTH per-inspection AND user-level global unlock
         setCheckingUnlock(true);
         unlockCheckTimeout = setTimeout(async () => {
           try {
             const unlocked = await iapService.checkUnlockStatus(inspectionId);
             if (mounted && unlocked) {
               setIsReportUnlocked(true);
+            }
+            // Also check if user has a global unlock (paid once = all reports unlocked)
+            if (mounted && !unlocked) {
+              const hasGlobalUnlock = await iapService.hasUserGlobalUnlock();
+              if (hasGlobalUnlock) {
+                setIsReportUnlocked(true);
+              }
             }
           } catch (_) {
             // Backend check failed - user can still try to purchase
@@ -279,6 +292,18 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
       iapService.destroy();
     };
   }, []);
+
+  // ── Auto-show payment modal on mount if coming from inspection flow ──
+  useEffect(() => {
+    // Check if user is coming from inspection flow (has deficiencies and is not yet unlocked)
+    if (hasDeficienciesToExport && !isReportUnlocked && !checkingUnlock) {
+      // Small delay to let the screen render first
+      const timer = setTimeout(() => {
+        setPaymentModalVisible(true);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [hasDeficienciesToExport, isReportUnlocked, checkingUnlock]);
 
   // ── IAP: handle the purchase flow ────────────────────────────────
   const handlePurchaseReport = async () => {
@@ -947,6 +972,30 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
             Inspection #{inspectionId} | {inspectionDate}
           </Text>
 
+          {/* Payment Status Badge - Always visible */}
+          <View style={[
+            styles.paymentStatusBadge,
+            isReportUnlocked ? styles.paymentStatusBadgeUnlocked :
+              (checkingUnlock ? styles.paymentStatusBadgeChecking : styles.paymentStatusBadgeLocked)
+          ]}>
+            {isReportUnlocked ? (
+              <>
+                <Ionicons name="checkmark-circle" size={16} color="#10B981" />
+                <Text style={styles.paymentStatusTextUnlocked}>Report Unlocked</Text>
+              </>
+            ) : checkingUnlock ? (
+              <>
+                <ActivityIndicator size="small" color="#0E7490" />
+                <Text style={styles.paymentStatusTextChecking}>Checking payment status...</Text>
+              </>
+            ) : (
+              <>
+                <Ionicons name="lock-closed" size={16} color="#F97316" />
+                <Text style={styles.paymentStatusTextLocked}>Payment required for export</Text>
+              </>
+            )}
+          </View>
+
           <TouchableOpacity
             style={styles.exportButton}
             onPress={() => gateExport('pdf', handleExportPDF)}
@@ -1272,6 +1321,12 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
               <Ionicons name="close" size={24} color="#374151" />
             </TouchableOpacity>
 
+            {/* Payment Provider Badge */}
+            <View style={styles.paymentProviderBadge}>
+              <Ionicons name="logo-google-playstore" size={24} color="#FFFFFF" />
+              <Text style={styles.paymentProviderBadgeText}>Google Play</Text>
+            </View>
+
             {/* Icon */}
             <View style={styles.paymentIconContainer}>
               <Ionicons name="document-text" size={48} color="#0E7490" />
@@ -1284,9 +1339,9 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
 
             {/* Price */}
             <View style={styles.paymentPriceContainer}>
-              <Text style={styles.paymentPriceLabel}>One-time payment</Text>
+              <Text style={styles.paymentPriceLabel}>One-time payment (unlocks ALL reports)</Text>
               <Text style={styles.paymentPrice}>$99</Text>
-              <Text style={styles.paymentPriceSub}>per property report</Text>
+              <Text style={styles.paymentPriceSub}>One-time purchase - access all future reports</Text>
             </View>
 
             {/* Features */}
@@ -1296,6 +1351,7 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
                 'All deficiencies & images included',
                 'Complete scoring breakdown',
                 'Certification & compliance details',
+                'Access ALL future inspection reports',
               ].map((feature, idx) => (
                 <View key={idx} style={styles.paymentFeatureRow}>
                   <Ionicons name="checkmark-circle" size={20} color="#10B981" />
@@ -1871,6 +1927,53 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: '#F3F4F6',
     zIndex: 10,
+  },
+  paymentProviderBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1A1A1A',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginBottom: 16,
+    gap: 8,
+  },
+  paymentProviderBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  paymentStatusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginTop: 12,
+    gap: 6,
+  },
+  paymentStatusBadgeUnlocked: {
+    backgroundColor: '#E8F5E9',
+  },
+  paymentStatusBadgeChecking: {
+    backgroundColor: '#F3F4F6',
+  },
+  paymentStatusBadgeLocked: {
+    backgroundColor: '#FFF7ED',
+  },
+  paymentStatusTextUnlocked: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#10B981',
+  },
+  paymentStatusTextChecking: {
+    fontSize: 13,
+    color: '#666666',
+  },
+  paymentStatusTextLocked: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#F97316',
   },
   paymentIconContainer: {
     width: 80,

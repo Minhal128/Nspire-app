@@ -32,6 +32,7 @@ import { cloudinaryService } from '../services/cloudinaryService';
 import ModalZoomWrapper from '../components/ModalZoomWrapper';
 import { geminiService } from '../services/openaiService';
 import { inspectionService } from '../services/inspectionService';
+import { autoSaveInspectionDeficiency } from '../utils/storage';
 import { ScoringResult, calculateUnitScore, POSSIBLE_SCORE } from '../utils/scoringCalculations';
 import { UNIT_TOTAL_POSSIBLE_POINTS } from '../data/insideDeficiencyMapping';
 import {
@@ -704,6 +705,13 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         }
       }
 
+      // Auto-save each new deficiency to local storage immediately
+      for (const def of analyzedDeficiencies) {
+        const propertyId = String(property?._id || property?.id || property?.propertyId || 'unknown');
+        const buildingIdStr = normalizedBuildingLabel || 'default';
+        await autoSaveInspectionDeficiency(propertyId, buildingIdStr, def);
+      }
+
       const propertyIdentifier = String(property?._id || property?.id || property?.propertyId || 'unknown');
       const draftSavedAt = new Date().toISOString();
 
@@ -844,7 +852,8 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           unit_id: 'ALL_UNITS',
           inspection_type: 'REPORT_DRAFT_PROPERTY',
           inspectionData: {
-            deficiencies: analyzedDeficiencies,
+            // Save ALL deficiencies (existing + new) for complete report
+            deficiencies: mergedDeficiencies,
             property: {
               _id: propertyIdentifier,
               name: property?.name || 'Property',
@@ -853,8 +862,14 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             unit: normalizedUnit,
             inspectionType: 'Draft Inspection',
             savedAt: draftSavedAt,
+            // Include unit/area context for proper display
+            selectedUnits: selectedUnits,
+            currentUnit: currentUnit,
+            isOutsideInspection: isOutsideLocation,
+            location: isOutsideLocation ? selectedOutsideLocation : location,
           },
         });
+        console.log('Backend sync: Saved', mergedDeficiencies.length, 'deficiencies for property', propertyIdentifier);
       } catch (draftSaveError) {
         console.warn('Could not persist draft from detail screen:', draftSaveError);
       }

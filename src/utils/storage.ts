@@ -55,6 +55,77 @@ export const clearAllData = async (): Promise<void> => {
 };
 
 /**
+ * Auto-save a single deficiency to inspection storage
+ * Called incrementally as user records each deficiency
+ */
+export const autoSaveInspectionDeficiency = async (
+  propertyId: string,
+  buildingId: string,
+  deficiency: any
+): Promise<void> => {
+  const key = `saved_inspection_${propertyId}_${buildingId}`;
+
+  try {
+    const existingRaw = await AsyncStorage.getItem(key);
+    let existingData: any = {
+      property: { _id: propertyId },
+      buildingId,
+      deficiencies: [],
+      savedAt: new Date().toISOString(),
+    };
+
+    if (existingRaw) {
+      try {
+        existingData = JSON.parse(existingRaw);
+      } catch {
+        existingData = { property: { _id: propertyId }, buildingId, deficiencies: [], savedAt: new Date().toISOString() };
+      }
+    }
+
+    // Ensure deficiencies array exists
+    if (!Array.isArray(existingData.deficiencies)) {
+      existingData.deficiencies = [];
+    }
+
+    // Check for duplicate by deficiencyQRId
+    const isDuplicate = existingData.deficiencies.some(
+      (d: any) => d.deficiencyQRId && d.deficiencyQRId === deficiency.deficiencyQRId
+    );
+
+    if (!isDuplicate) {
+      existingData.deficiencies.push(deficiency);
+      existingData.savedAt = new Date().toISOString();
+      existingData.updatedAt = new Date().toISOString();
+
+      await AsyncStorage.setItem(key, JSON.stringify(existingData));
+      console.log('Auto-saved deficiency for property', propertyId, '- Total deficiencies:', existingData.deficiencies.length);
+    }
+  } catch (error) {
+    console.error('Error auto-saving inspection deficiency:', error);
+  }
+};
+
+/**
+ * Clear all inspection drafts for a property
+ */
+export const clearInspectionDraft = async (propertyId: string, buildingId?: string): Promise<void> => {
+  try {
+    if (buildingId) {
+      await AsyncStorage.removeItem(`saved_inspection_${propertyId}_${buildingId}`);
+    } else {
+      // Clear all drafts for this property
+      const keys = await AsyncStorage.getAllKeys();
+      const draftsToRemove = keys.filter(k => k.startsWith(`saved_inspection_${propertyId}`));
+      for (const key of draftsToRemove) {
+        await AsyncStorage.removeItem(key);
+      }
+    }
+  } catch (error) {
+    console.error('Error clearing inspection draft:', error);
+  }
+};
+
+/**
  * Storage keys constants
  */
 export const StorageKeys = {

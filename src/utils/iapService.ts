@@ -168,6 +168,7 @@ class IAPService {
   /**
    * After a successful purchase, send the token to our backend
    * for verification and database unlock.
+   * Now also marks the user as having a global unlock (user-level purchase).
    */
   async verifyAndUnlock(
     inspectionId: string,
@@ -182,6 +183,8 @@ class IAPService {
           purchaseToken,
           productId,
           packageName: 'com.minhal.inspire',
+          // Flag to mark this as a user-level unlock (paid once = all reports unlocked)
+          isUserLevelUnlock: true,
         },
       );
 
@@ -201,6 +204,23 @@ class IAPService {
   }
 
   /**
+   * Check if the user has a global unlock (paid for at least one report).
+   * If they have, all reports should be accessible without re-paying.
+   * This is checked in addition to per-inspection unlock status.
+   */
+  async hasUserGlobalUnlock(): Promise<boolean> {
+    try {
+      const response = await api.get<{ hasGlobalUnlock: boolean }>(
+        '/payments/user-has-unlock',
+      );
+      return response.hasGlobalUnlock ?? false;
+    } catch (err: any) {
+      console.warn('IAP: Global unlock check failed', err?.message || err);
+      return false;
+    }
+  }
+
+  /**
    * Finish (acknowledge) a transaction so Google Play doesn't
    * automatically refund it after 3 days.
    */
@@ -215,14 +235,21 @@ class IAPService {
 
   /**
    * Check if a report is already unlocked via the backend.
-   * Returns false on any error to allow normal purchase flow.
+   * Returns true if EITHER:
+   * - The specific inspection/building is unlocked, OR
+   * - The user has a global unlock (paid for any report once)
    */
   async checkUnlockStatus(inspectionId: string): Promise<boolean> {
     try {
-      const response = await api.get<{ success: boolean; isReportUnlocked: boolean }>(
-        `/payments/check-unlock/${inspectionId}`,
-      );
-      return response.isReportUnlocked ?? false;
+      // Check both per-inspection AND user-level global unlock
+      const response = await api.get<{
+        success: boolean;
+        isReportUnlocked: boolean;
+        hasGlobalUnlock?: boolean;
+      }>(`/payments/check-unlock/${inspectionId}`);
+
+      // If either the specific report or the user globally is unlocked, allow access
+      return (response.isReportUnlocked ?? false) || (response.hasGlobalUnlock ?? false);
     } catch (err: any) {
       // Silently fail - user can still proceed with purchase
       console.warn('IAP: Backend unlock check failed (allowing normal flow)', err?.message || err);
