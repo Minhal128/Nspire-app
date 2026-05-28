@@ -1011,14 +1011,13 @@ o If no fan, ensure an operable window is present
 
 // Now re-export them to maintain compatibility while adding new categories
 export {
-    BATHROOM_DEFICIENCIES,
     CABINET_STORAGE_DEFICIENCIES,
     CALL_FOR_AID_DEFICIENCIES,
     CARBON_MONOXIDE_DEFICIENCIES,
     CEILING_DEFICIENCIES,
     CHIMNEY_DEFICIENCIES,
     CLOTHES_DRYER_DEFICIENCIES,
-    DOOR_DEFICIENCIES as DOORS_DEFICIENCIES,
+    DOOR_DEFICIENCIES,
     DRAINAGE_DEFICIENCIES,
     EGRESS_DEFICIENCIES,
     ELECTRICAL_DEFICIENCIES,
@@ -1041,16 +1040,19 @@ export {
     STEPS_STAIRS_DEFICIENCIES,
     STRUCTURAL_DEFICIENCIES,
     TRASH_CHUTE_DEFICIENCIES,
-    VENTILATION_DEFICIENCIES as VENTILATION_OTHER_DEFICIENCIES,
+    VENTILATION_DEFICIENCIES,
     WALL_DEFICIENCIES,
     WATER_HEATER_DEFICIENCIES,
     WINDOW_DEFICIENCIES,
 } from './unitDeficiencyMapping';
 
+// Alias to fix ReferenceError if plural is used
+export const CABINETS_STORAGE_DEFICIENCIES = CABINET_STORAGE_DEFICIENCIES;
+
 // ==========================================
-// ALL UNIT CATEGORIES
+// ALL INSIDE CATEGORIES
 // ==========================================
-export const ALL_UNIT_CATEGORIES: UnitCategory[] = [
+export const ALL_INSIDE_CATEGORIES: UnitCategory[] = [
     BATHROOM_DEFICIENCIES,
     CABINET_STORAGE_DEFICIENCIES,
     CALL_FOR_AID_DEFICIENCIES,
@@ -1058,7 +1060,7 @@ export const ALL_UNIT_CATEGORIES: UnitCategory[] = [
     CEILING_DEFICIENCIES,
     CHIMNEY_DEFICIENCIES,
     CLOTHES_DRYER_DEFICIENCIES,
-    DOOR_DEFICIENCIES as DOORS_DEFICIENCIES,
+    DOOR_DEFICIENCIES,
     DRAINAGE_DEFICIENCIES,
     EGRESS_DEFICIENCIES,
     ELECTRICAL_DEFICIENCIES,
@@ -1081,18 +1083,24 @@ export const ALL_UNIT_CATEGORIES: UnitCategory[] = [
     STEPS_STAIRS_DEFICIENCIES,
     STRUCTURAL_DEFICIENCIES,
     TRASH_CHUTE_DEFICIENCIES,
-    VENTILATION_DEFICIENCIES as VENTILATION_OTHER_DEFICIENCIES,
+    VENTILATION_DEFICIENCIES,
     WALL_DEFICIENCIES,
     WATER_HEATER_DEFICIENCIES,
     WINDOW_DEFICIENCIES,
-];
+].map((cat: any) => {
+    if (!cat) return { itemName: 'Unknown' };
+    return {
+        ...cat,
+        itemName: cat.itemName || cat.category || 'Unnamed Category'
+    };
+});
 
 // ==========================================
 // HELPER FUNCTIONS
 // ==========================================
 export function getAllUnitDeficiencies(): UnitDeficiencyOption[] {
     const allDefs: UnitDeficiencyOption[] = [];
-    ALL_UNIT_CATEGORIES.forEach(cat => {
+    ALL_INSIDE_CATEGORIES.forEach(cat => {
         if (cat.subcategories) {
             cat.subcategories.forEach(sub => {
                 allDefs.push(...sub.deficiencies);
@@ -1111,18 +1119,69 @@ export function getUnitDeficiencyById(id: string): UnitDeficiencyOption | undefi
 }
 
 export function getUnitCategoriesList(): string[] {
-    return ALL_UNIT_CATEGORIES.map(c => c.itemName);
+    return ALL_INSIDE_CATEGORIES.map(c => c.itemName);
 }
 
 export function getSubcategoriesForCategory(categoryName: string): string[] {
-    const category = ALL_UNIT_CATEGORIES.find(c => c.itemName === categoryName);
+    const category = ALL_INSIDE_CATEGORIES.find(c => c.itemName === categoryName);
     if (!category || !category.subcategories) return [];
     return category.subcategories.map(s => s.name);
 }
 
 export function getDeficienciesForSubcategory(categoryName: string, subcategoryName: string): UnitDeficiencyOption[] {
-    const category = ALL_UNIT_CATEGORIES.find(c => c.itemName === categoryName);
+    const category = ALL_INSIDE_CATEGORIES.find(c => c.itemName === categoryName);
     if (!category || !category.subcategories) return [];
     const subcategory = category.subcategories.find(s => s.name === subcategoryName);
     return subcategory?.deficiencies || [];
+}
+
+// ==========================================
+// COMPATIBILITY ALIASES FOR deficiencyMapping.ts
+// ==========================================
+export const getInsideSubcategories = getSubcategoriesForCategory;
+
+export function getInsideSubcategoryDeficiencies(subcategoryName: string): UnitCategory | null {
+    // Find any category that has a subcategory with this name
+    for (const cat of ALL_INSIDE_CATEGORIES) {
+        if (cat.subcategories) {
+            const sub = cat.subcategories.find(s => s.name === subcategoryName);
+            if (sub) {
+                return {
+                    itemName: sub.name,
+                    deficiencies: sub.deficiencies
+                };
+            }
+        }
+    }
+    return null;
+}
+
+export function getInsideSubcategoryDeficienciesByParent(parentCategory: string, subcategoryName: string): UnitCategory | null {
+    const subdefs = getDeficienciesForSubcategory(parentCategory, subcategoryName);
+    if (subdefs.length > 0) {
+        return {
+            itemName: subcategoryName,
+            deficiencies: subdefs
+        };
+    }
+    return null;
+}
+
+export function getInsideDeficienciesForItem(itemName: string): UnitCategory | null {
+    const cat = ALL_INSIDE_CATEGORIES.find(c => c.itemName === itemName);
+    return cat || null;
+}
+
+export function getAllInsideDeficienciesForItem(itemName: string): UnitDeficiencyOption[] {
+    const cat = getInsideDeficienciesForItem(itemName);
+    if (!cat) return [];
+
+    const allDefs: UnitDeficiencyOption[] = [];
+    if (cat.subcategories) {
+        cat.subcategories.forEach(s => allDefs.push(...s.deficiencies));
+    }
+    if (cat.deficiencies) {
+        allDefs.push(...cat.deficiencies);
+    }
+    return allDefs;
 }

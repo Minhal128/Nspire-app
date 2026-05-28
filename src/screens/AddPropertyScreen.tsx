@@ -796,6 +796,7 @@ export default function AddPropertyScreen({
           />
         </View>
       </View>
+    </View>
   );
 
   return (
@@ -951,6 +952,9 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
+
+
+
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 16,

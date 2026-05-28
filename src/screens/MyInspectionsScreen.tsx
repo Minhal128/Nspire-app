@@ -775,7 +775,8 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
             </View>
           ) : (
             <View style={styles.propertyList}>
-              {filteredProperties.map((property) => property && {
+              {filteredProperties.map((property) => {
+                if (!property) return null;
                 const hasInProgressInspection = inProgressInspections.has(property._id || '');
                 return (
                 <TouchableOpacity

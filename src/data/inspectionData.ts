@@ -66,8 +66,10 @@ export const OUTSIDE_ITEMS: InspectionItem[] = [
 ];
 
 // Inside items generated directly from unitDeficiencyMapping.ts (35 categories)
-export const INSIDE_ITEMS: InspectionItem[] = ALL_UNIT_CATEGORIES.map((cat, index) => {
-  let name = cat.category.replace(/^\d+\.\s*/, ''); // Remove number prefix like "1. "
+export const INSIDE_ITEMS: InspectionItem[] = (ALL_UNIT_CATEGORIES || []).map((cat, index) => {
+  if (!cat) return { id: String(index + 1), name: 'Unknown' };
+  let name = (cat as any).category || (cat as any).itemName || 'Unknown';
+  name = name.replace(/^\d+\.\s*/, ''); // Remove number prefix like "1. "
   if (name.toLowerCase().includes('general comment')) {
     name = 'General Comment';
   }
@@ -75,8 +77,9 @@ export const INSIDE_ITEMS: InspectionItem[] = ALL_UNIT_CATEGORIES.map((cat, inde
 });
 
 // Unit items generated from insideDeficiencyMapping.ts (32 categories)
-export const UNIT_ITEMS: InspectionItem[] = ALL_INSIDE_CATEGORIES.map((cat, index) => {
-  let name = cat.itemName;
+export const UNIT_ITEMS: InspectionItem[] = (ALL_INSIDE_CATEGORIES || []).map((cat, index) => {
+  if (!cat) return { id: String(index + 1), name: 'Unknown' };
+  let name = (cat as any).itemName || (cat as any).category || 'Unknown';
   if (name.toLowerCase().includes('general comment')) {
     name = 'General Comment';
   }

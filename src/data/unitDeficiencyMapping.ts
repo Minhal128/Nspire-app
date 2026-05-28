@@ -11254,12 +11254,14 @@ export const ALL_UNIT_CATEGORIES = [
  * 2. Robust fuzzy match
  */
 const findUnitCategory = (categoryName: string) => {
+    if (!categoryName) return null;
+
     const normalize = (str: string) =>
-        str.replace(/^\d+\.\s*/, '')
+        str ? str.replace(/^\d+\.\s*/, '')
             .toLowerCase()
             .replace(/[\u2013\u2014\-]/g, ' ')
             .replace(/\s+/g, ' ')
-            .trim();
+            .trim() : '';
 
     const normalizedSearch = normalize(categoryName);
 
@@ -11288,6 +11290,8 @@ export const ALL_UNIT_DEFICIENCIES: UnitItemDeficiencies[] = ALL_UNIT_CATEGORIES
 
 // Function to get deficiencies by category name
 export const getUnitDeficienciesByCategory = (categoryName: string): UnitItemDeficiencies | null => {
+    if (!categoryName) return null;
+
     // Pass 1 & 2: Use shared helper (Exact match, then Robust match)
     const category = findUnitCategory(categoryName);
     if (category) {
@@ -11300,7 +11304,7 @@ export const getUnitDeficienciesByCategory = (categoryName: string): UnitItemDef
     const normalizedSearch = categoryName.toLowerCase().trim();
     for (const category of ALL_UNIT_CATEGORIES) {
         for (const item of category.items) {
-            if (item.itemName.toLowerCase() === normalizedSearch) {
+            if (item.itemName?.toLowerCase() === normalizedSearch) {
                 return item;
             }
         }
@@ -11321,14 +11325,16 @@ export const getUnitItemsForCategory = (categoryName: string): UnitItemDeficienc
 
 // Function to search deficiencies by keyword
 export const searchUnitDeficiencies = (keyword: string): UnitDeficiencyOption[] => {
+    if (!keyword) return [];
+    
     const normalizedKeyword = keyword.toLowerCase().trim();
     const results: UnitDeficiencyOption[] = [];
 
     for (const item of ALL_UNIT_DEFICIENCIES) {
         for (const deficiency of item.deficiencies) {
-            if (deficiency.name.toLowerCase().includes(normalizedKeyword) ||
-                deficiency.detail.toLowerCase().includes(normalizedKeyword) ||
-                deficiency.criteria.toLowerCase().includes(normalizedKeyword)) {
+            if (deficiency.name?.toLowerCase().includes(normalizedKeyword) ||
+                deficiency.detail?.toLowerCase().includes(normalizedKeyword) ||
+                deficiency.criteria?.toLowerCase().includes(normalizedKeyword)) {
                 results.push(deficiency);
             }
         }
@@ -11346,14 +11352,16 @@ export const searchUnitDeficiencies = (keyword: string): UnitDeficiencyOption[] 
  * Uses exact match first, then checks if search term starts category name
  */
 const matchInsideCategory = (searchName: string, categoryFullName: string): boolean => {
+    if (!searchName || !categoryFullName) return false;
+
     // Normalize string by removing number prefix, convert to lower case, 
     // and replace all variations of dashes/hyphens with a single space for robust comparison
     const normalize = (str: string) =>
-        str.replace(/^\d+\.\s*/, '')
+        str ? str.replace(/^\d+\.\s*/, '')
             .toLowerCase()
             .replace(/[\u2013\u2014\-]/g, ' ') // Replace various dash types with space
             .replace(/\s+/g, ' ')             // Collapse multiple spaces
-            .trim();
+            .trim() : '';
 
     const normalizedSearch = normalize(searchName);
     const catName = normalize(categoryFullName);
@@ -11413,14 +11421,16 @@ export const getInsideCategorySubcategories = (categoryName: string): string[] =
  * Get deficiencies for a specific subcategory within an Inside category
  */
 export const getInsideSubcategoryDeficiencies = (subcategoryName: string): UnitItemDeficiencies | null => {
+    if (!subcategoryName) return null;
+
     // Normalize string by removing number prefix, convert to lower case, 
     // and replace all variations of dashes/hyphens with a single space for robust comparison
     const normalize = (str: string) =>
-        str.replace(/^\d+\.\s*/, '')
+        str ? str.replace(/^\d+\.\s*/, '')
             .toLowerCase()
             .replace(/[\u2013\u2014\-]/g, ' ') // Replace various dash types with space
             .replace(/\s+/g, ' ')             // Collapse multiple spaces
-            .trim();
+            .trim() : '';
 
     const normalizedName = normalize(subcategoryName);
 
