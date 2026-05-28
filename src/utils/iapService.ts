@@ -16,7 +16,7 @@ import {
   finishTransaction,
   purchaseUpdatedListener,
   purchaseErrorListener,
-  getAvailablePurchases,
+    getAvailablePurchases,
   type ProductPurchase,
   type PurchaseError,
   type Product,

@@ -171,7 +171,7 @@
 //             criteria: 'Opens directly to the outside light regardless of the size or the ceiling has a damaged opening>2".',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'CEILING-02'
 //         }
 //     ]
@@ -187,7 +187,7 @@
 //             criteria: 'Unstable surfaces (e.g., drywall, gypsum, or ceiling tiles are missing or detached, or the presence of bubbling, deflection, loose joint tape, or loose panels). Water infiltration should be evaluated under the \'Leak Water\' category deficiency.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'CEILING-03'
 //         }
 //     ]
@@ -212,7 +212,7 @@
 //             criteria: 'Fireplace or fire burning appliance is not intentionally decommissioned.',
 //             severity: 'Life-Threatening',
 //             repairBy: '24Hrs',
-//             points: '27.25/n',
+//             points: '30/n',
 //             code: 'CHIMNEY-01'
 //         }
 //     ]
@@ -237,7 +237,7 @@
 //             criteria: 'Dryer is being used indoor.',
 //             severity: 'Life-Threatening',
 //             repairBy: '24Hrs',
-//             points: '27.25/n',
+//             points: '30/n',
 //             code: 'DRYER-01'
 //         }
 //     ]
@@ -253,7 +253,7 @@
 //             criteria: 'Airflow may be restricted.',
 //             severity: 'Life-Threatening',
 //             repairBy: '24Hrs',
-//             points: '27.25/n',
+//             points: '30/n',
 //             code: 'DRYER-02'
 //         }
 //     ]
@@ -269,7 +269,7 @@
 //             criteria: 'Dryer transition duct is not securely attached.',
 //             severity: 'Life-Threatening',
 //             repairBy: '24Hrs',
-//             points: '27.25/n',
+//             points: '30/n',
 //             code: 'DRYER-03'
 //         }
 //     ]
@@ -285,7 +285,7 @@
 //             criteria: 'Airflow may be restricted.',
 //             severity: 'Life-Threatening',
 //             repairBy: '24Hrs',
-//             points: '27.25/n',
+//             points: '30/n',
 //             code: 'DRYER-04'
 //         }
 //     ]
@@ -301,7 +301,7 @@
 //             criteria: 'Dryer transition duct is not securely attached.',
 //             severity: 'Life-Threatening',
 //             repairBy: '24Hrs',
-//             points: '27.25/n',
+//             points: '30/n',
 //             code: 'DRYER-05'
 //         }
 //     ]
@@ -358,7 +358,7 @@
 //             criteria: 'Observed evidence of prior installation, now missing.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'DOOR-ENTRY-03'
 //         }
 //     ]
@@ -390,7 +390,7 @@
 //             criteria: 'Seal, gasket, or stripping is damaged, inoperable, or missing, and there is either a gap of ¼ inch or more that allows light through or evidence of water penetration such as damage or dry rot around or under the door.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'DOOR-ENTRY-05'
 //         },
 //         {
@@ -400,7 +400,7 @@
 //             criteria: 'The self-closing mechanism is damaged. Or the self-closing mechanism does not pull the door closed and engage the latch. Or The self-closing mechanism is missing.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'DOOR-ENTRY-06'
 //         },
 //         {
@@ -410,7 +410,7 @@
 //             criteria: 'There is delamination or separation of the door surface 2 inches wide or greater. Or There is delamination or separation that affects the integrity of the door.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'DOOR-ENTRY-07'
 //         },
 //         {
@@ -430,7 +430,7 @@
 //             criteria: 'Entry door does not open.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'DOOR-ENTRY-09'
 //         },
 //         {
@@ -440,7 +440,7 @@
 //             criteria: 'Crack, split, separation, or hole1/4 inch or greater in diameter penetrating through the door or door sides.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'DOOR-ENTRY-10'
 //         }
 //     ]
@@ -506,7 +506,7 @@
 //             criteria: 'Fire-labeled door is missing (i.e., evidence of prior installation, but now not present or is incomplete).',
 //             severity: 'Life-Threatening',
 //             repairBy: '24Hrs',
-//             points: '27.25/n',
+//             points: '30/n',
 //             code: 'DOOR-FIRE-06'
 //         },
 //         {
@@ -542,7 +542,7 @@
 //             criteria: 'A passage door does not open such that it may limit access when needed.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'DOOR-GEN-02'
 //         },
 //         {
@@ -568,7 +568,7 @@
 //             criteria: 'Door will not open and remain open, does not function adequately.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'DOOR-GARAGE-01'
 //         },
 //         {
@@ -578,7 +578,7 @@
 //             criteria: 'Garage door has a hole of any size that penetrates through to the interior.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'DOOR-GARAGE-02'
 //         }
 //     ]
@@ -603,7 +603,7 @@
 //             criteria: 'There is a problem with the drainage.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'DRAINAGE-01'
 //         }
 //     ]
@@ -628,7 +628,7 @@
 //             criteria: 'Double-key Cylinder deadbolt locks or security features requiring a key, tool, or special effort from the stress side are not allowed on exit doors, exit access doors, or egress windows. Fixed or movable security bars must not block designated egress points, and no furniture or items may obstruct the means of egress.',
 //             severity: 'Life-Threatening',
 //             repairBy: '24Hrs',
-//             points: '27.25/n',
+//             points: '30/n',
 //             code: 'EGRESS-01'
 //         }
 //     ]
@@ -653,7 +653,7 @@
 //             criteria: 'Electrical conductors must be enclosed and insulated, with no exposed wiring, open ports, missing covers, or gaps over 1/2"; missing light bulbs are evaluated under interior or exterior lighting.',
 //             severity: 'Life-Threatening',
 //             repairBy: '24Hrs',
-//             points: '27.25/n',
+//             points: '30/n',
 //             code: 'ELEC-COND-01'
 //         },
 //         {
@@ -673,7 +673,7 @@
 //             criteria: 'Any portion of a visually accessible (i.e., can be reasonably accessed and observed) outlet or switch is damaged (i.e., visibly defective; impacts functionality) such that it may not safely carry or control electrical current at the outlet or switch.',
 //             severity: 'Life-Threatening',
 //             repairBy: '24Hrs',
-//             points: '27.25/n',
+//             points: '30/n',
 //             code: 'ELEC-COND-03'
 //         },
 //         {
@@ -693,7 +693,7 @@
 //             criteria: 'Water is currently in contact with an electrical conductor. Check for the source (water infiltration from the ceiling or inside of the wall).',
 //             severity: 'Life-Threatening',
 //             repairBy: '24Hrs',
-//             points: '27.25/n',
+//             points: '30/n',
 //             code: 'ELEC-COND-05'
 //         }
 //     ]
@@ -745,7 +745,7 @@
 //             criteria: 'The electrical service panel is not reasonably accessible (i.e., it cannot be reached and opened without moving obstructions, dismantling, destructive measures, or actions that may pose a risk to persons or their personal property). Or it is looked or in locked location, no key to access.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'ELEC-PANEL-01'
 //         },
 //         {
@@ -765,7 +765,7 @@
 //             criteria: 'The overcurrent protection device (i.e., fuse or breaker) is damaged (i.e., visibly defective; impacts functionality) such that it may not interrupt the circuit during an over current condition (i.e., paint, or other foreign materials).',
 //             severity: 'Life-Threatening',
 //             repairBy: '24Hrs',
-//             points: '27.25/n',
+//             points: '30/n',
 //             code: 'ELEC-PANEL-03'
 //         }
 //     ]
@@ -790,7 +790,7 @@
 //             criteria: 'There is more than 3/4 inch difference in level between the elevator cab and the building floor.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'ELEVATOR-01'
 //         }
 //     ]
@@ -806,7 +806,7 @@
 //             criteria: 'All elevators must be in working condition.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'ELEVATOR-02'
 //         }
 //     ]
@@ -822,7 +822,7 @@
 //             criteria: 'Elevator system or component thereof not meeting function or purpose.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'ELEVATOR-03'
 //         }
 //     ]
@@ -838,7 +838,7 @@
 //             criteria: 'Overall, the system or a component thereof is not meeting its function or purpose.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'ELEVATOR-04'
 //         }
 //     ]
@@ -863,7 +863,7 @@
 //             criteria: 'An exit sign is deficient if it\'s damaged, missing, obstructed so "EXIT" isn\'t clearly visible, or not adequately illuminated.',
 //             severity: 'Life-Threatening',
 //             repairBy: '24Hrs',
-//             points: '27.25/n',
+//             points: '30/n',
 //             code: 'FIRE-EXIT-01'
 //         }
 //     ]
@@ -879,7 +879,7 @@
 //             criteria: 'A fire extinguisher is damaged or missing (i.e., evidence of prior installation, but now not present or is incomplete).',
 //             severity: 'Life-Threatening',
 //             repairBy: '24Hrs',
-//             points: '27.25/n',
+//             points: '30/n',
 //             code: 'FIRE-EXT-01'
 //         },
 //         {
@@ -889,7 +889,7 @@
 //             criteria: 'Pressure gauge indicates that the fire extinguisher is over or under charged.',
 //             severity: 'Life-Threatening',
 //             repairBy: '24Hrs',
-//             points: '27.25/n',
+//             points: '30/n',
 //             code: 'FIRE-EXT-02'
 //         },
 //         {
@@ -899,7 +899,7 @@
 //             criteria: 'The date on the service tag of any fire extinguisher has exceeded one year. OR The fire extinguisher tag is missing or illegible. OR A non-chargeable or disposable fire extinguisher is more than 12 years old (based on manufacture date).',
 //             severity: 'Life-Threatening',
 //             repairBy: '24Hrs',
-//             points: '27.25/n',
+//             points: '30/n',
 //             code: 'FIRE-EXT-03'
 //         }
 //     ]
@@ -915,7 +915,7 @@
 //             criteria: 'Excluding heating oil in a heating oil tank, propane, gasoline, kerosene should never be stored in the Unit. Combustible item in its original container and stored in a safe place (e.g. under a kitchen sink cabinet, in a hall closet,etc.) is not a deficiency.',
 //             severity: 'Life-Threatening',
 //             repairBy: '24Hrs',
-//             points: '27.25/n',
+//             points: '30/n',
 //             code: 'FIRE-FLAM-01'
 //         }
 //     ]
@@ -926,8 +926,8 @@
 //     deficiencies: [
 //         {
 //             id: 'fire_smoke_1',
-//             name: 'A required smoke alarm does not produce an audio or visual alarm when tested.',
-//             detail: 'A required smoke alarm does not produce an audio or visual alarm when tested.',
+//             name: 'Smoke alarm does not produce an audio or visual alarm when tested.',
+//             detail: 'Smoke alarm does not produce an audio or visual alarm when tested.',
 //             criteria: 'A required smoke alarm does not emit visual or audio alarm or the alarm does not cease after testing.',
 //             severity: 'Life-Threatening',
 //             repairBy: '24Hrs',
@@ -936,7 +936,7 @@
 //         },
 //         {
 //             id: 'fire_smoke_2',
-//             name: 'Smoke alarm not installed where required.',
+//             name: 'Smoke alarm not installed inside each bedroom, and Smoke alarm not installed outside the bedroom(s) and in each bedroom or on each level.',
 //             detail: 'Smoke alarm not installed where required.',
 //             criteria: 'Smoke alarm not installed within a hallway in the vicinity of multiple units or classrooms on each level.',
 //             severity: 'Life-Threatening',
@@ -977,7 +977,7 @@
 //             criteria: 'The sprinkler assembly component is damaged,, inoperable or missing.',
 //             severity: 'Life-Threatening',
 //             repairBy: '24Hrs',
-//             points: '27.25/n',
+//             points: '30/n',
 //             code: 'FIRE-SPRINKLER-01'
 //         },
 //         {
@@ -987,7 +987,7 @@
 //             criteria: 'Sprinkler head assembly has evidence of corrosion.',
 //             severity: 'Life-Threatening',
 //             repairBy: '24Hrs',
-//             points: '27.25/n',
+//             points: '30/n',
 //             code: 'FIRE-SPRINKLER-02'
 //         },
 //         {
@@ -997,7 +997,7 @@
 //             criteria: 'Foreign material covers 50% or more of the sprinkler assembly or 50% or more of the glass bulb on the sprinkler assembly.',
 //             severity: 'Life-Threatening',
 //             repairBy: '24Hrs',
-//             points: '27.25/n',
+//             points: '30/n',
 //             code: 'FIRE-SPRINKLER-03'
 //         },
 //         {
@@ -1007,7 +1007,7 @@
 //             criteria: '18 inches clearance is not due to feature within built (e.g. closet, utility closet).',
 //             severity: 'Life-Threatening',
 //             repairBy: '24Hrs',
-//             points: '27.25/n',
+//             points: '30/n',
 //             code: 'FIRE-SPRINKLER-04'
 //         }
 //     ]
@@ -1032,7 +1032,7 @@
 //             criteria: 'Surface abnormalities may indicate the presence of deficiency t(i.e. lifting iles,tilers, hardwood cupping, linoleum bubbling, etc.).',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'FLOOR-01'
 //         }
 //     ]
@@ -1048,7 +1048,7 @@
 //             criteria: 'Repair is needed.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'FLOOR-02'
 //         }
 //     ]
@@ -1069,11 +1069,11 @@
 //         {
 //             id: 'foundation_1',
 //             name: 'Foundation exposed rebar or foundation is spalling, flaking, or chipping.',
-//             detail: 'The affected area is 12x12 inches or greater goes into the foundation at a depth of ¾ inch or greater.',
+//             detail: 'The structure has any exposed rebar. OR Foundation is spalling, flaking, or chipping and the affected area is 12x12 inches or greater and goes into the foundation at a depth of ¾ inch or greater.',
 //             criteria: 'Foundation exhibits a sign of failure, and it is not structural.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'FOUNDATION-01'
 //         }
 //     ]
@@ -1089,7 +1089,7 @@
 //             criteria: 'Foundation cracks (e.g., cracks in walls, no functioning doors, unlevel floors or windows).',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'FOUNDATION-02'
 //         }
 //     ]
@@ -1105,7 +1105,7 @@
 //             criteria: '(e.g., Excessive dampness, collected water, stains, or mineral deposits).',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'FOUNDATION-03'
 //         }
 //     ]
@@ -1121,7 +1121,7 @@
 //             criteria: 'Foundation damage (e.g., rot) on support posts, columns, or girders.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'FOUNDATION-04'
 //         }
 //     ]
@@ -1146,7 +1146,7 @@
 //             criteria: 'Any movement whatsoever is detected in the grab bar.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'GRAB-BAR-01'
 //         }
 //     ]
@@ -1171,7 +1171,7 @@
 //             criteria: 'Evidence of bedbugs is found (i.e., live or dead bedbugs, feces, eggs, or blood trail).',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'HAZARD-INFEST-01'
 //         },
 //         {
@@ -1181,7 +1181,7 @@
 //             criteria: 'Evidence of cockroaches is found (i.e., dead or live cockroaches, shed skins, droppings (tiny black specks or smears), and egg cases).',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'HAZARD-INFEST-02'
 //         },
 //         {
@@ -1191,7 +1191,7 @@
 //             criteria: 'Evidence of mice is found (i.e., a live or dead mouse or mice, droppings, chewed holes, or urine trails).',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'HAZARD-INFEST-03'
 //         },
 //         {
@@ -1201,7 +1201,7 @@
 //             criteria: 'Evidence is present of other pest infestations, including but not limited to a trail of ants, wasps/beehives, squirrels, birds, and bats in an interior area. Pests are animals with potential impacts on residents health and safety.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'HAZARD-INFEST-04'
 //         },
 //         {
@@ -1211,7 +1211,7 @@
 //             criteria: 'Evidence of rats is found (i.e., a live or dead rat or droppings, chewed holes).',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'HAZARD-INFEST-05'
 //         },
 //         {
@@ -1221,12 +1221,12 @@
 //             criteria: 'Sighting of at least one live bedbug in two or more units or two rooms of the same unit during the daytime through visual assessment.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'HAZARD-INFEST-06'
 //         },
 //         {
 //             id: 'hazard_infest_7',
-//             name: 'Extensive cockroach infestation (live).',
+//             name: 'Extensive cockroach infestation',
 //             detail: 'Extensive cockroach infestation (live).',
 //             criteria: 'Sighting of one or more live cockroaches in two or more area observed simultaneously during visual assessment on the inspection day.',
 //             severity: 'Severe',
@@ -1241,7 +1241,7 @@
 //             criteria: 'Sighting of at least one live mouse in two or more, units or two rooms of the same unit during the daytime surface visual assessment.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'HAZARD-INFEST-08'
 //         },
 //         {
@@ -1251,7 +1251,7 @@
 //             criteria: 'A live rat is seen in the unit.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'HAZARD-INFEST-09'
 //         }
 //     ]
@@ -1267,7 +1267,7 @@
 //             criteria: 'Litter is considered deficient if 10 or more small items or any large discarded items are found in a 10×10 ft area not designated for garbage.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'HAZARD-LITTER-01'
 //         }
 //     ]
@@ -1299,7 +1299,7 @@
 //             criteria: 'There is an abrupt change in vertical elevation or horizontal separation on any walking surface along the normal path of travel, consisting of the following criteria: - An unintended ¾ inch or greater vertical difference',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'HAZARD-TRIP-01'
 //         },
 //         {
@@ -1309,7 +1309,7 @@
 //             criteria: 'horizontal separation on any walking surface along the normal path of travel, consisting of the following criteria: -An unintended 2-inch horizontal separation perpendicular to the path of travel.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'HAZARD-TRIP-02'
 //         }
 //     ]
@@ -1350,7 +1350,7 @@
 //             criteria: 'a combustion chamber cover or gas shutoff valve was previously installed and is now not present or is incomplete.',
 //             severity: 'Life-Threatening',
 //             repairBy: '24Hrs',
-//             points: '27.25/n',
+//             points: '30/n',
 //             code: 'HVAC-02'
 //         }
 //     ]
@@ -1366,7 +1366,7 @@
 //             criteria: 'Not properly connected through to the ceiling or wall. Metal tape of any kind is not a substitute for improperly connected flue vent.',
 //             severity: 'Life-Threatening',
 //             repairBy: '24Hrs',
-//             points: '27.25/n',
+//             points: '30/n',
 //             code: 'HVAC-03'
 //         }
 //     ]
@@ -1414,7 +1414,7 @@
 //             criteria: 'The permanently installed heating source is not working to create heat. Heating systems in tropical islands are excluded.',
 //             severity: 'Life-Threatening',
 //             repairBy: '24Hrs',
-//             points: '27.25/n',
+//             points: '30/n',
 //             code: 'HVAC-06'
 //         }
 //     ]
@@ -1430,7 +1430,7 @@
 //             criteria: 'Inside, include any and all common areas.',
 //             severity: 'Life-Threatening',
 //             repairBy: '24Hrs',
-//             points: '27.25/n',
+//             points: '30/n',
 //             code: 'HVAC-07'
 //         }
 //     ]
@@ -1455,7 +1455,7 @@
 //             criteria: 'Some of the kitchen cabinet doors, drawers, or shelves are missing (i.e., evidence of prior installation, but now not present or incomplete). Visibly defective; impacts the functionality or does not meet the functionality or serve the purpose.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'KITCHEN-CAB-01'
 //         }
 //     ]
@@ -1471,7 +1471,7 @@
 //             criteria: 'A burner does not produce heat, but at least one other burner is present on the cooking range or cooktop and does produce heat.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'KITCHEN-COOK-01'
 //         },
 //         {
@@ -1481,7 +1481,7 @@
 //             criteria: 'Cooking range, cooktop, or oven component is missing (i.e., evidence of prior installation, but now not present or is incomplete) such that the device is unsafe for use.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'KITCHEN-COOK-02'
 //         },
 //         {
@@ -1507,7 +1507,7 @@
 //             criteria: 'A kitchen countertop or food prep area is deficient if 10% or more of the surface is exposed substrate or if the space does not reasonably support adequate food preparation.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'KITCHEN-FOOD-01'
 //         },
 //         {
@@ -1517,7 +1517,7 @@
 //             criteria: 'Countertop is missing (i.e., evidence of prior installation, but now not present or is incomplete) from the kitchen or food preparation space.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'KITCHEN-FOOD-02'
 //         }
 //     ]
@@ -1533,7 +1533,7 @@
 //             criteria: 'Elevated moisture level (e.g., peeling paint or wallpaper, a wall that is warped or stained, or a buckled, cracked, or water-stained ceiling, carpet, or wooden floor).',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'KITCHEN-MOLD-01'
 //         },
 //         {
@@ -1543,7 +1543,7 @@
 //             criteria: 'Cumulative area of patches is more than 9 square foot in a room.',
 //             severity: 'Life-Threatening',
 //             repairBy: '24Hrs',
-//             points: '27.25/n',
+//             points: '30/n',
 //             code: 'KITCHEN-MOLD-02'
 //         },
 //         {
@@ -1563,7 +1563,7 @@
 //             criteria: 'Cumulative area of patches is more than 4 square inches and less than one square foot in a room.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'KITCHEN-MOLD-04'
 //         }
 //     ]
@@ -1579,7 +1579,7 @@
 //             criteria: 'Refrigerator component is damaged (i.e., visibly defective) such that it impacts functionality.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'KITCHEN-FRIDGE-01'
 //         },
 //         {
@@ -1589,7 +1589,7 @@
 //             criteria: 'Refrigerator is inoperable (i.e., overall system is not meeting function or purpose; with or without visible damage) such that it may be unable to safely and adequately store food',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'KITCHEN-FRIDGE-02'
 //         }
 //     ]
@@ -1605,7 +1605,7 @@
 //             criteria: 'Control knobs do not activate or deactivate hot and cold water.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'KITCHEN-SINK-01'
 //         },
 //         {
@@ -1615,7 +1615,7 @@
 //             criteria: 'Sink component is missing (i.e., evidence of prior installation, but now not present or is incomplete).',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'KITCHEN-SINK-02'
 //         },
 //         {
@@ -1625,7 +1625,7 @@
 //             criteria: 'Signs of separation at the seams of a sink or vanity is pulling away from the wall.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'KITCHEN-SINK-03'
 //         },
 //         {
@@ -1635,7 +1635,7 @@
 //             criteria: 'Water is not draining from the basin of the sink. slow or clogged drain.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'KITCHEN-SINK-04'
 //         },
 //         {
@@ -1645,7 +1645,7 @@
 //             criteria: 'Sink component is damaged (i.e., visibly defective; impacts functionality) or missing (i.e., evidence of prior installation, but now not present or is incomplete) and the sink is functionally adequate.',
 //             severity: 'Moderate',
 //             repairBy: '60 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'KITCHEN-SINK-05'
 //         },
 //         {
@@ -1671,7 +1671,7 @@
 //             criteria: 'An exhaust fan, window, or adequate means of ventilation is not present and operable.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'KITCHEN-VENT-01'
 //         },
 //         {
@@ -1681,7 +1681,7 @@
 //             criteria: 'Exhaust system component is damaged (i.e., visibly defective; impacts functionality). OR Exhaust system component is missing (i.e., evidence of prior installation, but now not present or is incomplete).',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'KITCHEN-VENT-02'
 //         },
 //         {
@@ -1691,7 +1691,7 @@
 //             criteria: 'Exhaust vent inoperable.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'KITCHEN-VENT-03'
 //         },
 //         {
@@ -1701,7 +1701,7 @@
 //             criteria: 'Exhaust system is blocked such that airflow may be restricted.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'KITCHEN-VENT-04'
 //         }
 //     ]
@@ -1767,7 +1767,7 @@
 //             criteria: 'Cap to the cleanout or pump cover is detached or missing.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'LEAK-SEWAGE-02'
 //         }
 //     ]
@@ -1783,7 +1783,7 @@
 //             criteria: 'Protective cap or riser is damaged.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'LEAK-SEWAGE-03'
 //         }
 //     ]
@@ -1824,7 +1824,7 @@
 //             criteria: 'Environmental water intrusion.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'LEAK-WATER-01'
 //         }
 //     ]
@@ -1840,7 +1840,7 @@
 //             criteria: 'Fluid is leaking from the sprinkler assembly.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'LEAK-WATER-02'
 //         }
 //     ]
@@ -1856,7 +1856,7 @@
 //             criteria: 'Plumbing leak.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'LEAK-WATER-03'
 //         }
 //     ]
@@ -1897,7 +1897,7 @@
 //             criteria: 'A permanently installed light fixture is inoperable (i.e., the overall system or component thereof is not meeting function or purpose; with or without visible damage).',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'LIGHTING-INT-01'
 //         },
 //         {
@@ -1907,7 +1907,7 @@
 //             criteria: 'A permanently installed light fixture is not secure to the designed attachment point or the attachment point is not stable.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'LIGHTING-INT-02'
 //         },
 //         {
@@ -1917,7 +1917,7 @@
 //             criteria: 'Permanent lighting fixtures are missing or not functioning.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'LIGHTING-INT-03'
 //         }
 //     ]
@@ -1942,7 +1942,7 @@
 //             criteria: 'Elevated moisture level (e.g., peeling paint or wallpaper, a wall that is warped or stained, or a buckled, cracked, or water-stained ceiling, carpet, or wooden floor).',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'MOLD-01'
 //         },
 //         {
@@ -1952,7 +1952,7 @@
 //             criteria: 'Cumulative area of patches is more than 9 square foot in a room.',
 //             severity: 'Life-Threatening',
 //             repairBy: '24Hrs',
-//             points: '27.25/n',
+//             points: '30/n',
 //             code: 'MOLD-02'
 //         },
 //         {
@@ -1972,7 +1972,7 @@
 //             criteria: 'Cumulative area of patches is more than 4 square inches and less than 1 square foot in a room.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'MOLD-04'
 //         }
 //     ]
@@ -1997,7 +1997,7 @@
 //             criteria: 'Less than 2 square feet per room deteriorated paint, damage to the surface such as holes that expose paint layers, and friction on painted surfaces.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'PAINT-01'
 //         }
 //     ]
@@ -2038,7 +2038,7 @@
 //             criteria: 'The guardrail is missing (i.e., evidence of prior installation but is now not present or is incomplete) or not installed (i.e., never installed, but should have been) along a walking surface that is more than 30 inches above the floor or grade below.',
 //             severity: 'Life-Threatening',
 //             repairBy: '24Hrs',
-//             points: '27.25/n',
+//             points: '30/n',
 //             code: 'RAILING-GUARD-01'
 //         },
 //         {
@@ -2049,7 +2049,7 @@
 //             // !! You must define the correct severity, repair timeline, and points for this level.
 //             severity: 'Life-Threatening', // Example - Confirm this with your scoring system.
 //             repairBy: '24Hrs',   // Example - Confirm this with your scoring system.
-//             points: '27.25/n',    // Example - Confirm this with your scoring system.
+//             points: '30/n',    // Example - Confirm this with your scoring system.
 //             code: 'RAILING-GUARD-02' // Example - Unique code
 //         }
 //     ]
@@ -2065,7 +2065,7 @@
 //             criteria: 'Handrail is missing, not functionally adequate, not installed where required, or not secured.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '27.25/n',
+//             points: '30/n',
 //             code: 'RAILING-HAND-01'
 //         },
 //         {
@@ -2075,7 +2075,7 @@
 //             criteria: 'A handrail is deficient if it cant be reasonably grasped for support, isnt continuous along the full stair flight, or falls outside the required height range of 28 to 42 inches.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'RAILING-HAND-02'
 //         },
 //         {
@@ -2095,7 +2095,7 @@
 //             criteria: 'There is movement in the anchors of the handrail.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'RAILING-HAND-04'
 //         }
 //     ]
@@ -2150,7 +2150,7 @@
 //             criteria: 'Hole in the door and damaged hardware, missing door. The resident should be able to use the bathtub or shower without being observed from an adjacent area or exterior space.',
 //             severity: 'Moderate',
 //             repairBy: '60 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'RESTROOM-BATH-04'
 //         },
 
@@ -2167,7 +2167,7 @@
 //             criteria: 'Restroom cabinet doors, drawers, or shelves are missing or damaged.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'RESTROOM-CAB-01'
 //         }
 //     ]
@@ -2183,7 +2183,7 @@
 //             criteria: 'Any movement detected in the grab bar.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'RESTROOM-GRAB-01'
 //         }
 //     ]
@@ -2199,7 +2199,7 @@
 //             criteria: 'Visual observation of mold-like substance or signs of elevated moisture levels.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'RESTROOM-MOLD-01'
 //         }
 //     ]
@@ -2215,7 +2215,7 @@
 //             criteria: 'Control knobs do not activate or deactivate hot and cold water.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'RESTROOM-SINK-01'
 //         },
 //         {
@@ -2225,7 +2225,7 @@
 //             criteria: 'Sink component is missing (i.e., evidence of prior installation, but now not present or is incomplete).',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'RESTROOM-SINK-02'
 //         },
 //         {
@@ -2235,7 +2235,7 @@
 //             criteria: 'Signs of separation at the seams of a sink or vanity is pulling away from the wall.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'RESTROOM-SINK-03'
 //         },
 //         {
@@ -2245,7 +2245,7 @@
 //             criteria: 'Water is not draining from the basin of the sink. slow or clogged drain.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'RESTROOM-SINK-04'
 //         },
 //         {
@@ -2271,7 +2271,7 @@
 //             criteria: 'A toilet is deficient if it\'s damaged or inoperable, as long as another operational toilet exists elsewhere in the building.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'RESTROOM-TOILET-01'
 //         },
 //         {
@@ -2281,7 +2281,7 @@
 //             criteria: 'A toilet is missing (i.e., evidence of prior installation, but now not present or is incomplete) and at least 1 toilet is installed elsewhere within the Unit that is operational.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'RESTROOM-TOILET-02'
 //         },
 //         {
@@ -2291,7 +2291,7 @@
 //             criteria: 'A single installed toilet is deficient if it\'s damaged or inoperable, affecting its ability to function properly.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'RESTROOM-TOILET-03'
 //         },
 //         {
@@ -2301,7 +2301,7 @@
 //             criteria: 'Only 1 toilet was installed, and it is missing (i.e., evidence of prior installation, but now not present or is incomplete).',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'RESTROOM-TOILET-04'
 //         },
 //         {
@@ -2311,7 +2311,7 @@
 //             criteria: 'Hole in the door and damaged hardware, missing door. The resident should be able to use the toilet without being observed from an adjacent area or exterior space.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'RESTROOM-TOILET-05'
 //         },
 //         {
@@ -2321,7 +2321,7 @@
 //             criteria: 'A toilet is deficient if any component is damaged, inoperable, or missing in a way that limits the resident\'s ability to discharge human waste safely.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'RESTROOM-TOILET-06'
 //         },
 //         {
@@ -2331,7 +2331,7 @@
 //             criteria: 'A toilet component is deficient if it\'s damaged, inoperable, or missing, even if it does not limit the resident\'s ability to discharge human waste safely.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'RESTROOM-TOILET-07'
 //         },
 //         {
@@ -2341,7 +2341,7 @@
 //             criteria: 'Toilet is not secured at the base.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'RESTROOM-TOILET-08'
 //         }
 //     ]
@@ -2357,7 +2357,7 @@
 //             criteria: 'Exhaust fan system failure, missing components, or blocked airflow.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'RESTROOM-VENT-01'
 //         }
 //     ]
@@ -2382,7 +2382,7 @@
 //             criteria: 'Control knobs do not activate or deactivate hot and cold water.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'SINK-LAUNDRY-01'
 //         }
 //     ]
@@ -2398,7 +2398,7 @@
 //             criteria: 'Sink component is missing (i.e., evidence of prior installation, but now not present or is incomplete).',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'SINK-LAUNDRY-02'
 //         }
 //     ]
@@ -2414,7 +2414,7 @@
 //             criteria: 'Signs of separation at the seams of a sink or vanity is pulling away from the wall.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'SINK-LAUNDRY-03'
 //         }
 //     ]
@@ -2430,7 +2430,7 @@
 //             criteria: 'not present or incomplete.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'SINK-LAUNDRY-04'
 //         }
 //     ]
@@ -2446,7 +2446,7 @@
 //             criteria: 'Water is not draining from the basin of the sink.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'SINK-LAUNDRY-05'
 //         }
 //     ]
@@ -2487,7 +2487,7 @@
 //             criteria: 'Instability is detected while walking on the stair.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'STEPS-01'
 //         }
 //     ]
@@ -2503,7 +2503,7 @@
 //             criteria: 'Secure accessory treads are not present.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'STEPS-02'
 //         }
 //     ]
@@ -2528,7 +2528,7 @@
 //             criteria: 'Significant structural damage that affects occupants\' safety.',
 //             severity: 'Life-Threatening',
 //             repairBy: '24Hrs',
-//             points: '27.25/n',
+//             points: '30/n',
 //             code: 'STRUCTURAL-01'
 //         }
 //     ]
@@ -2553,7 +2553,7 @@
 //             criteria: 'Chute door is damaged.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'TRASH-01'
 //         }
 //     ]
@@ -2569,7 +2569,7 @@
 //             criteria: 'The garbage is backing up into the chute.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'TRASH-02'
 //         }
 //     ]
@@ -2594,7 +2594,7 @@
 //             criteria: 'An exhaust fan, window, or adequate means of ventilation is not present and operable.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'VENT-01'
 //         },
 //         {
@@ -2604,7 +2604,7 @@
 //             criteria: 'Exhaust system component is damaged (i.e., visibly defective; impacts functionality). OR Exhaust system component is missing (i.e., evidence of prior installation, but now not present or is incomplete).',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'VENT-02'
 //         },
 //         {
@@ -2614,7 +2614,7 @@
 //             criteria: 'Exhaust fan, inoperable.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'VENT-03'
 //         },
 //         {
@@ -2624,7 +2624,7 @@
 //             criteria: 'Exhaust system is blocked such that airflow may be restricted.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'VENT-04'
 //         }
 //     ]
@@ -2649,7 +2649,7 @@
 //             criteria: 'Interior wall component(s) is not functionally adequate (i.e., impacts the integrity of the interior wall or does not allow interior wall to provide vertical separation between rooms or spaces).',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'WALL-01'
 //         },
 //         {
@@ -2659,7 +2659,7 @@
 //             criteria: 'The wall is damaged, and repairs still need to be completed appropriately.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'WALL-02'
 //         },
 //         {
@@ -2669,7 +2669,7 @@
 //             criteria: 'Loose or detached surface coverings (e.g., drywall, plaster, paneling).',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'WALL-03'
 //         }
 //     ]
@@ -2694,7 +2694,7 @@
 //             criteria: 'Chimney or flue piping is blocked, misaligned, or missing (i.e., evidence of prior installation, but now not present or is incomplete).',
 //             severity: 'Life-Threatening',
 //             repairBy: '24Hrs',
-//             points: '27.25/n',
+//             points: '30/n',
 //             code: 'WATER-HEATER-01'
 //         }
 //     ]
@@ -2710,7 +2710,7 @@
 //             criteria: 'A gas shutoff valve is deficient if it\'s damaged, missing, or not installed where required.',
 //             severity: 'Life-Threatening',
 //             repairBy: '24Hrs',
-//             points: '27.25/n',
+//             points: '30/n',
 //             code: 'WATER-HEATER-02'
 //         }
 //     ]
@@ -2758,7 +2758,7 @@
 //             criteria: 'Not properly installed.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'WATER-HEATER-05'
 //         }
 //     ]
@@ -2783,7 +2783,7 @@
 //             criteria: 'Only one lock present, and it is damaged, inoperable.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'WINDOW-01'
 //         }
 //     ]
@@ -2799,7 +2799,7 @@
 //             criteria: 'Window is not functionally adequate.',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'WINDOW-02'
 //         }
 //     ]
@@ -2831,7 +2831,7 @@
 //             criteria: 'Will not stay open without the use of a tool or item..',
 //             severity: 'Moderate',
 //             repairBy: '30 Day',
-//             points: '5.0/n',
+//             points: '14.8/n',
 //             code: 'WINDOW-04'
 //         }
 //     ]
@@ -3200,30 +3200,42 @@ export const CABINET_STORAGE_PANTRY: UnitItemDeficiencies = {
             name: 'Pantry, Food storage space is not present.',
             detail: 'Food, sanitation, and household supplies, evidence of previously installed, damaged or missing components.',
             criteria: 'Stowed items, including food, sanitation, and household supplies.',
-            severity: 'Moderate',
-            repairBy: '30 Day',
-            points: '5.0/n',
+            severity: 'Low',
+            repairBy: '60 Day',
+            points: '2.20/n',
             code: 'CAB-STORAGE-01',
-            codeReference: `🧭 Step 1: Identify Cabinet and Storage Locations
-Inspect all built-in or property-installed cabinets and storage units in shared-use areas.
-🔍 Step 2: Visual Condition Assessment
-Cabinet inaccessible or inoperable
-Cabinet missing entirely (with prior install evidence)
-🧪 Step 3: Functional Testing
-• 	Open/Close Test: Open every door and drawer fully to check for smooth operation
-• 	Hardware Check: Confirm knobs, handles, hinges, and slides are secure and functional
-• 	Interior Scan: Use a flashlight to inspect inside for water stains, mold-like substance, or loose shelving
-• 	Structural Stability: Gently press on cabinet sides and shelves to confirm secure mounting
-📏 Step 4: Accessibility & Disability  Considerations. "IBU"
-• 	Reach Range: Accessible cabinets should be within 15"–48" AFF
-• 	Operability: Doors and drawers must be usable with one hand, no tight grasping or twisting
-• 	Clear Floor Space: Minimum 30"x48" in front of accessible cabinets
-• 	Safe Use: No sharp edges, splinters, or protruding hardware
-⚒️ Step 5: IRC Installation & Safety Requirements
-• 	IRC R307.1: Cabinets must be securely anchored and properly spaced
-• 	IRC R702.3: Wall finishes must support mounted cabinetry
-• 	IRC P2705.1: Cabinets under sinks must allow access to plumbing without obstruction
-• 	IRC R317.1: Moisture-prone cabinetry must use decay-resistant materials`
+            codeReference: `🔍 1. Presence & Installation
+• Verify presence: Confirm that cabinets or storage units are installed and not missing.
+• Built-in vs. freestanding: Note whether units are wall-mounted, recessed, or movable.
+• NSPIRE Deficiency: Missing cabinets (with evidence of prior installation)
+
+🧩 2. Structural Integrity
+• Doors & drawers: Open and close each—check for sticking, misalignment, or detachment.
+• Hinges & slides: Inspect for rust, looseness, or broken components.
+• Mounting: Ensure wall-mounted units are securely fastened and not pulling away.
+• IRC Reference: Cabinets must be safely anchored and operable (IRC §R109.1.5, §R315)
+
+🧼 3. Surface Condition & Cleanability
+• Exterior finish: Look for peeling laminate, chipped paint, or exposed particle board.
+• Interior surfaces: Check for mold, grime, pest droppings, or water damage.
+
+🔒 4. Functionality & Usability
+• Locks/latches: If present, confirm they operate properly and aren't jammed.
+• Shelving: Ensure shelves are level, secure, and not sagging or cracked.
+• Accessibility: Confirm handles and doors are reachable (ADA reach range: 15–48" AFF)
+• IBU Overlay: Some jurisdictions require lockable storage for cleaning supplies or sharps
+
+🔥 5. Fire Safety & Clearance
+• Proximity to heat sources: Cabinets near stoves, heaters, or electrical panels must be fire-rated or shielded.
+• Ventilation: Storage areas must not obstruct mechanical or exhaust systems.
+• IRC Reference: Maintain clearance per IRC §M1505 and §R302.11
+
+🧠 6. Accessibility & Labeling (IBU)
+• Reach range: Confirm accessibility-compliant access to frequently used compartments.
+• Labeling: If used for emergency supplies or chemicals, ensure clear signage.
+• IBU Local Codes: May require enhanced labeling or restricted access for certain storage types
+
+📸 7. Documentation & Reporting`
         }
     ]
 };
@@ -3514,7 +3526,7 @@ export const CEILING: UnitItemDeficiencies = {
             criteria: 'Opens directly to the outside light regardless of the size or the ceiling has a damaged opening>2".',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'CEILING-02',
             codeReference: `🔍 1. Visual Condition Assessment
 • Scan entire surface: Look for sagging, bubbling, cracks, or loose panels.
@@ -3551,7 +3563,7 @@ export const CEILING: UnitItemDeficiencies = {
             criteria: 'Unstable surfaces (e.g., drywall, gypsum, or ceiling tiles are missing or detached, or the presence of bubbling, deflection, loose joint tape, or loose panels).',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'CEILING-03',
             codeReference: `🔍 1. Visual Condition Assessment
 • Scan entire surface: Look for sagging, bubbling, cracks, or loose panels.
@@ -3603,7 +3615,7 @@ export const CHIMNEY: UnitItemDeficiencies = {
             criteria: 'Fireplace or fire burning appliance is not intentionally decommissioned.',
             severity: 'Life-Threatening',
             repairBy: '24Hrs',
-            points: '27.25/n',
+            points: '30/n',
             code: 'CHIMNEY-01',
             codeReference: `🔍 1. Visual Identification
 • Locate chimney: Identify visible chimney stack, flue, or firebox connected to a fireplace or wood-burning appliance.
@@ -3657,7 +3669,7 @@ export const CLOTHES_DRYER_EXHAUST: UnitItemDeficiencies = {
             criteria: 'Dryer is being used indoor.',
             severity: 'Life-Threatening',
             repairBy: '24Hrs',
-            points: '27.25/n',
+            points: '30/n',
             code: 'DRYER-01',
             codeReference: `🔍 1. Locate and Identify System Type
 • Dryer type: Electric or gas (gas requires combustion venting)
@@ -3697,7 +3709,7 @@ export const CLOTHES_DRYER_EXHAUST: UnitItemDeficiencies = {
             criteria: 'Airflow may be restricted.',
             severity: 'Life-Threatening',
             repairBy: '24Hrs',
-            points: '27.25/n',
+            points: '30/n',
             code: 'DRYER-02',
             codeReference: `🔍 1. Locate and Identify System Type
 • Dryer type: Electric or gas (gas requires combustion venting)
@@ -3737,7 +3749,7 @@ export const CLOTHES_DRYER_EXHAUST: UnitItemDeficiencies = {
             criteria: 'Dryer transition duct is not securely attached.',
             severity: 'Life-Threatening',
             repairBy: '24Hrs',
-            points: '27.25/n',
+            points: '30/n',
             code: 'DRYER-03',
             codeReference: `🔍 1. Locate and Identify System Type
 • Dryer type: Electric or gas (gas requires combustion venting)
@@ -3777,7 +3789,7 @@ export const CLOTHES_DRYER_EXHAUST: UnitItemDeficiencies = {
             criteria: 'Airflow may be restricted.',
             severity: 'Life-Threatening',
             repairBy: '24Hrs',
-            points: '27.25/n',
+            points: '30/n',
             code: 'DRYER-04',
             codeReference: `🔍 1. Locate and Identify System Type
 • Dryer type: Electric or gas (gas requires combustion venting)
@@ -3817,7 +3829,7 @@ export const CLOTHES_DRYER_EXHAUST: UnitItemDeficiencies = {
             criteria: 'Dryer transition duct is not securely attached.',
             severity: 'Life-Threatening',
             repairBy: '24Hrs',
-            points: '27.25/n',
+            points: '30/n',
             code: 'DRYER-05',
             codeReference: `🔍 1. Locate and Identify System Type
 • Dryer type: Electric or gas (gas requires combustion venting)
@@ -3947,7 +3959,7 @@ export const DOOR_ENTRY: UnitItemDeficiencies = {
             criteria: 'Observed evidence of prior installation, now missing.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'DOOR-ENTRY-03',
             codeReference: `🔍 1. Door Functionality
 • Open test: Confirm the door opens fully without sticking or obstruction.
@@ -4019,7 +4031,7 @@ export const DOOR_ENTRY: UnitItemDeficiencies = {
             criteria: 'Seal, gasket, or stripping is damaged, inoperable, or missing, and there is either a gap of ¼ inch or more that allows light through or evidence of water penetration such as damage or dry rot around or under the door.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'DOOR-ENTRY-05',
             codeReference: `🔍 1. Door Functionality
 • Open test: Confirm the door opens fully without sticking or obstruction.
@@ -4055,7 +4067,7 @@ export const DOOR_ENTRY: UnitItemDeficiencies = {
             criteria: 'The self-closing mechanism is damaged. Or the self-closing mechanism does not pull the door closed and engage the latch. Or The self-closing mechanism is missing.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'DOOR-ENTRY-06',
             codeReference: `🔍 1. Door Functionality
 • Open test: Confirm the door opens fully without sticking or obstruction.
@@ -4091,7 +4103,7 @@ export const DOOR_ENTRY: UnitItemDeficiencies = {
             criteria: 'There is delamination or separation of the door surface 2 inches wide or greater. Or There is delamination or separation that affects the integrity of the door.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'DOOR-ENTRY-07',
             codeReference: `🔍 1. Door Functionality
 • Open test: Confirm the door opens fully without sticking or obstruction.
@@ -4163,7 +4175,7 @@ export const DOOR_ENTRY: UnitItemDeficiencies = {
             criteria: 'Entry door does not open.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'DOOR-ENTRY-09',
             codeReference: `🔍 1. Door Functionality
 • Open test: Confirm the door opens fully without sticking or obstruction.
@@ -4199,7 +4211,7 @@ export const DOOR_ENTRY: UnitItemDeficiencies = {
             criteria: 'Crack, split, separation, or hole 1/4 inch or greater in diameter penetrating through the door or door sides.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'DOOR-ENTRY-10',
             codeReference: `🔍 1. Door Functionality
 • Open test: Confirm the door opens fully without sticking or obstruction.
@@ -4232,7 +4244,7 @@ export const DOOR_ENTRY: UnitItemDeficiencies = {
 };
 
 export const DOOR_FIRE_LABELED: UnitItemDeficiencies = {
-    itemName: 'Door – Fire Labeled',
+    itemName: 'Door - Fire Labeled',
     deficiencies: [
         {
             id: 'door_fire_1',
@@ -4416,7 +4428,7 @@ export const DOOR_FIRE_LABELED: UnitItemDeficiencies = {
             criteria: 'Fire-labeled door is missing (i.e., evidence of prior installation, but now not present or is incomplete).',
             severity: 'Life-Threatening',
             repairBy: '24Hrs',
-            points: '27.25/n',
+            points: '30/n',
             code: 'DOOR-FIRE-06',
             codeReference: `🔍 1. Door Identification
 • Label location: Look for a metal fire label or plug on the door edge (between hinges) or frame.
@@ -4483,7 +4495,7 @@ export const DOOR_FIRE_LABELED: UnitItemDeficiencies = {
 };
 
 export const DOOR_GENERAL: UnitItemDeficiencies = {
-    itemName: 'Door-General',
+    itemName: 'Door - General',
     deficiencies: [
         {
             id: 'door_general_1',
@@ -4528,7 +4540,7 @@ NSPIRE defines "general doors" as any door not classified as entry, fire-labeled
             criteria: 'A passage door does not open such that it may limit access when needed.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'DOOR-GEN-02',
             codeReference: `🧭 Step 1: Identify Doors to Inspect
 Focus on non-fire-rated, non-entry doors in common areas such as:
@@ -4606,7 +4618,7 @@ export const DOOR_GARAGE: UnitItemDeficiencies = {
             criteria: 'Door will not open and remain open, does not function adequately.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'DOOR-GARAGE-01',
             codeReference: `🧭 Step 1: Identify Garage Door Type and Location
 Inspect all permanently installed garage doors in common areas such as:
@@ -4642,7 +4654,7 @@ IRC ensures garage doors are safe, secure, and compliant with fire and mechanica
             criteria: 'Garage door has a hole of any size that penetrates through to the interior.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'DOOR-GARAGE-02',
             codeReference: `🧭 Step 1: Identify Garage Door Type and Location
 Inspect all permanently installed garage doors in common areas such as:
@@ -4678,7 +4690,7 @@ IRC ensures garage doors are safe, secure, and compliant with fire and mechanica
 };
 
 export const DOOR_ENTRY_CANNOT_BE_SECURED: UnitItemDeficiencies = {
-    itemName: 'Entry door - Cannot be Secured',
+    itemName: 'Door - Cannot be Secured',
     deficiencies: [
         {
             id: 'Entry_door_1',
@@ -4720,7 +4732,7 @@ export const DOOR_ENTRY_CANNOT_BE_SECURED: UnitItemDeficiencies = {
 };
 
 export const DOOR_ENTRY_COMPONENT_DAMAGED: UnitItemDeficiencies = {
-    itemName: 'Entry door - Component Damaged or Missing',
+    itemName: 'Door - Component Damaged or Missing',
     deficiencies: [
         {
             id: 'Entry_door_2',
@@ -4762,7 +4774,7 @@ export const DOOR_ENTRY_COMPONENT_DAMAGED: UnitItemDeficiencies = {
 };
 
 export const DOOR_ENTRY_FRAME_DAMAGED: UnitItemDeficiencies = {
-    itemName: 'Entry door - Frame, Threshold, or Trim Damaged',
+    itemName: 'Door - Frame, Threshold, or Trim Damaged',
     deficiencies: [
         {
             id: 'Entry_door_4',
@@ -4771,7 +4783,7 @@ export const DOOR_ENTRY_FRAME_DAMAGED: UnitItemDeficiencies = {
             criteria: 'Entry door frame, threshold, or trim is damaged or missing such that it impacts functionality.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'DOOR-ENTRY-FRAME-01',
             codeReference: `🔍 1. Door Functionality
 • Open test: Confirm the door opens fully without sticking or obstruction.
@@ -4804,7 +4816,7 @@ export const DOOR_ENTRY_FRAME_DAMAGED: UnitItemDeficiencies = {
 };
 
 export const DOOR_ENTRY_MISSING: UnitItemDeficiencies = {
-    itemName: 'Entry door - Missing',
+    itemName: 'Door - Entry is Missing',
     deficiencies: [
         {
             id: 'Entry_door_3',
@@ -4846,9 +4858,15 @@ export const DOOR_ENTRY_MISSING: UnitItemDeficiencies = {
 };
 export const DOOR_DEFICIENCIES = {
     category: '7. Door',
-    items: [DOOR_ENTRY, DOOR_FIRE_LABELED, DOOR_GENERAL, DOOR_GARAGE,
-        DOOR_ENTRY_CANNOT_BE_SECURED, DOOR_ENTRY_COMPONENT_DAMAGED,
-        DOOR_ENTRY_FRAME_DAMAGED, DOOR_ENTRY_MISSING]
+    items: [
+        DOOR_ENTRY_CANNOT_BE_SECURED,
+        DOOR_ENTRY_COMPONENT_DAMAGED,
+        DOOR_ENTRY_FRAME_DAMAGED,
+        DOOR_ENTRY_MISSING,
+        DOOR_ENTRY,
+        DOOR_FIRE_LABELED,
+        DOOR_GENERAL
+    ]
 };
 
 
@@ -4867,7 +4885,7 @@ export const DRAINAGE: UnitItemDeficiencies = {
             criteria: 'The drain is fully blocked. Or there is a problem with the drainage.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'DRAIN-01',
             codeReference: `🧭 Step 1: Identify Drainage Components
 Inspect all drainage systems serving the unit or common area:
@@ -4913,7 +4931,7 @@ export const EGRESS: UnitItemDeficiencies = {
             criteria: 'Double-key Cylinder deadbolt locks or security features requiring a key, tool, or special effort from the stress side are not allowed on exit doors, exit access doors, or egress windows. Fixed or movable security bars must not block designated egress points, and no furniture or items may obstruct the means of egress.',
             severity: 'Life-Threatening',
             repairBy: '24Hrs',
-            points: '27.25/n',
+            points: '30/n',
             code: 'EGRESS-01',
             codeReference: `🧭 Step 1: Identify Egress Components
 • Primary elements: Exit doors, corridors, stairwells, ramps, fire escapes, and discharge paths to the public way
@@ -4961,7 +4979,7 @@ export const ELECTRICAL_CONDUCTOR: UnitItemDeficiencies = {
             criteria: 'Electrical conductors must be enclosed and insulated, with no exposed wiring, open ports, missing covers, or gaps over 1/2"; missing light bulbs are evaluated under interior or exterior lighting.',
             severity: 'Life-Threatening',
             repairBy: '24Hrs',
-            points: '27.25/n',
+            points: '30/n',
             code: 'ELEC-COND-01',
             codeReference: `🧭 Step 1: Identify Electrical Components to Inspect
 Inspect all visible and accessible electrical systems in common areas, including:
@@ -5029,7 +5047,7 @@ Inoperable outlets or switches without visible damage are still cited under NSPI
             criteria: 'Any portion of a visually accessible outlet or switch is damaged such that it may not safely carry or control electrical current at the outlet or switch.',
             severity: 'Life-Threatening',
             repairBy: '24Hrs',
-            points: '27.25/n',
+            points: '30/n',
             code: 'ELEC-COND-03',
             codeReference: `🧭 Step 1: Identify Electrical Components to Inspect
 Inspect all visible and accessible electrical systems in common areas, including:
@@ -5097,7 +5115,7 @@ Inoperable outlets or switches without visible damage are still cited under NSPI
             criteria: 'Water is currently in contact with an electrical conductor. Check for the source (water infiltration from the ceiling or inside of the wall).',
             severity: 'Life-Threatening',
             repairBy: '24Hrs',
-            points: '27.25/n',
+            points: '30/n',
             code: 'ELEC-COND-05',
             codeReference: `🧭 Step 1: Identify Electrical Components to Inspect
 Inspect all visible and accessible electrical systems in common areas, including:
@@ -5263,7 +5281,7 @@ export const ELECTRICAL_SERVICE_PANEL: UnitItemDeficiencies = {
             criteria: 'The electrical service panel is not reasonably accessible. Or it is locked or in locked location, no key to access.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'ELEC-PANEL-01',
             codeReference: `🧭 Step 1: Identify Electrical Service Panel Locations
 Inspect all main and sub-panels in shared-use areas. Panel must be reachable without moving furniture, appliances, or fixtures
@@ -5325,7 +5343,7 @@ Codes Referenced:
             criteria: 'The overcurrent protection device is damaged such that it may not interrupt the circuit during an over current condition.',
             severity: 'Life-Threatening',
             repairBy: '24Hrs',
-            points: '27.25/n',
+            points: '30/n',
             code: 'ELEC-PANEL-03',
             codeReference: `🧭 Step 1: Identify Electrical Service Panel Locations
 Inspect all main and sub-panels in shared-use areas. Panel must be reachable without moving furniture, appliances, or fixtures
@@ -5371,7 +5389,7 @@ export const ELEVATOR: UnitItemDeficiencies = {
             criteria: 'There is more than 3/4 inch difference in level between the elevator cab and the building floor.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'ELEVATOR-01',
             codeReference: `🧭 Step 1: Identify Elevator Type and Location
 Inspect all permanently installed vertical transport systems, including: Passenger elevator, Freight/service elevator, Hydraulic or traction systems.
@@ -5409,7 +5427,7 @@ IRC ensures elevators are structurally sound, electrically safe, and integrated 
             criteria: 'All elevators must be in working condition.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'ELEVATOR-02',
             codeReference: `🧭 Step 1: Identify Elevator Type and Location
 Inspect all permanently installed vertical transport systems, including: Passenger elevator, Freight/service elevator, Hydraulic or traction systems.
@@ -5447,7 +5465,7 @@ IRC ensures elevators are structurally sound, electrically safe, and integrated 
             criteria: 'Elevator system or component thereof not meeting function or purpose.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'ELEVATOR-03',
             codeReference: `🧭 Step 1: Identify Elevator Type and Location
 Inspect all permanently installed vertical transport systems, including: Passenger elevator, Freight/service elevator, Hydraulic or traction systems.
@@ -5485,7 +5503,7 @@ IRC ensures elevators are structurally sound, electrically safe, and integrated 
             criteria: 'Overall, the system or a component thereof is not meeting its function or purpose.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'ELEVATOR-04',
             codeReference: `🧭 Step 1: Identify Elevator Type and Location
 Inspect all permanently installed vertical transport systems, including: Passenger elevator, Freight/service elevator, Hydraulic or traction systems.
@@ -5538,7 +5556,7 @@ export const FIRE_SAFETY_EXIT_SIGN: UnitItemDeficiencies = {
             criteria: 'An exit sign is deficient if it\'s damaged, missing, obstructed so "EXIT" isn\'t clearly visible, or not adequately illuminated.',
             severity: 'Life-Threatening',
             repairBy: '24Hrs',
-            points: '27.25/n',
+            points: '30/n',
             code: 'FIRE-EXIT-01',
             codeReference: `🧭 Step 1: Identify Exit Sign Locations
 Inspect all permanently installed exit signs that mark emergency egress routes.
@@ -5580,7 +5598,7 @@ export const FIRE_SAFETY_EXTINGUISHER: UnitItemDeficiencies = {
             criteria: 'A fire extinguisher is damaged or missing.',
             severity: 'Life-Threatening',
             repairBy: '24Hrs',
-            points: '27.25/n',
+            points: '30/n',
             code: 'FIRE-EXT-01',
             codeReference: `🧭 Step 1: Identify Fire Extinguisher Locations
 Inspect all property-owned extinguishers.
@@ -5615,7 +5633,7 @@ IRC aligns with NFPA standards for extinguisher placement, maintenance, and visi
             criteria: 'Pressure gauge indicates that the fire extinguisher is over or under charged.',
             severity: 'Life-Threatening',
             repairBy: '24Hrs',
-            points: '27.25/n',
+            points: '30/n',
             code: 'FIRE-EXT-02',
             codeReference: `🧭 Step 1: Identify Fire Extinguisher Locations
 Inspect all property-owned extinguishers.
@@ -5650,7 +5668,7 @@ IRC aligns with NFPA standards for extinguisher placement, maintenance, and visi
             criteria: 'The date on the service tag of any fire extinguisher has exceeded one year. OR The fire extinguisher tag is missing or illegible. OR A non-chargeable or disposable fire extinguisher is more than 12 years old (based on manufacture date).',
             severity: 'Life-Threatening',
             repairBy: '24Hrs',
-            points: '27.25/n',
+            points: '30/n',
             code: 'FIRE-EXT-03',
             codeReference: `🧭 Step 1: Identify Fire Extinguisher Locations
 Inspect all property-owned extinguishers.
@@ -5686,34 +5704,30 @@ export const FIRE_SAFETY_FLAMMABLE: UnitItemDeficiencies = {
     deficiencies: [
         {
             id: 'fire_flam_1',
-            name: 'The flammable or combustible material is on or within 3 feet of an appliance that provides heat for thermal comfort or fuel-burning water heater. Or improperly stored chemical.',
-            detail: 'The flammable or combustible material is on or within 3 feet of an appliance that provides heat for thermal comfort or fuel-burning water heater. Or improperly stored chemical.',
+            name: 'The flammable or combustible material is on or within 3 feet of an appliance that provides heat for thermal comfort or a fuel-burning water heater. Or an improperly stored chemical.',
+            detail: 'The flammable or combustible material is on or within 3 feet of an appliance that provides heat for thermal comfort or a fuel-burning water heater. Or an improperly stored chemical.',
             criteria: 'Excluding heating oil in a heating oil tank, propane, gasoline, kerosene should never be stored in the Unit. Combustible item in its original container and stored in a safe place is not a deficiency.',
             severity: 'Life-Threatening',
             repairBy: '24Hrs',
-            points: '27.25/n',
+            points: '30/n',
             code: 'FIRE-FLAM-01',
-            codeReference: `🧭 Step 1: Identify Inspectable Locations
-Inspect all shared-use areas where flammable or combustible materials may be stored or used.
-
-🔍 Step 2: Visual Condition Assessment
-• Look for: Paints, solvents, gasoline, propane, kerosene, butane, nail polish remover, charcoal lighter fluid, oxygen tanks, cleaning chemicals
-• Packaging: Must be original, sealed, and intact
-
-🧪 Step 3: Inspection Technique
-• Proximity Check: Measure or estimate distance between flammable items and ignition sources (must be ≥3 feet)
-• Container Check: Confirm chemicals are in original, sealed containers and stored safely
-• Label Review: Look for flammable or combustible warnings on spray cans, solvents, or fuels
-• Ventilation & Access: Ensure storage areas are ventilated and not obstructing egress or equipment
-
-📏 Step 4: Accessibility & IBU Local Requirement
-• Access height: Typically ≤5 feet AFF for unobstructed reach.
-• Signage: Required in some jurisdictions—check for label or directional arrow.
-• IBU Local Codes: May require annual servicing logs, seismic bracing, or multilingual signage
-
+            codeReference: `🧭 Step 1: Identify Inspection Zones
+Focus on areas where ignition sources and flammable materials may coexist
+🔍 Step 2: Visual Condition
+• Improper storage: Items stored loosely, stacked near heat, or leaking = Severe
+• IBU Overlay: May require fire-rated cabinets or ventilated enclosures for volatile chemicals
+🧪 Step 3: Proximity & Safety Check
+• Measure Distance: Confirm flammable items are at least 3 feet away from:
+• Fuel-burning water heaters, Furnaces, Stoves, and ovens, Fireplaces
+• Inspect Containers: Must be original, sealed, and labeled, No leaking, rusted, or bulging containers
+• Check for Ignition Sources: Open flames, pilot lights, heating elements, or electrical sparks
+📏 Step 4: Prohibited Items & Locations
+• Petroleum products (gasoline, kerosene, propane) must not be stored inside units
+• Gas-powered equipment (e.g., lawnmowers, generators) must be stored outside or in exterior-access storage
+• IBU Overlay: May prohibit indoor storage of oxygen tanks or require signage and ventilation
 ⚒️ Step 5: IRC Fire Safety Requirements
-• IRC (2021) §R302.1–R302.5 – Fire-resistant construction and ignition separation
-• IBU overlays – Local fire code, hazardous materials storage, and emergency response protocols`
+• IRC Section R302 & R315: Fuel-burning appliances must have clearances from combustibles
+• No flammable storage in mechanical closets or near ignition sources`
         }
     ]
 };
@@ -5723,8 +5737,8 @@ export const FIRE_SAFETY_SMOKE_ALARM: UnitItemDeficiencies = {
     deficiencies: [
         {
             id: 'fire_smoke_1',
-            name: 'A required smoke alarm does not produce an audio or visual alarm when tested.',
-            detail: 'A required smoke alarm does not produce an audio or visual alarm when tested.',
+            name: 'Smoke alarm does not produce an audio or visual alarm when tested.',
+            detail: 'Smoke alarm does not produce an audio or visual alarm when tested.',
             criteria: 'A required smoke alarm does not emit visual or audio alarm or the alarm does not cease after testing.',
             severity: 'Life-Threatening',
             repairBy: '24Hrs',
@@ -5760,7 +5774,7 @@ If the alarm does not activate or is silent, it must be cited as inoperable and 
         },
         {
             id: 'fire_smoke_2',
-            name: 'Smoke alarm not installed where required.',
+            name: 'Smoke alarm not installed inside each bedroom, and Smoke alarm not installed outside the bedroom(s) and in each bedroom or on each level.',
             detail: 'Smoke alarm not installed where required. Smoke alarm not installed within a hallway in the vicinity of multiple units or classrooms on each level.',
             criteria: 'Smoke alarm not installed within a hallway in the vicinity of multiple units or classrooms on each level.',
             severity: 'Life-Threatening',
@@ -5797,7 +5811,7 @@ If the alarm does not activate or is silent, it must be cited as inoperable and 
         },
         {
             id: 'fire_smoke_3',
-            name: 'Smoke alarm is obstructed by a foreign object.',
+            name: 'Smoke alarm is obstructed, covered by a foreign object (e.g., plastic bag, shower cap, zip tie, paint, tape, decorative stickers).',
             detail: 'Smoke alarm is obstructed by a foreign object (e.g., plastic bag, shower cap, zip tie, paint, tape, decorative stickers).',
             criteria: 'Smoke alarm is covered by a foreign object.',
             severity: 'Life-Threatening',
@@ -5882,7 +5896,7 @@ export const FIRE_SAFETY_SPRINKLER: UnitItemDeficiencies = {
             criteria: 'The sprinkler assembly component is damaged, inoperable or missing.',
             severity: 'Life-Threatening',
             repairBy: '24Hrs',
-            points: '27.25/n',
+            points: '30/n',
             code: 'FIRE-SPRINKLER-01',
             codeReference: `🧭 Step 1: Identify Sprinkler Assembly Components
 • Verify system presence: Sprinkler assemblies are only inspected if installed
@@ -5915,7 +5929,7 @@ Use a flashlight and measuring tape for an accurate assessment. Do not touch or 
             criteria: 'Sprinkler head assembly has evidence of corrosion.',
             severity: 'Life-Threatening',
             repairBy: '24Hrs',
-            points: '27.25/n',
+            points: '30/n',
             code: 'FIRE-SPRINKLER-02',
             codeReference: `🧭 Step 1: Identify Sprinkler Assembly Components
 • Verify system presence: Sprinkler assemblies are only inspected if installed
@@ -5948,7 +5962,7 @@ Use a flashlight and measuring tape for an accurate assessment. Do not touch or 
             criteria: 'Foreign material covers 50% or more of the sprinkler assembly or 50% or more of the glass bulb on the sprinkler assembly.',
             severity: 'Life-Threatening',
             repairBy: '24Hrs',
-            points: '27.25/n',
+            points: '30/n',
             code: 'FIRE-SPRINKLER-03',
             codeReference: `🧭 Step 1: Identify Sprinkler Assembly Components
 • Verify system presence: Sprinkler assemblies are only inspected if installed
@@ -5981,7 +5995,7 @@ Use a flashlight and measuring tape for an accurate assessment. Do not touch or 
             criteria: '18 inches clearance is not due to feature within built (e.g. closet, utility closet).',
             severity: 'Life-Threatening',
             repairBy: '24Hrs',
-            points: '27.25/n',
+            points: '30/n',
             code: 'FIRE-SPRINKLER-04',
             codeReference: `🧭 Step 1: Identify Sprinkler Assembly Components
 • Verify system presence: Sprinkler assemblies are only inspected if installed
@@ -6025,11 +6039,11 @@ export const FLOOR: UnitItemDeficiencies = {
         {
             id: 'floor_1',
             name: 'Floor component(s) is not functionally adequate.',
-            detail: 'Floor component(s) is not functionally adequate (i.e., does not allow floor to separate levels or to be walked on), functionality (e.g., wood rot, sloping, deflection).',
+            detail: 'Floor component(s) is not functionally adequate (i.e., do not allow the floor to separate levels or to be walked on), functionality (e.g., wood rot, sloping, deflection).',
             criteria: 'Surface abnormalities may indicate the presence of deficiency (i.e. lifting tiles, tilers, hardwood cupping, linoleum bubbling, etc.).',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'FLOOR-01',
             codeReference: `🧭 Step 1: Identify Floor Types and Locations
 Materials: Identify type—carpet, tile, vinyl, wood, concrete, rubber, etc.
@@ -6063,7 +6077,7 @@ No invasive testing required.
             criteria: 'Repair is needed.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'FLOOR-02',
             codeReference: `🧭 Step 1: Identify Floor Types and Locations
 Materials: Identify type—carpet, tile, vinyl, wood, concrete, rubber, etc.
@@ -6108,11 +6122,11 @@ export const FOUNDATION: UnitItemDeficiencies = {
         {
             id: 'foundation_1',
             name: 'Foundation exposed rebar or foundation is spalling, flaking, or chipping.',
-            detail: 'The affected area is 12x12 inches or greater goes into the foundation at a depth of ¾ inch or greater.',
+            detail: 'The structure has any exposed rebar. OR Foundation is spalling, flaking, or chipping and the affected area is 12x12 inches or greater and goes into the foundation at a depth of ¾ inch or greater.',
             criteria: 'Foundation exhibits a sign of failure, and it is not structural.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'FOUNDATION-01',
             codeReference: `🧭 Step 1: Identify Foundation Areas to Inspect
 • Common types: Concrete slab, stem wall, crawlspace, or basement wall
@@ -6147,7 +6161,7 @@ export const FOUNDATION: UnitItemDeficiencies = {
             criteria: 'Foundation cracks (e.g., cracks in walls, no functioning doors, unlevel floors or windows).',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'FOUNDATION-02',
             codeReference: `🧭 Step 1: Identify Foundation Areas to Inspect
 • Common types: Concrete slab, stem wall, crawlspace, or basement wall
@@ -6178,11 +6192,11 @@ export const FOUNDATION: UnitItemDeficiencies = {
         {
             id: 'foundation_3',
             name: 'Foundation infiltrated by water.',
-            detail: 'Evidence of water infiltration through the foundation through visual evaluation. (e.g., Excessive dampness, collected water, stains, or mineral deposits).',
+            detail: 'Evidence of water infiltration through the foundation.(e.g., Excessive dampness, collected water, stains, or mineral deposits).',
             criteria: '(e.g., Excessive dampness, collected water, stains, or mineral deposits).',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'FOUNDATION-03',
             codeReference: `🧭 Step 1: Identify Foundation Areas to Inspect
 • Common types: Concrete slab, stem wall, crawlspace, or basement wall
@@ -6217,7 +6231,7 @@ export const FOUNDATION: UnitItemDeficiencies = {
             criteria: 'Foundation damage (e.g., rot) on support posts, columns, or girders.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'FOUNDATION-04',
             codeReference: `🧭 Step 1: Identify Foundation Areas to Inspect
 • Common types: Concrete slab, stem wall, crawlspace, or basement wall
@@ -6267,31 +6281,33 @@ export const GRAB_BAR: UnitItemDeficiencies = {
             criteria: 'Any movement whatsoever is detected in the grab bar.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'GRAB-BAR-01',
-            codeReference: `🧭 Step 1: Identify Grab Bar Locations
-Inspect all installed grab bars in shared-use hygiene areas.
-NSPIRE defines grab bars as safety devices designed to be grasped to maintain balance or assist with movement, specifically in bathrooms. 
+            codeReference: `🧭 Step 1: Presence & Location
+• Verify presence: NSPIRE only inspects grab bars if installed—there's no requirement to provide them.
+• Mounting zone: Typically adjacent to toilets, inside showers, or near tubs in bathrooms.
+
 🔍 Step 2: Visual Condition Assessment
-Grab bar is loose or unstable or damaged, Grab bar missing where required, Grab bar obstructed or inaccessible
+• Material: Stainless steel, coated metal, or compliant plastic
+• Cleanliness: Must be free of grime, mold, or residue
+
 🧪 Step 3: Functional Testing
-• 	Stability Test: Grasp the bar in the center and apply a moderate force back and forth.
-• 	Any movement = deficiency
-• 	Mounting Check: Confirm the grab bar is securely anchored to wall studs or blocking
-• 	Surface Inspection: Look for rust, cracks, or sharp edges
-• 	Accessibility Review: Ensure the grab bar is reachable and unobstructed.
-📏 Step 4: Accessibility & Disability  Considerations. "IBU"
-While NSPIRE does not enforce, IBU guidance is useful for best practice:
-• 	Height: 33"–36" above finished floor
-• 	Length: Minimum 42" for side wall, 36" for rear wall
-• 	Clearance: At least 1½" between wall and bar
-• 	Grip Surface: Smooth, non-slip, and continuous
-• 	Location: Beside toilets, inside showers/tubs, and near transfer zones
-⚒️ Step 5: IRC Installation & Safety Requirements
-• 	IRC R307.2: Shower walls must be finished with nonabsorbent material to ≥6 ft above floor
-• 	IRC P2705.1: Fixtures must be installed to allow safe access and use
-• 	IRC R317.1: Moisture-prone areas must use corrosion-resistant materials
-• 	IRC R703.4: Proper flashing and sealing are required to prevent water intrusion behind grab bar mounts`
+• Stability Test: Grasp the center of the bar and apply a moderate force back and forth
+• If any movement is detected, cite it as a deficiency
+• Mounting Check: Confirm the grab bar is securely anchored to wall studs or blocking
+• Surface Inspection: Look for rust, cracks, or sharp edges
+
+📏 Step 4: Accessibility Compliance (IBU)
+• Height: Horizontal bars must be mounted 33"–36" AFF
+• Length: Toilet-side bars must be at least 42" long
+• Clearance: Minimum 1½" between wall and bar
+• Grip Surface: Must be slip-resistant and free of obstructions
+• Reachability: Must be within reach of seated users
+• IBU Overlay: May require reinforced backing or ADA-compliant mounting height (typically 33–36" AFF)
+
+⚒️ Step 5: IRC Structural Requirements
+• IRC §R307.1 – Universal design and accessibility provisions
+• IBU overlays – Local safety and usability codes`
         }
     ]
 };
@@ -6311,11 +6327,11 @@ export const HAZARD_INFESTATION: UnitItemDeficiencies = {
         {
             id: 'hazard_infest_1',
             name: 'Evidence of bedbugs.',
-            detail: 'Evidence of bedbugs is found (i.e., live or dead bedbugs, feces, eggs, or blood trail).',
+            detail: 'Evidence of bedbugs.(i.e., live or dead bedbugs, feces, eggs, or blood trail).',
             criteria: 'Evidence of bedbugs is found (i.e., live or dead bedbugs, feces, eggs, or blood trail).',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'HAZARD-INFEST-01',
             codeReference: `🧭 Step 1: Identify Areas Prone to Infestation
 Inspect all shared-use spaces where pests may be present.
@@ -6344,11 +6360,11 @@ When it cites infestation as a moderate health and safety deficiency, it require
         {
             id: 'hazard_infest_2',
             name: 'Evidence of cockroaches.',
-            detail: 'Evidence of cockroaches is found (i.e., dead or live cockroaches, shed skins, droppings (tiny black specks or smears), and egg cases).',
+            detail: 'Evidence of cockroaches (i.e.. of dead or live cockroaches, shed skins, droppings (tiny black specks or smears), and egg cases).',
             criteria: 'Evidence of cockroaches is found (i.e., dead or live cockroaches, shed skins, droppings (tiny black specks or smears), and egg cases).',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'HAZARD-INFEST-02',
             codeReference: `🧭 Step 1: Identify Areas Prone to Infestation
 Inspect all shared-use spaces where pests may be present.
@@ -6377,11 +6393,11 @@ When it cites infestation as a moderate health and safety deficiency, it require
         {
             id: 'hazard_infest_3',
             name: 'Evidence of mice.',
-            detail: 'Evidence of mice is found (i.e., a live or dead mouse or mice, droppings, chewed holes, or urine trails).',
+            detail: 'Evidence of mice (any sign). (i.e. a live or dead mouse or mice, droppings, chewed holes, or urine trails).',
             criteria: 'Evidence of mice is found (i.e., a live or dead mouse or mice, droppings, chewed holes, or urine trails).',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'HAZARD-INFEST-03',
             codeReference: `🧭 Step 1: Identify Areas Prone to Infestation
 Inspect all shared-use spaces where pests may be present.
@@ -6410,11 +6426,11 @@ When it cites infestation as a moderate health and safety deficiency, it require
         {
             id: 'hazard_infest_4',
             name: 'Evidence of other pests.',
-            detail: 'Evidence of other pest infestation—such as ants, wasps, squirrels, birds, or bats—is present in interior areas, posing potential health and safety risks to residents.',
+            detail: 'Evidence of other pests. such as ants, wasps, squirrels, birds, or bats—may pose health and safety risks to residents.',
             criteria: 'Evidence is present of other pest infestations, including but not limited to a trail of ants, wasps/beehives, squirrels, birds, and bats in an interior area.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'HAZARD-INFEST-04',
             codeReference: `🧭 Step 1: Identify Areas Prone to Infestation
 Inspect all shared-use spaces where pests may be present.
@@ -6443,11 +6459,11 @@ When it cites infestation as a moderate health and safety deficiency, it require
         {
             id: 'hazard_infest_5',
             name: 'Evidence of rats.',
-            detail: 'Evidence of rats is found (i.e., a live or dead rat or droppings, chewed holes).',
+            detail: 'Evidence of rats (any sign). i.e., a live or dead rat, droppings, or chewed holes.',
             criteria: 'Evidence of rats is found (i.e., a live or dead rat or droppings, chewed holes).',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'HAZARD-INFEST-05',
             codeReference: `🧭 Step 1: Identify Areas Prone to Infestation
 Inspect all shared-use spaces where pests may be present.
@@ -6476,11 +6492,11 @@ When it cites infestation as a moderate health and safety deficiency, it require
         {
             id: 'hazard_infest_6',
             name: 'Extensive bedbugs infestation.',
-            detail: 'Extensive bedbugs infestation. Sighting of at least one live bedbug in two or more areas',
+            detail: 'Extensive bedbugs infestation. At least one live bedbug in two or more units or two rooms of the same unit during the daytime surface visual assessment.',
             criteria: 'Sighting of at least one live bedbug in two or more units or two rooms of the same unit during the daytime through visual assessment.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'HAZARD-INFEST-06',
             codeReference: `🧭 Step 1: Identify Areas Prone to Infestation
 Inspect all shared-use spaces where pests may be present.
@@ -6508,8 +6524,8 @@ When it cites infestation as a moderate health and safety deficiency, it require
         },
         {
             id: 'hazard_infest_7',
-            name: 'Extensive cockroach infestation (live).',
-            detail: 'Extensive cockroach infestation (live). Sighting of one or more live cockroaches in two or more area observed simultaneously during visual assessment on the inspection day.',
+            name: 'Extensive cockroach infestation',
+            detail: 'Extensive cockroach infestation. Sighting of one or more live cockroaches in two or more unit areas observed simultaneously during visual assessment on the inspection day.',
             criteria: 'Sighting of one or more live cockroaches in two or more area observed simultaneously during visual assessment on the inspection day.',
             severity: 'Severe',
             repairBy: '24 Hrs.',
@@ -6542,11 +6558,11 @@ When it cites infestation as a moderate health and safety deficiency, it require
         {
             id: 'hazard_infest_8',
             name: 'Extensive mouse infestation.',
-            detail: 'Extensive mouse infestation. Sighting of at least one live mouse in during the daytime surface visual assessment.',
+            detail: 'Extensive mouse infestation. Sighting of at least one live mouse in two or more units or two rooms of the same unit during the daytime through surface visual assessment.',
             criteria: 'Sighting of at least one live mouse in two or more, units or two rooms of the same unit during the daytime surface visual assessment.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'HAZARD-INFEST-08',
             codeReference: `🧭 Step 1: Identify Areas Prone to Infestation
 Inspect all shared-use spaces where pests may be present.
@@ -6575,11 +6591,11 @@ When it cites infestation as a moderate health and safety deficiency, it require
         {
             id: 'hazard_infest_9',
             name: 'Extensive rat infestation.',
-            detail: 'Extensive rat infestation. A live rat is seen in the common area.',
+            detail: 'Extensive rat infestation. A live rat is seen in the unit.',
             criteria: 'A live rat is seen in the unit.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'HAZARD-INFEST-09',
             codeReference: `🧭 Step 1: Identify Areas Prone to Infestation
 Inspect all shared-use spaces where pests may be present.
@@ -6618,7 +6634,7 @@ export const HAZARD_LITTER: UnitItemDeficiencies = {
             criteria: 'Litter is considered deficient if 10 or more small items or any large discarded items are found in a 10×10 ft area not designated for garbage.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'HAZARD-LITTER-01',
             codeReference: `🧭 Step 1: Identify Areas Where Litter May Accumulate
 Inspect all shared-use spaces where trash or discarded items may appear.
@@ -6651,31 +6667,35 @@ export const HAZARD_SHARP_EDGES: UnitItemDeficiencies = {
     deficiencies: [
         {
             id: 'hazard_sharp_1',
-            name: 'A sharp edge that can result in a cut or puncture hazard that is likely to require emergency care is present.',
-            detail: 'A sharp edge that can result in a cut or puncture hazard that is likely to require emergency care (e.g., stitches) is present within the built environment (i.e., human-made structures, features, and facilities).',
-            criteria: 'A sharp edge that can result in a cut or puncture hazard that is likely to require emergency care is present within the built environment.',
+            name: 'A sharp edge that can result in a cut or puncture hazard is present in the interior area, including, but not limited to, broken glass and damaged tile with exposed edges.',
+            detail: 'A sharp edge that can result in a cut or puncture hazard is present in the interior area, including, but not limited to, broken glass and damaged tile with exposed edges.',
+            criteria: 'A sharp edge that can result in a cut or puncture hazard is present in the interior area, including, but not limited to, broken glass and damaged tile with exposed edges.',
             severity: 'Severe',
             repairBy: '24 Hrs.',
             points: '13.40/n',
             code: 'HAZARD-SHARP-01',
             codeReference: `🧭 Step 1: Identify Areas Where Sharp Edges May Be Present
 Inspect all shared-use spaces where residents may come into contact with built components.
+
 🔍 Step 2: Visual Condition Assessment
-• 	Rusted or bent metal,  Splintered wood, 	Chipped ceramic or stone
-• 	Protruding nails, screws, staples
+• Rusted or bent metal, Splintered wood, Chipped ceramic or stone
+• Protruding nails, screws, staples
+
 🧪 Step 3: Inspection Technique
-• 	Visual Scan: Walk through common areas and inspect all surfaces within reach (typically 0–6 feet)
-• 	Touch-Free Assessment: Do not touch the edge; visually determine if it could puncture or lacerate skin
-• 	Material Identification: Note whether the edge is metal, glass, tile, wood, or plastic
+• Visual Scan: Walk through common areas and inspect all surfaces within reach (typically 0–6 feet)
+• Touch-Free Assessment: Do not touch the edge; visually determine if it could puncture or lacerate skin
+• Material Identification: Note whether the edge is metal, glass, tile, wood, or plastic
 If the edge is damaged and located in a typical path of travel, it must be cited—even if no injury has occurred.
+
 📏 Step 4: Obstruction & Accessibility Overlay
-• 	Clear Floor Space: Sharp edges must not protrude into accessible routes
-• 	Egress paths: Hazards near exits or stairs elevate severity
-• 	IBU Local Codes: May require protective guards, rounded edges, or signage in high-traffic zones 
+• Clear Floor Space: Sharp edges must not protrude into accessible routes
+• Egress paths: Hazards near exits or stairs elevate severity
+• IBU Local Codes: May require protective guards, rounded edges, or signage in high-traffic zones
+
 ⚒️ Step 5: IRC Structural & Finish Requirements
-• 	IRC R302.1 – Protection against physical hazards
-• 	IRC R312.1: Guardrails and handrails must be smooth and free of sharp projections
-• 	IRC R302.1: Fire-resistant construction must not include exposed sharp metal or glass`
+• IRC R302.1 – Protection against physical hazards
+• IRC R312.1: Guardrails and handrails must be smooth and free of sharp projections
+• IRC R302.1: Fire-resistant construction must not include exposed sharp metal or glass`
         }
     ]
 };
@@ -6685,12 +6705,12 @@ export const HAZARD_TRIP: UnitItemDeficiencies = {
     deficiencies: [
         {
             id: 'hazard_trip_1',
-            name: 'Walking surfaces have an abrupt change: a vertical gap ≥¾ inch across the path of travel.',
-            detail: 'Walking surfaces have an abrupt change: a vertical gap ≥¾ inch across the path of travel.',
-            criteria: 'There is an abrupt change in vertical elevation on any walking surface along the normal path of travel, consisting of an unintended ¾ inch or greater vertical difference.',
+            name: 'Trip hazard on the walking surface. (abrupt change: a vertical gap ≥¾ inch or a horizontal separation ≥2 inches across the path of travel).',
+            detail: 'Trip hazard on the walking surface. (abrupt change: a vertical gap ≥¾ inch or a horizontal separation ≥2 inches across the path of travel).',
+            criteria: 'Trip hazard on the walking surface. (abrupt change: a vertical gap ≥¾ inch or a horizontal separation ≥2 inches across the path of travel).',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'HAZARD-TRIP-01',
             codeReference: `🧭 Step 1: Identify Walking Surfaces to Inspect
 Target zones: Corridors, stairwells, laundry rooms, lobbies, trash enclosures, and mechanical closets
@@ -6718,12 +6738,12 @@ Non-invasive observation. No lifting or moving of flooring required.
         },
         {
             id: 'hazard_trip_2',
-            name: 'Walking surfaces have an abrupt change: a horizontal separation ≥2 inches across the path of travel.',
-            detail: 'Walking surfaces have an abrupt change: a horizontal separation ≥2 inches across the path of travel.',
-            criteria: 'An unintended 2-inch horizontal separation perpendicular to the path of travel.',
+            name: 'Trip hazard on the walking surface. (abrupt change: a vertical gap ≥¾ inch or a horizontal separation ≥2 inches across the path of travel).',
+            detail: 'Trip hazard on the walking surface. (abrupt change: a vertical gap ≥¾ inch or a horizontal separation ≥2 inches across the path of travel).',
+            criteria: 'Trip hazard on the walking surface. (abrupt change: a vertical gap ≥¾ inch or a horizontal separation ≥2 inches across the path of travel).',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'HAZARD-TRIP-02',
             codeReference: `🧭 Step 1: Identify Walking Surfaces to Inspect
 Target zones: Corridors, stairwells, laundry rooms, lobbies, trash enclosures, and mechanical closets
@@ -6767,45 +6787,40 @@ export const HVAC: UnitItemDeficiencies = {
         {
             id: 'hvac_1',
             name: 'Air conditioning system or device is not operational.',
-            detail: 'The system or device does not turn on. OR System or device only produces hot or room temperature air.',
+            detail: 'The system or device (window or central) does not turn on. Or the system or device only produces hot or room temperature air.',
             criteria: '(e.g., a window unit or central air system)',
-            severity: 'Low',
-            repairBy: '60 Day',
-            points: '2.20/n',
+            severity: 'Moderate',
+            repairBy: '30 Day',
+            points: '5.5/n',
             code: 'HVAC-01',
-            codeReference: `🧭 Step 1: Identify HVAC Components to Inspect
-Focus on permanently installed heating, ventilation, and air conditioning systems in shared-use areas
-• Type: Central air, split system, PTAC, wall unit, radiant, or forced air
-
-🔍 Step 2: Visual Condition Assessment
-• Components: Thermostat, air handler, furnace, condenser, supply/return registers, exhaust fans
-
+            codeReference: `🧭 Step 1: Identify HVAC Components
+• Scope: Includes heating units, cooling systems, exhaust fans, thermostats, and ductwork
+🔍 Step 2: Identification & Applicability
+• Required: Every habitable space must have a functional heat source during the heating season (typically Oct–Apr)
+• Cooling systems: Required only if originally designed or provided
 🧪 Step 3: Functional Testing
-• Thermostat Test: Adjust settings and confirm system responds (heat or cool activates)
-• Airflow Check: Confirm air is flowing from supply vents and returning through returns
-• Exhaust Vent Inspection: Ensure combustion appliance vents are correctly connected and unobstructed
-• Visual Scan: Look for rust, soot, burn marks, or exposed wires on HVAC units
-• Noise & Vibration: Listen for abnormal sounds indicating mechanical failure
-Do not open sealed panels or test gas appliances unless qualified and authorized.
-
-📏 Step 4: Accessibility & IBU Local Requirements
-• Service access: Units must be reachable without disassembly or unsafe maneuvering
-• Labeling: Equipment should be labeled with unit ID and service info
-• IBU Overlay: May require seismic bracing, carbon monoxide detectors, or annual service logs
-
-⚒️ Step 5: IRC HVAC Requirements
-• IRC M1401–M1507: HVAC systems must be properly installed, vented, and maintained
-• IRC M1307.3: Equipment must be accessible and protected from damage
-• IBU overlays – Local fire, combustion safety, ventilation, and accessibility code`
+• Heating Test: Activate thermostat and confirm warm air or heat delivery, Check for airflow at supply vents
+• Cooling Test (if applicable): Activate AC and confirm cool air delivery
+• Ventilation Test: Turn on exhaust fans in kitchen and bathroom
+• Use tissue test to confirm suction
+• Thermostat Check: Confirm display works and responds to input
+📏 Step 4: Accessibility & Local Requirements
+• Reach Range: Thermostats and controls must be within 15"–48" AFF
+• Ventilation controls: Must be labeled and operable by residents
+• IBU Overlay: May require tactile controls, visual contrast, or audible feedback in accessible units
+⚒️ Step 5: IRC HVAC Safety Requirements
+• IRC M1401–M1507: Heating systems must be safely installed and vented
+• Combustion appliances must have proper clearances and exhaust
+• No fuel-burning appliances allowed in sleeping rooms unless sealed combustion`
         },
         {
             id: 'hvac_2',
-            name: 'Combustion chamber cover or gas shutoff valve is missing from a combustion-fueled heating appliance. Heating system in tropical islands are excluded.',
+            name: 'Combustion chamber cover or gas shutoff valve is missing from a combustion-fueled heating appliance.',
             detail: 'Combustion chamber cover or gas shutoff valve is missing (i.e., evidence of prior installation, but is now not present or is incomplete) from a combustion-fueled heating appliance.',
             criteria: 'a combustion chamber cover or gas shutoff valve was previously installed and is now not present or is incomplete.',
             severity: 'Life-Threatening',
             repairBy: '24Hrs',
-            points: '27.25/n',
+            points: '30/n',
             code: 'HVAC-02',
             codeReference: `🧭 Step 1: Identify HVAC Components to Inspect
 Focus on permanently installed heating, ventilation, and air conditioning systems in shared-use areas
@@ -6834,12 +6849,12 @@ Do not open sealed panels or test gas appliances unless qualified and authorized
         },
         {
             id: 'hvac_3',
-            name: 'Fuel-burning heating system or device exhaust vent is misaligned, blocked, disconnected, improperly connected, damaged or missing. Heating system in tropical islands are excluded.',
-            detail: 'A fuel-burning heating system or device is present. And exhaust vent is misaligned, blocked, disconnected, or improperly connected through to the ceiling or wall. Or Exhaust vent is damaged. OR Exhaust vent is missing.',
+            name: 'Fuel-burning heating system or device exhaust vent is misaligned, blocked, disconnected or improperly connected, damaged or missing.',
+            detail: 'Fuel-burning heating system is present, and the exhaust vent is misaligned, blocked, disconnected, or damaged—posing safety risks.',
             criteria: 'Not properly connected through to the ceiling or wall. Metal tape of any kind is not a substitute for improperly connected flue vent.',
             severity: 'Life-Threatening',
             repairBy: '24Hrs',
-            points: '27.25/n',
+            points: '30/n',
             code: 'HVAC-03',
             codeReference: `🧭 Step 1: Identify HVAC Components to Inspect
 Focus on permanently installed heating, ventilation, and air conditioning systems in shared-use areas
@@ -6873,134 +6888,114 @@ Do not open sealed panels or test gas appliances unless qualified and authorized
             criteria: 'Safety shield was previously installed and is now not present or is incomplete. Heating systems in tropical islands are excluded.',
             severity: 'Severe',
             repairBy: '24 Hrs.',
-            points: '13.40/n',
+            points: '14.8/n',
             code: 'HVAC-04',
-            codeReference: `🧭 Step 1: Identify HVAC Components to Inspect
-Focus on permanently installed heating, ventilation, and air conditioning systems in shared-use areas
-• Type: Central air, split system, PTAC, wall unit, radiant, or forced air
-
-🔍 Step 2: Visual Condition Assessment
-• Components: Thermostat, air handler, furnace, condenser, supply/return registers, exhaust fans
-
+            codeReference: `🧭 Step 1: Identify HVAC Components
+• Scope: Includes heating units, cooling systems, exhaust fans, thermostats, and ductwork
+🔍 Step 2: Identification & Applicability
+• Required: Every habitable space must have a functional heat source during the heating season (typically Oct–Apr)
+• Cooling systems: Required only if originally designed or provided
 🧪 Step 3: Functional Testing
-• Thermostat Test: Adjust settings and confirm system responds (heat or cool activates)
-• Airflow Check: Confirm air is flowing from supply vents and returning through returns
-• Exhaust Vent Inspection: Ensure combustion appliance vents are correctly connected and unobstructed
-• Visual Scan: Look for rust, soot, burn marks, or exposed wires on HVAC units
-• Noise & Vibration: Listen for abnormal sounds indicating mechanical failure
-Do not open sealed panels or test gas appliances unless qualified and authorized.
-
-📏 Step 4: Accessibility & IBU Local Requirements
-• Service access: Units must be reachable without disassembly or unsafe maneuvering
-• Labeling: Equipment should be labeled with unit ID and service info
-• IBU Overlay: May require seismic bracing, carbon monoxide detectors, or annual service logs
-
-⚒️ Step 5: IRC HVAC Requirements
-• IRC M1401–M1507: HVAC systems must be properly installed, vented, and maintained
-• IRC M1307.3: Equipment must be accessible and protected from damage
-• IBU overlays – Local fire, combustion safety, ventilation, and accessibility code`
+• Heating Test: Activate thermostat and confirm warm air or heat delivery, Check for airflow at supply vents
+• Cooling Test (if applicable): Activate AC and confirm cool air delivery
+• Ventilation Test: Turn on exhaust fans in kitchen and bathroom
+• Use tissue test to confirm suction
+• Thermostat Check: Confirm display works and responds to input
+📏 Step 4: Accessibility & Local Requirements
+• Reach Range: Thermostats and controls must be within 15"–48" AFF
+• Ventilation controls: Must be labeled and operable by residents
+• IBU Overlay: May require tactile controls, visual contrast, or audible feedback in accessible units
+⚒️ Step 5: IRC HVAC Safety Requirements
+• IRC M1401–M1507: Heating systems must be safely installed and vented
+• Combustion appliances must have proper clearances and exhaust
+• No fuel-burning appliances allowed in sleeping rooms unless sealed combustion`
         },
         {
             id: 'hvac_5',
             name: 'The inspection date is on or between April 1 and September 30, and a heating source is damaged, inoperable, missing, or not installed.',
-            detail: 'A permanently installed heating source is damaged. OR a permanently installed heating source is inoperable. OR a permanently installed heating source is missing. OR A permanently installed heating source is not installed. And The outside temperature is below 68 degrees Fahrenheit',
+            detail: 'A permanently installed heating source is damaged. Or is inoperable. Or is missing. Or not installed.',
             criteria: 'Permanently is affixed within the unit or building, safely connected to the unit or building electrical system, thermostatically controlled by the unit or building, and appropriate for the size of the unit or building. The heating systems in tropical islands are excluded.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '13.40/n',
+            points: '5.5/n',
             code: 'HVAC-05',
-            codeReference: `🧭 Step 1: Identify HVAC Components to Inspect
-Focus on permanently installed heating, ventilation, and air conditioning systems in shared-use areas
-• Type: Central air, split system, PTAC, wall unit, radiant, or forced air
-
-🔍 Step 2: Visual Condition Assessment
-• Components: Thermostat, air handler, furnace, condenser, supply/return registers, exhaust fans
-
+            codeReference: `🧭 Step 1: Identify HVAC Components
+• Scope: Includes heating units, cooling systems, exhaust fans, thermostats, and ductwork
+🔍 Step 2: Identification & Applicability
+• Required: Every habitable space must have a functional heat source during the heating season (typically Oct–Apr)
+• Cooling systems: Required only if originally designed or provided
 🧪 Step 3: Functional Testing
-• Thermostat Test: Adjust settings and confirm system responds (heat or cool activates)
-• Airflow Check: Confirm air is flowing from supply vents and returning through returns
-• Exhaust Vent Inspection: Ensure combustion appliance vents are correctly connected and unobstructed
-• Visual Scan: Look for rust, soot, burn marks, or exposed wires on HVAC units
-• Noise & Vibration: Listen for abnormal sounds indicating mechanical failure
-Do not open sealed panels or test gas appliances unless qualified and authorized.
-
-📏 Step 4: Accessibility & IBU Local Requirements
-• Service access: Units must be reachable without disassembly or unsafe maneuvering
-• Labeling: Equipment should be labeled with unit ID and service info
-• IBU Overlay: May require seismic bracing, carbon monoxide detectors, or annual service logs
-
-⚒️ Step 5: IRC HVAC Requirements
-• IRC M1401–M1507: HVAC systems must be properly installed, vented, and maintained
-• IRC M1307.3: Equipment must be accessible and protected from damage
-• IBU overlays – Local fire, combustion safety, ventilation, and accessibility code`
+• Heating Test: Activate thermostat and confirm warm air or heat delivery, Check for airflow at supply vents
+• Cooling Test (if applicable): Activate AC and confirm cool air delivery
+• Ventilation Test: Turn on exhaust fans in kitchen and bathroom
+• Use tissue test to confirm suction
+• Thermostat Check: Confirm display works and responds to input
+📏 Step 4: Accessibility & Local Requirements
+• Reach Range: Thermostats and controls must be within 15"–48" AFF
+• Ventilation controls: Must be labeled and operable by residents
+• IBU Overlay: May require tactile controls, visual contrast, or audible feedback in accessible units
+⚒️ Step 5: IRC HVAC Safety Requirements
+• IRC M1401–M1507: Heating systems must be safely installed and vented
+• Combustion appliances must have proper clearances and exhaust
+• No fuel-burning appliances allowed in sleeping rooms unless sealed combustion`
         },
         {
             id: 'hvac_6',
-            name: 'The inspection date is between October 1 and March 31(cold weather), and the permanently installed heating source is not working, or it is working and the interior temperature is below 64 degrees Fahrenheit.',
-            detail: 'The inspection date is on or between October 1 and March 31. AND the permanently installed heating source is not working. OR the permanently installed heating source is working and the interior temperature is below 64 degrees Fahrenheit.',
+            name: 'The inspection date is on or between October 1 and March 31 and the permanently installed heating or heating source is working and the interior temperature is below 64 degrees Fahrenheit.',
+            detail: 'A permanently installed heating source may include forced air heating, radiant heat, baseboard units heated by electricity, or an installed wall unit. Or the temperature is below 64°F.',
             criteria: 'The permanently installed heating source is not working to create heat. Heating systems in tropical islands are excluded.',
             severity: 'Life-Threatening',
             repairBy: '24Hrs',
-            points: '27.25/n',
+            points: '30/n',
             code: 'HVAC-06',
-            codeReference: `🧭 Step 1: Identify HVAC Components to Inspect
-Focus on permanently installed heating, ventilation, and air conditioning systems in shared-use areas
-• Type: Central air, split system, PTAC, wall unit, radiant, or forced air
-
-🔍 Step 2: Visual Condition Assessment
-• Components: Thermostat, air handler, furnace, condenser, supply/return registers, exhaust fans
-
+            codeReference: `🧭 Step 1: Identify HVAC Components
+• Scope: Includes heating units, cooling systems, exhaust fans, thermostats, and ductwork
+🔍 Step 2: Identification & Applicability
+• Required: Every habitable space must have a functional heat source during the heating season (typically Oct–Apr)
+• Cooling systems: Required only if originally designed or provided
 🧪 Step 3: Functional Testing
-• Thermostat Test: Adjust settings and confirm system responds (heat or cool activates)
-• Airflow Check: Confirm air is flowing from supply vents and returning through returns
-• Exhaust Vent Inspection: Ensure combustion appliance vents are correctly connected and unobstructed
-• Visual Scan: Look for rust, soot, burn marks, or exposed wires on HVAC units
-• Noise & Vibration: Listen for abnormal sounds indicating mechanical failure
-Do not open sealed panels or test gas appliances unless qualified and authorized.
-
-📏 Step 4: Accessibility & IBU Local Requirements
-• Service access: Units must be reachable without disassembly or unsafe maneuvering
-• Labeling: Equipment should be labeled with unit ID and service info
-• IBU Overlay: May require seismic bracing, carbon monoxide detectors, or annual service logs
-
-⚒️ Step 5: IRC HVAC Requirements
-• IRC M1401–M1507: HVAC systems must be properly installed, vented, and maintained
-• IRC M1307.3: Equipment must be accessible and protected from damage
-• IBU overlays – Local fire, combustion safety, ventilation, and accessibility code`
+• Heating Test: Activate thermostat and confirm warm air or heat delivery, Check for airflow at supply vents
+• Cooling Test (if applicable): Activate AC and confirm cool air delivery
+• Ventilation Test: Turn on exhaust fans in kitchen and bathroom
+• Use tissue test to confirm suction
+• Thermostat Check: Confirm display works and responds to input
+📏 Step 4: Accessibility & Local Requirements
+• Reach Range: Thermostats and controls must be within 15"–48" AFF
+• Ventilation controls: Must be labeled and operable by residents
+• IBU Overlay: May require tactile controls, visual contrast, or audible feedback in accessible units
+⚒️ Step 5: IRC HVAC Safety Requirements
+• IRC M1401–M1507: Heating systems must be safely installed and vented
+• Combustion appliances must have proper clearances and exhaust
+• No fuel-burning appliances allowed in sleeping rooms unless sealed combustion`
         },
         {
             id: 'hvac_7',
             name: 'Unvented space heater is present.',
-            detail: 'An unvented space heater that burns gas, oil, or kerosene is present Inside, including any and all common areas.',
+            detail: 'Unvented space heater that burns gas, oil, or kerosene is present.',
             criteria: 'Inside, include any and all common areas.',
             severity: 'Life-Threatening',
             repairBy: '24Hrs',
-            points: '27.25/n',
+            points: '30/n',
             code: 'HVAC-07',
-            codeReference: `🧭 Step 1: Identify HVAC Components to Inspect
-Focus on permanently installed heating, ventilation, and air conditioning systems in shared-use areas
-• Type: Central air, split system, PTAC, wall unit, radiant, or forced air
-
-🔍 Step 2: Visual Condition Assessment
-• Components: Thermostat, air handler, furnace, condenser, supply/return registers, exhaust fans
-
+            codeReference: `🧭 Step 1: Identify HVAC Components
+• Scope: Includes heating units, cooling systems, exhaust fans, thermostats, and ductwork
+🔍 Step 2: Identification & Applicability
+• Required: Every habitable space must have a functional heat source during the heating season (typically Oct–Apr)
+• Cooling systems: Required only if originally designed or provided
 🧪 Step 3: Functional Testing
-• Thermostat Test: Adjust settings and confirm system responds (heat or cool activates)
-• Airflow Check: Confirm air is flowing from supply vents and returning through returns
-• Exhaust Vent Inspection: Ensure combustion appliance vents are correctly connected and unobstructed
-• Visual Scan: Look for rust, soot, burn marks, or exposed wires on HVAC units
-• Noise & Vibration: Listen for abnormal sounds indicating mechanical failure
-Do not open sealed panels or test gas appliances unless qualified and authorized.
-
-📏 Step 4: Accessibility & IBU Local Requirements
-• Service access: Units must be reachable without disassembly or unsafe maneuvering
-• Labeling: Equipment should be labeled with unit ID and service info
-• IBU Overlay: May require seismic bracing, carbon monoxide detectors, or annual service logs
-
-⚒️ Step 5: IRC HVAC Requirements
-• IRC M1401–M1507: HVAC systems must be properly installed, vented, and maintained
-• IRC M1307.3: Equipment must be accessible and protected from damage
-• IBU overlays – Local fire, combustion safety, ventilation, and accessibility code`
+• Heating Test: Activate thermostat and confirm warm air or heat delivery, Check for airflow at supply vents
+• Cooling Test (if applicable): Activate AC and confirm cool air delivery
+• Ventilation Test: Turn on exhaust fans in kitchen and bathroom
+• Use tissue test to confirm suction
+• Thermostat Check: Confirm display works and responds to input
+📏 Step 4: Accessibility & Local Requirements
+• Reach Range: Thermostats and controls must be within 15"–48" AFF
+• Ventilation controls: Must be labeled and operable by residents
+• IBU Overlay: May require tactile controls, visual contrast, or audible feedback in accessible units
+⚒️ Step 5: IRC HVAC Safety Requirements
+• IRC M1401–M1507: Heating systems must be safely installed and vented
+• Combustion appliances must have proper clearances and exhaust
+• No fuel-burning appliances allowed in sleeping rooms unless sealed combustion`
         }
     ]
 };
@@ -7019,36 +7014,53 @@ export const KITCHEN_CABINET: UnitItemDeficiencies = {
     deficiencies: [
         {
             id: 'kitchen_cab_1',
-            name: 'Food storage component or kitchen cabinet doors, drawers, or shelves are missing.',
-            detail: 'Food storage component or kitchen cabinet doors, drawers, or shelves are missing. Visibly defective; impacts the functionality or does not meet the functionality or serve the purpose.',
-            criteria: 'Some of the kitchen cabinet doors, drawers, or shelves are missing. Visibly defective; impacts the functionality or does not meet the functionality or serve the purpose.',
+            name: 'Food storage space is not present (the presence of cold food storage should be evaluated under the refrigerator Standard).',
+            detail: 'Food storage space is not present (the presence of cold food storage should be evaluated under the refrigerator Standard).',
+            criteria: 'Food storage space is not present.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '5.5/n',
             code: 'KITCHEN-CAB-01',
-            codeReference: `🧭 Step 1: Identify Cabinet and Storage Locations
-• Cabinetry must exist: If the area is designated as a kitchen or food prep zone, cabinetry must be present.
-NSPIRE applies to built-in cabinets used for food, dishware, or storage of supplies. Freestanding furniture is excluded unless installed by the property.
-
+            codeReference: `🧭 Step 1: Identification & Applicability
+• Required: Every unit with a designated kitchen must have permanent cabinetry for food and dish storage
 🔍 Step 2: Visual Condition Assessment
-Look for peeling laminate, chipped paint, water stains, or delamination
-
-🧪 Step 3: Functional Testing
-• Open/Close Test: Open every door and drawer thoroughly to check for smooth operation
-• Hardware Check: Confirm knobs, handles, hinges, and slides are secure and functional
-• Structural Stability: Gently press on cabinet sides and shelves to confirm they're securely mounted
-If more than half of the cabinet components are missing, damaged, or inoperable, cite as a deficiency.
-
-📏 Step 4: Accessibility & IBU Local Requirement
-• Reach Range: Accessible cabinets should be within 15"–48" AFF
-• Operability: Doors and drawers must be usable with one hand, no tight grasping or twisting
-• Clear Floor Space: Minimum 30"x48" in front of accessible cabinets
-• Safe Use: No sharp edges, splinters, or protruding hardware
-• IBU Overlay: May require soft-close hardware, rounded edges, or multilingual labeling in shared-use kitchens
-
-⚒️ Step 5: IRC Installation & Safety Requirements
-• R306.2 – Kitchen facilities and sanitation
-• IBU overlays – Local sanitation, accessibility, and usability codes`
+• Check under sink cabinets for leaks, rot, or odor
+🧪 Step 3: Operability Test
+• Open and close every door and drawer
+• Check for full extension and smooth operation
+• Verify alignment and secure latching
+📏 Step 4: Accessibility & Local Requirements
+• Reach range: Shelves and drawers must be usable by residents with limited mobility
+• Handle type: Lever or loop-style preferred for accessibility
+• IBU Overlay: May require adjustable shelving, tactile labels, or visual contrast in accessible units
+⚒️ Step 5: IRC Structural Requirements
+• IRC R306.2: Kitchens must include space for food preparation and storage
+• IRC R602.3: Cabinets must be securely fastened to structural framing`
+        },
+        {
+            id: 'kitchen_cab_2',
+            name: 'Storage component is damaged, inoperable, or missing, with 50% or more of kitchen cabinet doors, drawers, or shelves absent.',
+            detail: 'Storage component is damaged, inoperable, or missing, with 50% or more of kitchen cabinet doors, drawers, or shelves absent. The condition is visibly defective and impacts functionality or the ability to serve its intended purpose.',
+            criteria: '50% or more of kitchen cabinet doors, drawers, or shelves are missing.',
+            severity: 'Moderate',
+            repairBy: '30 Day',
+            points: '5.5/n',
+            code: 'KITCHEN-CAB-02',
+            codeReference: `🧭 Step 1: Identification & Applicability
+• Required: Every unit with a designated kitchen must have permanent cabinetry for food and dish storage
+🔍 Step 2: Visual Condition Assessment
+• Check under sink cabinets for leaks, rot, or odor
+🧪 Step 3: Operability Test
+• Open and close every door and drawer
+• Check for full extension and smooth operation
+• Verify alignment and secure latching
+📏 Step 4: Accessibility & Local Requirements
+• Reach range: Shelves and drawers must be usable by residents with limited mobility
+• Handle type: Lever or loop-style preferred for accessibility
+• IBU Overlay: May require adjustable shelving, tactile labels, or visual contrast in accessible units
+⚒️ Step 5: IRC Structural Requirements
+• IRC R306.2: Kitchens must include space for food preparation and storage
+• IRC R602.3: Cabinets must be securely fastened to structural framing`
         }
     ]
 };
@@ -7063,179 +7075,198 @@ export const KITCHEN_COOKING: UnitItemDeficiencies = {
             criteria: 'A burner does not produce heat, but at least one other burner is present on the cooking range or cooktop and does produce heat.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '5.5/n',
             code: 'KITCHEN-COOK-01',
-            codeReference: `🧭 Step 1: Identify Cooking Appliances to Inspect
-• Primary appliance: Must be present if the space is designated or used as a kitchen
-• Types: Range, cooktop, oven, microwave, hot plate (if primary)
-
-🔍 Step 2: Visual Condition Assessment
-• Check for: Missing knobs, racks, grates, drip pans, and Broken door hinges, seals, or handles. Unsafe units must be corrected promptly.
-
+            codeReference: `🧭 Step 1: Identify Cooking Appliance Type
+• Appliance types: Gas or electric range, cooktop, oven, or microwave (if primary)
+🔍 Step 2: Identification & Applicability
+• Required: Every unit must have a primary cooking appliance unless exempt (e.g., SRO with shared kitchen)
 🧪 Step 3: Functional Testing
-• Burner Test: Ask POA (Property Owner/Agent) to turn on each burner; observe flame or heat
-• Oven Test: Open oven, confirm heat production (feel above coil or check indicator)
-• Microwave Test: Run for 30 seconds with a microwave-safe cup of water; check for heating
-• Control Check: Confirm knobs, buttons, and displays respond properly
-• Safety Scan: Look for exposed wires, broken glass, or missing components
-Inspectors should not light pilot lights or operate appliances directly unless they are authorized to do so.
-
-📏 Step 4: Accessibility & IBU Local Requirements
-• Reach Range: Controls must be within 15"–48" AFF
-• Operability: Must be usable with one hand, no tight grasping or twisting
-• Clear Floor Space: Minimum 30"x48" in front of appliance
-• Safe Use: No sharp edges, hot surfaces, or obstructed access
-• IBU Overlay: May require multilingual signage, tactile controls, or safety instructions
-
+• Burner Test: Gas: Observe flame pattern (even, blue flame)
+• Electric: Feel for heat above coil or surface
+• Oven Test: Turn on and confirm heating (use thermometer if available)
+• Microwave Test (if primary): Run for 30 seconds with a cup of water; confirm heating
+• Control Check: Ensure knobs, buttons, and digital displays respond properly
+📏 Step 4: Accessibility & Local Requirements
+• Control height: ≤48" AFF for ADA compliance
+• Handle type: Lever or loop-style preferred
+• Clear floor space: ≥30" x 48" in front of appliance for wheelchair access
+• IBU Overlay: May require tactile controls, visual contrast, or audible feedback in accessible units
 ⚒️ Step 5: IRC Installation & Safety Requirements
-• IRC M1901–M1905 – Cooking appliances, clearances, and exhaust
-• IBU overlays – Local fire, ventilation, sanitation, and accessibility code`
+• IRC G2406.2: No fuel-burning appliances allowed in sleeping rooms unless sealed combustion
+• IRC E3901.5: Electrical outlets must be safely positioned and grounded near appliances`
         },
         {
             id: 'kitchen_cook_2',
-            name: 'A cooking range, cooktop, or oven component, including the oven door seal is damaged or missing, making the device unsafe.',
-            detail: 'A cooking range, cooktop, or oven component, including the oven door seal is damaged or missing, making the device unsafe.',
-            criteria: 'Cooking range, cooktop, or oven component is missing such that the device is unsafe for use.',
-            severity: 'Moderate',
-            repairBy: '30 Day',
-            points: '5.0/n',
+            name: 'Microwave is the primary cooking appliance, and it is damaged (i.e., visibly defective; impacts functionality).',
+            detail: 'Microwave is the primary cooking appliance, and it is damaged (i.e., visibly defective; impacts functionality).',
+            criteria: 'Microwave is the primary cooking appliance and it is damaged.',
+            severity: 'Severe',
+            repairBy: '24 Hrs.',
+            points: '14.8/n',
             code: 'KITCHEN-COOK-02',
-            codeReference: `🧭 Step 1: Identify Cooking Appliances to Inspect
-• Primary appliance: Must be present if the space is designated or used as a kitchen
-• Types: Range, cooktop, oven, microwave, hot plate (if primary)
-
-🔍 Step 2: Visual Condition Assessment
-• Check for: Missing knobs, racks, grates, drip pans, and Broken door hinges, seals, or handles. Unsafe units must be corrected promptly.
-
+            codeReference: `🧭 Step 1: Identify Cooking Appliance Type
+• Appliance types: Gas or electric range, cooktop, oven, or microwave (if primary)
+🔍 Step 2: Identification & Applicability
+• Required: Every unit must have a primary cooking appliance unless exempt (e.g., SRO with shared kitchen)
 🧪 Step 3: Functional Testing
-• Burner Test: Ask POA (Property Owner/Agent) to turn on each burner; observe flame or heat
-• Oven Test: Open oven, confirm heat production (feel above coil or check indicator)
-• Microwave Test: Run for 30 seconds with a microwave-safe cup of water; check for heating
-• Control Check: Confirm knobs, buttons, and displays respond properly
-• Safety Scan: Look for exposed wires, broken glass, or missing components
-Inspectors should not light pilot lights or operate appliances directly unless they are authorized to do so.
-
-📏 Step 4: Accessibility & IBU Local Requirements
-• Reach Range: Controls must be within 15"–48" AFF
-• Operability: Must be usable with one hand, no tight grasping or twisting
-• Clear Floor Space: Minimum 30"x48" in front of appliance
-• Safe Use: No sharp edges, hot surfaces, or obstructed access
-• IBU Overlay: May require multilingual signage, tactile controls, or safety instructions
-
+• Burner Test: Gas: Observe flame pattern (even, blue flame)
+• Electric: Feel for heat above coil or surface
+• Oven Test: Turn on and confirm heating (use thermometer if available)
+• Microwave Test (if primary): Run for 30 seconds with a cup of water; confirm heating
+• Control Check: Ensure knobs, buttons, and digital displays respond properly
+📏 Step 4: Accessibility & Local Requirements
+• Control height: ≤48" AFF for ADA compliance
+• Handle type: Lever or loop-style preferred
+• Clear floor space: ≥30" x 48" in front of appliance for wheelchair access
+• IBU Overlay: May require tactile controls, visual contrast, or audible feedback in accessible units
 ⚒️ Step 5: IRC Installation & Safety Requirements
-• IRC M1901–M1905 – Cooking appliances, clearances, and exhaust
-• IBU overlays – Local fire, ventilation, sanitation, and accessibility code`
+• IRC G2406.2: No fuel-burning appliances allowed in sleeping rooms unless sealed combustion
+• IRC E3901.5: Electrical outlets must be safely positioned and grounded near appliances`
         },
         {
             id: 'kitchen_cook_3',
-            name: 'Cooking range, cooktop, or oven does not ignite or produce heat.',
-            detail: 'Cooking range, cooktop, or oven does not ignite or produce heat.',
-            criteria: 'No burner on the cooking range or cooktop produces heat. OR The oven does not produce heat temperature.',
+            name: 'A control knob is missing, or the oven, cooktop component is damaged or missing, making the device unsafe for use, including the oven door seal.',
+            detail: 'A control knob is missing, or the oven, cooktop component is damaged or missing, making the device unsafe for use, including the oven door seal.',
+            criteria: 'A control knob is missing, or the oven, cooktop component is damaged or missing, making the device unsafe for use.',
+            severity: 'Moderate',
+            repairBy: '30 Day',
+            points: '5.5/n',
+            code: 'KITCHEN-COOK-03',
+            codeReference: `🧭 Step 1: Identify Cooking Appliance Type
+• Appliance types: Gas or electric range, cooktop, oven, or microwave (if primary)
+🔍 Step 2: Identification & Applicability
+• Required: Every unit must have a primary cooking appliance unless exempt (e.g., SRO with shared kitchen)
+🧪 Step 3: Functional Testing
+• Burner Test: Gas: Observe flame pattern (even, blue flame)
+• Electric: Feel for heat above coil or surface
+• Oven Test: Turn on and confirm heating (use thermometer if available)
+• Microwave Test (if primary): Run for 30 seconds with a cup of water; confirm heating
+• Control Check: Ensure knobs, buttons, and digital displays respond properly
+📏 Step 4: Accessibility & Local Requirements
+• Control height: ≤48" AFF for ADA compliance
+• Handle type: Lever or loop-style preferred
+• Clear floor space: ≥30" x 48" in front of appliance for wheelchair access
+• IBU Overlay: May require tactile controls, visual contrast, or audible feedback in accessible units
+⚒️ Step 5: IRC Installation & Safety Requirements
+• IRC G2406.2: No fuel-burning appliances allowed in sleeping rooms unless sealed combustion
+• IRC E3901.5: Electrical outlets must be safely positioned and grounded near appliances`
+        },
+        {
+            id: 'kitchen_cook_4',
+            name: 'Cooktop or oven does not ignite or produce heat.',
+            detail: 'Cooktop or oven does not ignite or produce heat.',
+            criteria: 'No burner on the cooking range or cooktop produces heat. OR The oven does not produce heat.',
             severity: 'Severe',
             repairBy: '24 Hrs.',
-            points: '13.40/n',
-            code: 'KITCHEN-COOK-03',
-            codeReference: `🧭 Step 1: Identify Cooking Appliances to Inspect
-• Primary appliance: Must be present if the space is designated or used as a kitchen
-• Types: Range, cooktop, oven, microwave, hot plate (if primary)
-
-🔍 Step 2: Visual Condition Assessment
-• Check for: Missing knobs, racks, grates, drip pans, and Broken door hinges, seals, or handles. Unsafe units must be corrected promptly.
-
+            points: '14.8/n',
+            code: 'KITCHEN-COOK-04',
+            codeReference: `🧭 Step 1: Identify Cooking Appliance Type
+• Appliance types: Gas or electric range, cooktop, oven, or microwave (if primary)
+🔍 Step 2: Identification & Applicability
+• Required: Every unit must have a primary cooking appliance unless exempt (e.g., SRO with shared kitchen)
 🧪 Step 3: Functional Testing
-• Burner Test: Ask POA (Property Owner/Agent) to turn on each burner; observe flame or heat
-• Oven Test: Open oven, confirm heat production (feel above coil or check indicator)
-• Microwave Test: Run for 30 seconds with a microwave-safe cup of water; check for heating
-• Control Check: Confirm knobs, buttons, and displays respond properly
-• Safety Scan: Look for exposed wires, broken glass, or missing components
-Inspectors should not light pilot lights or operate appliances directly unless they are authorized to do so.
-
-📏 Step 4: Accessibility & IBU Local Requirements
-• Reach Range: Controls must be within 15"–48" AFF
-• Operability: Must be usable with one hand, no tight grasping or twisting
-• Clear Floor Space: Minimum 30"x48" in front of appliance
-• Safe Use: No sharp edges, hot surfaces, or obstructed access
-• IBU Overlay: May require multilingual signage, tactile controls, or safety instructions
-
+• Burner Test: Gas: Observe flame pattern (even, blue flame)
+• Electric: Feel for heat above coil or surface
+• Oven Test: Turn on and confirm heating (use thermometer if available)
+• Microwave Test (if primary): Run for 30 seconds with a cup of water; confirm heating
+• Control Check: Ensure knobs, buttons, and digital displays respond properly
+📏 Step 4: Accessibility & Local Requirements
+• Control height: ≤48" AFF for ADA compliance
+• Handle type: Lever or loop-style preferred
+• Clear floor space: ≥30" x 48" in front of appliance for wheelchair access
+• IBU Overlay: May require tactile controls, visual contrast, or audible feedback in accessible units
 ⚒️ Step 5: IRC Installation & Safety Requirements
-• IRC M1901–M1905 – Cooking appliances, clearances, and exhaust
-• IBU overlays – Local fire, ventilation, sanitation, and accessibility code`
+• IRC G2406.2: No fuel-burning appliances allowed in sleeping rooms unless sealed combustion
+• IRC E3901.5: Electrical outlets must be safely positioned and grounded near appliances`
+        },
+        {
+            id: 'kitchen_cook_5',
+            name: 'The primary cooking appliance is missing (i.e., evidence of prior installation, but now not present or is incomplete).',
+            detail: 'The primary cooking appliance is missing (i.e., evidence of prior installation, but now not present or is incomplete).',
+            criteria: 'The primary cooking appliance is missing.',
+            severity: 'Severe',
+            repairBy: '24 Hrs.',
+            points: '14.8/n',
+            code: 'KITCHEN-COOK-05',
+            codeReference: `🧭 Step 1: Identify Cooking Appliance Type
+• Appliance types: Gas or electric range, cooktop, oven, or microwave (if primary)
+🔍 Step 2: Identification & Applicability
+• Required: Every unit must have a primary cooking appliance unless exempt (e.g., SRO with shared kitchen)
+🧪 Step 3: Functional Testing
+• Burner Test: Gas: Observe flame pattern (even, blue flame)
+• Electric: Feel for heat above coil or surface
+• Oven Test: Turn on and confirm heating (use thermometer if available)
+• Microwave Test (if primary): Run for 30 seconds with a cup of water; confirm heating
+• Control Check: Ensure knobs, buttons, and digital displays respond properly
+📏 Step 4: Accessibility & Local Requirements
+• Control height: ≤48" AFF for ADA compliance
+• Handle type: Lever or loop-style preferred
+• Clear floor space: ≥30" x 48" in front of appliance for wheelchair access
+• IBU Overlay: May require tactile controls, visual contrast, or audible feedback in accessible units
+⚒️ Step 5: IRC Installation & Safety Requirements
+• IRC G2406.2: No fuel-burning appliances allowed in sleeping rooms unless sealed combustion
+• IRC E3901.5: Electrical outlets must be safely positioned and grounded near appliances`
         }
     ]
 };
 
 export const KITCHEN_FOOD_PREP: UnitItemDeficiencies = {
-    itemName: 'Food preparation Area',
+    itemName: 'Food Preparation Area',
     deficiencies: [
         {
             id: 'kitchen_food_1',
-            name: 'A kitchen countertop or food prep area is deficient if 10% or more of the surface is exposed substrate or if the space does not reasonably support adequate food preparation.',
-            detail: 'A kitchen countertop or food prep area is deficient if 10% or more of the surface is exposed substrate or if the space does not reasonably support adequate food preparation.',
-            criteria: 'A kitchen countertop or food prep area is deficient if 10% or more of the surface is exposed substrate or if the space does not reasonably support adequate food preparation.',
+            name: 'The food preparation area (countertop) is damaged or not functionally adequate. (exposed substrate over 10% or setups that hinder food prep are deficient).',
+            detail: 'The food preparation area (countertop) is damaged or not functionally adequate. (exposed substrate over 10% or setups that hinder food prep are deficient).',
+            criteria: 'Exposed substrate over 10% or setups that hinder food prep are deficient.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '5.5/n',
             code: 'KITCHEN-FOOD-01',
-            codeReference: `🧭 Step 1: Identify Food Preparation Areas, Surface Condition & Integrity
-• Material check: Must be nonporous (e.g., laminate, stainless steel, sealed stone).
-• Damage: Look for cracks, chips, burns, warping, or delamination.
-
-🔍 Step 2: Presence & Identification
-• Definition: A food preparation area is a flat, nonporous surface designed for cooking or preparing food.
-• Required if: The space is designated or used as a kitchen or food prep zone.
-
+            codeReference: `🧭 Step 1: Identification & Applicability
+• Required: Every unit must have a designated food preparation area unless exempt (e.g., SRO with shared kitchen)
+• Made of cleanable material (e.g., laminate, stainless steel, sealed stone)
+🔍 Step 2: Sanitation & Environmental Safety
+• Inspect for mold, grease, pests, or food residue on all surfaces
+• Check under sink and behind appliances for leaks or contamination
 🧪 Step 3: Functional Testing
-• Surface Integrity Check: Run a hand across the surface to detect warping, cracks, or peeling
-• Structural Stability: Gently press on the countertop to confirm it's securely mounted
-• Backsplash Review: Inspect the wall behind the prep area for water damage or missing finish
-No invasive testing required. visual and tactile observation.
-
+• Surface Check: Run hand across surface to detect roughness, instability, or exposed substrate
+• Cleanability Test: Confirm surface is sealed and nonporous (e.g., no raw wood or crumbling laminate)
+• Stability Check: Ensure countertop is securely mounted and does not shift or sag
 📏 Step 4: Accessibility & Local Requirements
-• Reach range: Surface must be usable by individuals with mobility aids
-• Visual contrast: May be required for low-vision accessibility
-• IBU Overlay: Could mandate multilingual signage or tactile indicators in shared-use kitchens
-
-⚒️ Step 5: IRC Installation & Safety Requirements
-• IRC R306.2 – Kitchen facilities and sanitation
-• IRC R702.3: Wall finishes behind prep areas must be moisture-resistant
-• IRC P2705.1: Countertops near sinks must allow access to plumbing and be sealed
-• IRC R317.1: Moisture-prone surfaces must use decay-resistant materials
-• IBU overlays – Local sanitation, accessibility, and fire safety codes`
+• Counter height: ≤34" AFF for accessible units
+• Sink clearance: Knee space required under sink for wheelchair access
+• IBU Overlay: May require tactile controls, visual contrast, or lever-style hardware
+⚒️ Step 5: IRC Kitchen Requirements
+• IRC R306.2: Kitchens must include a sink, cooking appliance, and space for food preparation
+• IRC R602.3: Cabinets and counters must be securely fastened to structural framing`
         },
         {
             id: 'kitchen_food_2',
-            name: 'Countertop is missing from the kitchen or food preparation space.',
-            detail: 'Countertop is missing (i.e., evidence of prior installation, but now not present or is incomplete) from the kitchen or food preparation space.',
-            criteria: 'Countertop is missing from the kitchen or food preparation space.',
+            name: 'The food preparation area, the countertop is not present.',
+            detail: 'The food preparation area, the countertop is not present. (Countertops must be fully surfaced and functional exposed substrate over 10% or setups that hinder food prep are deficient).',
+            criteria: 'Countertops must be fully surfaced and functional.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '5.5/n',
             code: 'KITCHEN-FOOD-02',
-            codeReference: `🧭 Step 1: Identify Food Preparation Areas, Surface Condition & Integrity
-• Material check: Must be nonporous (e.g., laminate, stainless steel, sealed stone).
-• Damage: Look for cracks, chips, burns, warping, or delamination.
-
-🔍 Step 2: Presence & Identification
-• Definition: A food preparation area is a flat, nonporous surface designed for cooking or preparing food.
-• Required if: The space is designated or used as a kitchen or food prep zone.
-
+            codeReference: `🧭 Step 1: Identification & Applicability
+• Required: Every unit must have a designated food preparation area unless exempt (e.g., SRO with shared kitchen)
+• Made of cleanable material (e.g., laminate, stainless steel, sealed stone)
+🔍 Step 2: Sanitation & Environmental Safety
+• Inspect for mold, grease, pests, or food residue on all surfaces
+• Check under sink and behind appliances for leaks or contamination
 🧪 Step 3: Functional Testing
-• Surface Integrity Check: Run a hand across the surface to detect warping, cracks, or peeling
-• Structural Stability: Gently press on the countertop to confirm it's securely mounted
-• Backsplash Review: Inspect the wall behind the prep area for water damage or missing finish
-No invasive testing required. visual and tactile observation.
-
+• Surface Check: Run hand across surface to detect roughness, instability, or exposed substrate
+• Cleanability Test: Confirm surface is sealed and nonporous (e.g., no raw wood or crumbling laminate)
+• Stability Check: Ensure countertop is securely mounted and does not shift or sag
 📏 Step 4: Accessibility & Local Requirements
-• Reach range: Surface must be usable by individuals with mobility aids
-• Visual contrast: May be required for low-vision accessibility
-• IBU Overlay: Could mandate multilingual signage or tactile indicators in shared-use kitchens
-
-⚒️ Step 5: IRC Installation & Safety Requirements
-• IRC R306.2 – Kitchen facilities and sanitation
-• IRC R702.3: Wall finishes behind prep areas must be moisture-resistant
-• IRC P2705.1: Countertops near sinks must allow access to plumbing and be sealed
-• IRC R317.1: Moisture-prone surfaces must use decay-resistant materials
-• IBU overlays – Local sanitation, accessibility, and fire safety codes`
+• Counter height: ≤34" AFF for accessible units
+• Sink clearance: Knee space required under sink for wheelchair access
+• IBU Overlay: May require tactile controls, visual contrast, or lever-style hardware
+⚒️ Step 5: IRC Kitchen Requirements
+• IRC R306.2: Kitchens must include a sink, cooking appliance, and space for food preparation
+• IRC R602.3: Cabinets and counters must be securely fastened to structural framing`
         }
     ]
 };
@@ -7250,7 +7281,7 @@ export const KITCHEN_MOLD: UnitItemDeficiencies = {
             criteria: 'Elevated moisture level (e.g., peeling paint or wallpaper, a wall that is warped or stained, or a buckled, cracked, or water-stained ceiling, carpet, or wooden floor).',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '5.5/n',
             code: 'KITCHEN-MOLD-01',
             codeReference: `🧭 Step 1: Identify High-Risk Locations
 Inspect all shared-use areas where moisture may accumulate and mold-like substances may appear.
@@ -7283,7 +7314,7 @@ Irregular patches or spots that are white, green, yellow, gray, brown, or black;
             criteria: 'Cumulative area of patches is more than 9 square foot in a room.',
             severity: 'Life-Threatening',
             repairBy: '24Hrs',
-            points: '27.25/n',
+            points: '30/n',
             code: 'KITCHEN-MOLD-02',
             codeReference: `🧭 Step 1: Identify High-Risk Locations
 Inspect all shared-use areas where moisture may accumulate and mold-like substances may appear.
@@ -7316,7 +7347,7 @@ Irregular patches or spots that are white, green, yellow, gray, brown, or black;
             criteria: 'Cumulative area of patches is more than 1 square foot and less than 9 square feet in a room.',
             severity: 'Severe',
             repairBy: '24 Hrs.',
-            points: '13.40/n',
+            points: '14.8/n',
             code: 'KITCHEN-MOLD-03',
             codeReference: `🧭 Step 1: Identify High-Risk Locations
 Inspect all shared-use areas where moisture may accumulate and mold-like substances may appear.
@@ -7349,7 +7380,7 @@ Irregular patches or spots that are white, green, yellow, gray, brown, or black;
             criteria: 'Cumulative area of patches is more than 4 square inches and less than 1 square foot in a room.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '5.5/n',
             code: 'KITCHEN-MOLD-04',
             codeReference: `🧭 Step 1: Identify High-Risk Locations
 Inspect all shared-use areas where moisture may accumulate and mold-like substances may appear.
@@ -7388,7 +7419,7 @@ export const KITCHEN_REFRIGERATOR: UnitItemDeficiencies = {
             criteria: 'Refrigerator component is damaged such that it impacts functionality.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '5.5/n',
             code: 'KITCHEN-FRIDGE-01',
             codeReference: `🧭 Step 1: Presence & Identification
 • Required if: The space is designated or used as a kitchen or food prep zone.
@@ -7423,7 +7454,7 @@ export const KITCHEN_REFRIGERATOR: UnitItemDeficiencies = {
             criteria: 'Refrigerator is inoperable such that it may be unable to safely and adequately store food.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '5.5/n',
             code: 'KITCHEN-FRIDGE-02',
             codeReference: `🧭 Step 1: Presence & Identification
 • Required if: The space is designated or used as a kitchen or food prep zone.
@@ -7464,7 +7495,7 @@ export const KITCHEN_SINK: UnitItemDeficiencies = {
             criteria: 'Control knobs do not activate or deactivate hot and cold water.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '5.5/n',
             code: 'KITCHEN-SINK-01',
             codeReference: `🧭 Step 1: Presence & Identification
 • Required if: The space is designated or used as a kitchen or food prep zone.
@@ -7501,7 +7532,7 @@ export const KITCHEN_SINK: UnitItemDeficiencies = {
             criteria: 'Sink component is missing.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '5.5/n',
             code: 'KITCHEN-SINK-02',
             codeReference: `🧭 Step 1: Presence & Identification
 • Required if: The space is designated or used as a kitchen or food prep zone.
@@ -7538,7 +7569,7 @@ export const KITCHEN_SINK: UnitItemDeficiencies = {
             criteria: 'Signs of separation at the seams of a sink or vanity is pulling away from the wall.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '5.5/n',
             code: 'KITCHEN-SINK-03',
             codeReference: `🧭 Step 1: Presence & Identification
 • Required if: The space is designated or used as a kitchen or food prep zone.
@@ -7575,7 +7606,7 @@ export const KITCHEN_SINK: UnitItemDeficiencies = {
             criteria: 'Water is not draining from the basin of the sink. slow or clogged drain.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '5.5/n',
             code: 'KITCHEN-SINK-04',
             codeReference: `🧭 Step 1: Presence & Identification
 • Required if: The space is designated or used as a kitchen or food prep zone.
@@ -7610,9 +7641,9 @@ export const KITCHEN_SINK: UnitItemDeficiencies = {
             name: 'Sink component is damaged or missing, and the sink is functionally adequate.',
             detail: 'Sink component is damaged or missing, and the sink is functionally adequate.',
             criteria: 'Sink component is damaged or missing, and the sink is functionally adequate.',
-            severity: 'Moderate',
-            repairBy: '30 Day',
-            points: '5.0/n',
+            severity: 'Low',
+            repairBy: '60 Day',
+            points: '2.40/n',
             code: 'KITCHEN-SINK-05',
             codeReference: `🧭 Step 1: Presence & Identification
 • Required if: The space is designated or used as a kitchen or food prep zone.
@@ -7644,12 +7675,12 @@ export const KITCHEN_SINK: UnitItemDeficiencies = {
         },
         {
             id: 'kitchen_sink_6',
-            name: 'Water pressure, direction (outside the basin).',
+            name: 'Water pressure, direction (outside the basin). The water pressure direction is not functioning properly.',
             detail: 'Water pressure, direction (outside the basin). The water pressure direction is not functioning properly.',
             criteria: 'Water pressure, direction is not adequately functional.',
             severity: 'Low',
             repairBy: '60 Day',
-            points: '2.20/n',
+            points: '2.40/n',
             code: 'KITCHEN-SINK-06',
             codeReference: `🧭 Step 1: Presence & Identification
 • Required if: The space is designated or used as a kitchen or food prep zone.
@@ -7687,12 +7718,12 @@ export const KITCHEN_VENTILATION: UnitItemDeficiencies = {
     deficiencies: [
         {
             id: 'kitchen_vent_1',
-            name: 'Ventilation (with or without a fan).',
-            detail: 'An exhaust fan, window, or adequate means of ventilation is not present and operable.',
+            name: 'The kitchen does not have proper ventilation; it is not present and operable. An exhaust fan, window, or adequate means of ventilation is not present and operable.',
+            detail: 'The kitchen does not have proper ventilation; it is not present and operable. An exhaust fan, window, or adequate means of ventilation is not present and operable.',
             criteria: 'An exhaust fan, window, or adequate means of ventilation is not present and operable.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '5.5/n',
             code: 'KITCHEN-VENT-01',
             codeReference: `🧭 Step 1: Presence & Identification
 • Required if: The space is designated or used as a kitchen or food prep zone.
@@ -7722,12 +7753,12 @@ export const KITCHEN_VENTILATION: UnitItemDeficiencies = {
         },
         {
             id: 'kitchen_vent_2',
-            name: 'Ventilation (with or without a fan).',
-            detail: 'Exhaust system component is damaged (i.e., visibly defective; impacts functionality). Or an exhaust system component is missing.',
+            name: 'Exhaust system component is damaged or missing.',
+            detail: 'Exhaust system component is damaged or missing.',
             criteria: 'Exhaust system component is damaged. OR Exhaust system component is missing.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '5.5/n',
             code: 'KITCHEN-VENT-02',
             codeReference: `🧭 Step 1: Presence & Identification
 • Required if: The space is designated or used as a kitchen or food prep zone.
@@ -7757,12 +7788,12 @@ export const KITCHEN_VENTILATION: UnitItemDeficiencies = {
         },
         {
             id: 'kitchen_vent_3',
-            name: 'Ventilation (with or without a fan).',
+            name: 'Exhaust system does not respond to the control switch.',
             detail: 'Exhaust system does not respond to the control switch.',
             criteria: 'Exhaust vent inoperable.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '5.5/n',
             code: 'KITCHEN-VENT-03',
             codeReference: `🧭 Step 1: Presence & Identification
 • Required if: The space is designated or used as a kitchen or food prep zone.
@@ -7792,12 +7823,12 @@ export const KITCHEN_VENTILATION: UnitItemDeficiencies = {
         },
         {
             id: 'kitchen_vent_4',
-            name: 'Ventilation (with or without a fan).',
-            detail: 'Exhaust system has restricted air flow.',
+            name: 'Exhaust system is blocked, such that airflow may be restricted.',
+            detail: 'Exhaust system is blocked, such that airflow may be restricted.',
             criteria: 'Exhaust system is blocked such that airflow may be restricted.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '5.5/n',
             code: 'KITCHEN-VENT-04',
             codeReference: `🧭 Step 1: Presence & Identification
 • Required if: The space is designated or used as a kitchen or food prep zone.
@@ -7931,7 +7962,7 @@ Detached, missing, or damaged cleanout cap, Foul odor with no visible leak
             criteria: 'Cap to the cleanout or pump cover is detached or missing.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'LEAK-SEWAGE-02',
             codeReference: `🧭 Step 1: Identify Sewage System Components and Risk Zones
 Inspect all areas where sanitary drainage systems are present or discharge wastewater.
@@ -7964,7 +7995,7 @@ Detached, missing, or damaged cleanout cap, Foul odor with no visible leak
             criteria: 'Protective cap or riser is damaged.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'LEAK-SEWAGE-03',
             codeReference: `🧭 Step 1: Identify Sewage System Components and Risk Zones
 Inspect all areas where sanitary drainage systems are present or discharge wastewater.
@@ -8045,7 +8076,7 @@ export const LEAK_WATER: UnitItemDeficiencies = {
             criteria: 'Environmental water intrusion.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'LEAK-WATER-01',
             codeReference: `🧭 Step 1: Identify Leak-Prone Zones and Components
 Inspect all areas and systems where water leaks may originate.
@@ -8080,7 +8111,7 @@ Environmental water intrusion, Environmental water intrusion, Plumbing leak
             criteria: 'Fluid is leaking from the sprinkler assembly.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'LEAK-WATER-02',
             codeReference: `🧭 Step 1: Identify Leak-Prone Zones and Components
 Inspect all areas and systems where water leaks may originate.
@@ -8115,7 +8146,7 @@ Environmental water intrusion, Environmental water intrusion, Plumbing leak
             criteria: 'Plumbing leak.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'LEAK-WATER-03',
             codeReference: `🧭 Step 1: Identify Leak-Prone Zones and Components
 Inspect all areas and systems where water leaks may originate.
@@ -8204,7 +8235,7 @@ export const LIGHTING_INTERIOR: UnitItemDeficiencies = {
             criteria: 'A permanently installed light fixture is inoperable.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'LIGHTING-INT-01',
             codeReference: `🧭 Step 1: Identify Interior Lighting Components and Locations
 Inspect all permanently installed light fixtures in shared-use indoor spaces.
@@ -8239,7 +8270,7 @@ All bulbs in multi-bulb fixtures must illuminate during testing.
             criteria: 'A permanently installed light fixture is not secure to the designed attachment point or the attachment point is not stable.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'LIGHTING-INT-02',
             codeReference: `🧭 Step 1: Identify Interior Lighting Components and Locations
 Inspect all permanently installed light fixtures in shared-use indoor spaces.
@@ -8274,7 +8305,7 @@ All bulbs in multi-bulb fixtures must illuminate during testing.
             criteria: 'Permanent lighting fixtures are missing or not functioning.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'LIGHTING-INT-03',
             codeReference: `🧭 Step 1: Identify Interior Lighting Components and Locations
 Inspect all permanently installed light fixtures in shared-use indoor spaces.
@@ -8319,123 +8350,107 @@ export const MOLD: UnitItemDeficiencies = {
     deficiencies: [
         {
             id: 'mold_1',
-            name: 'Elevated moisture level.',
-            detail: 'Elevated moisture level. (e.g., peeling paint or wallpaper, a wall that is warped or stained, or a buckled, cracked, or water-stained ceiling, carpet, or wooden floor).',
+            name: 'Elevated moisture level (e.g., peeling paint or wallpaper, a wall that is warped or stained, or a buckled, cracked, or water-stained ceiling, carpet, or wooden floor).',
+            detail: 'Elevated moisture level (e.g., peeling paint or wallpaper, a wall that is warped or stained, or a buckled, cracked, or water-stained ceiling, carpet, or wooden floor).',
             criteria: 'Elevated moisture level (e.g., peeling paint or wallpaper, a wall that is warped or stained, or a buckled, cracked, or water-stained ceiling, carpet, or wooden floor).',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '5.5/n',
             code: 'MOLD-01',
-            codeReference: `🧭 Step 1: Identify High-Risk Locations
-Inspect all shared-use areas where moisture may accumulate and mold-like substances may appear.
-🔍 Step 2: Visual Condition Assessment
-NSPIRE defines mold-like substance as visible discoloration or growth that may appear fuzzy, cottony, or spotty in colors like green, black, brown, white, or gray.
+            codeReference: `🧭 Step 1: Identification & Applicability
+• Applies to: All interior surfaces—walls, ceilings, floors, cabinetry, HVAC registers, closets, and behind appliances
+🔍 Step 2: Visual & Area-Based Assessment
+• Visual confirmation required: Odor alone is not sufficient
+• Visual Scan: Use a flashlight to inspect corners, ceilings, behind furniture, and inside cabinets
 🧪 Step 3: Inspection Technique
-• 	Visual Scan:
-• 	Look for discoloration, fuzzy patches, or water stains on walls, ceilings, floors, and fixtures
-• 	Odor Check:
-• 	Note musty or earthy smells, but only record if visual confirmation exists
-• 	Moisture Source Review:  Inspect for leaks, condensation, or poor ventilation near affected areas
-• 	Surface Type Identification: Mold-like substance on drywall, wood, tile grout, or caulk is scored; ignore household items like clothing or food
-📏 Step 4: Accessibility & Disability  Considerations. "IBU"
-• 	Safe Environment: Mold-like substance must not impair air quality or mobility
-• 	Clear Paths: Affected areas must not obstruct accessible routes
-• 	Sensory Safety: Odors or allergens must not compromise the health for residents with sensitivities
-⚒️ Step 5: IRC Moisture & Ventilation Requirements
-• 	IRC R303.3: Bathrooms must have mechanical ventilation or operable windows
-• 	IRC R317.1: Moisture-prone areas must use decay-resistant materials
-• 	IRC R703.4: Flashing is required to prevent water intrusion at exterior openings
-• 	IRC R408.3: Crawlspaces must be ventilated to prevent mold growth`
+• Estimate Surface Area: Measure or approximate the total affected area per room
+• Moisture Source Check: Look for leaks, condensation, or poor ventilation
+• Resident Confirmation: If possible, ask if the mold-like substance has been cleaned recently or if leaks have occurred
+📏 Step 4: Accessibility & Local Requirements
+• Inspection access: Must be visual and reachable without disassembly
+• Surface contrast: Mold must be distinguishable from the background color
+• IBU Overlay: May require visual contrast, tactile indicators, or multilingual signage in accessible units
+⚒️ Step 5: IRC Moisture & Sanitation Requirements
+• IRC R306 & R322: Units must be free from unsanitary conditions and moisture intrusion
+• IRC R703.1: Exterior walls must prevent water intrusion`
         },
         {
             id: 'mold_2',
-            name: 'More than 9\'SF(cumulative)- Presence of mold-like substance at extremely high levels is observed visually.',
-            detail: 'More than 9\'SF(cumulative)- Presence of mold-like substance at extremely high levels is observed visually.',
+            name: 'Mold-Like Substance - Extreme',
+            detail: 'More than 9 SF (cumulative) - Presence of mold-like substance at extremely high levels is observed visually.',
             criteria: 'Cumulative area of patches is more than 9 square foot in a room.',
             severity: 'Life-Threatening',
             repairBy: '24Hrs',
-            points: '27.25/n',
+            points: '30/n',
             code: 'MOLD-02',
-            codeReference: `🧭 Step 1: Identify High-Risk Locations
-Inspect all shared-use areas where moisture may accumulate and mold-like substances may appear.
-🔍 Step 2: Visual Condition Assessment
-NSPIRE defines mold-like substance as visible discoloration or growth that may appear fuzzy, cottony, or spotty in colors like green, black, brown, white, or gray.
+            codeReference: `🧭 Step 1: Identification & Applicability
+• Applies to: All interior surfaces—walls, ceilings, floors, cabinetry, HVAC registers, closets, and behind appliances
+🔍 Step 2: Visual & Area-Based Assessment
+• Visual confirmation required: Odor alone is not sufficient
+• Visual Scan: Use a flashlight to inspect corners, ceilings, behind furniture, and inside cabinets
 🧪 Step 3: Inspection Technique
-• 	Visual Scan:
-• 	Look for discoloration, fuzzy patches, or water stains on walls, ceilings, floors, and fixtures
-• 	Odor Check:
-• 	Note musty or earthy smells, but only record if visual confirmation exists
-• 	Moisture Source Review:  Inspect for leaks, condensation, or poor ventilation near affected areas
-• 	Surface Type Identification: Mold-like substance on drywall, wood, tile grout, or caulk is scored; ignore household items like clothing or food
-📏 Step 4: Accessibility & Disability  Considerations. "IBU"
-• 	Safe Environment: Mold-like substance must not impair air quality or mobility
-• 	Clear Paths: Affected areas must not obstruct accessible routes
-• 	Sensory Safety: Odors or allergens must not compromise the health for residents with sensitivities
-⚒️ Step 5: IRC Moisture & Ventilation Requirements
-• 	IRC R303.3: Bathrooms must have mechanical ventilation or operable windows
-• 	IRC R317.1: Moisture-prone areas must use decay-resistant materials
-• 	IRC R703.4: Flashing is required to prevent water intrusion at exterior openings
-• 	IRC R408.3: Crawlspaces must be ventilated to prevent mold growth`
+• Estimate Surface Area: Measure or approximate the total affected area per room
+• Moisture Source Check: Look for leaks, condensation, or poor ventilation
+• Resident Confirmation: If possible, ask if the mold-like substance has been cleaned recently or if leaks have occurred
+📏 Step 4: Accessibility & Local Requirements
+• Inspection access: Must be visual and reachable without disassembly
+• Surface contrast: Mold must be distinguishable from the background color
+• IBU Overlay: May require visual contrast, tactile indicators, or multilingual signage in accessible units
+⚒️ Step 5: IRC Moisture & Sanitation Requirements
+• IRC R306 & R322: Units must be free from unsanitary conditions and moisture intrusion
+• IRC R703.1: Exterior walls must prevent water intrusion`
         },
         {
             id: 'mold_3',
-            name: '1\' to 9\' SF(cumulative)-Presence of mold-like substance at high levels is observed visually.',
-            detail: '1\' to 9\' SF(cumulative)-Presence of mold-like substance at high levels is observed visually.',
+            name: 'Mold-Like Substance - High',
+            detail: '1 to 9 SF (cumulative) - Presence of mold-like substance at high levels is observed visually.',
             criteria: 'Cumulative area of patches is more than 1 square foot and less than 9 square feet in a room.',
             severity: 'Severe',
             repairBy: '24 Hrs.',
-            points: '13.40/n',
+            points: '14.8/n',
             code: 'MOLD-03',
-            codeReference: `🧭 Step 1: Identify High-Risk Locations
-Inspect all shared-use areas where moisture may accumulate and mold-like substances may appear.
-🔍 Step 2: Visual Condition Assessment
-NSPIRE defines mold-like substance as visible discoloration or growth that may appear fuzzy, cottony, or spotty in colors like green, black, brown, white, or gray.
+            codeReference: `🧭 Step 1: Identification & Applicability
+• Applies to: All interior surfaces—walls, ceilings, floors, cabinetry, HVAC registers, closets, and behind appliances
+🔍 Step 2: Visual & Area-Based Assessment
+• Visual confirmation required: Odor alone is not sufficient
+• Visual Scan: Use a flashlight to inspect corners, ceilings, behind furniture, and inside cabinets
 🧪 Step 3: Inspection Technique
-• 	Visual Scan:
-• 	Look for discoloration, fuzzy patches, or water stains on walls, ceilings, floors, and fixtures
-• 	Odor Check:
-• 	Note musty or earthy smells, but only record if visual confirmation exists
-• 	Moisture Source Review:  Inspect for leaks, condensation, or poor ventilation near affected areas
-• 	Surface Type Identification: Mold-like substance on drywall, wood, tile grout, or caulk is scored; ignore household items like clothing or food
-📏 Step 4: Accessibility & Disability  Considerations. "IBU"
-• 	Safe Environment: Mold-like substance must not impair air quality or mobility
-• 	Clear Paths: Affected areas must not obstruct accessible routes
-• 	Sensory Safety: Odors or allergens must not compromise the health for residents with sensitivities
-⚒️ Step 5: IRC Moisture & Ventilation Requirements
-• 	IRC R303.3: Bathrooms must have mechanical ventilation or operable windows
-• 	IRC R317.1: Moisture-prone areas must use decay-resistant materials
-• 	IRC R703.4: Flashing is required to prevent water intrusion at exterior openings
-• 	IRC R408.3: Crawlspaces must be ventilated to prevent mold growth`
+• Estimate Surface Area: Measure or approximate the total affected area per room
+• Moisture Source Check: Look for leaks, condensation, or poor ventilation
+• Resident Confirmation: If possible, ask if the mold-like substance has been cleaned recently or if leaks have occurred
+📏 Step 4: Accessibility & Local Requirements
+• Inspection access: Must be visual and reachable without disassembly
+• Surface contrast: Mold must be distinguishable from the background color
+• IBU Overlay: May require visual contrast, tactile indicators, or multilingual signage in accessible units
+⚒️ Step 5: IRC Moisture & Sanitation Requirements
+• IRC R306 & R322: Units must be free from unsanitary conditions and moisture intrusion
+• IRC R703.1: Exterior walls must prevent water intrusion`
         },
         {
             id: 'mold_4',
-            name: '4" or less than 1 square foot in a room. (cumulative)-- Presence of mold-like substance at a moderate level observed visually.',
-            detail: '4" or less than 1 square foot in a room. (cumulative)-- Presence of mold-like substance at a moderate level observed visually.',
+            name: 'Mold-Like Substance - Moderate',
+            detail: '4 inches or less than 1 square foot in a room (cumulative) - Presence of mold-like substance at a moderate level observed visually.',
             criteria: 'Cumulative area of patches is more than 4 square inches and less than 1 square foot in a room.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '5.5/n',
             code: 'MOLD-04',
-            codeReference: `🧭 Step 1: Identify High-Risk Locations
-Inspect all shared-use areas where moisture may accumulate and mold-like substances may appear.
-🔍 Step 2: Visual Condition Assessment
-NSPIRE defines mold-like substance as visible discoloration or growth that may appear fuzzy, cottony, or spotty in colors like green, black, brown, white, or gray.
+            codeReference: `🧭 Step 1: Identification & Applicability
+• Applies to: All interior surfaces—walls, ceilings, floors, cabinetry, HVAC registers, closets, and behind appliances
+🔍 Step 2: Visual & Area-Based Assessment
+• Visual confirmation required: Odor alone is not sufficient
+• Visual Scan: Use a flashlight to inspect corners, ceilings, behind furniture, and inside cabinets
 🧪 Step 3: Inspection Technique
-• 	Visual Scan:
-• 	Look for discoloration, fuzzy patches, or water stains on walls, ceilings, floors, and fixtures
-• 	Odor Check:
-• 	Note musty or earthy smells, but only record if visual confirmation exists
-• 	Moisture Source Review:  Inspect for leaks, condensation, or poor ventilation near affected areas
-• 	Surface Type Identification: Mold-like substance on drywall, wood, tile grout, or caulk is scored; ignore household items like clothing or food
-📏 Step 4: Accessibility & Disability  Considerations. "IBU"
-• 	Safe Environment: Mold-like substance must not impair air quality or mobility
-• 	Clear Paths: Affected areas must not obstruct accessible routes
-• 	Sensory Safety: Odors or allergens must not compromise the health for residents with sensitivities
-⚒️ Step 5: IRC Moisture & Ventilation Requirements
-• 	IRC R303.3: Bathrooms must have mechanical ventilation or operable windows
-• 	IRC R317.1: Moisture-prone areas must use decay-resistant materials
-• 	IRC R703.4: Flashing is required to prevent water intrusion at exterior openings
-• 	IRC R408.3: Crawlspaces must be ventilated to prevent mold growth`
+• Estimate Surface Area: Measure or approximate the total affected area per room
+• Moisture Source Check: Look for leaks, condensation, or poor ventilation
+• Resident Confirmation: If possible, ask if the mold-like substance has been cleaned recently or if leaks have occurred
+📏 Step 4: Accessibility & Local Requirements
+• Inspection access: Must be visual and reachable without disassembly
+• Surface contrast: Mold must be distinguishable from the background color
+• IBU Overlay: May require visual contrast, tactile indicators, or multilingual signage in accessible units
+⚒️ Step 5: IRC Moisture & Sanitation Requirements
+• IRC R306 & R322: Units must be free from unsanitary conditions and moisture intrusion
+• IRC R703.1: Exterior walls must prevent water intrusion`
         }
     ]
 };
@@ -8454,63 +8469,78 @@ export const PAINT: UnitItemDeficiencies = {
     deficiencies: [
         {
             id: 'paint_1',
-            name: 'Less than 2\'SF -Paint in a Unit or Inside the target property is deteriorated – below the level required for lead-safe work practices by a lead certified firm or for passing clearance.',
-            detail: 'Paint is deteriorated (e.g., peeling, chipping, chalking, cracking, or detached from the substrate). For large surface areas in the Unit, deteriorated paint is less than or equal to 2 square feet, per room; for small surface areas, less than or equal to 10% per component (“de minimis”).',
-            criteria: 'Less than 2 square feet per room deteriorated paint, damage to the surface such as holes that expose paint layers, and friction on painted surfaces.',
-            severity: 'Moderate',
-            repairBy: '30 Day',
-            points: '5.0/n',
+            name: 'Paint is peeling, cracking, flaking, or otherwise deteriorated.',
+            detail: 'Paint is peeling, cracking, flaking, or otherwise deteriorated.',
+            criteria: 'Paint is peeling, cracking, flaking, or otherwise deteriorated.',
+            severity: 'Low',
+            repairBy: '60 Day',
+            points: '2.40/n',
             code: 'PAINT-01',
             codeReference: `🧭 Step 1: Determine Applicability
-Before inspecting, confirm whether the property is at risk for lead-based paint.
-
+Lead-based paint (LBP) inspections apply to: Units built before 1978 (presumed to contain LBP unless tested)
+If no certified inspection or risk assessment is available, NSPIRE assumes all painted surfaces in pre-1978 units may contain lead.
 🔍 Step 2: Visual Condition Assessment
-Inspect all painted surfaces in common areas for deterioration.
-
-🧪 Step 3: Surface Area Measurement
-Use a tape measure or visual estimation to calculate the affected area. Record per room or per component.
-
-📏 Step 4: Accessibility & Disability Considerations. "IBU"
-• Safe Environment: Deteriorated paint must not impair air quality or pose ingestion risk
-• Reach Zones: Pay special attention to surfaces within 36" AFF, accessible to children
-• Clear Paths: No flaking paint in circulation zones or near seating areas
-• Visual Safety: Paint deterioration must not obscure signage or contrast surfaces
-
-⚒️ Step 5: IRC Surface & Renovation Requirements
-• IRC R702.3: Interior finishes must be properly bonded and maintained
-• IRC R315.1: Renovation of painted surfaces must follow safe work practices
-• IRC R317.1: Moisture-prone areas must use decay-resistant materials
-• IRC R703.4: Exterior finishes must be sealed to prevent deterioration`
+• Reachable surfaces: Focus on areas accessible to children and residents
+🧪 Step 3: Inspection Technique
+- Measure Affected Area: Estimate or measure deteriorated paint per surface or component
+- Check Friction/Impact Zones: Inspect areas subject to rubbing or banging (e.g., door edges, window sashes)
+NSPIRE does not require chemical testing—visual assessment is sufficient unless documentation proves otherwise.
+📏 Step 4: Accessibility & Local Requirements
+• Visual contrast: Deterioration must be distinguishable from surface color
+• IBU Overlay: May require tactile warnings, multilingual signage, or compliant hazard notices
+⚒️ Step 5: IRC Renovation & Safety Requirements
+- EPA RRP Rule (Referenced by IRC): Renovations disturbing LBP must follow lead-safe work practices by certified firms
+- IRC R703.1: Interior finishes must be securely bonded and free from hazardous deterioration`
         },
         {
             id: 'paint_2',
-            name: 'More than 2\' SF-Paint in a Unit or Inside the target property is deteriorated – above the level required for lead-safe work practices by a lead certified firm and passing clearance.',
-            detail: 'Paint is deteriorated (e.g., peeling, chipping, chalking, cracking, or detached from the substrate). For large surface areas in the Unit, deteriorated paint is more than 2 square feet, per room; for small surface areas, greater than 10% per component (“significant”).',
-            criteria: 'More than 2 square feet per room deteriorated paint, damage to the surface such as holes that expose paint layers, and friction on painted surfaces.',
-            severity: 'Severe',
-            repairBy: '24 Hrs.',
-            points: '13.40/n',
+            name: 'Paint Deterioration - De Minimis',
+            detail: 'Less than 2 SF - paint in a unit or inside the target property is deteriorated – below the level required for lead-safe work practices by a lead certified firm or for passing clearance. Paint is deteriorated for large surface areas in the Unit, deteriorated paint is less than or equal to 2 square feet, per room; for small surface areas, less than or equal to 10% per component (“de minimis”).',
+            criteria: 'Deteriorated paint is less than or equal to 2 square feet, per room; for small surface areas, less than or equal to 10% per component.',
+            severity: 'Moderate',
+            repairBy: '30 Day',
+            points: '5.5/n',
             code: 'PAINT-02',
             codeReference: `🧭 Step 1: Determine Applicability
-Before inspecting, confirm whether the property is at risk for lead-based paint.
-
+Lead-based paint (LBP) inspections apply to: Units built before 1978 (presumed to contain LBP unless tested)
+If no certified inspection or risk assessment is available, NSPIRE assumes all painted surfaces in pre-1978 units may contain lead.
 🔍 Step 2: Visual Condition Assessment
-Inspect all painted surfaces in common areas for deterioration.
-
-🧪 Step 3: Surface Area Measurement
-Use a tape measure or visual estimation to calculate the affected area. Record per room or per component.
-
-📏 Step 4: Accessibility & Disability Considerations. "IBU"
-• Safe Environment: Deteriorated paint must not impair air quality or pose ingestion risk
-• Reach Zones: Pay special attention to surfaces within 36" AFF, accessible to children
-• Clear Paths: No flaking paint in circulation zones or near seating areas
-• Visual Safety: Paint deterioration must not obscure signage or contrast surfaces
-
-⚒️ Step 5: IRC Surface & Renovation Requirements
-• IRC R702.3: Interior finishes must be properly bonded and maintained
-• IRC R315.1: Renovation of painted surfaces must follow safe work practices
-• IRC R317.1: Moisture-prone areas must use decay-resistant materials
-• IRC R703.4: Exterior finishes must be sealed to prevent deterioration`
+• Reachable surfaces: Focus on areas accessible to children and residents
+🧪 Step 3: Inspection Technique
+- Measure Affected Area: Estimate or measure deteriorated paint per surface or component
+- Check Friction/Impact Zones: Inspect areas subject to rubbing or banging (e.g., door edges, window sashes)
+NSPIRE does not require chemical testing—visual assessment is sufficient unless documentation proves otherwise.
+📏 Step 4: Accessibility & Local Requirements
+• Visual contrast: Deterioration must be distinguishable from surface color
+• IBU Overlay: May require tactile warnings, multilingual signage, or compliant hazard notices
+⚒️ Step 5: IRC Renovation & Safety Requirements
+- EPA RRP Rule (Referenced by IRC): Renovations disturbing LBP must follow lead-safe work practices by certified firms
+- IRC R703.1: Interior finishes must be securely bonded and free from hazardous deterioration`
+        },
+        {
+            id: 'paint_3',
+            name: 'Paint Deterioration - Significant',
+            detail: 'More than 2 SF - Paint in a Unit or Inside the target property is deteriorated – above the level required for lead-safe work practices by a lead certified firm and passing clearance. Paint is deteriorated. For large surface areas in the Unit, deteriorated paint is more than 2 square feet, per room; for small surface areas, greater than 10% per component (“significant”).',
+            criteria: 'Deteriorated paint is more than 2 square feet, per room; for small surface areas, greater than 10% per component.',
+            severity: 'Severe',
+            repairBy: '24 Hrs.',
+            points: '14.8/n',
+            code: 'PAINT-03',
+            codeReference: `🧭 Step 1: Determine Applicability
+Lead-based paint (LBP) inspections apply to: Units built before 1978 (presumed to contain LBP unless tested)
+If no certified inspection or risk assessment is available, NSPIRE assumes all painted surfaces in pre-1978 units may contain lead.
+🔍 Step 2: Visual Condition Assessment
+• Reachable surfaces: Focus on areas accessible to children and residents
+🧪 Step 3: Inspection Technique
+- Measure Affected Area: Estimate or measure deteriorated paint per surface or component
+- Check Friction/Impact Zones: Inspect areas subject to rubbing or banging (e.g., door edges, window sashes)
+NSPIRE does not require chemical testing—visual assessment is sufficient unless documentation proves otherwise.
+📏 Step 4: Accessibility & Local Requirements
+• Visual contrast: Deterioration must be distinguishable from surface color
+• IBU Overlay: May require tactile warnings, multilingual signage, or compliant hazard notices
+⚒️ Step 5: IRC Renovation & Safety Requirements
+- EPA RRP Rule (Referenced by IRC): Renovations disturbing LBP must follow lead-safe work practices by certified firms
+- IRC R703.1: Interior finishes must be securely bonded and free from hazardous deterioration`
         }
     ]
 };
@@ -8534,7 +8564,7 @@ export const RAILINGS_GUARDRAIL: UnitItemDeficiencies = {
             criteria: 'The guardrail is missing or not installed along a walking surface that is more than 30 inches above the floor or grade below.',
             severity: 'Life-Threatening',
             repairBy: '24Hrs',
-            points: '27.25/n',
+            points: '30/n',
             code: 'RAILING-GUARD-01',
             codeReference: `🧭 Step 1: Identify Guardrail Locations
 Inspect all elevated walking surfaces where a fall hazard may exist.
@@ -8567,7 +8597,7 @@ Guardrail loose or unstable, Guardrail damaged or incomplete, Guardrail missing 
             criteria: 'A guardrail is deficient if it’s missing critical components, visibly damaged, under 30 inches in height, or not securely attached to effectively prevent fall hazards.',
             severity: 'Life-Threatening',
             repairBy: '24 Hrs.',
-            points: '27.25/n',
+            points: '30/n',
             code: 'RAILING-GUARD-02',
             codeReference: `🧭 Step 1: Identify Guardrail Locations
 Inspect all elevated walking surfaces where a fall hazard may exist.
@@ -8606,7 +8636,7 @@ export const RAILINGS_HANDRAIL: UnitItemDeficiencies = {
             criteria: 'A handrail is deficient if it cannot be reasonably grasped for support, is not continuous along the full stair flight, or is outside the required height range of 28 to 42 inches.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '27.25/n',
+            points: '30/n',
             code: 'RAILING-HAND-01',
             codeReference: `🧭 Step 1: Identify Handrail Locations
 Inspect all areas where handrails are required or installed.
@@ -8640,7 +8670,7 @@ Handrail missing where required, Handrail loose or unstable, Handrail not contin
             criteria: 'A handrail is deficient if it cant be reasonably grasped for support, isnt continuous along the full stair flight, or falls outside the required height range of 28 to 42 inches.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'RAILING-HAND-02',
             codeReference: `🧭 Step 1: Identify Handrail Locations
 Inspect all areas where handrails are required or installed.
@@ -8708,7 +8738,7 @@ Handrail missing where required, Handrail loose or unstable, Handrail not contin
             criteria: 'There is movement in the anchors of the handrail.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'RAILING-HAND-04',
             codeReference: `🧭 Step 1: Identify Handrail Locations
 Inspect all areas where handrails are required or installed.
@@ -8862,7 +8892,7 @@ Components damaged or missing
             criteria: 'Hole in the door and damaged hardware, missing door. The resident should be able to use the bathtub or shower without being observed from an adjacent area or exterior space.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'RESTROOM-BATH-04',
             codeReference: `🧭 Step 1: Identify Applicable Fixtures
 Inspect all property-installed bathtubs and showers in shared-use areas.
@@ -8903,7 +8933,7 @@ export const RESTROOM_CABINET: UnitItemDeficiencies = {
             criteria: 'Restroom cabinet doors, drawers, or shelves are missing or damaged.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'RESTROOM-CAB-01',
             codeReference: `🧭 Step 1: Identify Cabinet and Storage Locations
 Inspect all built-in or property-installed cabinets and storage units in shared-use areas.
@@ -8943,7 +8973,7 @@ export const RESTROOM_GRAB_BAR: UnitItemDeficiencies = {
             criteria: 'Any movement detected in the grab bar.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'RESTROOM-GRAB-01',
             codeReference: `🧭 Step 1: Identify Grab Bar Locations
 Inspect all installed grab bars in shared-use hygiene areas.
@@ -8977,7 +9007,7 @@ While NSPIRE does not enforce, IBU guidance is useful for best practice:
 };
 
 export const RESTROOM_MOLD: UnitItemDeficiencies = {
-    itemName: 'Mold-Like Substance',
+    itemName: 'Mold -Like Substance',
     deficiencies: [
         {
             id: 'restroom_mold_1',
@@ -8986,7 +9016,7 @@ export const RESTROOM_MOLD: UnitItemDeficiencies = {
             criteria: 'Visual observation of mold-like substance or signs of elevated moisture levels.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'RESTROOM-MOLD-01',
             codeReference: `🧭 Step 1: Identify High-Risk Locations
 Inspect all shared-use areas where moisture may accumulate and mold-like substances may appear.
@@ -9018,7 +9048,7 @@ NSPIRE defines mold-like substance as visible discoloration or growth that may a
             criteria: 'Cumulative area of patches is more than 9 square foot in a room.',
             severity: 'Life-Threatening',
             repairBy: '24Hrs',
-            points: '27.25/n',
+            points: '30/n',
             code: 'RESTROOM-MOLD-02',
             codeReference: `🧭 Step 1: Identify High-Risk Locations
 Inspect all shared-use areas where moisture may accumulate and mold-like substances may appear.
@@ -9082,7 +9112,7 @@ NSPIRE defines mold-like substance as visible discoloration or growth that may a
             criteria: 'Cumulative area of patches is more than 4 square inches and less than 1 square foot in a room.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'RESTROOM-MOLD-04',
             codeReference: `🧭 Step 1: Identify High-Risk Locations
 Inspect all shared-use areas where moisture may accumulate and mold-like substances may appear.
@@ -9120,7 +9150,7 @@ export const RESTROOM_SINK: UnitItemDeficiencies = {
             criteria: 'Control knobs do not activate or deactivate hot and cold water.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'RESTROOM-SINK-01',
             codeReference: `🧭 Step 1: Identify Sink Components and Locations
 Inspect all permanently installed sinks in shared-use restrooms.
@@ -9155,7 +9185,7 @@ NSPIRE defines a sink as functionally adequate only if it can dispense and hold 
             criteria: 'Sink component is missing.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'RESTROOM-SINK-02',
             codeReference: `🧭 Step 1: Identify Sink Components and Locations
 Inspect all permanently installed sinks in shared-use restrooms.
@@ -9190,7 +9220,7 @@ NSPIRE defines a sink as functionally adequate only if it can dispense and hold 
             criteria: 'Signs of separation at the seams of a sink or vanity is pulling away from the wall.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'RESTROOM-SINK-03',
             codeReference: `🧭 Step 1: Identify Sink Components and Locations
 Inspect all permanently installed sinks in shared-use restrooms.
@@ -9225,7 +9255,7 @@ NSPIRE defines a sink as functionally adequate only if it can dispense and hold 
             criteria: 'Water is not draining from the basin of the sink. slow or clogged drain.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'RESTROOM-SINK-04',
             codeReference: `🧭 Step 1: Identify Sink Components and Locations
 Inspect all permanently installed sinks in shared-use restrooms.
@@ -9260,7 +9290,7 @@ NSPIRE defines a sink as functionally adequate only if it can dispense and hold 
             criteria: 'Sink component is damaged or missing, and the sink is functionally adequate.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'RESTROOM-SINK-05',
             codeReference: `🧭 Step 1: Identify Sink Components and Locations
 Inspect all permanently installed sinks in shared-use restrooms.
@@ -9336,7 +9366,7 @@ export const RESTROOM_TOILET: UnitItemDeficiencies = {
             criteria: 'A toilet is deficient if it\'s damaged or inoperable, as long as another operational toilet exists elsewhere in the building.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'RESTROOM-TOILET-01',
             codeReference: `🧭 Step 1: Identify Toilet Fixtures and Locations
 Inspect all property-installed toilets in shared-use restrooms.
@@ -9370,7 +9400,7 @@ Toilet inoperable, Toilet components damaged but functional
             criteria: 'A toilet is missing and at least 1 toilet is installed elsewhere within the Unit that is operational.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'RESTROOM-TOILET-02',
             codeReference: `🧭 Step 1: Identify Toilet Fixtures and Locations
 Inspect all property-installed toilets in shared-use restrooms.
@@ -9404,7 +9434,7 @@ Toilet inoperable, Toilet components damaged but functional
             criteria: 'A single installed toilet is deficient if it\'s damaged or inoperable, affecting its ability to function properly.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'RESTROOM-TOILET-03',
             codeReference: `🧭 Step 1: Identify Toilet Fixtures and Locations
 Inspect all property-installed toilets in shared-use restrooms.
@@ -9438,7 +9468,7 @@ Toilet inoperable, Toilet components damaged but functional
             criteria: 'Only 1 toilet was installed, and it is missing.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'RESTROOM-TOILET-04',
             codeReference: `🧭 Step 1: Identify Toilet Fixtures and Locations
 Inspect all property-installed toilets in shared-use restrooms.
@@ -9472,7 +9502,7 @@ Toilet inoperable, Toilet components damaged but functional
             criteria: 'Hole in the door and damaged hardware, missing door. The resident should be able to use the toilet without being observed from an adjacent area or exterior space.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'RESTROOM-TOILET-05',
             codeReference: `🧭 Step 1: Identify Toilet Fixtures and Locations
 Inspect all property-installed toilets in shared-use restrooms.
@@ -9506,7 +9536,7 @@ Toilet inoperable, Toilet components damaged but functional
             criteria: 'A toilet is deficient if any component is damaged, inoperable, or missing in a way that limits the resident\'s ability to discharge human waste safely.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'RESTROOM-TOILET-06',
             codeReference: `🧭 Step 1: Identify Toilet Fixtures and Locations
 Inspect all property-installed toilets in shared-use restrooms.
@@ -9540,7 +9570,7 @@ Toilet inoperable, Toilet components damaged but functional
             criteria: 'A toilet component is deficient if it\'s damaged, inoperable, or missing, even if it does not limit the resident\'s ability to discharge human waste safely.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'RESTROOM-TOILET-07',
             codeReference: `🧭 Step 1: Identify Toilet Fixtures and Locations
 Inspect all property-installed toilets in shared-use restrooms.
@@ -9574,7 +9604,7 @@ Toilet inoperable, Toilet components damaged but functional
             criteria: 'Toilet is not secured at the base.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'RESTROOM-TOILET-08',
             codeReference: `🧭 Step 1: Identify Toilet Fixtures and Locations
 Inspect all property-installed toilets in shared-use restrooms.
@@ -9614,7 +9644,7 @@ export const RESTROOM_VENTILATION: UnitItemDeficiencies = {
             criteria: 'Exhaust fan system failure, missing components, or blocked airflow.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'RESTROOM-VENT-01',
             codeReference: `🧭 Step 1: Identify Ventilation Components and Locations
 Inspect all ventilation systems in shared-use restrooms.
@@ -9651,7 +9681,7 @@ ensuring ventilation systems are usable and safe for residents with mobility or 
             criteria: 'Exhaust system component is damaged or missing.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'RESTROOM-VENT-02',
             codeReference: `🧭 Step 1: Identify Ventilation Components and Locations
 Inspect all ventilation systems in shared-use restrooms.
@@ -9688,7 +9718,7 @@ ensuring ventilation systems are usable and safe for residents with mobility or 
             criteria: 'Exhaust fan, inoperable.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'RESTROOM-VENT-03',
             codeReference: `🧭 Step 1: Identify Ventilation Components and Locations
 Inspect all ventilation systems in shared-use restrooms.
@@ -9725,7 +9755,7 @@ ensuring ventilation systems are usable and safe for residents with mobility or 
             criteria: 'Exhaust system is blocked such that airflow may be restricted.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'RESTROOM-VENT-04',
             codeReference: `🧭 Step 1: Identify Ventilation Components and Locations
 Inspect all ventilation systems in shared-use restrooms.
@@ -9777,7 +9807,7 @@ export const SINK_LAUNDRY: UnitItemDeficiencies = {
             criteria: 'Control knobs do not activate or deactivate hot and cold water.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'SINK-LAUNDRY-01',
             codeReference: `🧭 Step 1: Identify Sink Type and Location
 Inspect all property-installed utility sinks in shared-use laundry rooms, garages, or maintenance areas.
@@ -9812,7 +9842,7 @@ NSPIRE defines a sink as functionally adequate only if it can dispense and hold 
             criteria: 'Sink component is missing.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'SINK-LAUNDRY-02',
             codeReference: `🧭 Step 1: Identify Sink Type and Location
 Inspect all property-installed utility sinks in shared-use laundry rooms, garages, or maintenance areas.
@@ -9847,7 +9877,7 @@ NSPIRE defines a sink as functionally adequate only if it can dispense and hold 
             criteria: 'Signs of separation at the seams of a sink or vanity is pulling away from the wall.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'SINK-LAUNDRY-03',
             codeReference: `🧭 Step 1: Identify Sink Type and Location
 Inspect all property-installed utility sinks in shared-use laundry rooms, garages, or maintenance areas.
@@ -9882,7 +9912,7 @@ NSPIRE defines a sink as functionally adequate only if it can dispense and hold 
             criteria: 'not present or incomplete.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'SINK-LAUNDRY-04',
             codeReference: `🧭 Step 1: Identify Sink Type and Location
 Inspect all property-installed utility sinks in shared-use laundry rooms, garages, or maintenance areas.
@@ -9917,7 +9947,7 @@ NSPIRE defines a sink as functionally adequate only if it can dispense and hold 
             criteria: 'Water is not draining from the basin of the sink.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'SINK-LAUNDRY-05',
             codeReference: `🧭 Step 1: Identify Sink Type and Location
 Inspect all property-installed utility sinks in shared-use laundry rooms, garages, or maintenance areas.
@@ -10002,7 +10032,7 @@ export const STEPS_STAIRS: UnitItemDeficiencies = {
             criteria: 'Instability is detected while walking on the stair.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'STEPS-01',
             codeReference: `🧭 Step 1: Identify Stair Components and Locations
 Inspect all permanently installed steps and stairways used for vertical circulation in shared-use areas.
@@ -10038,7 +10068,7 @@ Loose or unstable stair components, Step or stair not functionally adequate
             criteria: 'Secure accessory treads are not present.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'STEPS-02',
             codeReference: `🧭 Step 1: Identify Stair Components and Locations
 Inspect all permanently installed steps and stairways used for vertical circulation in shared-use areas.
@@ -10089,7 +10119,7 @@ export const STRUCTURAL_SYSTEM: UnitItemDeficiencies = {
             criteria: 'Significant structural damage that affects occupants\' safety.',
             severity: 'Life-Threatening',
             repairBy: '24Hrs',
-            points: '27.25/n',
+            points: '30/n',
             code: 'STRUCTURAL-01',
             codeReference: `🧭 Step 1: Identify Structural Elements to Inspect
 Focus on load-bearing and foundational components within shared-use interior spaces.
@@ -10139,7 +10169,7 @@ export const TRASH_CHUTE: UnitItemDeficiencies = {
             criteria: 'Chute door is damaged.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'TRASH-01',
             codeReference: `🧭 Step 1: Identify Trash Chute Components and Locations
 NSPIRE applies only to active trash chutes used for waste disposal. Inactive or sealed chutes are excluded.
@@ -10172,7 +10202,7 @@ The chute door does not open. not self-close and latch
             criteria: 'The garbage is backing up into the chute.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'TRASH-02',
             codeReference: `🧭 Step 1: Identify Trash Chute Components and Locations
 NSPIRE applies only to active trash chutes used for waste disposal. Inactive or sealed chutes are excluded.
@@ -10215,123 +10245,139 @@ export const VENTILATION: UnitItemDeficiencies = {
     deficiencies: [
         {
             id: 'vent_1',
-            name: 'It is not functioning adequately.',
-            detail: 'An exhaust fan, window, or adequate means of ventilation is not present and operable.',
+            name: 'Ventilation (with or without a fan)',
+            detail: 'It is not functioning adequately.',
             criteria: 'An exhaust fan, window, or adequate means of ventilation is not present and operable.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'VENT-01',
             codeReference: `🧭 Step 1: Identify Ventilation Components and Locations
 Inspect all mechanical and passive ventilation systems in shared-use interior spaces.
 NSPIRE requires that ventilation systems be functionally adequate, meaning they must provide airflow and remove moisture or odors effectively
+
 🔍 Step 2: Visual Condition Assessment
 No exhaust fan and no operable window. Exhaust fan present but inoperable
+
 🧪 Step 3: Functional Testing
-• 	Fan Activation: Flip the switch or trigger the motion sensor; confirm the fan turns on and exhausts air
-• 	Airflow Check: Use a tissue or hand test near supply/return vents to detect airflow
-• 	Window Operation: Open and close operable windows to confirm usability
-• 	Moisture Scan: Inspect surrounding surfaces for condensation, staining, or mold-like substance
+• Fan Activation: Flip the switch or trigger the motion sensor; confirm the fan turns on and exhausts air
+• Airflow Check: Use a tissue or hand test near supply/return vents to detect airflow
+• Window Operation: Open and close operable windows to confirm usability
+• Moisture Scan: Inspect surrounding surfaces for condensation, staining, or mold-like substance
+
 📏 Step 4: Accessibility & Disability Considerations. "IBU"
-• 	Switch Height: Controls must be within 15"–48" AFF
-• 	Clear Floor Space: Minimum 30"x48" in front of ventilation controls
-• 	Safe Environment: No exposed wiring, sharp edges, or obstructed access
-• 	Visual/Audible Feedback: Fan should provide a clear indication of operation
+• Switch Height: Controls must be within 15"–48" AFF
+• Clear Floor Space: Minimum 30"x48" in front of ventilation controls
+• Safe Environment: No exposed wiring, sharp edges, or obstructed access
+• Visual/Audible Feedback: Fan should provide a clear indication of operation
+
 ⚒️ Step 5: IRC Ventilation Requirements
-• 	IRC R303.3: Bathrooms must have mechanical ventilation or operable windows
-• 	IRC M1507.2: Exhaust systems must vent to the outdoors and be sealed
-• 	IRC M1506.2: Air intake openings must be protected and unobstructed
-• 	IRC R317.1: Moisture-prone areas must use corrosion-resistant materials`
+• IRC R303.3: Bathrooms must have mechanical ventilation or operable windows
+• IRC M1507.2: Exhaust systems must vent to the outdoors and be sealed
+• IRC M1506.2: Air intake openings must be protected and unobstructed
+• IRC R317.1: Moisture-prone areas must use corrosion-resistant materials`
         },
         {
             id: 'vent_2',
-            name: 'Exhaust system component is damaged (i.e., visibly defective; impacts functionality). Or an exhaust system component is missing.',
-            detail: 'Exhaust system component is damaged (i.e., visibly defective; impacts functionality). Or an exhaust system component is missing.',
+            name: 'Exhaust system component is damaged or missing.',
+            detail: 'Exhaust system component is damaged or missing.',
             criteria: 'Exhaust system component is damaged. OR Exhaust system component is missing.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'VENT-02',
             codeReference: `🧭 Step 1: Identify Ventilation Components and Locations
 Inspect all mechanical and passive ventilation systems in shared-use interior spaces.
 NSPIRE requires that ventilation systems be functionally adequate, meaning they must provide airflow and remove moisture or odors effectively
+
 🔍 Step 2: Visual Condition Assessment
 No exhaust fan and no operable window. Exhaust fan present but inoperable
+
 🧪 Step 3: Functional Testing
-• 	Fan Activation: Flip the switch or trigger the motion sensor; confirm the fan turns on and exhausts air
-• 	Airflow Check: Use a tissue or hand test near supply/return vents to detect airflow
-• 	Window Operation: Open and close operable windows to confirm usability
-• 	Moisture Scan: Inspect surrounding surfaces for condensation, staining, or mold-like substance
+• Fan Activation: Flip the switch or trigger the motion sensor; confirm the fan turns on and exhausts air
+• Airflow Check: Use a tissue or hand test near supply/return vents to detect airflow
+• Window Operation: Open and close operable windows to confirm usability
+• Moisture Scan: Inspect surrounding surfaces for condensation, staining, or mold-like substance
+
 📏 Step 4: Accessibility & Disability Considerations. "IBU"
-• 	Switch Height: Controls must be within 15"–48" AFF
-• 	Clear Floor Space: Minimum 30"x48" in front of ventilation controls
-• 	Safe Environment: No exposed wiring, sharp edges, or obstructed access
-• 	Visual/Audible Feedback: Fan should provide a clear indication of operation
+• Switch Height: Controls must be within 15"–48" AFF
+• Clear Floor Space: Minimum 30"x48" in front of ventilation controls
+• Safe Environment: No exposed wiring, sharp edges, or obstructed access
+• Visual/Audible Feedback: Fan should provide a clear indication of operation
+
 ⚒️ Step 5: IRC Ventilation Requirements
-• 	IRC R303.3: Bathrooms must have mechanical ventilation or operable windows
-• 	IRC M1507.2: Exhaust systems must vent to the outdoors and be sealed
-• 	IRC M1506.2: Air intake openings must be protected and unobstructed
-• 	IRC R317.1: Moisture-prone areas must use corrosion-resistant materials`
+• IRC R303.3: Bathrooms must have mechanical ventilation or operable windows
+• IRC M1507.2: Exhaust systems must vent to the outdoors and be sealed
+• IRC M1506.2: Air intake openings must be protected and unobstructed
+• IRC R317.1: Moisture-prone areas must use corrosion-resistant materials`
         },
         {
             id: 'vent_3',
-            name: 'Exhaust system does not respond to the control switch.',
+            name: 'Ventilation (with or without a fan)',
             detail: 'Exhaust system does not respond to the control switch.',
             criteria: 'Exhaust fan, inoperable.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'VENT-03',
             codeReference: `🧭 Step 1: Identify Ventilation Components and Locations
 Inspect all mechanical and passive ventilation systems in shared-use interior spaces.
 NSPIRE requires that ventilation systems be functionally adequate, meaning they must provide airflow and remove moisture or odors effectively
+
 🔍 Step 2: Visual Condition Assessment
 No exhaust fan and no operable window. Exhaust fan present but inoperable
+
 🧪 Step 3: Functional Testing
-• 	Fan Activation: Flip the switch or trigger the motion sensor; confirm the fan turns on and exhausts air
-• 	Airflow Check: Use a tissue or hand test near supply/return vents to detect airflow
-• 	Window Operation: Open and close operable windows to confirm usability
-• 	Moisture Scan: Inspect surrounding surfaces for condensation, staining, or mold-like substance
+• Fan Activation: Flip the switch or trigger the motion sensor; confirm the fan turns on and exhausts air
+• Airflow Check: Use a tissue or hand test near supply/return vents to detect airflow
+• Window Operation: Open and close operable windows to confirm usability
+• Moisture Scan: Inspect surrounding surfaces for condensation, staining, or mold-like substance
+
 📏 Step 4: Accessibility & Disability Considerations. "IBU"
-• 	Switch Height: Controls must be within 15"–48" AFF
-• 	Clear Floor Space: Minimum 30"x48" in front of ventilation controls
-• 	Safe Environment: No exposed wiring, sharp edges, or obstructed access
-• 	Visual/Audible Feedback: Fan should provide a clear indication of operation
+• Switch Height: Controls must be within 15"–48" AFF
+• Clear Floor Space: Minimum 30"x48" in front of ventilation controls
+• Safe Environment: No exposed wiring, sharp edges, or obstructed access
+• Visual/Audible Feedback: Fan should provide a clear indication of operation
+
 ⚒️ Step 5: IRC Ventilation Requirements
-• 	IRC R303.3: Bathrooms must have mechanical ventilation or operable windows
-• 	IRC M1507.2: Exhaust systems must vent to the outdoors and be sealed
-• 	IRC M1506.2: Air intake openings must be protected and unobstructed
-• 	IRC R317.1: Moisture-prone areas must use corrosion-resistant materials`
+• IRC R303.3: Bathrooms must have mechanical ventilation or operable windows
+• IRC M1507.2: Exhaust systems must vent to the outdoors and be sealed
+• IRC M1506.2: Air intake openings must be protected and unobstructed
+• IRC R317.1: Moisture-prone areas must use corrosion-resistant materials`
         },
         {
             id: 'vent_4',
-            name: 'Exhaust system has restricted air flow.',
-            detail: 'Exhaust system is blocked such that airflow may be restricted.',
+            name: 'Ventilation (with or without a fan)',
+            detail: 'Exhaust system has restricted air flow.',
             criteria: 'Exhaust system is blocked such that airflow may be restricted.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'VENT-04',
             codeReference: `🧭 Step 1: Identify Ventilation Components and Locations
 Inspect all mechanical and passive ventilation systems in shared-use interior spaces.
 NSPIRE requires that ventilation systems be functionally adequate, meaning they must provide airflow and remove moisture or odors effectively
+
 🔍 Step 2: Visual Condition Assessment
 No exhaust fan and no operable window. Exhaust fan present but inoperable
+
 🧪 Step 3: Functional Testing
-• 	Fan Activation: Flip the switch or trigger the motion sensor; confirm the fan turns on and exhausts air
-• 	Airflow Check: Use a tissue or hand test near supply/return vents to detect airflow
-• 	Window Operation: Open and close operable windows to confirm usability
-• 	Moisture Scan: Inspect surrounding surfaces for condensation, staining, or mold-like substance
+• Fan Activation: Flip the switch or trigger the motion sensor; confirm the fan turns on and exhausts air
+• Airflow Check: Use a tissue or hand test near supply/return vents to detect airflow
+• Window Operation: Open and close operable windows to confirm usability
+• Moisture Scan: Inspect surrounding surfaces for condensation, staining, or mold-like substance
+
 📏 Step 4: Accessibility & Disability Considerations. "IBU"
-• 	Switch Height: Controls must be within 15"–48" AFF
-• 	Clear Floor Space: Minimum 30"x48" in front of ventilation controls
-• 	Safe Environment: No exposed wiring, sharp edges, or obstructed access
-• 	Visual/Audible Feedback: Fan should provide a clear indication of operation
+• Switch Height: Controls must be within 15"–48" AFF
+• Clear Floor Space: Minimum 30"x48" in front of ventilation controls
+• Safe Environment: No exposed wiring, sharp edges, or obstructed access
+• Visual/Audible Feedback: Fan should provide a clear indication of operation
+
 ⚒️ Step 5: IRC Ventilation Requirements
-• 	IRC R303.3: Bathrooms must have mechanical ventilation or operable windows
-• 	IRC M1507.2: Exhaust systems must vent to the outdoors and be sealed
-• 	IRC M1506.2: Air intake openings must be protected and unobstructed
-• 	IRC R317.1: Moisture-prone areas must use corrosion-resistant materials`
+• IRC R303.3: Bathrooms must have mechanical ventilation or operable windows
+• IRC M1507.2: Exhaust systems must vent to the outdoors and be sealed
+• IRC M1506.2: Air intake openings must be protected and unobstructed
+• IRC R317.1: Moisture-prone areas must use corrosion-resistant materials`
         }
     ]
 };
@@ -10350,12 +10396,12 @@ export const WALL: UnitItemDeficiencies = {
     deficiencies: [
         {
             id: 'wall_1',
-            name: 'Interior wall component(s), severe cracks, not functionally adequate.',
+            name: 'Wall-Interior',
             detail: 'Interior wall component(s), severe cracks, not functionally adequate. Damaged trim greater than 10% to 50% of the wall area.',
             criteria: 'Interior wall component(s) is not functionally adequate (i.e., impacts the integrity of the interior wall or does not allow interior wall to provide vertical separation between rooms or spaces).',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'WALL-01',
             codeReference: `🧭 Step 1: Identify Wall Types and Locations
 Inspect all permanently constructed walls and wall components in shared-use interior spaces.
@@ -10384,12 +10430,12 @@ Cosmetic wear (minor scuffs, faded paint) is not scored
         },
         {
             id: 'wall_2',
-            name: 'Hole greater than 2 inches in diameter, or accumulation of holes greater than 6" x 6".',
+            name: 'Wall-Interior',
             detail: 'Hole is greater than 2 inches in diameter. OR An accumulation of holes in any one wall is greater than 6 inches by 6 inches.',
             criteria: 'The wall is damaged, and repairs still need to be completed appropriately.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'WALL-02',
             codeReference: `🧭 Step 1: Identify Wall Types and Locations
 Inspect all permanently constructed walls and wall components in shared-use interior spaces.
@@ -10418,12 +10464,12 @@ Cosmetic wear (minor scuffs, faded paint) is not scored
         },
         {
             id: 'wall_3',
-            name: 'Interior wall has a loose or detached surface covering.',
+            name: 'Wall-Interior',
             detail: 'Interior wall has a loose or detached surface covering.',
             criteria: 'Loose or detached surface coverings (e.g., drywall, plaster, paneling).',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'WALL-03',
             codeReference: `🧭 Step 1: Identify Wall Types and Locations
 Inspect all permanently constructed walls and wall components in shared-use interior spaces.
@@ -10459,6 +10505,330 @@ export const WALL_DEFICIENCIES = {
 };
 
 // ==========================================
+// NEW CATEGORIES FROM BATCH 3 (Units)
+// ==========================================
+
+// ==========================================
+// PESTS (INTERIOR INFESTATION)
+// ==========================================
+
+export const PESTS_INTERIOR: UnitItemDeficiencies = {
+    itemName: 'Pests (Interior Infestation)',
+    deficiencies: [
+        {
+            id: 'pests_interior_1',
+            name: 'Pest Infestation - Moderate',
+            detail: 'Evidence of pests (cockroaches, ants, mice, rats, bedbugs, etc.) including droppings, egg cases, shed skins, or dead insects/rodents.',
+            criteria: 'Evidence of pests (cockroaches, ants, mice, rats, bedbugs, etc.) including droppings, egg cases, shed skins, or dead insects/rodents.',
+            severity: 'Moderate',
+            repairBy: '30 Day',
+            points: '5.5/n',
+            code: 'PESTS-INT-01',
+            codeReference: `🧭 Step 1: Identify Target Areas for Inspection
+Applies to: All interior spaces, including kitchens, bathrooms, bedrooms, closets, utility rooms, crawlspaces, and attics
+• NSPIRE Scope: Pest hazards are scored regardless of resident behavior or existing extermination contracts
+
+🔍 Step 2: Visual Condition Assessment
+• Includes: Insects (cockroaches, ants, bedbugs, termites), rodents (mice, rats), birds, bats, and reptiles
+
+🧪 Step 3: Sanitation & Attractants
+• Inspect for food residue, trash buildup, or standing water
+• Check under sinks, behind appliances, and inside cabinets
+• IBU Overlay: May require sealed cabinetry, pest-proof trash containers, or moisture control
+
+📏 Step 4: Obstruction & Accessibility
+• Ensure inspection access to baseboards, closets, and behind appliances
+• Do not disturb resident belongings, but inspect visible areas thoroughly
+
+⚒️ Step 5: IRC Sanitation & Structural Requirements
+• IRC Section R306 & R322: Units must be free from unsanitary conditions and pest entry points
+• IRC R302.5.1: Garage and utility areas must be sealed to prevent rodent intrusion`
+        },
+        {
+            id: 'pests_interior_2',
+            name: 'Pest Infestation - Severe',
+            detail: 'Extensive infestation: Live pests sighted in two or more rooms/units during daytime visual assessment.',
+            criteria: 'Extensive infestation: Live pests sighted in two or more rooms/units during daytime visual assessment.',
+            severity: 'Severe',
+            repairBy: '24 Hrs.',
+            points: '14.8/n',
+            code: 'PESTS-INT-02',
+            codeReference: `🧭 Step 1: Identify Target Areas for Inspection
+Applies to: All interior spaces, including kitchens, bathrooms, bedrooms, closets, utility rooms, crawlspaces, and attics
+• NSPIRE Scope: Pest hazards are scored regardless of resident behavior or existing extermination contracts
+
+🔍 Step 2: Visual Condition Assessment
+• Includes: Insects (cockroaches, ants, bedbugs, termites), rodents (mice, rats), birds, bats, and reptiles
+
+🧪 Step 3: Sanitation & Attractants
+• Inspect for food residue, trash buildup, or standing water
+• Check under sinks, behind appliances, and inside cabinets
+• IBU Overlay: May require sealed cabinetry, pest-proof trash containers, or moisture control
+
+📏 Step 4: Obstruction & Accessibility
+• Ensure inspection access to baseboards, closets, and behind appliances
+• Do not disturb resident belongings, but inspect visible areas thoroughly
+
+⚒️ Step 5: IRC Sanitation & Structural Requirements
+• IRC Section R306 & R322: Units must be free from unsanitary conditions and pest entry points
+• IRC R302.5.1: Garage and utility areas must be sealed to prevent rodent intrusion`
+        }
+    ]
+};
+
+export const PESTS_INTERIOR_DEFICIENCIES = {
+    category: 'Pests (Interior Infestation)',
+    items: [PESTS_INTERIOR]
+};
+
+// ==========================================
+// PLUMBING (LEAKS AND DRAINAGE)
+// ==========================================
+
+export const PLUMBING_LEAKS_DRAINAGE: UnitItemDeficiencies = {
+    itemName: 'Plumbing (Leaks and Drainage)',
+    deficiencies: [
+        {
+            id: 'plumbing_leak_1',
+            name: 'Leak - Water (Plumbing)',
+            detail: 'Failure of a plumbing system that allows for water intrusion in unintended areas.',
+            criteria: 'Failure of a plumbing system that allows for water intrusion in unintended areas.',
+            severity: 'Moderate',
+            repairBy: '30 Day',
+            points: '5.5/n',
+            code: 'PLUMB-LEAK-01',
+            codeReference: `🧭 Step 1: Identification & Applicability
+• Applies to: All water-bearing systems and surfaces inside the unit
+• Includes: Supply lines, drainpipes, fixtures, appliances, ceilings, walls, floors
+
+🔍 Step 2: Sanitation & Environmental Safety
+• Inspect for mold, mildew, or pest activity around leak sites
+• Check for biohazard exposure if the leak involves wastewater
+
+🧪 Step 3: Leak Detection Procedure
+• Visual inspection: Look for discoloration, pooling, or warped surfaces
+• Touch test: Feel for moisture around suspect areas
+• Odor check: Musty smells may indicate hidden leaks or mold
+• Resident inquiry: Ask if the leak was previously active or repaired
+
+📏 Step 4: Accessibility & Local Requirements
+• Leak location: Must be reachable for inspection without disassembly
+• Cleanout access: Required for plumbing leaks
+• IBU Overlay: May require ADA-compliant access panels
+
+⚒️ Step 5: IRC Plumbing & Moisture Control Requirements
+• IRC P2601.2: Plumbing systems must be maintained in a sanitary condition
+• IRC R703.1: Exterior walls must prevent water intrusion`
+        },
+        {
+            id: 'plumbing_leak_2',
+            name: 'Leak - Sewage System',
+            detail: 'Wastewater is unable to drain resulting in sewer backup, or evidence of sewer line leaking.',
+            criteria: 'Wastewater is unable to drain resulting in sewer backup, or evidence of sewer line leaking.',
+            severity: 'Severe',
+            repairBy: '24 Hrs.',
+            points: '14.8/n',
+            code: 'PLUMB-LEAK-02',
+            codeReference: `🧭 Step 1: Identification & Applicability
+• Applies to: All drain, waste, and vent (DWV) systems inside the unit
+• Includes: Toilets, sinks, tubs, floor drains, cleanouts, sewer lines
+
+🔍 Step 2: Sanitation & Environmental Safety
+• Inspect for biohazard contamination: Wastewater exposure, mold, or pest activity
+• Check for cross-contamination: Leaks near food prep areas or HVAC intakes
+
+🧪 Step 3: Operability & Leak Detection
+• Visual inspection: Look for pooling water, staining, or active drips
+• Odor check: Foul sewage smell near drains or plumbing chases
+• Fixture test: Run water in sinks, tubs, and flush toilets—observe for backup
+
+📏 Step 4: Accessibility & Local Requirements
+• Cleanout access: Must be unobstructed and reachable without tools
+• Labeling: Cleanouts and pump covers should be clearly marked
+
+⚒️ Step 5: IRC Plumbing & Drainage Requirements
+• IRC P3001–P3005: Drainage systems must be leak-free, properly vented
+• IRC P2601.2: All plumbing systems must be maintained in a sanitary condition`
+        },
+        {
+            id: 'plumbing_leak_3',
+            name: 'Drain - Blocked',
+            detail: 'Drain is fully blocked or there is a problem with the drainage.',
+            criteria: 'Drain is fully blocked or there is a problem with the drainage.',
+            severity: 'Moderate',
+            repairBy: '30 Day',
+            points: '5.5/n',
+            code: 'PLUMB-LEAK-03',
+            codeReference: `🧭 Step 1: Identification & Applicability
+• Required in: All wet areas—bathrooms, kitchens, laundry rooms
+• Drain types: Floor drains, sink drains, shower/tub drains
+
+🔍 Step 2: Visual Condition Assessment
+• Odor check: Musty or sewer-like smells may indicate dry trap
+• Visual inspection: Look for mold, mildew, or pest attractant
+
+🧪 Step 3: Sanitation & Odor Control
+• NSPIRE Overlay: Unsanitary drain conditions = Moderate
+• IBU Overlay: May require trap primers, sealed penetrations
+
+📏 Step 4: Accessibility & Local Requirements
+• Reachability: Drain access must not be obstructed
+• Clearance: Floor drains must be unobstructed and accessible
+
+⚒️ Step 5: IRC Plumbing & Safety Checks
+• IRC Chapter 30: Drain must connect to approved DWV system
+• Trap seal must be maintained to prevent sewer gas infiltration`
+        }
+    ]
+};
+
+export const PLUMBING_LEAKS_DRAINAGE_DEFICIENCIES = {
+    category: 'Plumbing (Leaks and Drainage)',
+    items: [PLUMBING_LEAKS_DRAINAGE]
+};
+
+// ==========================================
+// ROOF
+// ==========================================
+
+export const ROOF_UNIT: UnitItemDeficiencies = {
+    itemName: 'Roof',
+    deficiencies: [
+        {
+            id: 'roof_leak_1',
+            name: 'Roof Leak',
+            detail: 'Water from the exterior environment is leaking into the interior through the roof.',
+            criteria: 'Water from the exterior environment is leaking into the interior through the roof.',
+            severity: 'Moderate',
+            repairBy: '30 Day',
+            points: '5.5/n',
+            code: 'ROOF-01',
+            codeReference: `🧭 Step 1: Identification & Applicability
+• Applies to: Ceilings, attic spaces, and upper walls
+
+🔍 Step 2: Visual Condition Assessment
+• Look for water stains, discoloration, or bubbling paint on ceilings
+• Check attic for daylight penetration or moisture
+
+🧪 Step 3: Leak Detection
+• Touch test: Feel for dampness or soft spots
+• Odor check: Musty smells may indicate hidden moisture
+• Resident inquiry: Ask about recent leaks or staining
+
+📏 Step 4: Accessibility & Local Requirements
+• Inspection access: Must be visual from interior—no roof climbing required
+• IBU Overlay: May require moisture barriers or ventilation improvements
+
+⚒️ Step 5: IRC Structural Requirements
+• IRC R903.1: Roof covering must prevent water penetration
+• IRC R806.1: Attic ventilation required to prevent moisture accumulation`
+        },
+        {
+            id: 'roof_damage_2',
+            name: 'Roof Structural Damage',
+            detail: 'Roof deck, rafters, or trusses are damaged, sagging, or showing signs of structural failure.',
+            criteria: 'Roof deck, rafters, or trusses are damaged, sagging, or showing signs of structural failure.',
+            severity: 'Severe',
+            repairBy: '24 Hrs.',
+            points: '14.8/n',
+            code: 'ROOF-02',
+            codeReference: `🧭 Step 1: Identification & Applicability
+• Applies to: Visible roof framing from attic or ceiling access
+
+🔍 Step 2: Visual Assessment
+• Look for sagging roofline from interior or exterior
+• Check for cracked, split, or disconnected rafters/trusses
+
+🧪 Step 3: Structural Check
+• Look for evidence of previous repairs or temporary supports
+• Check for water damage to structural members
+
+📏 Step 4: Accessibility & Local Requirements
+• Attic access must be unobstructed for inspection
+• IBU Overlay: May require seismic retrofitting
+
+⚒️ Step 5: IRC Structural Requirements
+• IRC R802: Roof framing must support design loads
+• IRC R803: Roof sheathing must be adequately fastened`
+        }
+    ]
+};
+
+export const ROOF_DEFICIENCIES = {
+    category: 'Roof',
+    items: [ROOF_UNIT]
+};
+
+// ==========================================
+// SECURITY
+// ==========================================
+
+export const SECURITY_UNIT: UnitItemDeficiencies = {
+    itemName: 'Security',
+    deficiencies: [
+        {
+            id: 'security_entry_1',
+            name: 'Entry Door Lock',
+            detail: 'Entry door cannot be secured adequately; missing or damaged hardware.',
+            criteria: 'Entry door cannot be secured adequately; missing or damaged hardware.',
+            severity: 'Life-Threatening',
+            repairBy: '24Hrs',
+            points: '30/n',
+            code: 'SECURITY-01',
+            codeReference: `🧭 Step 1: Identification & Applicability
+• Every residential unit must have a functional entry door lock
+
+🔍 Step 2: Visual Inspection
+• Check for missing, damaged, or loose lock components
+• Verify deadbolt and latch operation
+
+🧪 Step 3: Functional Testing
+• Lock/Unlock Test: Engage and disengage from both sides
+• Latch Test: Door should latch securely when closed
+
+📏 Step 4: Accessibility & Local Requirements
+• Hardware: Operable with one hand, no tight grasping
+• IBU Overlay: May require lever-style handles
+
+⚒️ Step 5: IRC Safety Requirements
+• IRC R311.2–R311.4: Entry doors must provide safe egress
+• No double-keyed deadbolts on required egress doors`
+        },
+        {
+            id: 'security_window_2',
+            name: 'Window Lock',
+            detail: 'Window cannot be secured by at least one installed lock.',
+            criteria: 'Window cannot be secured by at least one installed lock.',
+            severity: 'Moderate',
+            repairBy: '30 Day',
+            points: '5.5/n',
+            code: 'SECURITY-02',
+            codeReference: `🧭 Step 1: Identification & Applicability
+• All operable windows must have functioning locks
+
+🔍 Step 2: Visual Inspection
+• Check for missing, broken, or misaligned lock components
+
+🧪 Step 3: Functional Testing
+• Close window fully and attempt to engage lock
+• Verify lock holds window securely closed
+
+📏 Step 4: Accessibility & Local Requirements
+• Lock operation: Must not require tight grasping or pinching
+• IBU Overlay: May require easy-release mechanisms for egress windows
+
+⚒️ Step 5: IRC Requirements
+• IRC R310.2: Egress windows must be operable without keys or tools`
+        }
+    ]
+};
+
+export const SECURITY_DEFICIENCIES = {
+    category: 'Security',
+    items: [SECURITY_UNIT]
+};
+
+// ==========================================
 // 33. WATER HEATER
 // ==========================================
 
@@ -10472,7 +10842,7 @@ export const WATER_HEATER: UnitItemDeficiencies = {
             criteria: 'Chimney or flue piping is blocked, misaligned, or missing.',
             severity: 'Life-Threatening',
             repairBy: '24Hrs',
-            points: '27.25/n',
+            points: '30/n',
             code: 'WATER-HEATER-01',
             codeReference: `🧭 Step 1: Identify Water Heater Type and Location
 NSPIRE applies to devices that generate and store hot water for domestic use, including tankless and boiler-integrated systems.
@@ -10507,7 +10877,7 @@ Pressure relief valve or discharge pipe obstructed, damaged, Chimney or flue blo
             criteria: 'A gas shutoff valve is deficient if it\'s damaged, missing, or not installed where required.',
             severity: 'Life-Threatening',
             repairBy: '24Hrs',
-            points: '27.25/n',
+            points: '30/n',
             code: 'WATER-HEATER-02',
             codeReference: `🧭 Step 1: Identify Water Heater Type and Location
 NSPIRE applies to devices that generate and store hot water for domestic use, including tankless and boiler-integrated systems.
@@ -10612,7 +10982,7 @@ Pressure relief valve or discharge pipe obstructed, damaged, Chimney or flue blo
             criteria: 'Not properly installed.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'WATER-HEATER-05',
             codeReference: `🧭 Step 1: Identify Water Heater Type and Location
 NSPIRE applies to devices that generate and store hot water for domestic use, including tankless and boiler-integrated systems.
@@ -10662,7 +11032,7 @@ export const WINDOW: UnitItemDeficiencies = {
             criteria: 'Only one lock present, and it is damaged, inoperable.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'WINDOW-01',
             codeReference: `🧭 Step 1: Identify Window Types and Locations
 Inspect all permanently installed windows in shared-use interior spaces.
@@ -10697,7 +11067,7 @@ The window cannot be secured or locked. The window affects illumination or prote
             criteria: 'Window is not functionally adequate.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'WINDOW-02',
             codeReference: `🧭 Step 1: Identify Window Types and Locations
 Inspect all permanently installed windows in shared-use interior spaces.
@@ -10767,7 +11137,7 @@ The window cannot be secured or locked. The window affects illumination or prote
             criteria: 'Will not stay open without the use of a tool or item.',
             severity: 'Moderate',
             repairBy: '30 Day',
-            points: '5.0/n',
+            points: '14.8/n',
             code: 'WINDOW-04',
             codeReference: `🧭 Step 1: Identify Window Types and Locations
 Inspect all permanently installed windows in shared-use interior spaces.
@@ -10865,6 +11235,10 @@ export const ALL_UNIT_CATEGORIES = [
     TRASH_CHUTE_DEFICIENCIES,               // 30
     VENTILATION_DEFICIENCIES,               // 31
     WALL_DEFICIENCIES,                      // 32
+    PESTS_INTERIOR_DEFICIENCIES,            // New
+    PLUMBING_LEAKS_DRAINAGE_DEFICIENCIES,   // New
+    ROOF_DEFICIENCIES,                      // New
+    SECURITY_DEFICIENCIES,                  // New
     WATER_HEATER_DEFICIENCIES,              // 33
     WINDOW_DEFICIENCIES,                    // 34
     GENERAL_COMMENT_DEFICIENCIES            // 35
@@ -11021,7 +11395,7 @@ const matchInsideCategory = (searchName: string, categoryFullName: string): bool
  */
 export const hasInsideSubcategories = (categoryName: string): boolean => {
     const category = findUnitCategory(categoryName);
-    return category ? category.items.length >= 1 : false;
+    return category ? category.items.length > 1 : false;
 };
 
 /**
@@ -11029,37 +11403,10 @@ export const hasInsideSubcategories = (categoryName: string): boolean => {
  */
 export const getInsideCategorySubcategories = (categoryName: string): string[] => {
     const category = findUnitCategory(categoryName);
-    if (category && category.items.length >= 1) {
+    if (category && category.items.length > 1) {
         return category.items.map(item => item.itemName);
     }
     return [];
-};
-
-/**
- * Get deficiencies for a specific subcategory within a known parent category (Inside locations).
- * More precise than getInsideSubcategoryDeficiencies because it only searches within the matching category,
- * preventing false positives when multiple categories share the same item name (e.g. "Mold-Like Substance").
- */
-export const getInsideSubcategoryDeficienciesByParent = (categoryName: string, itemName: string): UnitItemDeficiencies | null => {
-    const category = findUnitCategory(categoryName);
-    if (!category) return null;
-
-    const normalize = (str: string) =>
-        str.replace(/^\d+\.\s*/, '')
-            .toLowerCase()
-            .replace(/[\u2013\u2014\-]/g, ' ')
-            .replace(/\s+/g, ' ')
-            .trim();
-
-    const normalizedItem = normalize(itemName);
-
-    for (const item of category.items) {
-        const catItemName = normalize(item.itemName);
-        if (catItemName === normalizedItem) return item;
-        if (catItemName.startsWith(normalizedItem) || normalizedItem.startsWith(catItemName)) return item;
-    }
-
-    return null;
 };
 
 /**

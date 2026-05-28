@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./gradlew assemblePlayDebug -x lint -x test --configure-on-demand -PreactNativeDevServerPort=8081)",
+      "Bash(./gradlew assembleDebug -x lint -x test --configure-on-demand -PreactNativeDevServerPort=8081)",
+      "Read(//c/Users/Asus/Desktop/Development/inspire/Nspire-app/**)",
+      "Bash(npx expo *)"
+    ]
+  }
+}

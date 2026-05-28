@@ -112,27 +112,45 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
         const saveKey = `saved_inspection_${property?._id || property?.id || property?.propertyId || 'unknown'}_${buildingId}`;
         const saved = await getData(saveKey);
 
-        // Stamp _area / _unit on incoming deficiencies from the CURRENT session
-        const currentArea: string = inspectionData?.isOutsideInspection
-          ? 'Outside'
-          : (inspectionData?.location === 'Inside' ? 'Inside' : 'Units');
-        const currentUnit = (currentArea === 'Inside' || currentArea === 'Outside')
-          ? '-'
-          : (selectedUnits.join(', ') || 'Unit Multiple');
-
-        const incoming = (inspectionData?.deficiencies || []).map((d: any) => ({
-          ...d,
-          _area: d._area || currentArea,
-          _unit: d._unit !== undefined ? d._unit : currentUnit,
-        }));
-
+        // IMPORTANT: Do NOT re-stamp _area/_unit on saved deficiencies.
+        // They already have their original area from when they were saved.
+        // Only stamp new deficiencies that don't have _area set.
         if (saved?.deficiencies && Array.isArray(saved.deficiencies) && saved.deficiencies.length > 0) {
           // Deduplicate by deficiencyQRId; saved ones first, then new ones not already present
           const existingIds = new Set(saved.deficiencies.map((d: any) => d.deficiencyQRId).filter(Boolean));
+          // Stamp currentArea/unit ONLY on new deficiencies that don't already have _area
+          const incoming = (inspectionData?.deficiencies || []).map((d: any) => {
+            if (d._area !== undefined) {
+              // Already has area - preserve it
+              return d;
+            }
+            // New deficiency without area - stamp it
+            const currentArea: string = inspectionData?.isOutsideInspection
+              ? 'Outside'
+              : (inspectionData?.location === 'Inside' ? 'Inside' : 'Units');
+            const currentUnit = (currentArea === 'Inside' || currentArea === 'Outside')
+              ? '-'
+              : (selectedUnits.join(', ') || 'Unit Multiple');
+            return { ...d, _area: currentArea, _unit: currentUnit };
+          });
           const uniqueNew = incoming.filter((d: any) => !existingIds.has(d.deficiencyQRId));
           setMergedDeficiencies([...saved.deficiencies, ...uniqueNew]);
-        } else if (incoming.length > 0) {
-          setMergedDeficiencies(incoming);
+        } else {
+          // No saved data - stamp all incoming deficiencies with current area
+          const currentArea: string = inspectionData?.isOutsideInspection
+            ? 'Outside'
+            : (inspectionData?.location === 'Inside' ? 'Inside' : 'Units');
+          const currentUnit = (currentArea === 'Inside' || currentArea === 'Outside')
+            ? '-'
+            : (selectedUnits.join(', ') || 'Unit Multiple');
+          const incoming = (inspectionData?.deficiencies || []).map((d: any) => ({
+            ...d,
+            _area: d._area || currentArea,
+            _unit: d._unit !== undefined ? d._unit : currentUnit,
+          }));
+          if (incoming.length > 0) {
+            setMergedDeficiencies(incoming);
+          }
         }
       } catch (e) {
         console.warn('Could not load saved inspection data:', e);
@@ -165,10 +183,6 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
             // Listen for purchase updates (handles deferred / interrupted purchases)
             iapCleanup = iapService.registerListeners(
               async (purchase) => {
-                if (!mounted) return;
-<<<<<<< HEAD
-                await verifyPurchase(purchase);
-=======
                 if (purchase.productId === IAP_PRODUCT_ID && purchase.transactionReceipt) {
                   // Consume the transaction immediately so Google Play marks it
                   // as available again — this prevents "You already own this item"
@@ -199,7 +213,6 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
                   setPurchasing(false);
                   setPaymentModalVisible(false);
                 }
->>>>>>> ec2dfb5a74bcd61909a00036e7b4d72be7eb9cc5
               },
               (error) => {
                 console.error('IAP purchase error listener:', error);
