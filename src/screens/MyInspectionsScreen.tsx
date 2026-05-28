@@ -69,6 +69,7 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
   const [user, setUser] = useState<User | null>(null);
   const [properties, setProperties] = useState<PropertyType[]>([]);
   const [inspections, setInspections] = useState<Inspection[]>([]);
+  const [inProgressInspections, setInProgressInspections] = useState<Set<string>>(new Set());
 
   // Country/State/City filter states (text-based)
   const [selectedCountry, setSelectedCountry] = useState('');
@@ -136,8 +137,18 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
         const inspectionsResponse = await inspectionService.getInspections();
         if (inspectionsResponse?.success && Array.isArray(inspectionsResponse.inspections)) {
           setInspections(inspectionsResponse.inspections);
+          // Build set of property IDs with in-progress inspections
+          const inProgress = new Set<string>();
+          inspectionsResponse.inspections.forEach((insp: Inspection) => {
+            if (insp.status === 'in-progress' || insp.status === 'started') {
+              const propertyId = typeof insp.property === 'object' ? insp.property._id : insp.property;
+              if (propertyId) inProgress.add(propertyId);
+            }
+          });
+          setInProgressInspections(inProgress);
         } else {
           setInspections([]);
+          setInProgressInspections(new Set());
         }
       } catch (inspError) {
         console.error('Error fetching inspections:', inspError);
@@ -337,9 +348,36 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
     });
   };
 
-  const handleEditPress = (property: PropertyType) => {
+  const handleEditPress = (property: PropertyType, hasInProgressInspection: boolean = false) => {
+    if (hasInProgressInspection) {
+      Alert.alert(
+        'Inspection In Progress',
+        'This property has an inspection in progress. Would you like to continue the inspection or wait for it to complete?',
+        [
+          { text: 'Continue Inspection', onPress: () => handleContinueInspection(property) },
+          { text: 'Cancel', style: 'cancel' },
+        ]
+      );
+      return;
+    }
     setSelectedProperty(property);
     setActionModalVisible(true);
+  };
+
+  const handleContinueInspection = (property: PropertyType) => {
+    const inProgressInspection = inspections.find(
+      (ins =>
+        (typeof ins.property === 'object' ? ins.property._id : ins.property) === property._id &&
+        (ins.status === 'in-progress' || ins.status === 'started')
+      )
+    );
+    if (inProgressInspection) {
+      navigation.navigate('BuildingInspection' as any, {
+        property: property,
+        inspectionId: inProgressInspection._id,
+        isResume: true,
+      });
+    }
   };
 
   const handleEditProperty = () => {
@@ -570,10 +608,11 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
             <Text style={styles.actionModalTitle}>Action</Text>
 
             <TouchableOpacity
-              style={styles.actionButton}
+              style={[styles.actionButton, inProgressInspections.has(selectedProperty?._id || '') && styles.disabledActionButton]}
               onPress={handleEditProperty}
+              disabled={inProgressInspections.has(selectedProperty?._id || '')}
             >
-              <Text style={styles.actionButtonText}>Edit Property</Text>
+              <Text style={[styles.actionButtonText, inProgressInspections.has(selectedProperty?._id || '') && styles.disabledActionButtonText]}>Edit Property</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -625,7 +664,7 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
         >
           {/* Title Section */}
           <View style={styles.titleSection}>
-            <Text style={styles.title}>My Inspection</Text>
+            <Text style={styles.title}>My Properties</Text>
             <TouchableOpacity
               style={styles.addButton}
               onPress={() => navigation.navigate('AddProperty')}
@@ -736,20 +775,29 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
             </View>
           ) : (
             <View style={styles.propertyList}>
-              {filteredProperties.map((property) => property && (
+              {filteredProperties.map((property) => property && {
+                const hasInProgressInspection = inProgressInspections.has(property._id || '');
+                return (
                 <TouchableOpacity
                   key={property._id || Math.random().toString()}
-                  style={styles.propertyCard}
+                  style={[styles.propertyCard, hasInProgressInspection && styles.propertyCardInProgress]}
                   activeOpacity={0.7}
-                  onPress={() => handlePropertyCardPress(property)}
+                  onPress={() => hasInProgressInspection ? handleContinueInspection(property) : handlePropertyCardPress(property)}
                 >
                   <View style={styles.propertyHeader}>
-                    <Text style={styles.propertyName}>{property.name || 'Unnamed Property'}</Text>
+                    <View style={styles.propertyHeaderRow}>
+                      <Text style={styles.propertyName}>{property.name || 'Unnamed Property'}</Text>
+                      {hasInProgressInspection && (
+                        <View style={styles.inProgressBadge}>
+                          <Text style={styles.inProgressBadgeText}>In Progress</Text>
+                        </View>
+                      )}
+                    </View>
                     <TouchableOpacity
                       style={styles.moreButton}
                       onPress={(e) => {
                         e.stopPropagation();
-                        handleEditPress(property);
+                        handleEditPress(property, hasInProgressInspection);
                       }}
                     >
                       <Ionicons name="ellipsis-vertical" size={20} color="#1F2937" />
@@ -768,18 +816,32 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
                     Address: <Text style={styles.addressLink}>{[property.address, property.city, property.state, property.zipCode].filter(Boolean).join(', ') || 'No address'}</Text>
                   </Text>
 
-                  {/* Edit/Update Button */}
-                  <TouchableOpacity
-                    style={styles.editButton}
-                    onPress={(e) => {
-                      e.stopPropagation();
-                      handleEditPress(property);
-                    }}
-                  >
-                    <Text style={styles.editButtonText}>Edit/Update</Text>
-                  </TouchableOpacity>
+                  {/* Action buttons - hide Edit/Update when inspection is in progress */}
+                  {!hasInProgressInspection && (
+                    <TouchableOpacity
+                      style={styles.editButton}
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        handleEditPress(property, hasInProgressInspection);
+                      }}
+                    >
+                      <Text style={styles.editButtonText}>Edit/Update</Text>
+                    </TouchableOpacity>
+                  )}
+                  {hasInProgressInspection && (
+                    <TouchableOpacity
+                      style={styles.continueButton}
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        handleContinueInspection(property);
+                      }}
+                    >
+                      <Text style={styles.continueButtonText}>Continue</Text>
+                    </TouchableOpacity>
+                  )}
                 </TouchableOpacity>
-              ))}
+              );
+              })}
             </View>
           )}
 
@@ -1594,5 +1656,48 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
+  },
+  // Property card in-progress styles
+  propertyCardInProgress: {
+    borderWidth: 2,
+    borderColor: '#F59E0B',
+  },
+  propertyHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  inProgressBadge: {
+    backgroundColor: '#FEF3C7',
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    marginLeft: 8,
+  },
+  inProgressBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#D97706',
+  },
+  continueButton: {
+    backgroundColor: '#0E7490',
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    marginTop: 12,
+    alignSelf: 'flex-start',
+  },
+  continueButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  disabledActionButton: {
+    backgroundColor: '#F3F4F6',
+    borderColor: '#E5E7EB',
+    opacity: 0.7,
+  },
+  disabledActionButtonText: {
+    color: '#9CA3AF',
   },
 });

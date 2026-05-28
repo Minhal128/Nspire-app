@@ -717,7 +717,7 @@ export default function AddPropertyScreen({
           />
         </View>
         <View style={styles.halfColumn}>
-          <RequiredLabel text="City" />
+          <RequiredLabel text="City (Area)" />
           <TextInput
             style={[styles.input, form.cityError ? styles.inputError : null]}
             placeholder="Enter City"
@@ -751,7 +751,7 @@ export default function AddPropertyScreen({
           />
         </View>
         <View style={styles.halfColumn}>
-          <RequiredLabel text="State" />
+          <RequiredLabel text="State (Province)" />
           <TextInput
             style={[styles.input, form.stateError ? styles.inputError : null]}
             placeholder="Enter State"
@@ -796,33 +796,6 @@ export default function AddPropertyScreen({
           />
         </View>
       </View>
-
-      {/* Row 5: Country (full width) */}
-      <View style={styles.row}>
-        <View style={[styles.halfColumn, { flex: 1 }]}>
-          <RequiredLabel text="Country" />
-          <TextInput
-            style={[
-              styles.input,
-              form.countryError ? styles.inputError : null,
-            ]}
-            placeholder="Enter Country"
-            placeholderTextColor="#6B7280"
-            value={form.countryText}
-            onChangeText={(t) => {
-              updateForm(index, 'countryText', t);
-              updateForm(index, 'countryError', '');
-              updateForm(index, 'resolvedCountryCode', '');
-            }}
-            onBlur={() => handleCountryBlur(index)}
-            autoCapitalize="words"
-          />
-          {form.countryError ? (
-            <Text style={styles.errorText}>{form.countryError}</Text>
-          ) : null}
-        </View>
-      </View>
-    </View>
   );
 
   return (
@@ -947,11 +920,10 @@ export default function AddPropertyScreen({
               <Text style={styles.expectedHeadersTitle}>Expected Column Headers:</Text>
               <View style={styles.headerChipsGrid}>
                 {[
-                  ['Property ID', 'Address'],
-                  ['Property Name', 'Country'],
-                  ['State', 'City'],
-                  ['Postal Code', 'Buildings'],
-                  ['Units'],
+                  ['1. Property ID', '5. Address'],
+                  ['2. Property Name', '6. City (Area)'],
+                  ['3. Buildings', '7. State (Province)'],
+                  ['4. Units', '8. Postal Code'],
                 ].map((row, rowIndex) => (
                   <View key={rowIndex} style={styles.headerChipRow}>
                     {row.map((h) => (

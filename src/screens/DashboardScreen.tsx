@@ -742,7 +742,7 @@ export default function DashboardScreen({
           <View style={styles.searchSection}>
             <View style={styles.searchTitleRow}>
               <Text style={styles.searchTitle}>
-                Search By Name, City Or State
+                Search By Name, City, Or State
               </Text>
               <TouchableOpacity onPress={handleRefreshIconPress} style={styles.refreshIconButton} disabled={iconAnimating} accessibilityLabel="Refresh properties">
                 <Animated.View style={{ transform: [{ rotate: rotateAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }] }}>
@@ -783,22 +783,9 @@ export default function DashboardScreen({
               </View>
             </View>
 
-            {/* Country */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Country</Text>
-              <TextInput
-                style={styles.textInputField}
-                placeholder="Enter Country"
-                placeholderTextColor="#6B7280"
-                value={country}
-                onChangeText={setCountry}
-                autoCapitalize="words"
-              />
-            </View>
-
             {/* State */}
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>State</Text>
+              <Text style={styles.label}>State (Province)</Text>
               <TextInput
                 style={styles.textInputField}
                 placeholder="Enter State"
@@ -811,7 +798,7 @@ export default function DashboardScreen({
 
             {/* City */}
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>City</Text>
+              <Text style={styles.label}>City (Area)</Text>
               <TextInput
                 style={styles.textInputField}
                 placeholder="Enter City"
