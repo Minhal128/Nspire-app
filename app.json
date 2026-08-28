@@ -6,6 +6,11 @@
     "version": "1.0.1",
     "orientation": "default",
     "icon": "./public/logo.png",
+    "splash": {
+      "image": "./public/logo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#97F0FF"
+    },
     "userInterfaceStyle": "automatic",
     "runtimeVersion": "1.0.0",
     "scheme": "inspire",

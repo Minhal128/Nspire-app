@@ -130,7 +130,7 @@ const styles = StyleSheet.create({
     justifyContent: "flex-start",
   },
   logo: {
-    width: 300,
+    width: 211,
     height: 120,
     marginBottom: -20,
   },

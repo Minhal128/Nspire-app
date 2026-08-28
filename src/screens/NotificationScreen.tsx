@@ -336,7 +336,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   headerLogo: {
-    width: 100,
+    width: 70,
     height: 40,
   },
   headerActions: {

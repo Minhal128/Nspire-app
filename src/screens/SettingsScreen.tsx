@@ -1210,7 +1210,7 @@ const styles = StyleSheet.create({
     marginTop: 15,
   },
   headerLogo: {
-    width: 240,
+    width: 114,
     height: 65,
   },
   scrollView: {

@@ -53,6 +53,7 @@ export default function AppHeader({ onMenuPress, onNotificationsPress }: AppHead
         style={styles.logo}
         resizeMode="contain"
       />
+      <View style={styles.spacer} />
       <View style={styles.right}>
         <TouchableOpacity onPress={onNotificationsPress} hitSlop={hitSlop}>
           <Ionicons name="notifications-outline" size={26} color="#FFFFFF" />
@@ -71,21 +72,23 @@ const styles = StyleSheet.create({
     backgroundColor: '#0E7490',
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: 16,
     // Expo's status bar is translucent, so Android has to pad past it itself.
     paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 24) + 10 : 10,
     paddingBottom: 14,
   },
   logo: {
+    // Width/height are both explicit on purpose: an Image with an
+    // under-specified box falls back to the asset's own size, which for a
+    // 1200x683 logo means it swallows the screen. Keep the 1200/683 ratio,
+    // or `contain` letterboxes and the logo drifts off the hamburger.
+    width: 81,
     height: 46,
-    // logo.png is 4591x2613 — any other ratio makes `contain` shrink the image
-    // and centre it, leaving dead space that shoves it off the hamburger.
-    aspectRatio: 4591 / 2613,
-    // Sits beside the hamburger; the auto margin eats the free space so the
-    // bell + avatar still pin to the right.
     marginLeft: 14,
-    marginRight: 'auto',
+  },
+  // Eats the free space so the bell + avatar stay pinned right.
+  spacer: {
+    flex: 1,
   },
   right: {
     flexDirection: 'row',
