@@ -9,6 +9,7 @@ import * as SecureStore from 'expo-secure-store';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { Ionicons } from '@expo/vector-icons';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
 import { ZoomProvider } from './src/contexts/ZoomContext';
 import { ReportPreviewProvider } from './src/contexts/ReportPreviewContext';
 import ZoomWrapper from './src/components/ZoomWrapper';
@@ -35,6 +36,7 @@ import ManagementReportsScreen from "./src/screens/ManagementReportsScreen";
 import ReportDetailScreen from "./src/screens/ReportDetailScreen";
 import OrderDashboardScreen from "./src/screens/OrderDashboardScreen";
 import OthersScreen from "./src/screens/OthersScreen";
+import OtherInspectionsScreen from "./src/screens/OtherInspectionsScreen";
 import LocationStatsScreen from "./src/screens/LocationStatsScreen";
 import AIInspectionScreen from "./src/screens/AIInspectionScreen";
 import InspectionCategoryScreen from "./src/screens/InspectionCategoryScreen";
@@ -71,7 +73,7 @@ export type RootStackParamList = {
   RequestInspection: undefined;
   EditProperty: { property: any };
   PropertyDetails: { property: any };
-  BuildingInspection: { property: any; calculatedUnits: number; selectedUnits: string[]; coverage: string };
+  BuildingInspection: { property: any; calculatedUnits?: number; selectedUnits?: string[]; coverage?: string };
   Analytics: undefined;
   UnitInspection: { property: any };
   InspectionChecklist: { property: any; unit: any };
@@ -79,6 +81,7 @@ export type RootStackParamList = {
   ReportDetail: { report: any };
   OrderDashboard: undefined;
   Others: undefined;
+  OtherInspections: undefined;
   LocationStats: undefined;
   AIInspection: { property: any; selectedUnits?: string[]; coverage?: string; totalUnits?: number; samplingInfo?: any };
   ModuleSelection: { property: any; selectedUnits?: string[]; coverage?: string; totalUnits?: number; samplingInfo?: any; category: 'inside' | 'outside' };
@@ -101,8 +104,8 @@ export type RootStackParamList = {
   InspectionSummary: {
     property: any;
     selectedUnits: string[];
-    buildingId: string;
-    inspectionData: any;
+    buildingId?: string;
+    inspectionData?: any;
     currentUnit?: string;
     allUnits?: string[];
   };
@@ -167,6 +170,7 @@ const linking: LinkingOptions<RootStackParamList> = {
       ReportDetail: "report",
       OrderDashboard: "orders",
       Others: "others",
+      OtherInspections: "other-inspections",
       LocationStats: "location-stats",
       AIInspection: "ai-inspection",
       InspectionReport: "inspection-report",
@@ -412,6 +416,7 @@ function AppContent() {
                     component={OrderDashboardScreen}
                   />
                   <Stack.Screen name="Others" component={OthersScreen} />
+                  <Stack.Screen name="OtherInspections" component={OtherInspectionsScreen} />
                   <Stack.Screen name="LocationStats" component={LocationStatsScreen} />
                   <Stack.Screen name="AIInspection" component={InspectionCategoryScreen} />
                   <Stack.Screen name="ModuleSelection" component={ModuleSelectionScreen} />
@@ -441,7 +446,9 @@ function AppContent() {
 export default function App() {
   return (
     <ErrorBoundary>
-      <AppContent />
+      <SafeAreaProvider initialMetrics={initialWindowMetrics}>
+        <AppContent />
+      </SafeAreaProvider>
     </ErrorBoundary>
   );
 }

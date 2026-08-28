@@ -32,7 +32,7 @@ react {
     //   The list of variants to that are debuggable. For those we're going to
     //   skip the bundling of the JS bundle and the assets. By default is just 'debug'.
     //   If you add flavors like lite, prod, etc. you'll have to list your debuggableVariants.
-    debuggableVariants = ["playDebug"]
+    debuggableVariants = ["debug"]
 
     /* Bundling */
     //   A list containing the node command and its flags. Default is just 'node'.
@@ -82,7 +82,6 @@ def enableMinifyInReleaseBuilds = (findProperty('android.enableMinifyInReleaseBu
 def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
 
 android {
-    flavorDimensions = ["distribution"]
     ndkVersion rootProject.ext.ndkVersion
 
     buildToolsVersion rootProject.ext.buildToolsVersion
@@ -106,10 +105,15 @@ android {
             keyPassword 'android'
         }
         release {
+            // Password lives in ~/.gradle/gradle.properties, never in the repo.
+            // ponytail: one property, not four -- the keystore is PKCS12, so the key
+            // password is the store password. Split them if they ever diverge.
+            // findProperty (not a bare reference) so a machine without the password
+            // can still run debug builds instead of failing at configuration time.
             storeFile file('../../credentials/android/keystore.jks')
-            storePassword '7a25aaa128ea78980ed1195ba7a284a3'
-            keyAlias '9812c1c490801f19b57c8ef72f8a3855'
-            keyPassword 'db903dda13e5a9179257c9dfe2291fec'
+            storePassword findProperty('RELEASE_KEYSTORE_PASSWORD') ?: ''
+            keyAlias 'inspire'
+            keyPassword findProperty('RELEASE_KEYSTORE_PASSWORD') ?: ''
         }
     }
     buildTypes {
@@ -117,8 +121,6 @@ android {
             signingConfig signingConfigs.debug
         }
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
             signingConfig signingConfigs.release
             shrinkResources false
             minifyEnabled false
@@ -128,7 +130,7 @@ android {
         }
     }
 
-    packagingOption
+    packagingOptions {
         jniLibs {
             def enableLegacyPackaging = findProperty('expo.useLegacyPackaging') ?: 'false'
             useLegacyPackaging enableLegacyPackaging.toBoolean()

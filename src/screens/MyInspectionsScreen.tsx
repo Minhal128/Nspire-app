@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  Image,
   TextInput,
   TouchableOpacity,
   SafeAreaView,
@@ -16,11 +15,9 @@ import {
   KeyboardAvoidingView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Picker } from '@react-native-picker/picker';
-import { Country, State, City, ICountry, IState, ICity } from 'country-state-city';
 import Sidebar from '../components/Sidebar';
 import ModalZoomWrapper from '../components/ModalZoomWrapper';
-import IOSPickerModal from '../components/IOSPickerModal';
+import AppHeader from '../components/AppHeader';
 import {
   authService,
   inspectionService,
@@ -33,12 +30,6 @@ import { Inspection, Property as PropertyType, User } from '../services/api';
 import { US_STATES } from '../constants/usStates';
 import { US_STATE_OPTIONS } from '../utils/iosPickerUtils';
 
-const COMPLIANCE_OPTIONS = [
-  { label: 'All', value: '' },
-  { label: 'Paid', value: 'paid' },
-  { label: 'Unpaid', value: 'unpaid' },
-];
-
 // State options with "All States" as first option
 const STATE_OPTIONS = [
   { label: 'All States', value: '' },
@@ -46,11 +37,7 @@ const STATE_OPTIONS = [
 ];
 
 // Coverage options for inspection
-const COVERAGE_OPTIONS = [
-  { label: 'Random Units', value: 'random', description: 'Automatically select a random sample based on NSPIRE guidelines' },
-  { label: '50%', value: '50', description: 'Inspect half of all units (randomly selected)' },
-  { label: '100%', value: '100', description: 'Inspect every unit in the property' },
-];
+import { COVERAGE_OPTIONS } from '../constants/inspectionCoverage';
 
 interface MyInspectionsScreenProps {
   navigation: any;
@@ -61,30 +48,18 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [actionModalVisible, setActionModalVisible] = useState(false);
   const [selectedProperty, setSelectedProperty] = useState<PropertyType | null>(null);
-  const [searchText, setSearchText] = useState('');
   const [location, setLocation] = useState('');
-  const [compliance, setCompliance] = useState('');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [properties, setProperties] = useState<PropertyType[]>([]);
   const [inspections, setInspections] = useState<Inspection[]>([]);
   const [inProgressInspections, setInProgressInspections] = useState<Set<string>>(new Set());
-
-  // Country/State/City filter states (text-based)
-  const [selectedCountry, setSelectedCountry] = useState('');
-  const [selectedState, setSelectedState] = useState('');
-  const [selectedCity, setSelectedCity] = useState('');
-  const [countries, setCountries] = useState<ICountry[]>([]);
-  const [states, setStates] = useState<IState[]>([]);
-  const [cities, setCities] = useState<ICity[]>([]);
-  const [countryFilterText, setCountryFilterText] = useState('');
-  const [stateFilterText, setStateFilterText] = useState('');
-  const [cityFilterText, setCityFilterText] = useState('');
+  // Web parity: multi-select + bulk delete
+  const [selectedProperties, setSelectedProperties] = useState<Set<string>>(new Set());
 
   // iOS Picker Modal states
   const [locationPickerVisible, setLocationPickerVisible] = useState(false);
-  const [compliancePickerVisible, setCompliancePickerVisible] = useState(false);
 
   // Edit Property Modal state
   const [editModalVisible, setEditModalVisible] = useState(false);
@@ -169,153 +144,9 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
     loadInitialData();
   }, [loadInitialData]);
 
-  // Load all countries
-  useEffect(() => {
-    const allCountries = Country.getAllCountries();
-    setCountries(allCountries);
-  }, []);
-
-  // Load states when country changes
-  useEffect(() => {
-    if (selectedCountry) {
-      const countryStates = State.getStatesOfCountry(selectedCountry);
-      setStates(countryStates);
-      setSelectedState('');
-      setSelectedCity('');
-      setCities([]);
-      setStateFilterText('');
-      setCityFilterText('');
-    } else {
-      setStates([]);
-      setSelectedState('');
-      setCities([]);
-      setSelectedCity('');
-    }
-  }, [selectedCountry]);
-
-  // Load cities when state changes
-  useEffect(() => {
-    if (selectedCountry && selectedState) {
-      const stateCities = City.getCitiesOfState(selectedCountry, selectedState);
-      setCities(stateCities);
-      setSelectedCity('');
-      setCityFilterText('');
-    } else {
-      setCities([]);
-      setSelectedCity('');
-    }
-  }, [selectedCountry, selectedState]);
-
-  // Country/State/City blur handlers for filter text inputs
-  const handleCountryFilterBlur = () => {
-    if (!countryFilterText.trim()) {
-      setSelectedCountry('');
-      return;
-    }
-    const lower = countryFilterText.trim().toLowerCase();
-    const found = countries.find(
-      (c) => c.name.toLowerCase() === lower || c.isoCode.toLowerCase() === lower,
-    ) || countries.find(
-      (c) => c.name.toLowerCase().startsWith(lower),
-    );
-    if (found) {
-      setSelectedCountry(found.isoCode);
-      setCountryFilterText(found.name);
-    } else {
-      setSelectedCountry('');
-    }
-  };
-
-  const handleStateFilterBlur = () => {
-    if (!stateFilterText.trim()) {
-      setSelectedState('');
-      return;
-    }
-    const lower = stateFilterText.trim().toLowerCase();
-    const found = states.find(
-      (s) => s.name.toLowerCase() === lower || s.isoCode.toLowerCase() === lower,
-    ) || states.find(
-      (s) => s.name.toLowerCase().startsWith(lower),
-    );
-    if (found) {
-      setSelectedState(found.isoCode);
-      setStateFilterText(found.name);
-    } else {
-      setSelectedState('');
-    }
-  };
-
-  const handleCityFilterBlur = () => {
-    if (!cityFilterText.trim()) {
-      setSelectedCity('');
-      return;
-    }
-    const lower = cityFilterText.trim().toLowerCase();
-    const found = cities.find(
-      (c) => c.name.toLowerCase() === lower,
-    ) || cities.find(
-      (c) => c.name.toLowerCase().startsWith(lower),
-    );
-    if (found) {
-      setSelectedCity(found.name);
-      setCityFilterText(found.name);
-    } else {
-      setSelectedCity('');
-    }
-  };
-
-  // Filter properties based on search and filters with null safety
-  const filteredProperties = (properties || []).filter((property) => {
-    if (!property) return false;
-
-    const matchesSearch = !searchText ||
-      property.name?.toLowerCase()?.includes(searchText.toLowerCase()) ||
-      property._id?.toLowerCase()?.includes(searchText.toLowerCase());
-
-    // Match country - if property doesn't have country field, don't filter by country
-    // Also check if property country matches selected country name or code
-    const selectedCountryName = countries.find(c => c.isoCode === selectedCountry)?.name;
-    const propertyCountry = (property as any).country?.toLowerCase();
-    const matchesCountry = !selectedCountry ||
-      !propertyCountry || // If property has no country, don't exclude it
-      propertyCountry === selectedCountryName?.toLowerCase() ||
-      propertyCountry === selectedCountry?.toLowerCase() ||
-      propertyCountry === 'usa' && selectedCountry === 'US' ||
-      propertyCountry === 'united states' && selectedCountry === 'US' ||
-      propertyCountry === 'uk' && selectedCountry === 'GB' ||
-      propertyCountry === 'united kingdom' && selectedCountry === 'GB' ||
-      propertyCountry === 'canada' && selectedCountry === 'CA' ||
-      propertyCountry === 'australia' && selectedCountry === 'AU';
-
-    // Match state - check both state name and state code
-    const selectedStateName = states.find(s => s.isoCode === selectedState)?.name;
-    const propertyState = property.state?.toLowerCase();
-    const matchesState = !selectedState ||
-      !propertyState || // If property has no state, don't exclude it
-      propertyState === selectedStateName?.toLowerCase() ||
-      propertyState === selectedState?.toLowerCase();
-
-    // Match city
-    const propertyCity = property.city?.toLowerCase();
-    const matchesCity = !selectedCity ||
-      !propertyCity || // If property has no city, don't exclude it
-      propertyCity === selectedCity?.toLowerCase() ||
-      propertyCity?.includes(selectedCity?.toLowerCase()) ||
-      selectedCity?.toLowerCase()?.includes(propertyCity);
-
-    // Find inspection status for this property with null safety
-    const propertyInspections = (inspections || []).filter(i => {
-      if (!i || !property?._id) return false;
-      const inspectionPropertyId = typeof i.property === 'object' ? i.property?._id : i.property;
-      return inspectionPropertyId === property._id;
-    });
-    const isPaid = propertyInspections.some(i => i?.status === 'completed');
-    const matchesCompliance = !compliance ||
-      (compliance === 'paid' && isPaid) ||
-      (compliance === 'unpaid' && !isPaid);
-
-    return matchesSearch && matchesCountry && matchesState && matchesCity && matchesCompliance;
-  });
+  // ponytail: the web page this screen mirrors lists every property, so the
+  // search / country / state / city / payment filters went out with their UI.
+  const filteredProperties = (properties || []).filter(Boolean);
 
   const handleMenuPress = () => {
     setSidebarVisible(true);
@@ -336,6 +167,8 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
       navigation.navigate('Analytics' as never);
     } else if (screen === 'Settings') {
       navigation.navigate('Settings' as never);
+    } else {
+      navigation.navigate(screen as never);
     }
   };
 
@@ -346,6 +179,54 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
       index: 0,
       routes: [{ name: 'Boarding' as never }],
     });
+  };
+
+  const handleSelectAll = () => {
+    if (selectedProperties.size === filteredProperties.length) {
+      setSelectedProperties(new Set());
+    } else {
+      setSelectedProperties(new Set(filteredProperties.map(p => p._id || '')));
+    }
+  };
+
+  const handleSelectProperty = (propertyId: string) => {
+    setSelectedProperties(prev => {
+      const next = new Set(prev);
+      if (next.has(propertyId)) next.delete(propertyId);
+      else next.add(propertyId);
+      return next;
+    });
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedProperties.size === 0) {
+      Alert.alert('No Selection', 'Please select properties to delete');
+      return;
+    }
+    const count = selectedProperties.size;
+    Alert.alert(
+      'Remove Properties',
+      `Are you sure you want to remove ${count} ${count === 1 ? 'property' : 'properties'}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const response = await propertyService.bulkDelete(Array.from(selectedProperties));
+              if (response.success) {
+                Alert.alert('Success', response.message || `${count} ${count === 1 ? 'property' : 'properties'} removed successfully`);
+                setSelectedProperties(new Set());
+                await fetchData();
+              }
+            } catch (error: any) {
+              Alert.alert('Error', error.message || 'Failed to remove properties');
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleEditPress = (property: PropertyType, hasInProgressInspection: boolean = false) => {
@@ -619,7 +500,7 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
               style={[styles.actionButton, styles.inspectionButton]}
               onPress={handleReadyForInspection}
             >
-              <Text style={[styles.actionButtonText, styles.inspectionButtonText]}>Ready For Inspection</Text>
+              <Text style={[styles.actionButtonText, styles.inspectionButtonText]}>Continue Inspection</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -633,22 +514,10 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
       </Modal>
 
       <SafeAreaView style={styles.container}>
-        {/* Header with White Bar */}
-        <View style={styles.headerContainer}>
-          <View style={styles.headerBar}>
-            <TouchableOpacity onPress={onMenuPress || handleMenuPress}>
-              <Ionicons name="menu" size={28} color="#1F2937" />
-            </TouchableOpacity>
-            <Image
-              source={require('../../inspire_logo.png')}
-              style={styles.headerLogo}
-              resizeMode="contain"
-            />
-            <TouchableOpacity onPress={() => navigation.navigate("Notifications" as any)}>
-              <Ionicons name="notifications-outline" size={28} color="#1F2937" />
-            </TouchableOpacity>
-          </View>
-        </View>
+        <AppHeader
+          onMenuPress={onMenuPress || handleMenuPress}
+          onNotificationsPress={() => navigation.navigate("Notifications" as any)}
+        />
 
         <ScrollView
           style={styles.scrollView}
@@ -662,119 +531,45 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
             />
           }
         >
-          {/* Title Section */}
-          <View style={styles.titleSection}>
-            <Text style={styles.title}>My Properties</Text>
-            <TouchableOpacity
-              style={styles.addButton}
-              onPress={() => navigation.navigate('AddProperty')}
-            >
-              <Text style={styles.addButtonText}>Add New Property</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Search Bar */}
-          <View style={styles.searchContainer}>
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search property Here......"
-              placeholderTextColor="#9CA3AF"
-              value={searchText}
-              onChangeText={setSearchText}
-            />
-          </View>
-
-          {/* Filters */}
-          <View style={styles.filterSection}>
-            <View style={styles.filterInputGroup}>
-              <Text style={styles.filterInputLabel}>Country</Text>
-              <TextInput
-                style={styles.filterTextInput}
-                placeholder="Enter Country"
-                placeholderTextColor="#9CA3AF"
-                value={countryFilterText}
-                onChangeText={(t) => { setCountryFilterText(t); if (!t.trim()) setSelectedCountry(''); }}
-                onBlur={handleCountryFilterBlur}
-                autoCapitalize="words"
-              />
+          {/* Your Properties card (web parity) */}
+          <View style={styles.propertiesCard}>
+            <View style={styles.cardHeader}>
+              {filteredProperties.length > 0 ? (
+                <TouchableOpacity style={styles.selectAllTouch} onPress={handleSelectAll}>
+                  <Ionicons
+                    name={selectedProperties.size === filteredProperties.length ? 'checkbox' : 'square-outline'}
+                    size={22}
+                    color="#0E7490"
+                  />
+                  <Text style={styles.cardTitle}>Your Properties</Text>
+                </TouchableOpacity>
+              ) : (
+                <Text style={styles.cardTitle}>Your Properties</Text>
+              )}
+              <Text style={styles.cardCount}>{filteredProperties.length} PROPERTIES</Text>
+              <TouchableOpacity
+                style={styles.addButton}
+                onPress={() => navigation.navigate('AddProperty')}
+              >
+                <Text style={styles.addButtonText}>Add New Property</Text>
+              </TouchableOpacity>
             </View>
 
-            <View style={styles.filterInputGroup}>
-              <Text style={styles.filterInputLabel}>State</Text>
-              <TextInput
-                style={styles.filterTextInput}
-                placeholder={selectedCountry ? 'Enter State' : 'Select Country first'}
-                placeholderTextColor="#9CA3AF"
-                value={stateFilterText}
-                onChangeText={(t) => { setStateFilterText(t); if (!t.trim()) setSelectedState(''); }}
-                onBlur={handleStateFilterBlur}
-                autoCapitalize="words"
-                editable={!!selectedCountry}
-              />
-            </View>
+            {selectedProperties.size > 0 && (
+              <TouchableOpacity style={styles.bulkDeleteButton} onPress={handleBulkDelete}>
+                <Ionicons name="trash-outline" size={16} color="#FFFFFF" />
+                <Text style={styles.bulkDeleteButtonText}>Remove ({selectedProperties.size})</Text>
+              </TouchableOpacity>
+            )}
 
-            <View style={styles.filterInputGroup}>
-              <Text style={styles.filterInputLabel}>City</Text>
-              <TextInput
-                style={styles.filterTextInput}
-                placeholder={selectedState ? 'Enter City' : 'Select state first'}
-                placeholderTextColor="#9CA3AF"
-                value={cityFilterText}
-                onChangeText={(t) => { setCityFilterText(t); if (!t.trim()) setSelectedCity(''); }}
-                onBlur={handleCityFilterBlur}
-                autoCapitalize="words"
-                editable={!!selectedState}
-              />
-            </View>
-          </View>
-
-          {/* Payment Status */}
-          <View style={styles.filtersContainer}>
-            <View style={styles.filterItem}>
-              <View style={styles.pickerContainer}>
-                {Platform.OS === 'ios' ? (
-                  <TouchableOpacity
-                    style={styles.iosPickerButton}
-                    onPress={() => setCompliancePickerVisible(true)}
-                  >
-                    <Text style={[styles.iosPickerText, !compliance && { color: '#9CA3AF' }]}>
-                      {compliance === 'paid' ? 'Paid' : compliance === 'unpaid' ? 'Unpaid' : "Payment Status"}
-                    </Text>
-                  </TouchableOpacity>
-                ) : (
-                  <Picker
-                    selectedValue={compliance}
-                    onValueChange={(itemValue: string) => setCompliance(itemValue)}
-                    style={styles.picker}
-                  >
-                    <Picker.Item label="Payment Status" value="" />
-                    <Picker.Item label="Paid" value="paid" />
-                    <Picker.Item label="Unpaid" value="unpaid" />
-                  </Picker>
-                )}
-                <Ionicons
-                  name="chevron-down"
-                  size={18}
-                  color="#6B7280"
-                  style={styles.pickerIcon}
-                />
+            {loading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#0E7490" />
               </View>
-            </View>
-          </View>
-
-          {/* Property List */}
-          {loading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#0E7490" />
-            </View>
-          ) : filteredProperties.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <Ionicons name="home-outline" size={48} color="#D1D5DB" />
-              <Text style={styles.emptyText}>No properties found</Text>
-              <Text style={styles.emptySubtext}>Add a property to get started</Text>
-            </View>
-          ) : (
-            <View style={styles.propertyList}>
+            ) : filteredProperties.length === 0 ? (
+              <Text style={styles.emptyText}>No properties found.</Text>
+            ) : (
+              <View style={styles.propertyList}>
               {filteredProperties.map((property) => {
                 if (!property) return null;
                 const hasInProgressInspection = inProgressInspections.has(property._id || '');
@@ -787,6 +582,20 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
                 >
                   <View style={styles.propertyHeader}>
                     <View style={styles.propertyHeaderRow}>
+                      <TouchableOpacity
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          handleSelectProperty(property._id || '');
+                        }}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        style={{ marginRight: 8 }}
+                      >
+                        <Ionicons
+                          name={selectedProperties.has(property._id || '') ? 'checkbox' : 'square-outline'}
+                          size={22}
+                          color={selectedProperties.has(property._id || '') ? '#0E7490' : '#9CA3AF'}
+                        />
+                      </TouchableOpacity>
                       <Text style={styles.propertyName}>{property.name || 'Unnamed Property'}</Text>
                       {hasInProgressInspection && (
                         <View style={styles.inProgressBadge}>
@@ -805,17 +614,33 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
                     </TouchableOpacity>
                   </View>
                   <Text style={styles.propertyDetail}>
-                    Property ID: <Text style={styles.propertyId}>{property._id?.slice(-8)?.toUpperCase() || 'N/A'}</Text>
+                    Property ID: <Text style={styles.propertyId}>{property.propertyId || property._id?.slice(-8)?.toUpperCase() || 'N/A'}</Text>
                   </Text>
                   <Text style={styles.propertyDetail}>
-                    No. of Buildings: <Text style={styles.propertyValue}>{property.buildings || 0}</Text>
+                    Address: <Text style={styles.addressLink}>{property.address || 'No address'}</Text>
                   </Text>
-                  <Text style={styles.propertyDetail}>
-                    Units: <Text style={styles.propertyValue}>{property.units || 0}</Text>
-                  </Text>
-                  <Text style={styles.propertyDetail}>
-                    Address: <Text style={styles.addressLink}>{[property.address, property.city, property.state, property.zipCode].filter(Boolean).join(', ') || 'No address'}</Text>
-                  </Text>
+                  <View style={styles.propertyMetaGrid}>
+                    <View style={styles.propertyMetaCell}>
+                      <Text style={styles.propertyMetaLabel}>City/Area</Text>
+                      <Text style={styles.propertyMetaValue}>{property.city || '-'}</Text>
+                    </View>
+                    <View style={styles.propertyMetaCell}>
+                      <Text style={styles.propertyMetaLabel}>State/Province</Text>
+                      <Text style={styles.propertyMetaValue}>{property.state || '-'}</Text>
+                    </View>
+                    <View style={styles.propertyMetaCell}>
+                      <Text style={styles.propertyMetaLabel}>Postal Code</Text>
+                      <Text style={styles.propertyMetaValue}>{property.zipCode || '-'}</Text>
+                    </View>
+                    <View style={styles.propertyMetaCell}>
+                      <Text style={styles.propertyMetaLabel}>Buildings</Text>
+                      <Text style={styles.propertyMetaValue}>{property.buildings || 0}</Text>
+                    </View>
+                    <View style={styles.propertyMetaCell}>
+                      <Text style={styles.propertyMetaLabel}>Units</Text>
+                      <Text style={styles.propertyMetaValue}>{property.units || 0}</Text>
+                    </View>
+                  </View>
 
                   {/* Action buttons - hide Edit/Update when inspection is in progress */}
                   {!hasInProgressInspection && (
@@ -843,22 +668,13 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
                 </TouchableOpacity>
               );
               })}
-            </View>
-          )}
+              </View>
+            )}
+          </View>
 
           <View style={{ height: 40 }} />
         </ScrollView>
       </SafeAreaView>
-
-      {/* iOS Picker Modals */}
-      <IOSPickerModal
-        visible={compliancePickerVisible}
-        title="Select Payment Status"
-        options={COMPLIANCE_OPTIONS}
-        selectedValue={compliance}
-        onSelect={setCompliance}
-        onClose={() => setCompliancePickerVisible(false)}
-      />
 
       {/* Edit Property Modal */}
       <Modal
@@ -1076,129 +892,94 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
 }
 
 const styles = StyleSheet.create({
+  selectAllTouch: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  bulkDeleteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#DC2626',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  bulkDeleteButtonText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  propertyMetaGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 8,
+  },
+  propertyMetaCell: {
+    width: '33.33%',
+    paddingVertical: 6,
+    paddingRight: 8,
+  },
+  propertyMetaLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#9CA3AF',
+    textTransform: 'uppercase',
+    marginBottom: 2,
+  },
+  propertyMetaValue: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#111827',
+  },
   container: {
     flex: 1,
-    backgroundColor: '#CEF8FF',
+    backgroundColor: '#E4F0F6',
   },
-  headerContainer: {
-    backgroundColor: '#CEF8FF',
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 20,
-  },
-  headerBar: {
+  propertiesCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 15,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    marginTop: 15,
+    borderRadius: 12,
+    margin: 16,
+    padding: 16,
   },
-  headerLogo: {
-    width: 240,
-    height: 65,
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EDF2F7',
+  },
+  cardTitle: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  cardCount: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#9CA3AF',
+    letterSpacing: 0.5,
   },
   scrollView: {
     flex: 1,
   },
-  titleSection: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 15,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1F2937',
-  },
   addButton: {
-    backgroundColor: '#0E7490',
+    backgroundColor: '#F94A5C',
     borderRadius: 6,
     paddingVertical: 8,
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
   },
   addButtonText: {
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '700',
   },
-  searchContainer: {
-    paddingHorizontal: 20,
-    marginBottom: 20,
-  },
-  searchInput: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    fontSize: 14,
-    color: '#374151',
-  },
-  filtersLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1F2937',
-    paddingHorizontal: 20,
-    marginBottom: 10,
-  },
-  filterSection: {
-    paddingHorizontal: 20,
-    marginBottom: 16,
-  },
-  filterInputGroup: {
-    marginBottom: 12,
-  },
-  filterInputLabel: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#1F2937',
-    marginBottom: 6,
-  },
-  filterTextInput: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    paddingVertical: 14,
-    paddingHorizontal: 14,
-    fontSize: 14,
-    color: '#374151',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  filtersContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    gap: 10,
-    marginBottom: 20,
-  },
-  filterItem: {
-    flex: 1,
-  },
-  pickerContainer: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    position: 'relative',
-    minHeight: 55,
-    justifyContent: 'center',
-  },
-  picker: {
-    height: 55,
-    color: '#374151',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  pickerIcon: {
-    position: 'absolute',
-    right: 12,
-    top: 18,
-    pointerEvents: 'none',
-  },
   propertyList: {
-    paddingHorizontal: 20,
+    paddingTop: 14,
   },
   propertyCard: {
     backgroundColor: '#FFFFFF',
@@ -1329,23 +1110,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 60,
   },
-  emptyContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 60,
-    paddingHorizontal: 20,
-  },
   emptyText: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 15,
     color: '#6B7280',
-    marginTop: 12,
-    marginBottom: 4,
-  },
-  emptySubtext: {
-    fontSize: 13,
-    color: '#9CA3AF',
     textAlign: 'center',
+    paddingVertical: 40,
   },
   pickerModalOverlay: {
     flex: 1,
@@ -1372,15 +1141,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#0E7490',
     fontWeight: '600',
-  },
-  iosPickerButton: {
-    height: 55,
-    justifyContent: 'center',
-    paddingHorizontal: 12,
-  },
-  iosPickerText: {
-    fontSize: 14,
-    color: '#374151',
   },
   pickerWrapper: {
     height: 250,

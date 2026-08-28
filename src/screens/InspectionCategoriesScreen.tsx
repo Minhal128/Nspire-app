@@ -100,7 +100,10 @@ const extractPropertyIdFromProgressKey = (key: string, buildingId: string): stri
 const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
   const { property, selectedUnits, buildingId, propertyId: routePropertyId } = route.params;
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
-  const [buildingName, setBuildingName] = useState(buildingId);
+  // Display label only. It used to feed every storage key and the backend
+  // building_id, so renaming a building wrote that session's work under a name
+  // that resets to buildingId on the next visit -- the data was never read again.
+  const [buildingLabel, setBuildingLabel] = useState(buildingId);
   const [editBuildingModalVisible, setEditBuildingModalVisible] = useState(false);
   const [tempBuildingName, setTempBuildingName] = useState(buildingId);
 
@@ -169,7 +172,7 @@ const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
   }, [getDirectPropertyIdentifier, resolvedPropertyId]);
 
   const inferPropertyIdentifierFromGlobalProgress = useCallback(() => {
-    const normalizedBuildingId = String(buildingName || '').trim();
+    const normalizedBuildingId = String(buildingId || '').trim();
     if (!normalizedBuildingId) {
       return '';
     }
@@ -212,7 +215,7 @@ const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
     }
 
     return '';
-  }, [buildingName]);
+  }, [buildingId]);
 
   const resolvePropertyIdentifier = useCallback(async (): Promise<string> => {
     const directPropertyId = getDirectPropertyIdentifier();
@@ -247,7 +250,7 @@ const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
       );
 
       const relevantProgressRecords = allProgressRecords
-        .filter((record: any) => doesProgressRecordMatchBuilding(record, buildingName))
+        .filter((record: any) => doesProgressRecordMatchBuilding(record, buildingId))
         .filter((record: any) => {
           if (selectedUnitTokens.size === 0) {
             return true;
@@ -285,7 +288,7 @@ const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
 
     setResolvedPropertyId('unknown');
     return 'unknown';
-  }, [getDirectPropertyIdentifier, selectedUnits, buildingName, inferPropertyIdentifierFromGlobalProgress]);
+  }, [getDirectPropertyIdentifier, selectedUnits, buildingId, inferPropertyIdentifierFromGlobalProgress]);
 
   useEffect(() => {
     const directPropertyId = getDirectPropertyIdentifier();
@@ -322,7 +325,7 @@ const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
     }
 
     try {
-      const completedUnits = await getCompletedUnits(propId, String(buildingName || ''));
+      const completedUnits = await getCompletedUnits(propId, String(buildingId || ''));
       const localStatusMap: Record<string, boolean> = {};
 
       (completedUnits || []).forEach((unitName) => {
@@ -337,7 +340,7 @@ const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
       console.log('Could not load local completed units for categories screen', error);
       return {};
     }
-  }, [getPropertyIdentifier, buildingName]);
+  }, [getPropertyIdentifier, buildingId]);
 
   const hydrateSectionProgressFromDeviceCache = useCallback(async (propertyIdentifier?: string) => {
     const propId = normalizePropertyIdentifier(propertyIdentifier || getPropertyIdentifier());
@@ -347,13 +350,13 @@ const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
 
     const outsideKey = buildInspectionProgressKey({
       propertyId: propId,
-      buildingId: buildingName,
+      buildingId: buildingId,
       inspectionType: 'Outside',
     });
 
     const insideKey = buildInspectionProgressKey({
       propertyId: propId,
-      buildingId: buildingName,
+      buildingId: buildingId,
       inspectionType: 'Inside',
     });
 
@@ -383,7 +386,7 @@ const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
     } catch (cacheError) {
       console.log('Could not hydrate section progress from device cache', cacheError);
     }
-  }, [buildingName, getPropertyIdentifier]);
+  }, [buildingId, getPropertyIdentifier]);
 
   const fetchBackendUnitStatus = useCallback(async (propertyIdentifier?: string) => {
     const propId = normalizePropertyIdentifier(propertyIdentifier || getPropertyIdentifier());
@@ -392,7 +395,7 @@ const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
       return {};
     }
 
-    const requestKey = `${propId}::${String(buildingName || '').trim()}`;
+    const requestKey = `${propId}::${String(buildingId || '').trim()}`;
     const now = Date.now();
 
     if (
@@ -412,7 +415,7 @@ const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
     const requestPromise = (async () => {
       const backendUnitStatus = await inspectionService.getUnitInspectionStatus({
         property_id: String(propId),
-        building_id: String(buildingName || ''),
+        building_id: String(buildingId || ''),
       });
 
       const normalizedStatusMap: Record<string, boolean> = {};
@@ -464,7 +467,7 @@ const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
       };
       throw error;
     }
-  }, [getPropertyIdentifier, buildingName]);
+  }, [getPropertyIdentifier, buildingId]);
 
   const syncOutsideInsideFromBackend = useCallback(async (propertyIdentifier?: string) => {
     const propId = normalizePropertyIdentifier(propertyIdentifier || getPropertyIdentifier());
@@ -472,7 +475,7 @@ const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
       return;
     }
 
-    const requestKey = `${propId}::${String(buildingName || '').trim()}::outside-inside`;
+    const requestKey = `${propId}::${String(buildingId || '').trim()}::outside-inside`;
     const now = Date.now();
 
     if (
@@ -496,7 +499,7 @@ const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
         sectionTypes.map((inspectionType) =>
           inspectionService.getProgress({
             property_id: propId,
-            unit_id: String(buildingName || ''),
+            unit_id: String(buildingId || ''),
             inspection_type: inspectionType,
           })
         )
@@ -515,7 +518,7 @@ const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
         const inspectionType = sectionTypes[index];
         const key = buildInspectionProgressKey({
           propertyId: propId,
-          buildingId: buildingName,
+          buildingId: buildingId,
           inspectionType,
           inspectionData: payload.inspectionData,
         });
@@ -544,11 +547,11 @@ const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
         lastResolvedAt: Date.now(),
       };
     }
-  }, [getPropertyIdentifier, buildingName]);
+  }, [getPropertyIdentifier, buildingId]);
 
   const updateLocalState = useCallback((propertyIdentifier?: string, backendStatusOverride?: Record<string, boolean>) => {
     const propId = propertyIdentifier || getPropertyIdentifier();
-    const keyPrefix = `inspection_responses_${propId}_${buildingName}_`;
+    const keyPrefix = `inspection_responses_${propId}_${buildingId}_`;
 
     const progressEntries = Object.entries(globalInspectionProgress).filter(
       ([key, value]) =>
@@ -616,7 +619,7 @@ const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
     );
 
     setUnitsProgress(effectiveUnitProgress);
-  }, [buildingName, selectedUnits, getPropertyIdentifier, totalUnitPossible]);
+  }, [buildingId, selectedUnits, getPropertyIdentifier, totalUnitPossible]);
 
   useFocusEffect(
     useCallback(() => {
@@ -684,7 +687,7 @@ const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
       return () => {
         isCancelled = true;
       };
-    }, [property, buildingName, selectedUnits, updateLocalState, fetchBackendUnitStatus, resolvePropertyIdentifier, getLocalCompletedUnitStatusMap, mergeUnitStatusMaps, getPropertyIdentifier, hydrateSectionProgressFromDeviceCache, syncOutsideInsideFromBackend])
+    }, [property, buildingId, selectedUnits, updateLocalState, fetchBackendUnitStatus, resolvePropertyIdentifier, getLocalCompletedUnitStatusMap, mergeUnitStatusMaps, getPropertyIdentifier, hydrateSectionProgressFromDeviceCache, syncOutsideInsideFromBackend])
   );
 
   useEffect(() => {
@@ -698,7 +701,7 @@ const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
         inspectionType: progressUpdate.inspectionType,
       };
 
-      if (!doesProgressRecordMatchBuilding(progressLikeRecord, buildingName)) {
+      if (!doesProgressRecordMatchBuilding(progressLikeRecord, buildingId)) {
         return;
       }
 
@@ -722,7 +725,7 @@ const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
       if (shouldApplySocketProgress && effectiveSocketPropertyId) {
         const key = buildInspectionProgressKey({
           propertyId: effectiveSocketPropertyId,
-          buildingId: buildingName,
+          buildingId: buildingId,
           inspectionType: progressUpdate.inspectionType,
         });
 
@@ -768,15 +771,15 @@ const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
     });
 
     return unsubscribe;
-  }, [property, buildingName, getPropertyIdentifier, updateLocalState, fetchBackendUnitStatus, resolvePropertyIdentifier, getLocalCompletedUnitStatusMap, mergeUnitStatusMaps, resolvedPropertyId]);
+  }, [property, buildingId, getPropertyIdentifier, updateLocalState, fetchBackendUnitStatus, resolvePropertyIdentifier, getLocalCompletedUnitStatusMap, mergeUnitStatusMaps, resolvedPropertyId]);
 
   const openBuildingEditModal = () => {
-    setTempBuildingName(buildingName);
+    setTempBuildingName(buildingLabel);
     setEditBuildingModalVisible(true);
   };
 
   const handleSaveBuildingName = () => {
-    setBuildingName(tempBuildingName.trim() || buildingId);
+    setBuildingLabel(tempBuildingName.trim() || buildingId);
     setEditBuildingModalVisible(false);
   };
 
@@ -792,7 +795,7 @@ const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
     navigation.navigate('LocationInspection', {
       property,
       selectedUnits,
-      buildingId: buildingName,
+      buildingId: buildingId,
       location: 'Outside',
     });
   };
@@ -801,7 +804,7 @@ const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
     navigation.navigate('LocationInspection', {
       property,
       selectedUnits,
-      buildingId: buildingName,
+      buildingId: buildingId,
       location: 'Inside',
     });
   };
@@ -810,7 +813,7 @@ const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
     navigation.navigate('PropertyInfo', {
       property,
       selectedUnits,
-      buildingId: buildingName,
+      buildingId: buildingId,
     });
   };
 
@@ -822,7 +825,18 @@ const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
           <Ionicons name="arrow-back" size={24} color="#1A1A1A" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Inspection Categories</Text>
-        <View style={styles.headerRight} />
+        <TouchableOpacity
+          style={styles.summaryButton}
+          onPress={() => navigation.navigate('InspectionSummary' as any, {
+            property,
+            selectedUnits,
+            buildingId,
+            inspectionData: null,
+          })}
+        >
+          <Ionicons name="document-text-outline" size={14} color="#FFFFFF" />
+          <Text style={styles.summaryButtonText}>Summary</Text>
+        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -834,7 +848,7 @@ const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
         <View style={styles.buildingCard}>
           <View style={styles.buildingHeader}>
             <Ionicons name="business-outline" size={24} color="#FFFFFF" />
-            <Text style={styles.buildingTitle}>BUILDING NO: {buildingName}</Text>
+            <Text style={styles.buildingTitle}>BUILDING NO: {buildingLabel}</Text>
           </View>
         </View>
 
@@ -993,6 +1007,21 @@ const styles = StyleSheet.create({
   },
   backButton: {
     padding: 4,
+  },
+  summaryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#006795',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  summaryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '800',
+    textTransform: 'uppercase',
   },
   headerTitle: {
     fontSize: 18,

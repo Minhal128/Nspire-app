@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Modal,
   Platform,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
@@ -21,7 +22,8 @@ import * as Sharing from 'expo-sharing';
 import * as XLSX from 'xlsx';
 import { enhancedNspirePDFService } from '../services/enhancedNspirePDFService';
 import { storeData, getData } from '../utils/storage';
-import { iapService, IAP_PRODUCT_ID } from '../utils/iapService';
+import { stripeService } from '../utils/stripeService';
+import { isValidEmail } from '../utils/stripeUnlock';
 
 type InspectionSummaryScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -50,16 +52,22 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
   // Never use a hardcoded ID — that causes all inspections to share the same unlock record.
   const propertyId = property?._id || property?.id || property?.propertyId || 'unknown';
   const inspectionId = routeInspectionId || `${propertyId}_${buildingId || 'default'}`;
+  // One key for both the load and the save. The two sites used to build it
+  // differently (one dropped the propertyId fallback, both dropped the
+  // buildingId one), so resumed progress could be written where it is never read.
+  const saveKey = `saved_inspection_${propertyId}_${buildingId || 'default'}`;
   const inspectionDate = new Date().toLocaleDateString();
 
-  // ── IAP State ────────────────────────────────────────────────────
+  // ── Payment State ────────────────────────────────────────────────
   const [isReportUnlocked, setIsReportUnlocked] = useState(false);
   const [paymentModalVisible, setPaymentModalVisible] = useState(false);
-  const [purchasing, setPurchasing] = useState(false);
   const [checkingUnlock, setCheckingUnlock] = useState(true);
+  const [stripeBusy, setStripeBusy] = useState(false);
+  const [shareEmail, setShareEmail] = useState('');
+  const [sharingPayment, setSharingPayment] = useState(false);
   const pendingExportAction = useRef<'pdf' | 'html' | 'excel' | null>(null);
-  // Holds latest export function references so the purchase listener (a stale
-  // closure from useEffect []) always calls the current render's version.
+  // Holds latest export function references so a deferred export always calls
+  // the current render's version rather than a stale closure.
   const exportFnRefs = useRef<{ pdf: () => void; html: () => void; excel: () => void }>({
     pdf: () => {},
     html: () => {},
@@ -71,50 +79,10 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
   const [showPaymentOnMount, setShowPaymentOnMount] = useState(false);
   const hasDeficienciesToExport = mergedDeficiencies.length > 0;
 
-  // ── IAP: Verification Helper ────────────────────────────────────
-  const verifyPurchase = async (purchase: any) => {
-    if (purchase.productId === IAP_PRODUCT_ID && purchase.transactionReceipt) {
-      try {
-        setPurchasing(true);
-        // Verify with backend
-        const result = await iapService.verifyAndUnlock(
-          inspectionId,
-          purchase.purchaseToken || purchase.transactionReceipt,
-        );
-
-        if (result.isReportUnlocked) {
-          setIsReportUnlocked(true);
-          await iapService.acknowledge(purchase);
-          Alert.alert('Payment Successful', 'Your report has been unlocked! You can now export the full report.');
-
-          // Auto-trigger pending export
-          if (pendingExportAction.current) {
-            const action = pendingExportAction.current;
-            pendingExportAction.current = null;
-            setTimeout(() => {
-              if (action === 'pdf') handleExportPDF();
-              else if (action === 'html') handleExportHTML();
-              else if (action === 'excel') handleExportExcel();
-            }, 500);
-          }
-        } else {
-          Alert.alert('Verification Failed', result.message || 'Could not verify your purchase. Please contact support.');
-        }
-      } catch (err) {
-        console.error('Verification error:', err);
-        Alert.alert('Error', 'An error occurred during verification.');
-      } finally {
-        setPurchasing(false);
-        setPaymentModalVisible(false);
-      }
-    }
-  };
-
   // On mount: load any previously saved deficiencies and merge with the new ones
   useEffect(() => {
     const loadAndMerge = async () => {
       try {
-        const saveKey = `saved_inspection_${property?._id || property?.id || property?.propertyId || 'unknown'}_${buildingId}`;
         const saved = await getData(saveKey);
 
         // IMPORTANT: Do NOT re-stamp _area/_unit on saved deficiencies.
@@ -164,133 +132,18 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
     loadAndMerge();
   }, []);
 
-  // ── IAP: initialise connection & check unlock status ─────────────
+  // ── Is this report already paid for? ─────────────────────────────
   useEffect(() => {
-    let iapCleanup: (() => void) | null = null;
     let mounted = true;
-    let unlockCheckTimeout: ReturnType<typeof setTimeout> | null = null;
 
-    const initIAP = async () => {
-      try {
-        // Initialize IAP connection on native platforms immediately (non-blocking)
-        if (Platform.OS !== 'web') {
-          const iapInitialized = await iapService.init();
+    (async () => {
+      const unlocked = await stripeService.checkUnlockStatus(inspectionId);
+      if (!mounted) return;
+      if (unlocked) setIsReportUnlocked(true);
+      setCheckingUnlock(false);
+    })();
 
-          if (iapInitialized && mounted) {
-            // Fetch product details to "warm up" cache and verify SKU
-            const product = await iapService.getReportProduct();
-            if (product) {
-              console.log('IAP: Product found:', product.productId, product.price);
-            } else {
-              console.warn('IAP: Product NOT found. Check SKU and Play Console status.');
-            }
-
-            // Listen for purchase updates (handles deferred / interrupted purchases)
-            iapCleanup = iapService.registerListeners(
-              async (purchase) => {
-                if (purchase.productId === IAP_PRODUCT_ID && purchase.transactionReceipt) {
-                  // Consume the transaction immediately so Google Play marks it
-                  // as available again — this prevents "You already own this item"
-                  // errors when purchasing reports for different inspections.
-                  await iapService.acknowledge(purchase);
-
-                  // Verify with backend
-                  const result = await iapService.verifyAndUnlock(
-                    inspectionId,
-                    purchase.purchaseToken || purchase.transactionReceipt,
-                  );
-                  if (result.isReportUnlocked) {
-                    setIsReportUnlocked(true);
-                    Alert.alert('Payment Successful', 'Your report has been unlocked! You can now export the full report.');
-                    // Auto-trigger pending export via ref so we get the latest function
-                    if (pendingExportAction.current) {
-                      const action = pendingExportAction.current;
-                      pendingExportAction.current = null;
-                      setTimeout(() => {
-                        if (action === 'pdf') exportFnRefs.current.pdf();
-                        else if (action === 'html') exportFnRefs.current.html();
-                        else if (action === 'excel') exportFnRefs.current.excel();
-                      }, 500);
-                    }
-                  } else {
-                    Alert.alert('Verification Failed', result.message || 'Could not verify your purchase. Please contact support.');
-                  }
-                  setPurchasing(false);
-                  setPaymentModalVisible(false);
-                }
-              },
-              (error) => {
-                console.error('IAP purchase error listener:', error);
-                setPurchasing(false);
-              },
-            );
-
-            // Check for any unconsumed purchases that might have been interrupted
-            try {
-              const availablePurchases = await iapService.getUnconsumedPurchases();
-              const existingPurchase = availablePurchases.find(
-                (p) => p.productId === IAP_PRODUCT_ID
-              );
-              if (existingPurchase && mounted) {
-                console.log('IAP: Found unconsumed purchase on init, attempting to recover...');
-                // Don't use verifyPurchase directly here because it has Alerts
-                // Just do a silent verification if possible, or use a flag
-                const result = await iapService.verifyAndUnlock(
-                  inspectionId,
-                  existingPurchase.purchaseToken || existingPurchase.transactionReceipt || '',
-                );
-                if (result.isReportUnlocked && mounted) {
-                  setIsReportUnlocked(true);
-                  await iapService.acknowledge(existingPurchase);
-                  console.log('IAP: Recovered purchase successfully');
-                }
-              }
-            } catch (recoveryErr) {
-              console.warn('IAP recovery check failed:', recoveryErr);
-            }
-          }
-        }
-
-        // Check unlock status from backend in background (non-blocking)
-        // This now checks BOTH per-inspection AND user-level global unlock
-        setCheckingUnlock(true);
-        unlockCheckTimeout = setTimeout(async () => {
-          try {
-            const unlocked = await iapService.checkUnlockStatus(inspectionId);
-            if (mounted && unlocked) {
-              setIsReportUnlocked(true);
-            }
-            // Also check if user has a global unlock (paid once = all reports unlocked)
-            if (mounted && !unlocked) {
-              const hasGlobalUnlock = await iapService.hasUserGlobalUnlock();
-              if (hasGlobalUnlock) {
-                setIsReportUnlocked(true);
-              }
-            }
-          } catch (_) {
-            // Backend check failed - user can still try to purchase
-          }
-          if (mounted) {
-            setCheckingUnlock(false);
-          }
-        }, 100); // Small delay to allow UI to render first
-      } catch (err) {
-        // Prevent any IAP errors from crashing the app
-        console.warn('IAP initialization error (non-fatal):', err);
-        if (mounted) {
-          setCheckingUnlock(false);
-        }
-      }
-    };
-
-    initIAP();
-
-    return () => {
-      mounted = false;
-      if (unlockCheckTimeout) clearTimeout(unlockCheckTimeout);
-      iapCleanup?.();
-      iapService.destroy();
-    };
+    return () => { mounted = false; };
   }, []);
 
   // ── Auto-show payment modal on mount if coming from inspection flow ──
@@ -305,49 +158,81 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
     }
   }, [hasDeficienciesToExport, isReportUnlocked, checkingUnlock]);
 
-  // ── IAP: handle the purchase flow ────────────────────────────────
-  const handlePurchaseReport = async () => {
-    // On web, IAP is not available — inform user
-    if (Platform.OS === 'web') {
-      Alert.alert(
-        'Mobile Only',
-        'In-App Purchases are only available on the Android app. Please use the mobile app to purchase the report.',
-        [{ text: 'OK', onPress: () => setPaymentModalVisible(false) }],
-      );
-      return;
-    }
+  /**
+   * Run whichever export the user was blocked on, now that the report is unlocked.
+   * Reads exportFnRefs (refreshed every render) so it is never a stale closure.
+   */
+  const runPendingExport = () => {
+    const action = pendingExportAction.current;
+    if (!action) return;
+    pendingExportAction.current = null;
+    setTimeout(() => exportFnRefs.current[action](), 500);
+  };
 
-    setPurchasing(true);
+  // ── Stripe: hosted checkout (mirrors web's handleUnlockWithStripe) ──
+  const handleUnlockWithStripe = async () => {
+    setStripeBusy(true);
     try {
-      console.log('InspectionSummary: Starting purchase flow...');
-      const purchase = await iapService.purchaseReportUnlock();
+      const decision = await stripeService.unlockWithStripe(inspectionId);
 
-      if (!purchase) {
-        console.log('InspectionSummary: Purchase returned null');
-        setPurchasing(false);
-        return;
+      if (decision.outcome === 'unlocked') {
+        setIsReportUnlocked(true);
+        setPaymentModalVisible(false);
+        Alert.alert('Payment Successful', decision.message);
+        runPendingExport();
+      } else {
+        Alert.alert('Payment', decision.message);
       }
-
-      console.log('InspectionSummary: Purchase initiated successfully');
-      // If a purchase object was returned directly (e.g. from existing unconsumed purchase),
-      // we process it here. The listener will also catch new purchases.
-      await verifyPurchase(purchase);
     } catch (err: any) {
-      setPurchasing(false);
-      const errorMsg = err?.message || 'Something went wrong with the purchase.';
-      console.error('InspectionSummary: Purchase error:', errorMsg);
-      Alert.alert('Purchase Error', errorMsg);
+      Alert.alert('Payment Error', err?.message || 'Unable to start payment.');
+    } finally {
+      setStripeBusy(false);
     }
   };
 
+  // ── Stripe: email the checkout link to whoever is paying ─────────
+  const handleSharePaymentLink = async () => {
+    if (!isValidEmail(shareEmail)) {
+      Alert.alert('Invalid Email', 'Enter a valid email address to send the payment link to.');
+      return;
+    }
+
+    setSharingPayment(true);
+    try {
+      const data = await stripeService.shareCheckoutLink(inspectionId, shareEmail.trim());
+
+      if (data?.isReportUnlocked || data?.alreadyUnlocked) {
+        setIsReportUnlocked(true);
+        setPaymentModalVisible(false);
+        Alert.alert('Already Unlocked', 'This report is already unlocked.');
+        return;
+      }
+      if (!data?.success) {
+        throw new Error(data?.message || 'Failed to send payment link.');
+      }
+
+      setShareEmail('');
+      Alert.alert('Link Sent', 'Payment link sent to email successfully.');
+    } catch (err: any) {
+      Alert.alert('Error', err?.message || 'An error occurred while sharing the payment link.');
+    } finally {
+      setSharingPayment(false);
+    }
+  };
+
+  // Any payment in flight — the modal must not be dismissible mid-flow.
+  const paymentBusy = stripeBusy || sharingPayment;
+
   /**
    * Gate an export action behind payment.
-   * If unlocked, runs the callback directly.
-   * On web: always allow exports (IAP is native-only, payment happens on Android device).
-   * If locked on native: opens the payment modal and remembers which action to run after payment.
+   * If unlocked, runs the callback directly; otherwise opens the payment modal
+   * and remembers which export to run once payment lands.
+   *
+   * Web used to skip the gate outright because Play Billing was native-only.
+   * Stripe checkout works on every platform, so the gate now applies everywhere.
    */
   const gateExport = (action: 'pdf' | 'html' | 'excel', callback: () => void) => {
-    if (isReportUnlocked || Platform.OS === 'web') {
+    if (isReportUnlocked) {
       callback();
     } else {
       pendingExportAction.current = action;
@@ -368,6 +253,10 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
     ).length,
     low: mergedDeficiencies.filter((d: any) =>
       (d.deficiency?.aiSeverity || d.deficiency?.severity) === 'Low'
+    ).length,
+    // Web parity: the summary also splits repeats from new findings.
+    repeat: mergedDeficiencies.filter((d: any) =>
+      !!(d.repeatIndicator ?? d.deficiency?.repeatIndicator)
     ).length,
   };
 
@@ -392,7 +281,6 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
       : (selectedUnits.join(', ') || routeCurrentUnit || 'Unit Multiple');
 
     try {
-      const saveKey = `saved_inspection_${property?._id || property?.id || 'unknown'}_${buildingId}`;
 
       // Convert local image URIs to base64 so images survive navigation,
       // and stamp _area / _unit on each deficiency so they survive future merges
@@ -442,7 +330,7 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
     navigation.navigate('LocationInspection', {
       property,
       selectedUnits,
-      buildingId,
+      buildingId: buildingId || 'default',
       location: nextArea,
       currentUnit: nextUnit,
     });
@@ -1136,6 +1024,26 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
                 <Text style={styles.deficiencyCount}>{deficiencyCounts.low}</Text>
                 <Text style={styles.deficiencyLabel}>Low</Text>
               </View>
+
+              <View style={styles.deficiencyItem}>
+                <View style={[styles.deficiencyBar, styles.totalBar]} />
+                <Text style={[styles.deficiencyCount, styles.totalCount]}>{totalDeficiencies}</Text>
+                <Text style={[styles.deficiencyLabel, styles.totalLabel]}>Total</Text>
+              </View>
+            </View>
+
+            {/* Repeat vs new (web parity) */}
+            <View style={styles.repeatNewRow}>
+              <View style={[styles.repeatNewTile, styles.repeatTile]}>
+                <Text style={[styles.repeatNewCount, styles.repeatText]}>{deficiencyCounts.repeat}</Text>
+                <Text style={[styles.repeatNewLabel, styles.repeatText]}>Repeat Deficiencies</Text>
+              </View>
+              <View style={[styles.repeatNewTile, styles.newTile]}>
+                <Text style={[styles.repeatNewCount, styles.newText]}>
+                  {totalDeficiencies - deficiencyCounts.repeat}
+                </Text>
+                <Text style={[styles.repeatNewLabel, styles.newText]}>New Deficiencies</Text>
+              </View>
             </View>
 
             {/* Inspection Details */}
@@ -1145,6 +1053,18 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
               <View style={styles.detailRow}>
                 <Text style={styles.detailLabel}>Building:</Text>
                 <Text style={styles.detailValue}>{buildingId}</Text>
+              </View>
+
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Property Total:</Text>
+                <Text style={styles.detailValue}>{property?.units ?? '-'}</Text>
+              </View>
+
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Sample Size:</Text>
+                <Text style={styles.detailValue}>
+                  {property?.calculatedUnits ?? selectedUnits.length}
+                </Text>
               </View>
 
               <View style={styles.detailRow}>
@@ -1308,23 +1228,26 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
         visible={paymentModalVisible}
         animationType="slide"
         transparent={true}
-        onRequestClose={() => { if (!purchasing) setPaymentModalVisible(false); }}
+        onRequestClose={() => { if (!paymentBusy) setPaymentModalVisible(false); }}
       >
         <View style={styles.paymentOverlay}>
           <View style={styles.paymentModal}>
             {/* Close */}
             <TouchableOpacity
               style={styles.paymentCloseButton}
-              onPress={() => { if (!purchasing) setPaymentModalVisible(false); }}
-              disabled={purchasing}
+              onPress={() => { if (!paymentBusy) setPaymentModalVisible(false); }}
+              disabled={paymentBusy}
             >
               <Ionicons name="close" size={24} color="#374151" />
             </TouchableOpacity>
 
+            {/* Body scrolls: the card + email-link options overflow a small screen. */}
+            <ScrollView contentContainerStyle={styles.paymentModalContent} showsVerticalScrollIndicator={false}>
+
             {/* Payment Provider Badge */}
             <View style={styles.paymentProviderBadge}>
-              <Ionicons name="logo-google-playstore" size={24} color="#FFFFFF" />
-              <Text style={styles.paymentProviderBadgeText}>Google Play</Text>
+              <Ionicons name="card" size={22} color="#FFFFFF" />
+              <Text style={styles.paymentProviderBadgeText}>Stripe</Text>
             </View>
 
             {/* Icon */}
@@ -1340,8 +1263,7 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
             {/* Price */}
             <View style={styles.paymentPriceContainer}>
               <Text style={styles.paymentPriceLabel}>One-time payment (unlocks ALL reports)</Text>
-              <Text style={styles.paymentPrice}>$99</Text>
-              <Text style={styles.paymentPriceSub}>One-time purchase - access all future reports</Text>
+              <Text style={styles.paymentPriceSub}>The amount is shown on the secure Stripe checkout page.</Text>
             </View>
 
             {/* Features */}
@@ -1362,23 +1284,56 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
 
             {/* Buy button */}
             <TouchableOpacity
-              style={[styles.paymentBuyButton, purchasing && styles.paymentBuyButtonDisabled]}
-              onPress={handlePurchaseReport}
-              disabled={purchasing}
+              style={[styles.paymentBuyButton, paymentBusy && styles.paymentBuyButtonDisabled]}
+              onPress={handleUnlockWithStripe}
+              disabled={paymentBusy}
             >
-              {purchasing ? (
+              {stripeBusy ? (
                 <ActivityIndicator color="#FFFFFF" />
               ) : (
                 <>
                   <Ionicons name="card-outline" size={20} color="#FFFFFF" />
-                  <Text style={styles.paymentBuyButtonText}>Purchase for $99</Text>
+                  <Text style={styles.paymentBuyButtonText}>Pay by Card</Text>
                 </>
               )}
             </TouchableOpacity>
 
             <Text style={styles.paymentSecureText}>
-              🔒 Secure payment via Google Play
+              🔒 Secure payment via Stripe
             </Text>
+
+            {/* Send the checkout link to whoever actually holds the card */}
+            <View style={styles.paymentShareRow}>
+              <TextInput
+                style={styles.paymentShareInput}
+                placeholder="name@company.com"
+                placeholderTextColor="#9CA3AF"
+                value={shareEmail}
+                onChangeText={setShareEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                editable={!paymentBusy}
+                accessibilityLabel="Email address for the payment link"
+              />
+              <TouchableOpacity
+                style={[styles.paymentShareButton, paymentBusy && styles.paymentBuyButtonDisabled]}
+                onPress={handleSharePaymentLink}
+                disabled={paymentBusy}
+                accessibilityLabel="Send payment link"
+              >
+                {sharingPayment ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <Ionicons name="mail-outline" size={18} color="#FFFFFF" />
+                )}
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.paymentShareHint}>
+              Email the payment link to someone else
+            </Text>
+
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -1387,6 +1342,17 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
 };
 
 const styles = StyleSheet.create({
+  totalBar: { backgroundColor: '#16A34A' },
+  totalCount: { color: '#16A34A' },
+  totalLabel: { color: '#16A34A' },
+  repeatNewRow: { flexDirection: 'row', gap: 12, marginTop: 14 },
+  repeatNewTile: { flex: 1, borderRadius: 10, paddingVertical: 12, alignItems: 'center' },
+  repeatTile: { backgroundColor: '#FFFBEB' },
+  newTile: { backgroundColor: '#EFF6FF' },
+  repeatNewCount: { fontSize: 22, fontWeight: '800' },
+  repeatNewLabel: { fontSize: 11, fontWeight: '700', marginTop: 2 },
+  repeatText: { color: '#B45309' },
+  newText: { color: '#1D4ED8' },
   container: {
     flex: 1,
     backgroundColor: '#E8F4FD',
@@ -1915,9 +1881,43 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
+    maxHeight: '90%',
+  },
+  paymentModalContent: {
     padding: 24,
     paddingBottom: 40,
     alignItems: 'center',
+  },
+  paymentShareRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+    marginTop: 12,
+    gap: 8,
+  },
+  paymentShareInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 14,
+    color: '#1A1A1A',
+    backgroundColor: '#F9FAFB',
+  },
+  paymentShareButton: {
+    width: 46,
+    height: 46,
+    borderRadius: 12,
+    backgroundColor: '#635BFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  paymentShareHint: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    marginTop: 8,
   },
   paymentCloseButton: {
     position: 'absolute',
@@ -2010,11 +2010,6 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 1,
     marginBottom: 4,
-  },
-  paymentPrice: {
-    fontSize: 48,
-    fontWeight: '800',
-    color: '#0E7490',
   },
   paymentPriceSub: {
     fontSize: 13,

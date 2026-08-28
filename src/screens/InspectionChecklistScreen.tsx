@@ -78,6 +78,8 @@ export default function InspectionChecklistScreen({ navigation, route }: Inspect
       navigation.navigate('Analytics' as never);
     } else if (screen === 'Settings') {
       navigation.navigate('Settings' as never);
+    } else {
+      navigation.navigate(screen as never);
     }
   };
 
@@ -279,7 +281,7 @@ export default function InspectionChecklistScreen({ navigation, route }: Inspect
               <Ionicons name="menu" size={28} color="#1F2937" />
             </TouchableOpacity>
             <Image
-              source={require('../../inspire_logo.png')}
+              source={require('../../public/logo.png')}
               style={styles.headerLogo}
               resizeMode="contain"
             />

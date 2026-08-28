@@ -212,3 +212,65 @@ export const extractUnitSuffixFromInspectionTypeToken = (inspectionTypeToken: un
 
   return token.slice(token.indexOf('_') + 1).trim();
 };
+
+/**
+ * Percentage of inspection tasks completed for a property.
+ *
+ * Mirrors the web portal (/dashboard, /dashboard/inspection-status): a property's
+ * work is one "inside" and one "outside" pass per building, plus one pass per unit
+ * allocated for inspection. Each distinct pass seen in the progress records counts once.
+ */
+export const calculatePropertyProgressPercent = (
+  property: {
+    _id?: string;
+    id?: string;
+    buildings?: number;
+    units?: number;
+    calculatedUnits?: number;
+    buildingDetails?: { unitsForInspection?: number }[];
+  },
+  progressRecords: any[],
+): number => {
+  const propId = property._id || property.id;
+  const own = (progressRecords || []).filter(
+    (p: any) => p?.propertyId === propId || p?.propertyId?._id === propId,
+  );
+
+  const uniqueTasks = new Set<string>();
+  own.forEach((p: any) => {
+    const type = String(p?.inspectionType || '').toLowerCase();
+    const buildingId = p?.buildingId || 'B1';
+    if (type.startsWith('unit_')) {
+      uniqueTasks.add(`${buildingId}_unit_${p.unitId}`);
+    } else if (type === 'inside' || type === 'outside') {
+      uniqueTasks.add(`${buildingId}_${type}`);
+    }
+  });
+
+  const allocatedUnits = property.buildingDetails && property.buildingDetails.length > 0
+    ? property.buildingDetails.reduce((sum, b) => sum + (b?.unitsForInspection || 0), 0)
+    : property.calculatedUnits !== undefined ? property.calculatedUnits : (property.units ?? 0);
+
+  const totalTasks = ((property.buildings || 0) * 2) + allocatedUnits;
+  if (totalTasks <= 0) return 0;
+  return Math.min(100, Math.round((uniqueTasks.size / totalTasks) * 100));
+};
+
+/**
+ * Count findings after collapsing duplicates that describe the same defect.
+ * Same key as the web portal so the two surfaces report identical numbers.
+ */
+export const countUniqueDeficiencies = (findings: any[] | undefined): number => {
+  if (!findings || findings.length === 0) return 0;
+  const seen = new Set<string>();
+  findings.forEach((f: any) => {
+    const areaStr = String(f?.area || f?.subCategory || f?.category || '').toLowerCase();
+    const titleStr = String(f?.title || f?.deficiencyName || f?.name || '').toLowerCase();
+    const descStr = String(f?.description || f?.details || f?.deficiencyDetails || '').toLowerCase();
+    const bldgStr = String(f?.building || f?.buildingName || '').toLowerCase();
+    const unitStr = String(f?.unit || f?.unitNumber || '').toLowerCase();
+    if (!titleStr && !descStr) return;
+    seen.add(`${areaStr}|${bldgStr}|${unitStr}|${titleStr}|${descStr}`);
+  });
+  return seen.size;
+};

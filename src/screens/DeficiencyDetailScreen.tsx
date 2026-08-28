@@ -33,8 +33,7 @@ import ModalZoomWrapper from '../components/ModalZoomWrapper';
 import { geminiService } from '../services/openaiService';
 import { inspectionService } from '../services/inspectionService';
 import { autoSaveInspectionDeficiency } from '../utils/storage';
-import { ScoringResult, calculateUnitScore, POSSIBLE_SCORE } from '../utils/scoringCalculations';
-import { UNIT_TOTAL_POSSIBLE_POINTS } from '../data/insideDeficiencyMapping';
+import { ScoringResult, calculateUnitScore, POSSIBLE_SCORE, UNIT_TOTAL_POSSIBLE_POINTS } from '../utils/scoringCalculations';
 import {
   calculateOutsideScore,
   extractCategoryNumber,
@@ -192,6 +191,11 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const [showCodeReference, setShowCodeReference] = useState(false);
   const [codeReferenceContent, setCodeReferenceContent] = useState('');
   const [codeRefFontSize, setCodeRefFontSize] = useState(15);
+
+  // "Saved for Summary Report" panel shown after Proceed (web parity: OD modal step 4)
+  const [savedPanelVisible, setSavedPanelVisible] = useState(false);
+  const [savedItemFindings, setSavedItemFindings] = useState<any[]>([]);
+  const [lastSavedFindingId, setLastSavedFindingId] = useState<string | null>(null);
 
   // Processing modal state
   const [showProcessingModal, setShowProcessingModal] = useState(false);
@@ -452,6 +456,50 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     setRepairBy(deficiency.repairBy);
     setDeficiencyCriteria(deficiency.criteria);
     setShowDeficiencyPicker(false);
+  };
+
+  /**
+   * Clear the form so another deficiency can be logged against the same item,
+   * without leaving the screen (web: "Add Deficiency" on the saved panel).
+   */
+  const resetFormForNewDeficiency = () => {
+    setSavedPanelVisible(false);
+    setSelectedDeficiency(null);
+    setSelectedSubcategory(null);
+    setRepairBy('');
+    setDeficiencyCriteria('');
+    setCustomDeficiencyName('');
+    setCustomDeficiencyDetail('');
+    setCustomDeficiencyCriteria('');
+    setIsCustomEntry(false);
+    setNote('');
+    setImages([]);
+    setLastSavedFindingId(null);
+  };
+
+  const handleRemoveSavedFinding = (findingId: string) => {
+    Alert.alert(
+      'Remove Deficiency',
+      'Remove this saved deficiency from the report?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: () => {
+            setSavedItemFindings(prev =>
+              prev.filter((f: any, i: number) => (f?.deficiencyQRId ?? f?.id ?? String(i)) !== findingId)
+            );
+            if (lastSavedFindingId === findingId) setLastSavedFindingId(null);
+          },
+        },
+      ]
+    );
+  };
+
+  const handleContinueInspection = () => {
+    setSavedPanelVisible(false);
+    navigation.goBack();
   };
 
   const handleClearSelection = () => {
@@ -790,6 +838,9 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         return Array.from(new Set(notes)).join('\n\n');
       };
 
+      // Falls back to just the new deficiencies if the local merge below fails.
+      let mergedDeficiencies: any[] = analyzedDeficiencies;
+
       try {
         const buildingToken = String(normalizedBuildingLabel || buildingId || 'Building').trim() || 'Building';
         const draftStorageKeys = Array.from(new Set([
@@ -814,7 +865,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               ? existingPayload.deficiencies
               : (Array.isArray(existingPayload?.findings) ? existingPayload.findings : []);
 
-          const mergedDeficiencies = mergeDraftDeficiencies(existingDeficiencies, analyzedDeficiencies);
+          mergedDeficiencies = mergeDraftDeficiencies(existingDeficiencies, analyzedDeficiencies);
 
           const mergedPayload = {
             ...existingPayload,
@@ -880,40 +931,19 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       }
       setShowProcessingModal(false);
 
-      // Navigate to summary with all analyzed deficiencies
-      navigation.navigate('InspectionSummary', {
-        property,
-        selectedUnits,
-        buildingId,
-        inspectionData: {
-          deficiencies: analyzedDeficiencies, // Array of deficiencies
-          totalImages: images.length,
-          location: isOutsideLocation ? selectedOutsideLocation : location,
-          itemName,
-          itemId,
-          scoringResult: scoringResult || calculateUnitScore({
-            totalSamples,
-            deficiencies: deficiencyCount,
-            severity: isOutsideLocation && outsideScoringResult
-              ? outsideScoringResult.severity as 'Life-Threatening' | 'Severe' | 'Moderate' | 'Low'
-              : (currentDeficiency?.severity || 'Moderate'),
-          }),
-          // Include Outside-specific scoring information
-          outsideScoringResult: isOutsideLocation ? outsideScoringResult : undefined,
-          isOutsideInspection: isOutsideLocation,
-          outsideLocation: isOutsideLocation ? selectedOutsideLocation : undefined,
-        },
-        currentUnit: currentUnit || selectedUnits[0] || undefined,
-        allUnits: selectedUnits,
+      // Web parity: stay on the item and show what has been saved for the report.
+      // The inspector then either logs another deficiency or continues the walk;
+      // the Summary is reached from the Inspection Categories header.
+      const savedForItem = (mergedDeficiencies || analyzedDeficiencies).filter((d: any) => {
+        const itemMatch = String(d?.item ?? d?.itemName ?? itemName);
+        return itemMatch === itemName;
       });
+      const panelFindings = savedForItem.length > 0 ? savedForItem : analyzedDeficiencies;
 
-      // Show success message
-      setTimeout(() => {
-        Alert.alert(
-          'Success',
-          `${analyzedDeficiencies.length} deficienc${analyzedDeficiencies.length === 1 ? 'y' : 'ies'} recorded and analyzed successfully!`
-        );
-      }, 500);
+      setSavedItemFindings(panelFindings);
+      const newest: any = analyzedDeficiencies[analyzedDeficiencies.length - 1];
+      setLastSavedFindingId(newest?.deficiencyQRId ?? newest?.id ?? null);
+      setSavedPanelVisible(true);
     } catch (error) {
       // Hide processing modal on error
       if (processingTimerRef.current) {
@@ -1583,6 +1613,70 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       </Modal>
 
       {/* Processing Modal with 3-second auto-dismiss */}
+      {/* Saved for Summary Report (web parity: OD modal step 4) */}
+      <Modal
+        visible={savedPanelVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={handleContinueInspection}
+      >
+        <View style={styles.savedPanelOverlay}>
+          <View style={styles.savedPanelCard}>
+            <View style={styles.savedPanelHeader}>
+              <Text style={styles.savedPanelTitle}>Saved for Summary Report</Text>
+              <Text style={styles.savedPanelSubtitle}>
+                {savedItemFindings.length} {savedItemFindings.length === 1 ? 'deficiency' : 'deficiencies'} on this item
+              </Text>
+            </View>
+
+            <ScrollView style={styles.savedPanelList} showsVerticalScrollIndicator={false}>
+              {savedItemFindings.map((finding: any, idx: number) => {
+                const findingId = finding?.deficiencyQRId ?? finding?.id ?? String(idx);
+                const isLatest = findingId === lastSavedFindingId;
+                const imageUri = finding?.imageUri || finding?.imageUrl || finding?.photos?.[0]?.url;
+                return (
+                  <View
+                    key={findingId}
+                    style={[styles.savedFindingRow, isLatest && styles.savedFindingRowLatest]}
+                  >
+                    {imageUri ? (
+                      <Image source={{ uri: imageUri }} style={styles.savedFindingThumb} />
+                    ) : (
+                      <View style={[styles.savedFindingThumb, styles.savedFindingThumbEmpty]}>
+                        <Ionicons name="image-outline" size={22} color="#D1D5DB" />
+                      </View>
+                    )}
+                    <View style={styles.savedFindingBody}>
+                      <Text style={styles.savedFindingTitle} numberOfLines={1}>
+                        {finding?.title || finding?.deficiencyName || finding?.name || 'Deficiency'}
+                      </Text>
+                      <Text style={styles.savedFindingDescription} numberOfLines={2}>
+                        {finding?.description || finding?.detail || finding?.deficiencyDetails || ''}
+                      </Text>
+                      <Text style={styles.savedFindingSeverity}>{finding?.severity || 'Moderate'}</Text>
+                    </View>
+                    <TouchableOpacity
+                      style={styles.savedFindingRemove}
+                      onPress={() => handleRemoveSavedFinding(findingId)}
+                    >
+                      <Text style={styles.savedFindingRemoveText}>Remove</Text>
+                    </TouchableOpacity>
+                  </View>
+                );
+              })}
+            </ScrollView>
+
+            <TouchableOpacity style={styles.savedPanelAddButton} onPress={resetFormForNewDeficiency}>
+              <Ionicons name="add" size={18} color="#FFFFFF" />
+              <Text style={styles.savedPanelButtonText}>Add Deficiency</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.savedPanelContinueButton} onPress={handleContinueInspection}>
+              <Text style={styles.savedPanelButtonText}>Continue Inspection</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       <Modal
         visible={showProcessingModal}
         animationType="fade"
@@ -1682,6 +1776,74 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 };
 
 const styles = StyleSheet.create({
+  savedPanelOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  savedPanelCard: {
+    width: '100%',
+    maxWidth: 480,
+    maxHeight: '85%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 20,
+  },
+  savedPanelHeader: { alignItems: 'center', marginBottom: 14 },
+  savedPanelTitle: { fontSize: 18, fontWeight: '800', color: '#111827' },
+  savedPanelSubtitle: { fontSize: 12, color: '#6B7280', marginTop: 4 },
+  savedPanelList: { flexGrow: 0, marginBottom: 12 },
+  savedFindingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 10,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
+    backgroundColor: '#FFFFFF',
+    marginBottom: 8,
+  },
+  savedFindingRowLatest: { backgroundColor: '#F0FDF4', borderColor: '#86EFAC' },
+  savedFindingThumb: { width: 60, height: 60, borderRadius: 12, backgroundColor: '#F3F4F6' },
+  savedFindingThumbEmpty: { alignItems: 'center', justifyContent: 'center' },
+  savedFindingBody: { flex: 1, minWidth: 0 },
+  savedFindingTitle: { fontSize: 12, fontWeight: '700', color: '#111827' },
+  savedFindingDescription: { fontSize: 10, color: '#6B7280', marginTop: 2 },
+  savedFindingSeverity: { fontSize: 10, fontWeight: '700', color: '#0E7490', marginTop: 4 },
+  savedFindingRemove: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: '#FEF2F2',
+  },
+  savedFindingRemoveText: { fontSize: 10, fontWeight: '700', color: '#DC2626' },
+  savedPanelAddButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#006795',
+    paddingVertical: 14,
+    borderRadius: 12,
+    marginBottom: 10,
+  },
+  savedPanelContinueButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#DC2626',
+    paddingVertical: 14,
+    borderRadius: 12,
+  },
+  savedPanelButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
   container: {
     flex: 1,
     backgroundColor: '#F3F4F6',

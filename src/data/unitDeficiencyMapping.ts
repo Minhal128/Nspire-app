@@ -11448,3 +11448,42 @@ export const getInsideSubcategoryDeficiencies = (subcategoryName: string): UnitI
 
     return null;
 };
+
+/**
+ * Same lookup, but scoped to one parent category.
+ *
+ * deficiencyMapping.ts imported this from here and it did not exist, so the call
+ * threw at runtime for every Inside location that had a parent category. Without
+ * the parent scope, a subcategory name shared by two categories (e.g. "Outlet")
+ * resolves to whichever category happens to come first in ALL_UNIT_CATEGORIES.
+ */
+export const getInsideSubcategoryDeficienciesByParent = (
+    parentCategory: string,
+    subcategoryName: string
+): UnitItemDeficiencies | null => {
+    if (!parentCategory || !subcategoryName) return null;
+
+    const category = findUnitCategory(parentCategory);
+    if (!category) return null;
+
+    const normalize = (str: string) =>
+        str ? str.replace(/^\d+\.\s*/, '')
+            .toLowerCase()
+            .replace(/[–—\-]/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim() : '';
+
+    const normalizedName = normalize(subcategoryName);
+
+    for (const item of category.items) {
+        if (normalize(item.itemName) === normalizedName) return item;
+    }
+    for (const item of category.items) {
+        const catItemName = normalize(item.itemName);
+        if (catItemName.startsWith(normalizedName) || normalizedName.startsWith(catItemName)) {
+            return item;
+        }
+    }
+
+    return null;
+};

@@ -1,7 +1,7 @@
 import { Image, Platform } from 'react-native';
 
-// Use bundled app asset so report header always reflects inspire_logo.png
-const logo = require('../../inspire_logo.png');
+// Use bundled app asset so report header always reflects public/logo.png
+const logo = require('../../public/logo.png');
 
 let logoUri = '';
 if (Platform.OS === 'web') {

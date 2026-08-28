@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { globalInspectionProgress } from '../utils/globalState';
 import {
+  computeSelectAllResponses,
+  isSelectAllChecked as isBulkChecked,
+} from '../utils/selectAllResponses';
+import {
   View,
   Text,
   StyleSheet,
@@ -328,34 +332,21 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
       }
   };
 
-  const handleSelectAll = (response: ResponseType) => {
-    // Check if all items already have this response selected
-    const allSelected = inspectionItems.every((item) => responses[item.id] === response);
+  const itemIds = inspectionItems.map((item) => item.id);
 
-    if (allSelected) {
-      // Unselect all - clear responses
-      setResponses({});
-      // Also clear from global state
-      try {
-        delete globalInspectionProgress[saveKey];
-        persistResponsesToDevice({}).catch(() => undefined);
-      } catch (e) {
-        console.error('Error clearing global inspection progress', e);
-      }
-    } else {
-      // Select all with this response
-      const newResponses: { [key: string]: ResponseType } = {};
-      inspectionItems.forEach((item) => {
-        newResponses[item.id] = response;
-      });
-      setResponses(newResponses);
-      // Save to global state so it persists when navigating back
-      try {
-        globalInspectionProgress[saveKey] = newResponses;
-        persistResponsesToDevice(newResponses).catch(() => undefined);
-      } catch (e) {
-        console.error('Error saving selected responses to global state', e);
-      }
+  const isSelectAllChecked = (response: ResponseType) =>
+    isBulkChecked(itemIds, responses as any, response as any);
+
+  const handleSelectAll = (response: ResponseType) => {
+    const newResponses = computeSelectAllResponses(itemIds, responses as any, response as any);
+    if (newResponses === (responses as any)) return;
+
+    setResponses(newResponses as any);
+    try {
+      globalInspectionProgress[saveKey] = newResponses;
+      persistResponsesToDevice(newResponses as any).catch(() => undefined);
+    } catch (e) {
+      console.error('Error saving selected responses to global state', e);
     }
   };
 
@@ -425,7 +416,7 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
             onPress={() => handleSelectAll('No OD')}
           >
             <Ionicons
-              name={inspectionItems.every((item) => responses[item.id] === 'No OD') ? 'checkbox' : 'square-outline'}
+              name={isSelectAllChecked('No OD') ? 'checkbox' : 'square-outline'}
               size={18}
               color="#374151"
               style={{ marginRight: 6 }}
@@ -437,7 +428,7 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
             onPress={() => handleSelectAll('OD')}
           >
             <Ionicons
-              name={inspectionItems.every((item) => responses[item.id] === 'OD') ? 'checkbox' : 'square-outline'}
+              name={isSelectAllChecked('OD') ? 'checkbox' : 'square-outline'}
               size={18}
               color="#DC2626"
               style={{ marginRight: 3 }}
@@ -449,7 +440,7 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
             onPress={() => handleSelectAll('N/A')}
           >
             <Ionicons
-              name={inspectionItems.every((item) => responses[item.id] === 'N/A') ? 'checkbox' : 'square-outline'}
+              name={isSelectAllChecked('N/A') ? 'checkbox' : 'square-outline'}
               size={18}
               color="#374151"
               style={{ marginRight: 6 }}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,163 +7,283 @@ import {
   TouchableOpacity,
   SafeAreaView,
   Modal,
-  Image,
   ActivityIndicator,
+  RefreshControl,
+  Alert,
 } from 'react-native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import Sidebar from '../components/Sidebar';
+import AppHeader from '../components/AppHeader';
+import { LinearGradient } from 'expo-linear-gradient';
+import {
+  propertyService,
+  inspectionService,
+  authService,
+} from '../services';
+import { generateNSPIREReport } from '../utils/nspireReportUtils';
+import {
+  calculatePropertyProgressPercent,
+  countUniqueDeficiencies,
+} from '../utils/inspectionProgressUtils';
+import { exportNspireExcel } from '../utils/nspireExcelExport';
+import { enhancedNspirePDFService } from '../services/enhancedNspirePDFService';
+import { stripeService } from '../utils/stripeService';
 
 interface InspectionStatusScreenProps {
   navigation: any;
 }
 
-interface InspectionStatus {
-  id: string;
-  propertyName: string;
-  propertyAddress: string;
-  buildingId: string;
-  inspectionDate: string;
-  status: 'completed' | 'in-progress' | 'not-started';
-  progress: number;
-  totalItems: number;
-  completedItems: number;
-  deficienciesFound: number;
-  score?: number;
+interface PropertyWithInspection {
+  _id: string;
+  propertyId?: string;
+  name: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  buildings?: number;
+  units?: number;
+  calculatedUnits?: number;
+  buildingDetails?: { buildingId: string; totalUnits: number; unitsForInspection: number }[];
+  inspection?: any;
+  hasInspection: boolean;
+  isUnlocked: boolean;
 }
+
+const safeFileName = (name: string) =>
+  `NSPIRE_Report_${String(name || 'Property').replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}`;
 
 export default function InspectionStatusScreen({ navigation }: InspectionStatusScreenProps) {
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'all' | 'completed' | 'in-progress' | 'not-started'>('all');
-  const [inspections, setInspections] = useState<InspectionStatus[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+  const [properties, setProperties] = useState<PropertyWithInspection[]>([]);
+  const [propertyProgress, setPropertyProgress] = useState<Record<string, number>>({});
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [purchasingId, setPurchasingId] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadInspections();
-  }, []);
-
-  const loadInspections = async () => {
+  // Percentage of inspection tasks completed per property (same heuristic as web)
+  const fetchProgress = async (propertyList: any[]): Promise<Record<string, number>> => {
     try {
-      // TODO: Replace with actual API call
-      // Simulating API data
-      const mockData: InspectionStatus[] = [
-        {
-          id: '1',
-          propertyName: 'Golden Town Apartments',
-          propertyAddress: '123 Main St, New York, NY',
-          buildingId: 'Building A',
-          inspectionDate: '2026-01-31',
-          status: 'completed',
-          progress: 100,
-          totalItems: 61,
-          completedItems: 61,
-          deficienciesFound: 1,
-          score: 85,
-        },
-        {
-          id: '2',
-          propertyName: 'Sunset Plaza',
-          propertyAddress: '456 Oak Ave, Los Angeles, CA',
-          buildingId: 'Building B',
-          inspectionDate: '2026-01-30',
-          status: 'in-progress',
-          progress: 65,
-          totalItems: 61,
-          completedItems: 40,
-          deficienciesFound: 2,
-        },
-        {
-          id: '3',
-          propertyName: 'Riverside Complex',
-          propertyAddress: '789 River Rd, Chicago, IL',
-          buildingId: 'Building C',
-          inspectionDate: '2026-02-01',
-          status: 'not-started',
-          progress: 0,
-          totalItems: 61,
-          completedItems: 0,
-          deficienciesFound: 0,
-        },
-      ];
-      
-      setInspections(mockData);
-    } catch (error) {
-      console.error('Error loading inspections:', error);
-    } finally {
-      setLoading(false);
+      const response = await inspectionService.getAllProgress();
+      if (!response.success || !Array.isArray(response.progress)) return {};
+
+      const progressMap: Record<string, number> = {};
+      propertyList.forEach((prop: any) => {
+        progressMap[prop._id] = calculatePropertyProgressPercent(prop, response.progress);
+      });
+      return progressMap;
+    } catch (e) {
+      console.error('Error fetching progress:', e);
+      return {};
     }
   };
 
-  const handleMenuPress = () => {
-    setSidebarVisible(true);
-  };
+  const fetchData = useCallback(async (isRefresh = false) => {
+    try {
+      if (!isRefresh) setLoading(true);
+
+      const [propertiesRes, inspectionsRes] = await Promise.all([
+        propertyService.getProperties({ limit: 100 }).catch(() => ({ success: false, properties: [], pagination: null })),
+        inspectionService.getInspections().catch(() => ({ success: false, inspections: [], pagination: null })),
+      ]);
+
+      const allProperties: any[] = propertiesRes.success ? (propertiesRes.properties || []) : [];
+      const completedInspections: any[] = inspectionsRes.success ? (inspectionsRes.inspections || []) : [];
+
+      const progressMap = await fetchProgress(allProperties);
+      setPropertyProgress(progressMap);
+
+      const mapped: PropertyWithInspection[] = allProperties.map((property: any) => {
+        const inspection = completedInspections.find((insp: any) => {
+          const inspPropId = typeof insp?.property === 'object' ? insp?.property?._id : insp?.property;
+          if (!inspPropId) return false;
+          return String(inspPropId) === String(property._id);
+        });
+
+        // Progress is the source of truth when we have it; fall back to the DB status.
+        const progressValue = progressMap[property._id];
+        const hasCompletedInspection = !!inspection && inspection.status === 'completed';
+        const isComplete = progressValue !== undefined ? progressValue === 100 : hasCompletedInspection;
+
+        return {
+          ...property,
+          inspection,
+          hasInspection: isComplete,
+          isUnlocked: false,
+        };
+      });
+
+      // Payment/unlock status for properties with a completed inspection
+      const withUnlock = await Promise.all(
+        mapped.map(async (property) => {
+          if (property.hasInspection && property.inspection?._id) {
+            try {
+              const unlocked = await stripeService.checkUnlockStatus(property.inspection._id);
+              return { ...property, isUnlocked: unlocked };
+            } catch (err) {
+              console.error(`Error checking unlock status for ${property._id}:`, err);
+            }
+          }
+          return property;
+        })
+      );
+
+      // Not-yet-inspected first, completed last (same order as web)
+      withUnlock.sort((a, b) => {
+        if (a.hasInspection === b.hasInspection) return 0;
+        return a.hasInspection ? 1 : -1;
+      });
+
+      setProperties(withUnlock);
+    } catch (error: any) {
+      console.error('Error fetching data:', error);
+      Alert.alert('Error', 'Failed to load properties');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const boot = async () => {
+      const userData = await authService.getStoredUser();
+      if (!userData) {
+        navigation.reset({ index: 0, routes: [{ name: 'Boarding' as never }] });
+        return;
+      }
+      await fetchData();
+    };
+
+    boot();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchData(true);
+  }, [fetchData]);
+
+  const handleMenuPress = () => setSidebarVisible(true);
 
   const handleSidebarNavigate = (screen: string) => {
     setSidebarVisible(false);
-    if (screen === 'InspectionStatus') {
-      // Already on this screen
-      return;
-    }
+    if (screen === 'InspectionStatus') return;
     navigation.navigate(screen as never);
   };
 
   const handleLogout = async () => {
     setSidebarVisible(false);
-    navigation.reset({
-      index: 0,
-      routes: [{ name: 'Boarding' as never }],
-    });
+    await authService.logout();
+    navigation.reset({ index: 0, routes: [{ name: 'Boarding' as never }] });
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return '#10B981';
-      case 'in-progress':
-        return '#F59E0B';
-      case 'not-started':
-        return '#6B7280';
-      default:
-        return '#6B7280';
+  const buildReport = (property: PropertyWithInspection) => {
+    const inspection = property.inspection || {};
+    return generateNSPIREReport({
+      findings: inspection.findings || inspection.deficiencies || [],
+      property: typeof inspection.property === 'object' ? inspection.property : property,
+      inspectorName: inspection.inspector?.fullName || inspection.inspectorName,
+      notes: inspection.notes,
+      status: inspection.status,
+    } as any);
+  };
+
+  const handleDownloadPDF = async (property: PropertyWithInspection) => {
+    if (!property.inspection) {
+      Alert.alert('No Report', 'No inspection completed for this property');
+      return;
+    }
+    setDownloadingId(property._id);
+    try {
+      const nspireReport = buildReport(property);
+      const result = await enhancedNspirePDFService.generateAndShareEnhancedPDF(nspireReport as any, {
+        includeImages: true,
+        imageQuality: 'high',
+        colorCodingSeverity: true,
+        includeSummaryPage: true,
+        includeDetailedDeficiencies: true,
+        includeCertification: true,
+        pageSize: 'letter',
+        orientation: 'portrait',
+      } as any);
+      if (!result.success) {
+        Alert.alert('Download Failed', result.error || 'Could not generate the PDF.');
+      }
+    } catch (error: any) {
+      console.error('PDF download error:', error);
+      Alert.alert('Error', `Failed to download PDF: ${error.message}`);
+    } finally {
+      setDownloadingId(null);
     }
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return 'checkmark-circle';
-      case 'in-progress':
-        return 'time';
-      case 'not-started':
-        return 'ellipse-outline';
-      default:
-        return 'ellipse-outline';
+  const handleDownloadExcel = async (property: PropertyWithInspection) => {
+    if (!property.inspection) {
+      Alert.alert('No Report', 'No inspection completed for this property');
+      return;
+    }
+    setDownloadingId(property._id + '_excel');
+    try {
+      const nspireReport = buildReport(property);
+      const result = await exportNspireExcel(nspireReport, safeFileName(property.name));
+      if (!result.success) {
+        Alert.alert('Download Failed', result.error || 'Could not generate the Excel file.');
+      }
+    } catch (error: any) {
+      console.error('Excel download error:', error);
+      Alert.alert('Error', `Failed to download Excel: ${error.message}`);
+    } finally {
+      setDownloadingId(null);
     }
   };
 
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return 'Completed';
-      case 'in-progress':
-        return 'In Progress';
-      case 'not-started':
-        return 'Not Started';
-      default:
-        return 'Unknown';
+  const handlePayToUnlock = async (property: PropertyWithInspection) => {
+    const inspectionId = property.inspection?._id;
+    if (!inspectionId) {
+      Alert.alert('Error', 'Inspection details not found');
+      return;
+    }
+    setPurchasingId(inspectionId);
+    try {
+      const decision = await stripeService.unlockWithStripe(inspectionId);
+      Alert.alert(decision.outcome === 'unlocked' ? 'Payment Successful' : 'Payment', decision.message);
+      if (decision.outcome === 'unlocked') fetchData(true);
+    } catch (error: any) {
+      console.error('Payment start error:', error);
+      Alert.alert('Payment Failed', `Unable to start payment: ${error.message}`);
+    } finally {
+      setPurchasingId(null);
     }
   };
 
-  const filteredInspections = inspections.filter(inspection => {
-    if (activeTab === 'all') return true;
-    return inspection.status === activeTab;
-  });
+  const handleStartInspection = (property: PropertyWithInspection) => {
+    navigation.navigate('BuildingInspection' as never, {
+      property,
+      calculatedUnits: property.calculatedUnits || property.units || 0,
+      selectedUnits: [],
+      coverage: (property as any).inspectionCoverage || 'random',
+    } as never);
+  };
 
-  const stats = {
-    total: inspections.length,
-    completed: inspections.filter(i => i.status === 'completed').length,
-    inProgress: inspections.filter(i => i.status === 'in-progress').length,
-    notStarted: inspections.filter(i => i.status === 'not-started').length,
+  const completedCount = properties.filter(p => p.hasInspection).length;
+  const pendingCount = properties.filter(p => !p.hasInspection).length;
+  const thisMonthCount = properties.filter(p => {
+    if (!p.inspection?.inspectionDate) return false;
+    const inspDate = new Date(p.inspection.inspectionDate);
+    const now = new Date();
+    return inspDate.getMonth() === now.getMonth() && inspDate.getFullYear() === now.getFullYear();
+  }).length;
+
+  const renderStatusMeta = (property: PropertyWithInspection) => {
+    const progress = propertyProgress[property._id] || 0;
+    if (property.hasInspection) {
+      return { icon: 'checkmark-circle' as const, color: '#16A34A', bg: '#DCFCE7', label: 'Completed' };
+    }
+    if (progress > 0) {
+      return { icon: 'time' as const, color: '#D97706', bg: '#FEF3C7', label: `In Progress (${progress}%)` };
+    }
+    return { icon: 'alert-circle' as const, color: '#DC2626', bg: '#FEE2E2', label: 'Pending' };
   };
 
   return (
@@ -172,14 +292,10 @@ export default function InspectionStatusScreen({ navigation }: InspectionStatusS
       <Modal
         visible={sidebarVisible}
         animationType="fade"
-        transparent={true}
+        transparent
         onRequestClose={() => setSidebarVisible(false)}
       >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setSidebarVisible(false)}
-        >
+        <View style={styles.modalOverlay}>
           <View style={styles.sidebarContainer}>
             <Sidebar
               onClose={() => setSidebarVisible(false)}
@@ -187,190 +303,199 @@ export default function InspectionStatusScreen({ navigation }: InspectionStatusS
               onLogout={handleLogout}
             />
           </View>
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.modalBackdrop}
+            activeOpacity={1}
+            onPress={() => setSidebarVisible(false)}
+          />
+        </View>
       </Modal>
 
       <SafeAreaView style={styles.container}>
-        {/* Header */}
-        <View style={styles.headerContainer}>
-          <View style={styles.headerBar}>
-            <TouchableOpacity onPress={handleMenuPress}>
-              <Ionicons name="menu" size={28} color="#1F2937" />
-            </TouchableOpacity>
-            <Image
-              source={require('../../inspire_logo.png')}
-              style={styles.headerLogo}
-              resizeMode="contain"
-            />
-            <TouchableOpacity onPress={() => navigation.navigate("Notifications" as any)}>
-              <Ionicons name="notifications-outline" size={28} color="#1F2937" />
-            </TouchableOpacity>
-          </View>
-        </View>
+        <AppHeader
+          onMenuPress={handleMenuPress}
+          onNotificationsPress={() => navigation.navigate('Notifications' as never)}
+        />
 
         {loading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#0E7490" />
-            <Text style={styles.loadingText}>Loading inspections...</Text>
+            <Text style={styles.loadingText}>Loading inspection status...</Text>
           </View>
         ) : (
-          <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-            {/* Title Section */}
-            <View style={styles.titleSection}>
-              <Text style={styles.title}>Inspection Status</Text>
-              <Text style={styles.subtitle}>Track your inspection progress and completion status</Text>
-            </View>
+          <ScrollView
+            style={styles.scrollView}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#0E7490']} tintColor="#0E7490" />
+            }
+          >
+            <TouchableOpacity style={styles.refreshBar} onPress={onRefresh}>
+              <Ionicons name="refresh" size={18} color="#0E7490" />
+              <Text style={styles.refreshBarText}>Refresh</Text>
+            </TouchableOpacity>
 
-            {/* Stats Cards */}
-            <View style={styles.statsContainer}>
-              <View style={styles.statCard}>
-                <Text style={styles.statValue}>{stats.total}</Text>
-                <Text style={styles.statLabel}>Total</Text>
-              </View>
-              <View style={[styles.statCard, styles.statCardCompleted]}>
-                <Text style={[styles.statValue, styles.statValueCompleted]}>{stats.completed}</Text>
-                <Text style={styles.statLabel}>Completed</Text>
-              </View>
-              <View style={[styles.statCard, styles.statCardInProgress]}>
-                <Text style={[styles.statValue, styles.statValueInProgress]}>{stats.inProgress}</Text>
-                <Text style={styles.statLabel}>In Progress</Text>
-              </View>
-              <View style={[styles.statCard, styles.statCardNotStarted]}>
-                <Text style={[styles.statValue, styles.statValueNotStarted]}>{stats.notStarted}</Text>
-                <Text style={styles.statLabel}>Not Started</Text>
-              </View>
-            </View>
-
-            {/* Filter Tabs */}
-            <View style={styles.tabsContainer}>
-              <TouchableOpacity
-                style={[styles.tab, activeTab === 'all' && styles.tabActive]}
-                onPress={() => setActiveTab('all')}
+            {/* Stat cards (web parity) */}
+            {[
+              { label: 'Total Properties', value: properties.length, color: '#2563EB', dark: '#1E3A8A', from: '#EFF6FF', to: '#DBEAFE', icon: 'business-outline' as const },
+              { label: 'Completed', value: completedCount, color: '#16A34A', dark: '#14532D', from: '#F0FDF4', to: '#DCFCE7', icon: 'checkmark-circle-outline' as const },
+              { label: 'Pending', value: pendingCount, color: '#DC2626', dark: '#7F1D1D', from: '#FEF2F2', to: '#FEE2E2', icon: 'alert-circle-outline' as const },
+              { label: 'This Month', value: thisMonthCount, color: '#9333EA', dark: '#581C87', from: '#FAF5FF', to: '#F3E8FF', icon: 'calendar-outline' as const },
+            ].map((stat) => (
+              <LinearGradient
+                key={stat.label}
+                colors={[stat.from, stat.to]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.statCard}
               >
-                <Text style={[styles.tabText, activeTab === 'all' && styles.tabTextActive]}>
-                  All ({stats.total})
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.tab, activeTab === 'completed' && styles.tabActive]}
-                onPress={() => setActiveTab('completed')}
-              >
-                <Text style={[styles.tabText, activeTab === 'completed' && styles.tabTextActive]}>
-                  Completed ({stats.completed})
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.tab, activeTab === 'in-progress' && styles.tabActive]}
-                onPress={() => setActiveTab('in-progress')}
-              >
-                <Text style={[styles.tabText, activeTab === 'in-progress' && styles.tabTextActive]}>
-                  In Progress ({stats.inProgress})
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Inspections List */}
-            <View style={styles.inspectionsContainer}>
-              {filteredInspections.length === 0 ? (
-                <View style={styles.emptyState}>
-                  <Ionicons name="clipboard-outline" size={64} color="#D1D5DB" />
-                  <Text style={styles.emptyStateText}>No inspections found</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.statLabel, { color: stat.color }]}>{stat.label}</Text>
+                  <Text style={[styles.statValue, { color: stat.dark }]}>{stat.value}</Text>
                 </View>
-              ) : (
-                filteredInspections.map((inspection) => (
-                  <View key={inspection.id} style={styles.inspectionCard}>
-                    <View style={styles.inspectionHeader}>
-                      <View style={styles.inspectionTitleRow}>
-                        <Text style={styles.inspectionProperty}>{inspection.propertyName}</Text>
-                        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(inspection.status) }]}>
-                          <Ionicons 
-                            name={getStatusIcon(inspection.status) as any} 
-                            size={14} 
-                            color="#FFFFFF" 
-                          />
-                          <Text style={styles.statusText}>{getStatusLabel(inspection.status)}</Text>
+                <Ionicons name={stat.icon} size={30} color={stat.color} />
+              </LinearGradient>
+            ))}
+
+            {properties.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Ionicons name="business-outline" size={56} color="#CBD5E1" />
+                <Text style={styles.emptyStateTitle}>No Properties Found</Text>
+                <Text style={styles.emptyStateText}>Add a property to start inspections.</Text>
+                <TouchableOpacity
+                  style={styles.primaryButton}
+                  onPress={() => navigation.navigate('AddProperty' as never)}
+                >
+                  <Text style={styles.primaryButtonText}>Add Property</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={styles.list}>
+                {properties.map((property) => {
+                  const meta = renderStatusMeta(property);
+                  const progress = propertyProgress[property._id] || 0;
+                  const deficiencyCount = property.inspection
+                    ? countUniqueDeficiencies(property.inspection.findings || property.inspection.deficiencies)
+                    : 0;
+                  const isDownloading = downloadingId === property._id || downloadingId === property._id + '_excel';
+
+                  return (
+                    <View
+                      key={property._id}
+                      style={[
+                        styles.card,
+                        { borderColor: meta.color },
+                      ]}
+                    >
+                      <View style={styles.cardHeader}>
+                        <View style={[styles.statusIconWrap, { backgroundColor: meta.bg }]}>
+                          <Ionicons name={meta.icon} size={22} color={meta.color} />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.propertyName} numberOfLines={1}>{property.name}</Text>
+                          <View style={[styles.statusBadge, { backgroundColor: meta.bg }]}>
+                            <Text style={[styles.statusBadgeText, { color: meta.color }]}>{meta.label}</Text>
+                          </View>
                         </View>
                       </View>
-                      <Text style={styles.inspectionAddress}>{inspection.propertyAddress}</Text>
-                      <Text style={styles.inspectionBuilding}>Building: {inspection.buildingId}</Text>
-                    </View>
 
-                    <View style={styles.inspectionDetails}>
-                      <View style={styles.detailRow}>
-                        <Ionicons name="calendar-outline" size={16} color="#6B7280" />
-                        <Text style={styles.detailText}>{inspection.inspectionDate}</Text>
-                      </View>
-                      <View style={styles.detailRow}>
-                        <Ionicons name="checkmark-done-outline" size={16} color="#6B7280" />
-                        <Text style={styles.detailText}>
-                          {inspection.completedItems}/{inspection.totalItems} items completed
+                      <View style={styles.metaRow}>
+                        <Ionicons name="location-outline" size={14} color="#6B7280" />
+                        <Text style={styles.metaText} numberOfLines={1}>
+                          {[property.address, property.city, property.state].filter(Boolean).join(', ')}
                         </Text>
                       </View>
-                      {inspection.deficienciesFound > 0 && (
-                        <View style={styles.detailRow}>
-                          <Ionicons name="alert-circle-outline" size={16} color="#EF4444" />
-                          <Text style={[styles.detailText, styles.deficiencyText]}>
-                            {inspection.deficienciesFound} deficienc{inspection.deficienciesFound === 1 ? 'y' : 'ies'} found
-                          </Text>
-                        </View>
-                      )}
-                      {inspection.score !== undefined && (
-                        <View style={styles.detailRow}>
-                          <Ionicons name="star-outline" size={16} color="#F59E0B" />
-                          <Text style={styles.detailText}>Score: {inspection.score}</Text>
-                        </View>
-                      )}
-                    </View>
 
-                    {/* Progress Bar */}
-                    {inspection.status !== 'not-started' && (
-                      <View style={styles.progressSection}>
-                        <View style={styles.progressHeader}>
-                          <Text style={styles.progressLabel}>Progress</Text>
-                          <Text style={styles.progressValue}>{inspection.progress}%</Text>
+                      {property.inspection && (
+                        <>
+                          <View style={styles.metaRow}>
+                            <Ionicons name="calendar-outline" size={14} color="#6B7280" />
+                            <Text style={styles.metaText}>
+                              {property.inspection.inspectionDate
+                                ? new Date(property.inspection.inspectionDate).toLocaleDateString()
+                                : '-'}
+                            </Text>
+                          </View>
+                          <View style={styles.metaRow}>
+                            <Ionicons name="person-outline" size={14} color="#6B7280" />
+                            <Text style={styles.metaText} numberOfLines={1}>
+                              {property.inspection.inspector?.fullName || property.inspection.inspectorName || '-'}
+                            </Text>
+                          </View>
+                        </>
+                      )}
+
+                      {deficiencyCount > 0 && (
+                        <View style={styles.deficiencyBadge}>
+                          <Text style={styles.deficiencyBadgeText}>{deficiencyCount} Deficiencies</Text>
                         </View>
-                        <View style={styles.progressBarContainer}>
-                          <View 
-                            style={[
-                              styles.progressBarFill, 
-                              { 
-                                width: `${inspection.progress}%`,
-                                backgroundColor: getStatusColor(inspection.status),
-                              }
-                            ]} 
-                          />
-                        </View>
+                      )}
+
+                      {/* Actions (web parity) */}
+                      <View style={styles.actionsRow}>
+                        {property.hasInspection ? (
+                          property.isUnlocked ? (
+                            <>
+                              <TouchableOpacity
+                                style={[styles.actionButton, styles.pdfButton, isDownloading && styles.buttonDisabled]}
+                                disabled={isDownloading}
+                                onPress={() => handleDownloadPDF(property)}
+                              >
+                                {downloadingId === property._id ? (
+                                  <ActivityIndicator size="small" color="#FFFFFF" />
+                                ) : (
+                                  <Ionicons name="download-outline" size={16} color="#FFFFFF" />
+                                )}
+                                <Text style={styles.actionButtonText}>
+                                  {downloadingId === property._id ? 'Generating...' : 'Download PDF'}
+                                </Text>
+                              </TouchableOpacity>
+                              <TouchableOpacity
+                                style={[styles.actionButton, styles.excelButton, isDownloading && styles.buttonDisabled]}
+                                disabled={isDownloading}
+                                onPress={() => handleDownloadExcel(property)}
+                              >
+                                {downloadingId === property._id + '_excel' ? (
+                                  <ActivityIndicator size="small" color="#FFFFFF" />
+                                ) : (
+                                  <Ionicons name="grid-outline" size={16} color="#FFFFFF" />
+                                )}
+                                <Text style={styles.actionButtonText}>
+                                  {downloadingId === property._id + '_excel' ? 'Generating...' : 'Download Excel'}
+                                </Text>
+                              </TouchableOpacity>
+                            </>
+                          ) : (
+                            <TouchableOpacity
+                              style={[styles.actionButton, styles.unlockButton]}
+                              disabled={purchasingId === property.inspection?._id}
+                              onPress={() => handlePayToUnlock(property)}
+                            >
+                              {purchasingId === property.inspection?._id ? (
+                                <ActivityIndicator size="small" color="#FFFFFF" />
+                              ) : (
+                                <Ionicons name="lock-closed-outline" size={16} color="#FFFFFF" />
+                              )}
+                              <Text style={styles.actionButtonText}>Pay to Unlock Report</Text>
+                            </TouchableOpacity>
+                          )
+                        ) : (
+                          <TouchableOpacity
+                            style={[styles.actionButton, styles.startButton]}
+                            onPress={() => handleStartInspection(property)}
+                          >
+                            <Ionicons name="document-text-outline" size={16} color="#FFFFFF" />
+                            <Text style={styles.actionButtonText}>
+                              {progress > 0 ? 'Continue Inspection' : 'Start Inspection'}
+                            </Text>
+                          </TouchableOpacity>
+                        )}
                       </View>
-                    )}
-
-                    {/* Action Button */}
-                    <TouchableOpacity 
-                      style={[
-                        styles.actionButton,
-                        inspection.status === 'completed' && styles.actionButtonCompleted,
-                      ]}
-                      onPress={() => {
-                        // Navigate to appropriate screen based on status
-                        if (inspection.status === 'completed') {
-                          // View report
-                          navigation.navigate('Reports' as never);
-                        } else {
-                          // Continue inspection
-                          navigation.navigate('Dashboard' as never);
-                        }
-                      }}
-                    >
-                      <Text style={styles.actionButtonText}>
-                        {inspection.status === 'completed' ? 'View Report' : 
-                         inspection.status === 'in-progress' ? 'Continue Inspection' : 
-                         'Start Inspection'}
-                      </Text>
-                      <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
-                    </TouchableOpacity>
-                  </View>
-                ))
-              )}
-            </View>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
 
             <View style={{ height: 40 }} />
           </ScrollView>
@@ -381,271 +506,95 @@ export default function InspectionStatusScreen({ navigation }: InspectionStatusS
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#CEF8FF',
-  },
-  headerContainer: {
-    backgroundColor: '#CEF8FF',
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 10,
-  },
-  headerBar: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 15,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    marginTop: 15,
-  },
-  headerLogo: {
-    width: 240,
-    height: 65,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  titleSection: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 15,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#1F2937',
-    marginBottom: 5,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#6B7280',
-    lineHeight: 20,
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    marginBottom: 20,
-    gap: 10,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  statCardCompleted: {
-    backgroundColor: '#ECFDF5',
-  },
-  statCardInProgress: {
-    backgroundColor: '#FEF3C7',
-  },
-  statCardNotStarted: {
-    backgroundColor: '#F3F4F6',
-  },
-  statValue: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#1F2937',
-    marginBottom: 4,
-  },
-  statValueCompleted: {
-    color: '#10B981',
-  },
-  statValueInProgress: {
-    color: '#F59E0B',
-  },
-  statValueNotStarted: {
-    color: '#6B7280',
-  },
-  statLabel: {
-    fontSize: 11,
-    color: '#6B7280',
-    fontWeight: '500',
-  },
-  tabsContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    marginBottom: 20,
-    gap: 8,
-  },
-  tab: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    paddingVertical: 10,
-    alignItems: 'center',
-  },
-  tabActive: {
-    backgroundColor: '#0E7490',
-  },
-  tabText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#6B7280',
-  },
-  tabTextActive: {
-    color: '#FFFFFF',
-  },
-  inspectionsContainer: {
-    paddingHorizontal: 20,
-  },
-  inspectionCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  inspectionHeader: {
-    marginBottom: 16,
-  },
-  inspectionTitleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 8,
-  },
-  inspectionProperty: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1F2937',
-    flex: 1,
-    marginRight: 12,
-  },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    gap: 4,
-  },
-  statusText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  inspectionAddress: {
-    fontSize: 13,
-    color: '#6B7280',
-    marginBottom: 4,
-  },
-  inspectionBuilding: {
-    fontSize: 12,
-    color: '#9CA3AF',
-    fontWeight: '500',
-  },
-  inspectionDetails: {
-    gap: 8,
-    marginBottom: 16,
-  },
-  detailRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  detailText: {
-    fontSize: 13,
-    color: '#6B7280',
-  },
-  deficiencyText: {
-    color: '#EF4444',
-    fontWeight: '500',
-  },
-  progressSection: {
-    marginBottom: 16,
-  },
-  progressHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  progressLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#6B7280',
-  },
-  progressValue: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#0E7490',
-  },
-  progressBarContainer: {
-    height: 6,
-    backgroundColor: '#E5E7EB',
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  progressBarFill: {
-    height: '100%',
-    borderRadius: 3,
-  },
-  actionButton: {
-    backgroundColor: '#0E7490',
-    borderRadius: 10,
-    paddingVertical: 12,
+  container: { flex: 1, backgroundColor: '#E4F0F6' },
+  modalOverlay: { flex: 1, flexDirection: 'row' },
+  sidebarContainer: { width: '75%', maxWidth: 300, backgroundColor: '#FFFFFF' },
+  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' },
+  scrollView: { flex: 1 },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  loadingText: { marginTop: 12, color: '#1F2937', fontSize: 14 },
+  refreshBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    paddingVertical: 14,
+    marginHorizontal: 16,
+    marginTop: 16,
+    marginBottom: 16,
   },
-  actionButtonCompleted: {
-    backgroundColor: '#10B981',
+  refreshBarText: { color: '#374151', fontSize: 15, fontWeight: '600' },
+  statCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 10,
+    paddingHorizontal: 18,
+    paddingVertical: 20,
+    marginHorizontal: 16,
+    marginBottom: 14,
   },
-  actionButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '700',
-  },
+  statLabel: { fontSize: 11, fontWeight: '800', textTransform: 'uppercase', marginBottom: 6 },
+  statValue: { fontSize: 26, fontWeight: '800' },
   emptyState: {
     alignItems: 'center',
-    paddingVertical: 60,
-  },
-  emptyStateText: {
-    fontSize: 16,
-    color: '#9CA3AF',
-    marginTop: 16,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: '#6B7280',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-start',
-    alignItems: 'flex-start',
-  },
-  sidebarContainer: {
-    width: 280,
-    height: '100%',
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 2, height: 0 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
+    borderRadius: 12,
+    marginHorizontal: 16,
+    marginTop: 6,
+    paddingVertical: 40,
+    paddingHorizontal: 24,
   },
+  emptyStateTitle: { fontSize: 18, fontWeight: '700', color: '#111827', marginTop: 20 },
+  emptyStateText: { fontSize: 14, color: '#4B5563', marginTop: 10, marginBottom: 24, textAlign: 'center' },
+  primaryButton: {
+    backgroundColor: '#0E6C8E',
+    alignSelf: 'stretch',
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderRadius: 999,
+  },
+  primaryButtonText: { color: '#FFFFFF', fontSize: 15, fontWeight: '700' },
+  list: { paddingHorizontal: 16, paddingTop: 8 },
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 2,
+    padding: 14,
+    marginBottom: 12,
+  },
+  cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 10 },
+  statusIconWrap: { width: 44, height: 44, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  propertyName: { fontSize: 16, fontWeight: '700', color: '#111827', marginBottom: 4 },
+  statusBadge: { alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999 },
+  statusBadgeText: { fontSize: 11, fontWeight: '700' },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
+  metaText: { fontSize: 12, color: '#4B5563', flex: 1 },
+  deficiencyBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#FFEDD5',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+    marginTop: 8,
+  },
+  deficiencyBadgeText: { fontSize: 11, fontWeight: '700', color: '#9A3412' },
+  actionsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 8,
+    flexGrow: 1,
+  },
+  actionButtonText: { color: '#FFFFFF', fontSize: 13, fontWeight: '700' },
+  buttonDisabled: { opacity: 0.6 },
+  pdfButton: { backgroundColor: '#16A34A' },
+  excelButton: { backgroundColor: '#059669' },
+  unlockButton: { backgroundColor: '#D97706' },
+  startButton: { backgroundColor: '#006795' },
 });

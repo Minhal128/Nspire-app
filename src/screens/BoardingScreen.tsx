@@ -33,7 +33,7 @@ export default function BoardingScreen({ navigation }: BoardingScreenProps) {
       <View style={styles.content}>
         {/* Logo */}
         <Image
-          source={require("../../inspire_logo.png")}
+          source={require("../../public/logo.png")}
           style={styles.logo}
           resizeMode="contain"
         />

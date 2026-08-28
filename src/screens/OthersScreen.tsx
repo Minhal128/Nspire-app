@@ -18,7 +18,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import Sidebar from "../components/Sidebar";
 import { userService, authService } from "../services";
-import { User as ApiUser } from "../services/api";
+import { getRoleDisplayName, getRoleColor, formatJoinedDate } from "../utils/otherPortal";
 
 interface OthersScreenProps {
   navigation: NativeStackNavigationProp<any, any>;
@@ -28,10 +28,8 @@ interface User {
   id: string;
   name: string;
   email: string;
-  userType: string;
+  role: string;
   joinDate: string;
-  status: "active" | "inactive";
-  avatar?: string;
 }
 
 export default function OthersScreen({ navigation }: OthersScreenProps) {
@@ -53,9 +51,8 @@ export default function OthersScreen({ navigation }: OthersScreenProps) {
           id: u.id || u._id || 'unknown',
           name: u.fullName || u.name || 'Unknown',
           email: u.email || 'unknown@email.com',
-          userType: formatUserType(u.role),
-          joinDate: u.lastLogin ? new Date(u.lastLogin).toISOString().split("T")[0] : new Date().toISOString().split("T")[0],
-          status: "active" as const,
+          role: u.role || '',
+          joinDate: formatJoinedDate(u),
         }));
 
       setUsers(mappedUsers);
@@ -67,20 +64,6 @@ export default function OthersScreen({ navigation }: OthersScreenProps) {
       setRefreshing(false);
     }
   }, []);
-
-  const formatUserType = (role: string) => {
-    switch (role) {
-      case "management":
-      case "property-manager":
-        return "Management";
-      case "supervisor":
-        return "Supervisor";
-      case "admin":
-        return "Admin";
-      default:
-        return "Other";
-    }
-  };
 
   useEffect(() => {
     loadUsers();
@@ -97,12 +80,12 @@ export default function OthersScreen({ navigation }: OthersScreenProps) {
 
   const handleSidebarNavigate = (screen: string) => {
     setSidebarVisible(false);
-    if (screen === "Dashboard") {
-      navigation.navigate("OrderDashboard" as never);
-    } else if (screen === "OrderDashboard") {
+    if (screen === "Dashboard" || screen === "OrderDashboard") {
       navigation.navigate("OrderDashboard" as never);
     } else if (screen === "Others") {
       // Already on Others screen
+    } else {
+      navigation.navigate(screen as never);
     }
   };
 
@@ -119,62 +102,40 @@ export default function OthersScreen({ navigation }: OthersScreenProps) {
     }
   };
 
+  const query = searchQuery.toLowerCase();
   const filteredUsers = users.filter(
     (user) =>
-      user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchQuery.toLowerCase()),
+      user.name.toLowerCase().includes(query) ||
+      user.email.toLowerCase().includes(query) ||
+      user.role.toLowerCase().includes(query),
   );
-
-  const getUserTypeColor = (userType: string) => {
-    switch (userType) {
-      case "Management":
-        return "#FF9800";
-      case "Other":
-        return "#9C27B0";
-      default:
-        return "#6B7280";
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    return status === "active" ? "#84CC16" : "#9CA3AF";
-  };
 
   const renderUserCard = ({ item }: { item: User }) => (
     <View style={styles.userCard}>
       <View style={styles.userCardContent}>
         <View style={styles.avatarContainer}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{item.name.charAt(0)}</Text>
+            <Text style={styles.avatarText}>
+              {item.name.charAt(0).toUpperCase()}
+            </Text>
           </View>
         </View>
         <View style={styles.userInfo}>
-          <View style={styles.userNameRow}>
-            <Text style={styles.userName}>{item.name}</Text>
-            <View
-              style={[
-                styles.statusBadge,
-                { backgroundColor: getStatusColor(item.status) },
-              ]}
-            >
-              <Text style={styles.statusText}>
-                {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
-              </Text>
-            </View>
-          </View>
+          <Text style={styles.userName}>{item.name}</Text>
           <Text style={styles.userEmail}>{item.email}</Text>
-          <View style={styles.userMetaRow}>
-            <View
-              style={[
-                styles.userTypeBadge,
-                { backgroundColor: getUserTypeColor(item.userType) },
-              ]}
-            >
-              <Text style={styles.userTypeText}>{item.userType}</Text>
-            </View>
-            <Text style={styles.joinDate}>Joined: {item.joinDate}</Text>
+          <View
+            style={[
+              styles.userTypeBadge,
+              { backgroundColor: getRoleColor(item.role) },
+            ]}
+          >
+            <Text style={styles.userTypeText}>{getRoleDisplayName(item.role)}</Text>
           </View>
         </View>
+      </View>
+      <View style={styles.joinRow}>
+        <Text style={styles.joinLabel}>Joined</Text>
+        <Text style={styles.joinDate}>{item.joinDate}</Text>
       </View>
     </View>
   );
@@ -213,7 +174,7 @@ export default function OthersScreen({ navigation }: OthersScreenProps) {
               <Ionicons name="menu" size={28} color="#1F2937" />
             </TouchableOpacity>
             <Image
-              source={require("../../inspire_logo.png")}
+              source={require("../../public/logo.png")}
               style={styles.headerLogo}
               resizeMode="contain"
             />
@@ -252,8 +213,28 @@ export default function OthersScreen({ navigation }: OthersScreenProps) {
               <View style={styles.titleSection}>
                 <Text style={styles.mainTitle}>Other Users</Text>
                 <Text style={styles.subtitle}>
-                  Recent users who are not inspectors
+                  View and manage non-inspector users
                 </Text>
+              </View>
+
+              {/* Stats */}
+              <View style={styles.statsContainer}>
+                <View style={styles.statCard}>
+                  <Text style={styles.statLabel}>Total Users</Text>
+                  <Text style={styles.statValue}>{users.length}</Text>
+                </View>
+                <View style={styles.statCard}>
+                  <Text style={styles.statLabel}>Management</Text>
+                  <Text style={styles.statValue}>
+                    {users.filter((u) => u.role === "management").length}
+                  </Text>
+                </View>
+                <View style={styles.statCard}>
+                  <Text style={styles.statLabel}>Supervisors</Text>
+                  <Text style={styles.statValue}>
+                    {users.filter((u) => u.role === "supervisor").length}
+                  </Text>
+                </View>
               </View>
 
               {/* Search Section */}
@@ -268,7 +249,7 @@ export default function OthersScreen({ navigation }: OthersScreenProps) {
                   />
                   <TextInput
                     style={styles.searchInput}
-                    placeholder="Search by name or email"
+                    placeholder="Search by name, email or role"
                     placeholderTextColor="#9CA3AF"
                     value={searchQuery}
                     onChangeText={setSearchQuery}
@@ -448,38 +429,19 @@ const styles = StyleSheet.create({
   userInfo: {
     flex: 1,
   },
-  userNameRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 4,
-  },
   userName: {
     fontSize: 15,
     fontWeight: "700",
     color: "#1F2937",
-  },
-  statusBadge: {
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: 12,
-  },
-  statusText: {
-    color: "#FFFFFF",
-    fontSize: 10,
-    fontWeight: "700",
+    marginBottom: 2,
   },
   userEmail: {
     fontSize: 12,
     color: "#6B7280",
     marginBottom: 8,
   },
-  userMetaRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
   userTypeBadge: {
+    alignSelf: "flex-start",
     paddingVertical: 4,
     paddingHorizontal: 10,
     borderRadius: 12,
@@ -489,9 +451,49 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "600",
   },
-  joinDate: {
-    fontSize: 11,
+  joinRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    borderTopWidth: 1,
+    borderTopColor: "#E5E7EB",
+    marginTop: 12,
+    paddingTop: 10,
+  },
+  joinLabel: {
+    fontSize: 12,
     color: "#9CA3AF",
+  },
+  joinDate: {
+    fontSize: 12,
+    color: "#374151",
+    fontWeight: "600",
+  },
+  statsContainer: {
+    paddingHorizontal: 20,
+    gap: 12,
+    marginBottom: 20,
+  },
+  statCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    padding: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  statLabel: {
+    fontSize: 13,
+    color: "#6B7280",
+    fontWeight: "500",
+    marginBottom: 6,
+  },
+  statValue: {
+    fontSize: 28,
+    fontWeight: "700",
+    color: "#1F2937",
   },
   separator: {
     height: 0,

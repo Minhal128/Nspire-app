@@ -17,13 +17,14 @@ export type RootStackParamList = {
   RequestInspection: undefined;
   EditProperty: { property: any };
   PropertyDetails: { property: any };
-  BuildingInspection: { property: any; calculatedUnits: number; selectedUnits: string[]; coverage: string };
+  BuildingInspection: { property: any; calculatedUnits?: number; selectedUnits?: string[]; coverage?: string };
   Analytics: undefined;
   UnitInspection: { property: any };
   AIInspection: { property: any; selectedUnits: string[]; coverage: string; totalUnits: number };
   InspectionChecklist: { property: any; unit: any };
   ManagementDashboard: undefined;
   OrderDashboard: undefined;
+  OtherInspections: undefined;
   NSPIREReport: { report?: any; inspectionData?: any; property?: any };
   InspectionReport: { property?: any; session?: any; findings?: any[]; images?: any[]; complianceScore?: number; overallCondition?: string };
   PropertyInfo: { property: any; selectedUnits: string[]; completedUnits?: string[]; buildingId?: string };
@@ -42,8 +43,8 @@ export type RootStackParamList = {
   InspectionSummary: {
     property: any;
     selectedUnits: string[];
-    buildingId: string;
-    inspectionData: any;
+    buildingId?: string;
+    inspectionData?: any;
     currentUnit?: string;
     allUnits?: string[];
     inspectionId?: string;

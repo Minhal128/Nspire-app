@@ -5,7 +5,7 @@
     "slug": "inspire-app",
     "version": "1.0.1",
     "orientation": "default",
-    "icon": "./inspire_logo.png",
+    "icon": "./public/logo.png",
     "userInterfaceStyle": "automatic",
     "runtimeVersion": "1.0.0",
     "scheme": "inspire",
@@ -30,7 +30,7 @@
     "android": {
       "versionCode": 20,
       "adaptiveIcon": {
-        "foregroundImage": "./inspire_logo.png",
+        "foregroundImage": "./public/logo.png",
         "backgroundColor": "#97F0FF"
       },
       "package": "com.minhal.inspire",
@@ -69,12 +69,11 @@
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE",
         "android.permission.ACCESS_FINE_LOCATION",
-        "android.permission.ACCESS_COARSE_LOCATION",
-        "com.android.vending.BILLING"
+        "android.permission.ACCESS_COARSE_LOCATION"
       ]
     },
     "web": {
-      "favicon": "./inspire_logo.png",
+      "favicon": "./public/logo.png",
       "bundler": "metro"
     },
     "plugins": [

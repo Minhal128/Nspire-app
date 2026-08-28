@@ -75,6 +75,12 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
   const [successModalVisible, setSuccessModalVisible] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
 
+  // Delete account confirmation (web /dashboard/delete-account parity:
+  // password + typing DELETE). Alert.prompt is iOS-only, so this uses a modal.
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+
   // iOS Picker Modal states
   const [languagePickerVisible, setLanguagePickerVisible] = useState(false);
   const [timezonePickerVisible, setTimezonePickerVisible] = useState(false);
@@ -323,6 +329,8 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
       navigation.navigate('Analytics' as never);
     } else if (screen === 'Settings') {
       // Already on Settings
+    } else {
+      navigation.navigate(screen as never);
     }
   };
 
@@ -422,6 +430,32 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
     }
   };
 
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmText.trim().toUpperCase() !== 'DELETE') {
+      Alert.alert('Error', 'Please type "DELETE" to confirm.');
+      return;
+    }
+    if (!deletePassword) {
+      Alert.alert('Error', 'Please enter your password to confirm.');
+      return;
+    }
+
+    try {
+      setSaving(true);
+      await userService.deleteAccount(deletePassword);
+      setDeleteModalVisible(false);
+      await authService.logout();
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Boarding' as never }],
+      });
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to delete account');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleChangePassword = async () => {
     if (!oldPassword || !newPassword || !confirmPassword) {
       Alert.alert('Error', 'Please fill in all password fields');
@@ -510,7 +544,7 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
               <Ionicons name="menu" size={28} color="#1F2937" />
             </TouchableOpacity>
             <Image
-              source={require('../../inspire_logo.png')}
+              source={require('../../public/logo.png')}
               style={styles.headerLogo}
               resizeMode="contain"
             />
@@ -938,6 +972,24 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
                 thumbColor={biometricEnabled ? '#fff' : '#f4f3f4'}
               />
             </View>
+
+            {/* Session Management (web parity) */}
+            <Text style={styles.sectionTitle}>Session Management</Text>
+            <View style={styles.sessionRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.sessionDeviceName}>Current Device</Text>
+                <Text style={styles.sessionDeviceMeta}>
+                  {Platform.OS === 'ios' ? 'iOS' : 'Android'} · INSPIRE App · {new Date().toLocaleString()}
+                </Text>
+              </View>
+              <View style={styles.sessionActiveBadge}>
+                <Text style={styles.sessionActiveText}>Active</Text>
+              </View>
+            </View>
+            <TouchableOpacity style={styles.logoutAllButton} onPress={handleLogout}>
+              <Ionicons name="log-out-outline" size={18} color="#DC2626" />
+              <Text style={styles.logoutAllButtonText}>Log Out From All Devices</Text>
+            </TouchableOpacity>
           </View>
 
           {/* Delete Account Card */}
@@ -953,55 +1005,9 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
             <TouchableOpacity
               style={styles.deleteAccountButton}
               onPress={() => {
-                Alert.alert(
-                  'Delete Account',
-                  'Are you sure you want to delete your account? This action cannot be undone and all your data will be permanently deleted.',
-                  [
-                    {
-                      text: 'Cancel',
-                      style: 'cancel',
-                    },
-                    {
-                      text: 'Delete',
-                      style: 'destructive',
-                      onPress: async () => {
-                        // Show confirmation dialog
-                        Alert.alert(
-                          'Final Confirmation',
-                          'This is your last chance. Type DELETE to confirm account deletion.',
-                          [
-                            {
-                              text: 'Cancel',
-                              style: 'cancel',
-                            },
-                            {
-                              text: 'Confirm Delete',
-                              style: 'destructive',
-                              onPress: async () => {
-                                try {
-                                  setSaving(true);
-                                  // TODO: Call API to delete account
-                                  // await userService.deleteAccount();
-                                  
-                                  // Logout and navigate to boarding
-                                  await authService.logout();
-                                  navigation.reset({
-                                    index: 0,
-                                    routes: [{ name: 'Boarding' as never }],
-                                  });
-                                } catch (error: any) {
-                                  Alert.alert('Error', error.message || 'Failed to delete account');
-                                } finally {
-                                  setSaving(false);
-                                }
-                              },
-                            },
-                          ]
-                        );
-                      },
-                    },
-                  ]
-                );
+                setDeletePassword('');
+                setDeleteConfirmText('');
+                setDeleteModalVisible(true);
               }}
             >
               <Ionicons name="trash-outline" size={20} color="#FFFFFF" />
@@ -1069,6 +1075,58 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
                 onPress={handleSaveEdit}
               >
                 <Text style={styles.editModalSaveText}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Delete Account Modal */}
+      <Modal
+        visible={deleteModalVisible}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setDeleteModalVisible(false)}
+      >
+        <View style={styles.editModalOverlay}>
+          <View style={styles.editModalContent}>
+            <Text style={styles.editModalTitle}>Delete Account</Text>
+            <Text style={styles.cardDescription}>
+              This permanently deletes your account and all associated data. This action cannot be
+              undone.
+            </Text>
+            <TextInput
+              style={styles.editModalInput}
+              value={deletePassword}
+              onChangeText={setDeletePassword}
+              placeholder="Enter your password"
+              placeholderTextColor="#9CA3AF"
+              secureTextEntry
+              autoCapitalize="none"
+            />
+            <TextInput
+              style={styles.editModalInput}
+              value={deleteConfirmText}
+              onChangeText={setDeleteConfirmText}
+              placeholder='Type "DELETE" to confirm'
+              placeholderTextColor="#9CA3AF"
+              autoCapitalize="characters"
+              autoCorrect={false}
+            />
+            <View style={styles.editModalButtons}>
+              <TouchableOpacity
+                style={styles.editModalCancelButton}
+                onPress={() => setDeleteModalVisible(false)}
+                disabled={saving}
+              >
+                <Text style={styles.editModalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.editModalSaveButton, styles.deleteConfirmButton, saving && styles.buttonDisabled]}
+                onPress={handleDeleteAccount}
+                disabled={saving}
+              >
+                <Text style={styles.editModalSaveText}>{saving ? 'Deleting...' : 'Delete'}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1186,6 +1244,35 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
+  sessionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 10,
+    padding: 14,
+    marginTop: 8,
+  },
+  sessionDeviceName: { fontSize: 14, fontWeight: '600', color: '#1F2937' },
+  sessionDeviceMeta: { fontSize: 12, color: '#6B7280', marginTop: 2 },
+  sessionActiveBadge: {
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  sessionActiveText: { fontSize: 11, fontWeight: '700', color: '#15803D' },
+  logoutAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+    borderRadius: 10,
+    paddingVertical: 12,
+    marginTop: 14,
+  },
+  logoutAllButtonText: { color: '#DC2626', fontSize: 14, fontWeight: '700' },
   cardTitle: {
     fontSize: 18,
     fontWeight: '700',
@@ -1629,6 +1716,9 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingVertical: 12,
     alignItems: 'center',
+  },
+  deleteConfirmButton: {
+    backgroundColor: '#EF4444',
   },
   editModalSaveText: {
     color: '#FFFFFF',
