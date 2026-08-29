@@ -18,25 +18,18 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as XLSX from 'xlsx';
 import { propertyService, authService } from '../services';
+import {
+  PropertyFormValues,
+  validatePropertyForm,
+  buildPropertyPayload,
+} from '../utils/propertyForm';
 
 interface AddPropertyScreenProps {
   navigation: any;
 }
 
-interface PropertyForm {
+interface PropertyForm extends PropertyFormValues {
   id: string;
-  propertyId: string;
-  propertyName: string;
-  address: string;
-  countryText: string;
-  stateText: string;
-  cityText: string;
-  postalCode: string;
-  numberOfBuildings: string;
-  numberOfUnits: string;
-  resolvedCountryCode: string;
-  resolvedStateCode: string;
-  resolvedCityName: string;
   countryError: string;
   stateError: string;
   cityError: string;
@@ -534,28 +527,9 @@ export default function AddPropertyScreen({
 
   // Validate a single form
   const validateForm = (form: PropertyForm, index: number): boolean => {
-    if (!form.propertyName.trim()) {
-      Alert.alert('Error', `Property ${index + 1}: Property Name is required`);
-      return false;
-    }
-    if (!form.address.trim()) {
-      Alert.alert('Error', `Property ${index + 1}: Address is required`);
-      return false;
-    }
-    if (!form.countryText.trim()) {
-      Alert.alert('Error', `Property ${index + 1}: Country is required`);
-      return false;
-    }
-    if (!form.stateText.trim()) {
-      Alert.alert('Error', `Property ${index + 1}: State is required`);
-      return false;
-    }
-    if (!form.cityText.trim()) {
-      Alert.alert('Error', `Property ${index + 1}: City is required`);
-      return false;
-    }
-    if (!form.postalCode.trim()) {
-      Alert.alert('Error', `Property ${index + 1}: Postal Code is required`);
+    const error = validatePropertyForm(form, index);
+    if (error) {
+      Alert.alert('Error', error);
       return false;
     }
     return true;
@@ -571,28 +545,7 @@ export default function AddPropertyScreen({
 
     try {
       // Build the property data array for bulk submission
-      const propertiesPayload = forms.map((form, i) => {
-        const generatedPropertyId = form.propertyId.trim() || `PROP-${Date.now()}-${i}`;
-        const countryData = Country.getCountryByCode(form.resolvedCountryCode);
-        const stateData = State.getStateByCodeAndCountry(
-          form.resolvedStateCode,
-          form.resolvedCountryCode,
-        );
-
-        return {
-          propertyId: generatedPropertyId,
-          name: form.propertyName.trim(),
-          address: form.address.trim(),
-          city: form.resolvedCityName || form.cityText.trim(),
-          state: form.resolvedStateCode || form.stateText.trim(),
-          country: form.resolvedCountryCode || form.countryText.trim(),
-          countryName: countryData?.name || form.countryText,
-          stateName: stateData?.name || form.stateText,
-          zipCode: form.postalCode.trim(),
-          buildings: parseInt(form.numberOfBuildings) || 1,
-          units: parseInt(form.numberOfUnits) || 1,
-        };
-      });
+      const propertiesPayload = forms.map((form, i) => buildPropertyPayload(form, i));
 
       // Use bulk endpoint for multiple properties, single endpoint for one
       if (propertiesPayload.length === 1) {

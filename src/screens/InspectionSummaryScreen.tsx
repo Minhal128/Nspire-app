@@ -23,7 +23,7 @@ import * as XLSX from 'xlsx';
 import { enhancedNspirePDFService } from '../services/enhancedNspirePDFService';
 import { storeData, getData } from '../utils/storage';
 import { stripeService } from '../utils/stripeService';
-import { isValidEmail } from '../utils/stripeUnlock';
+import { usePaymentLink } from '../hooks/usePaymentLink';
 
 type InspectionSummaryScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -62,9 +62,6 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
   const [isReportUnlocked, setIsReportUnlocked] = useState(false);
   const [paymentModalVisible, setPaymentModalVisible] = useState(false);
   const [checkingUnlock, setCheckingUnlock] = useState(true);
-  const [stripeBusy, setStripeBusy] = useState(false);
-  const [shareEmail, setShareEmail] = useState('');
-  const [sharingPayment, setSharingPayment] = useState(false);
   const pendingExportAction = useRef<'pdf' | 'html' | 'excel' | null>(null);
   // Holds latest export function references so a deferred export always calls
   // the current render's version rather than a stale closure.
@@ -169,59 +166,23 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
     setTimeout(() => exportFnRefs.current[action](), 500);
   };
 
-  // ── Stripe: hosted checkout (mirrors web's handleUnlockWithStripe) ──
-  const handleUnlockWithStripe = async () => {
-    setStripeBusy(true);
-    try {
-      const decision = await stripeService.unlockWithStripe(inspectionId);
+  // ── Stripe: the payer gets a checkout link by email ───────────────
+  // No card is entered in the app. Once the link is paid, the hook's poll
+  // flips the unlock and the export the user was blocked on runs itself.
+  const payment = usePaymentLink(inspectionId, () => {
+    setIsReportUnlocked(true);
+    setPaymentModalVisible(false);
+    Alert.alert('Payment Successful', 'Report unlocked. Your download will start now.');
+    runPendingExport();
+  }, paymentModalVisible);
 
-      if (decision.outcome === 'unlocked') {
-        setIsReportUnlocked(true);
-        setPaymentModalVisible(false);
-        Alert.alert('Payment Successful', decision.message);
-        runPendingExport();
-      } else {
-        Alert.alert('Payment', decision.message);
-      }
-    } catch (err: any) {
-      Alert.alert('Payment Error', err?.message || 'Unable to start payment.');
-    } finally {
-      setStripeBusy(false);
-    }
-  };
-
-  // ── Stripe: email the checkout link to whoever is paying ─────────
-  const handleSharePaymentLink = async () => {
-    if (!isValidEmail(shareEmail)) {
-      Alert.alert('Invalid Email', 'Enter a valid email address to send the payment link to.');
-      return;
-    }
-
-    setSharingPayment(true);
-    try {
-      const data = await stripeService.shareCheckoutLink(inspectionId, shareEmail.trim());
-
-      if (data?.isReportUnlocked || data?.alreadyUnlocked) {
-        setIsReportUnlocked(true);
-        setPaymentModalVisible(false);
-        Alert.alert('Already Unlocked', 'This report is already unlocked.');
-        return;
-      }
-      if (!data?.success) {
-        throw new Error(data?.message || 'Failed to send payment link.');
-      }
-
-      setShareEmail('');
-      Alert.alert('Link Sent', 'Payment link sent to email successfully.');
-    } catch (err: any) {
-      Alert.alert('Error', err?.message || 'An error occurred while sharing the payment link.');
-    } finally {
-      setSharingPayment(false);
-    }
+  const handleSendPaymentLink = async () => {
+    const ok = await payment.send();
+    if (!ok && payment.error) Alert.alert('Error', payment.error);
   };
 
   // Any payment in flight — the modal must not be dismissible mid-flow.
-  const paymentBusy = stripeBusy || sharingPayment;
+  const paymentBusy = payment.sending;
 
   /**
    * Gate an export action behind payment.
@@ -1282,56 +1243,66 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
               ))}
             </View>
 
-            {/* Buy button */}
-            <TouchableOpacity
-              style={[styles.paymentBuyButton, paymentBusy && styles.paymentBuyButtonDisabled]}
-              onPress={handleUnlockWithStripe}
-              disabled={paymentBusy}
-            >
-              {stripeBusy ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <>
-                  <Ionicons name="card-outline" size={20} color="#FFFFFF" />
-                  <Text style={styles.paymentBuyButtonText}>Pay by Card</Text>
-                </>
-              )}
-            </TouchableOpacity>
-
-            <Text style={styles.paymentSecureText}>
-              🔒 Secure payment via Stripe
-            </Text>
-
-            {/* Send the checkout link to whoever actually holds the card */}
-            <View style={styles.paymentShareRow}>
-              <TextInput
-                style={styles.paymentShareInput}
-                placeholder="name@company.com"
-                placeholderTextColor="#9CA3AF"
-                value={shareEmail}
-                onChangeText={setShareEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-                editable={!paymentBusy}
-                accessibilityLabel="Email address for the payment link"
-              />
-              <TouchableOpacity
-                style={[styles.paymentShareButton, paymentBusy && styles.paymentBuyButtonDisabled]}
-                onPress={handleSharePaymentLink}
-                disabled={paymentBusy}
-                accessibilityLabel="Send payment link"
-              >
-                {sharingPayment ? (
-                  <ActivityIndicator color="#FFFFFF" size="small" />
-                ) : (
-                  <Ionicons name="mail-outline" size={18} color="#FFFFFF" />
-                )}
-              </TouchableOpacity>
-            </View>
-            <Text style={styles.paymentShareHint}>
-              Email the payment link to someone else
-            </Text>
+            {/* Email-only checkout: the link is mailed, paid anywhere, and the
+                poll below unlocks the report without the user coming back. */}
+            {payment.sentTo ? (
+              <View style={styles.paymentSentBox}>
+                <Ionicons name="mail-open-outline" size={28} color="#0E7490" />
+                <Text style={styles.paymentSentTitle}>Payment link sent</Text>
+                <Text style={styles.paymentSentText}>
+                  We emailed the secure Stripe checkout link to {payment.sentTo}. Pay from that
+                  email — this screen unlocks and your download starts automatically.
+                </Text>
+                <View style={styles.paymentWaitingRow}>
+                  <ActivityIndicator size="small" color="#0E7490" />
+                  <Text style={styles.paymentWaitingText}>Waiting for payment…</Text>
+                </View>
+                <TouchableOpacity onPress={() => { void payment.checkNow(); }} disabled={payment.checking}>
+                  <Text style={styles.paymentSentLink}>
+                    {payment.checking ? 'Checking…' : 'Already paid? Check now'}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={payment.reset} disabled={payment.checking}>
+                  <Text style={styles.paymentSentLinkMuted}>Send to a different email</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <>
+                <Text style={styles.paymentShareLabel}>
+                  Email the payment link to whoever is paying
+                </Text>
+                <TextInput
+                  style={styles.paymentShareInput}
+                  placeholder="name@company.com"
+                  placeholderTextColor="#9CA3AF"
+                  value={payment.email}
+                  onChangeText={payment.setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  editable={!paymentBusy}
+                  accessibilityLabel="Email address for the payment link"
+                />
+                <TouchableOpacity
+                  style={[styles.paymentBuyButton, paymentBusy && styles.paymentBuyButtonDisabled]}
+                  onPress={handleSendPaymentLink}
+                  disabled={paymentBusy}
+                  accessibilityLabel="Send payment link"
+                >
+                  {payment.sending ? (
+                    <ActivityIndicator color="#FFFFFF" />
+                  ) : (
+                    <>
+                      <Ionicons name="mail-outline" size={20} color="#FFFFFF" />
+                      <Text style={styles.paymentBuyButtonText}>Send Payment Link</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+                <Text style={styles.paymentSecureText}>
+                  🔒 Secure payment via Stripe
+                </Text>
+              </>
+            )}
 
             </ScrollView>
           </View>
@@ -1888,15 +1859,16 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
     alignItems: 'center',
   },
-  paymentShareRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  paymentShareLabel: {
     width: '100%',
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#374151',
     marginTop: 12,
-    gap: 8,
+    marginBottom: 8,
   },
   paymentShareInput: {
-    flex: 1,
+    width: '100%',
     borderWidth: 1,
     borderColor: '#E5E7EB',
     borderRadius: 12,
@@ -1905,19 +1877,50 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#1A1A1A',
     backgroundColor: '#F9FAFB',
+    marginBottom: 12,
   },
-  paymentShareButton: {
-    width: 46,
-    height: 46,
-    borderRadius: 12,
-    backgroundColor: '#635BFF',
+  paymentSentBox: {
+    width: '100%',
     alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: '#F0F9FF',
+    borderRadius: 16,
+    padding: 20,
+    marginTop: 12,
   },
-  paymentShareHint: {
-    fontSize: 12,
-    color: '#9CA3AF',
+  paymentSentTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0E7490',
     marginTop: 8,
+  },
+  paymentSentText: {
+    fontSize: 13,
+    color: '#374151',
+    textAlign: 'center',
+    lineHeight: 19,
+    marginTop: 6,
+  },
+  paymentWaitingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 14,
+  },
+  paymentWaitingText: {
+    fontSize: 13,
+    color: '#0E7490',
+    fontWeight: '600',
+  },
+  paymentSentLink: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0E7490',
+    marginTop: 14,
+  },
+  paymentSentLinkMuted: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 10,
   },
   paymentCloseButton: {
     position: 'absolute',

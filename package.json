@@ -9,7 +9,7 @@
     "web": "expo start --web",
     "prebuild": "expo prebuild",
     "clean": "expo start --clear",
-    "check": "tsc --noEmit && node --experimental-strip-types src/utils/coverageUnits.check.ts && node --experimental-strip-types src/utils/inspectionProgressUtils.check.ts && node --experimental-strip-types src/utils/navRoutes.check.ts && node --experimental-strip-types src/utils/otherPortal.check.ts && node --experimental-strip-types src/utils/selectAllResponses.check.ts && node --experimental-strip-types src/utils/sidebarMenu.check.ts && node --experimental-strip-types src/utils/stripeUnlock.check.ts"
+    "check": "tsc --noEmit && node --experimental-strip-types src/utils/coverageUnits.check.ts && node --experimental-strip-types src/utils/inspectionProgressUtils.check.ts && node --experimental-strip-types src/utils/navRoutes.check.ts && node --experimental-strip-types src/utils/otherPortal.check.ts && node --experimental-strip-types src/utils/propertyForm.check.ts && node --experimental-strip-types src/utils/selectAllResponses.check.ts && node --experimental-strip-types src/utils/sidebarMenu.check.ts && node --experimental-strip-types src/utils/stripeUnlock.check.ts"
   },
   "dependencies": {
     "@clerk/clerk-expo": "^2.19.31",

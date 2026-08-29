@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   RefreshControl,
   Alert,
+  TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Sidebar from '../components/Sidebar';
@@ -28,6 +29,7 @@ import {
 import { exportNspireExcel } from '../utils/nspireExcelExport';
 import { enhancedNspirePDFService } from '../services/enhancedNspirePDFService';
 import { stripeService } from '../utils/stripeService';
+import { usePaymentLink } from '../hooks/usePaymentLink';
 
 interface InspectionStatusScreenProps {
   navigation: any;
@@ -60,7 +62,8 @@ export default function InspectionStatusScreen({ navigation }: InspectionStatusS
   const [properties, setProperties] = useState<PropertyWithInspection[]>([]);
   const [propertyProgress, setPropertyProgress] = useState<Record<string, number>>({});
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
-  const [purchasingId, setPurchasingId] = useState<string | null>(null);
+  // The property whose report is being unlocked — also drives the payment modal.
+  const [payFor, setPayFor] = useState<PropertyWithInspection | null>(null);
 
   // Percentage of inspection tasks completed per property (same heuristic as web)
   const fetchProgress = async (propertyList: any[]): Promise<Record<string, number>> => {
@@ -238,23 +241,26 @@ export default function InspectionStatusScreen({ navigation }: InspectionStatusS
     }
   };
 
-  const handlePayToUnlock = async (property: PropertyWithInspection) => {
-    const inspectionId = property.inspection?._id;
-    if (!inspectionId) {
+  // Email-only unlock: the backend mails a Stripe link, the hook polls, and the
+  // download buttons appear as soon as the payment lands.
+  const payment = usePaymentLink(payFor?.inspection?._id || '', () => {
+    setPayFor(null);
+    Alert.alert('Payment Successful', 'Report unlocked. You can download it now.');
+    fetchData(true);
+  }, !!payFor);
+
+  const handlePayToUnlock = (property: PropertyWithInspection) => {
+    if (!property.inspection?._id) {
       Alert.alert('Error', 'Inspection details not found');
       return;
     }
-    setPurchasingId(inspectionId);
-    try {
-      const decision = await stripeService.unlockWithStripe(inspectionId);
-      Alert.alert(decision.outcome === 'unlocked' ? 'Payment Successful' : 'Payment', decision.message);
-      if (decision.outcome === 'unlocked') fetchData(true);
-    } catch (error: any) {
-      console.error('Payment start error:', error);
-      Alert.alert('Payment Failed', `Unable to start payment: ${error.message}`);
-    } finally {
-      setPurchasingId(null);
-    }
+    payment.reset();
+    setPayFor(property);
+  };
+
+  const handleSendPaymentLink = async () => {
+    const ok = await payment.send();
+    if (!ok && payment.error) Alert.alert('Error', payment.error);
   };
 
   const handleStartInspection = (property: PropertyWithInspection) => {
@@ -288,6 +294,84 @@ export default function InspectionStatusScreen({ navigation }: InspectionStatusS
 
   return (
     <>
+      {/* Payment Modal — email-only Stripe checkout, no card entry in the app */}
+      <Modal
+        visible={!!payFor}
+        animationType="fade"
+        transparent
+        onRequestClose={() => { if (!payment.sending) setPayFor(null); }}
+      >
+        <View style={styles.payOverlay}>
+          <View style={styles.payCard}>
+            <TouchableOpacity
+              style={styles.payClose}
+              onPress={() => setPayFor(null)}
+              disabled={payment.sending}
+            >
+              <Ionicons name="close" size={22} color="#374151" />
+            </TouchableOpacity>
+
+            <Ionicons name="lock-closed" size={36} color="#0E7490" />
+            <Text style={styles.payTitle}>Unlock Full Report</Text>
+            <Text style={styles.paySubtitle} numberOfLines={2}>{payFor?.name}</Text>
+
+            {payment.sentTo ? (
+              <>
+                <Text style={styles.payBody}>
+                  We emailed the secure Stripe checkout link to {payment.sentTo}. Pay from that
+                  email — this screen unlocks on its own and the download buttons appear.
+                </Text>
+                <View style={styles.payWaitingRow}>
+                  <ActivityIndicator size="small" color="#0E7490" />
+                  <Text style={styles.payWaitingText}>Waiting for payment…</Text>
+                </View>
+                <TouchableOpacity onPress={() => { void payment.checkNow(); }} disabled={payment.checking}>
+                  <Text style={styles.payLink}>
+                    {payment.checking ? 'Checking…' : 'Already paid? Check now'}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={payment.reset} disabled={payment.checking}>
+                  <Text style={styles.payLinkMuted}>Send to a different email</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <Text style={styles.payBody}>
+                  Enter the email that should receive the payment link.
+                </Text>
+                <TextInput
+                  style={styles.payInput}
+                  placeholder="name@company.com"
+                  placeholderTextColor="#9CA3AF"
+                  value={payment.email}
+                  onChangeText={payment.setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  editable={!payment.sending}
+                  accessibilityLabel="Email address for the payment link"
+                />
+                <TouchableOpacity
+                  style={[styles.payButton, payment.sending && styles.buttonDisabled]}
+                  onPress={handleSendPaymentLink}
+                  disabled={payment.sending}
+                >
+                  {payment.sending ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <>
+                      <Ionicons name="mail-outline" size={18} color="#FFFFFF" />
+                      <Text style={styles.actionButtonText}>Send Payment Link</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+                <Text style={styles.paySecure}>🔒 Secure payment via Stripe</Text>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
+
       {/* Sidebar Modal */}
       <Modal
         visible={sidebarVisible}
@@ -468,14 +552,9 @@ export default function InspectionStatusScreen({ navigation }: InspectionStatusS
                           ) : (
                             <TouchableOpacity
                               style={[styles.actionButton, styles.unlockButton]}
-                              disabled={purchasingId === property.inspection?._id}
                               onPress={() => handlePayToUnlock(property)}
                             >
-                              {purchasingId === property.inspection?._id ? (
-                                <ActivityIndicator size="small" color="#FFFFFF" />
-                              ) : (
-                                <Ionicons name="lock-closed-outline" size={16} color="#FFFFFF" />
-                              )}
+                              <Ionicons name="lock-closed-outline" size={16} color="#FFFFFF" />
                               <Text style={styles.actionButtonText}>Pay to Unlock Report</Text>
                             </TouchableOpacity>
                           )
@@ -506,6 +585,53 @@ export default function InspectionStatusScreen({ navigation }: InspectionStatusS
 }
 
 const styles = StyleSheet.create({
+  payOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  payCard: {
+    width: '100%',
+    maxWidth: 420,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 24,
+    alignItems: 'center',
+  },
+  payClose: { position: 'absolute', top: 14, right: 14, padding: 4 },
+  payTitle: { fontSize: 18, fontWeight: '700', color: '#1A1A1A', marginTop: 10 },
+  paySubtitle: { fontSize: 13, color: '#6B7280', marginTop: 2, textAlign: 'center' },
+  payBody: { fontSize: 13, color: '#374151', textAlign: 'center', lineHeight: 19, marginTop: 12 },
+  payInput: {
+    width: '100%',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 14,
+    color: '#1A1A1A',
+    backgroundColor: '#F9FAFB',
+    marginTop: 12,
+  },
+  payButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    width: '100%',
+    backgroundColor: '#635BFF',
+    borderRadius: 12,
+    paddingVertical: 14,
+    marginTop: 12,
+  },
+  paySecure: { fontSize: 12, color: '#9CA3AF', marginTop: 10 },
+  payWaitingRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14 },
+  payWaitingText: { fontSize: 13, fontWeight: '600', color: '#0E7490' },
+  payLink: { fontSize: 13, fontWeight: '700', color: '#0E7490', marginTop: 14 },
+  payLinkMuted: { fontSize: 12, color: '#6B7280', marginTop: 10 },
   container: { flex: 1, backgroundColor: '#E4F0F6' },
   modalOverlay: { flex: 1, flexDirection: 'row' },
   sidebarContainer: { width: '75%', maxWidth: 300, backgroundColor: '#FFFFFF' },
