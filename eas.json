@@ -11,24 +11,15 @@
     },
     "preview": {
       "distribution": "internal",
-      "channel": "preview",
-      "android": {
-        "gradleCommand": ":app:assemblePlayRelease"
-      }
+      "channel": "preview"
     },
     "production": {
       "autoIncrement": true,
-      "channel": "production",
-      "android": {
-        "gradleCommand": ":app:bundlePlayRelease"
-      }
+      "channel": "production"
     },
     "amazon": {
       "autoIncrement": true,
-      "channel": "production",
-      "android": {
-        "gradleCommand": ":app:bundleAmazonRelease"
-      }
+      "channel": "production"
     }
   },
   "submit": {
