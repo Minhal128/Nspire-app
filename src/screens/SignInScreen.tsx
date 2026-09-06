@@ -32,6 +32,16 @@ interface SignInScreenProps {
   route: SignInScreenRouteProp;
 }
 
+// App Store review demo account: allowed into ANY portal, routed by the
+// portal the reviewer selected on the Boarding screen (not the DB role).
+// Must exist on the backend and return data for all portal endpoints.
+const DEMO_REVIEW_EMAIL = "appreview@nspire.ai";
+const PORTAL_ROUTE: { [key: string]: string } = {
+  Inspector: "Dashboard",
+  Management: "ManagementDashboard",
+  Other: "OrderDashboard",
+};
+
 export default function SignInScreen({ navigation, route }: SignInScreenProps) {
   useWarmUpBrowser();
 
@@ -73,8 +83,6 @@ export default function SignInScreen({ navigation, route }: SignInScreenProps) {
       setPasswordError("Password is required");
     } else if (value.length < 8) {
       setPasswordError("Password must be at least 8 characters");
-    } else if (value.length > 15) {
-      setPasswordError("Password must be maximum 15 characters");
     } else {
       setPasswordError("");
     }
@@ -134,6 +142,18 @@ export default function SignInScreen({ navigation, route }: SignInScreenProps) {
       });
 
       if (response.success) {
+        // App Store review demo account: skip the role gate and go straight to
+        // the portal the reviewer picked, so one login can exercise all portals.
+        const isDemoReviewer =
+          email.trim().toLowerCase() === DEMO_REVIEW_EMAIL;
+        if (isDemoReviewer) {
+          navigation.reset({
+            index: 0,
+            routes: [{ name: (PORTAL_ROUTE[userType || "Inspector"] || "Dashboard") as any }],
+          });
+          return;
+        }
+
         // Verify user role matches the portal they're trying to access
         const userRole = response.user.role;
         const allowedRolesMap: { [key: string]: string[] } = {
@@ -617,10 +637,8 @@ export default function SignInScreen({ navigation, route }: SignInScreenProps) {
                   onBlur={() => validatePassword(password)}
                   secureTextEntry={!showPassword}
                   editable={!loading}
-                  maxLength={15}
                   textContentType="password"
                   autoComplete="password"
-                  contextMenuHidden={true}
                 />
                 <TouchableOpacity
                   onPress={() => setShowPassword(!showPassword)}
