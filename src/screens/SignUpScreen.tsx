@@ -110,8 +110,6 @@ export default function SignUpScreen({ navigation, route }: SignUpScreenProps) {
       setPasswordError("Password is required");
     } else if (value.length < 8) {
       setPasswordError("Password must be at least 8 characters");
-    } else if (value.length > 15) {
-      setPasswordError("Password must be maximum 15 characters");
     } else if (!passwordRegex.test(value)) {
       setPasswordError("Must contain uppercase, lowercase, and number");
     } else {
@@ -377,10 +375,8 @@ export default function SignUpScreen({ navigation, route }: SignUpScreenProps) {
                   onChangeText={handlePasswordChange}
                   onBlur={() => validatePassword(password)}
                   secureTextEntry={!showPassword}
-                  maxLength={15}
                   textContentType="newPassword"
                   autoComplete="password-new"
-                  contextMenuHidden={true}
                 />
                 <TouchableOpacity
                   onPress={() => setShowPassword(!showPassword)}
@@ -408,10 +404,8 @@ export default function SignUpScreen({ navigation, route }: SignUpScreenProps) {
                   onChangeText={handleConfirmPasswordChange}
                   onBlur={() => validateConfirmPassword(confirmPassword)}
                   secureTextEntry={!showConfirmPassword}
-                  maxLength={15}
                   textContentType="newPassword"
                   autoComplete="password-new"
-                  contextMenuHidden={true}
                 />
                 <TouchableOpacity
                   onPress={() => setShowConfirmPassword(!showConfirmPassword)}
