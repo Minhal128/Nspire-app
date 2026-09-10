@@ -531,6 +531,13 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
             />
           }
         >
+          <TouchableOpacity
+            style={styles.addButtonFull}
+            onPress={() => navigation.navigate('AddProperty')}
+          >
+            <Text style={styles.addButtonText}>Add New Property</Text>
+          </TouchableOpacity>
+
           {/* Your Properties card (web parity) */}
           <View style={styles.propertiesCard}>
             <View style={styles.cardHeader}>
@@ -541,18 +548,12 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
                     size={22}
                     color="#0E7490"
                   />
-                  <Text style={styles.cardTitle}>Your Properties</Text>
+                  <Text style={styles.cardTitle} numberOfLines={1}>Your Properties</Text>
                 </TouchableOpacity>
               ) : (
-                <Text style={styles.cardTitle}>Your Properties</Text>
+                <Text style={styles.cardTitle} numberOfLines={1}>Your Properties</Text>
               )}
               <Text style={styles.cardCount}>{filteredProperties.length} PROPERTIES</Text>
-              <TouchableOpacity
-                style={styles.addButton}
-                onPress={() => navigation.navigate('AddProperty')}
-              >
-                <Text style={styles.addButtonText}>Add New Property</Text>
-              </TouchableOpacity>
             </View>
 
             {selectedProperties.size > 0 && (
@@ -963,20 +964,23 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#9CA3AF',
     letterSpacing: 0.5,
+    flexShrink: 0,
   },
   scrollView: {
     flex: 1,
   },
-  addButton: {
+  addButtonFull: {
     backgroundColor: '#F94A5C',
-    borderRadius: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
+    borderRadius: 8,
+    paddingVertical: 15,
+    marginHorizontal: 16,
+    marginTop: 16,
   },
   addButtonText: {
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '700',
+    textAlign: 'center',
   },
   propertyList: {
     paddingTop: 14,

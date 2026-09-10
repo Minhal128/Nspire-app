@@ -726,10 +726,10 @@ export default function DashboardScreen({
                     size={22}
                     color="#0E7490"
                   />
-                  <Text style={styles.selectAllText}>Your Properties</Text>
+                  <Text style={styles.selectAllText} numberOfLines={1}>Your Properties</Text>
                 </TouchableOpacity>
               ) : (
-                <Text style={styles.selectAllText}>Your Properties</Text>
+                <Text style={styles.selectAllText} numberOfLines={1}>Your Properties</Text>
               )}
               <View style={styles.countPill}>
                 <Text style={styles.countPillText}>
@@ -909,11 +909,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    flexShrink: 1,
   },
   selectAllText: {
     fontSize: 18,
     fontWeight: '700',
     color: '#0F2942',
+    flexShrink: 1,
   },
   propertyCardHeader: {
     flexDirection: 'row',
@@ -988,6 +990,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingHorizontal: 12,
     paddingVertical: 6,
+    flexShrink: 0,
   },
   countPillText: {
     fontSize: 12,
