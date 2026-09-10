@@ -5,7 +5,7 @@
 
 import {
     SEVERITY_LEVELS,
-    POSSIBLE_SCORE,
+    UNIT_TOTAL_POSSIBLE_POINTS,
     parsePointsFormula,
     LIFE_THREATENING_60_POINTS,
     LIFE_THREATENING_30_POINTS,
@@ -98,8 +98,8 @@ export function calculateUnitInspectionScore(input: UnitScoringInput): UnitScori
     // Max Pts Lost = X / n (same as pointsLost)
     const maxPtsLost = basePoints / n;
 
-    // Score = 25 - Pts Lost
-    const score = POSSIBLE_SCORE - pointsLost;
+    // Score = 50 - Pts Lost (Unit inspections score out of 50, not 25)
+    const score = UNIT_TOTAL_POSSIBLE_POINTS - pointsLost;
 
     return {
         allSample: n,
@@ -107,7 +107,7 @@ export function calculateUnitInspectionScore(input: UnitScoringInput): UnitScori
         pointsLostRaw: parseFloat(pointsLostRaw.toFixed(2)),
         pointsLost: parseFloat(pointsLost.toFixed(2)),
         maxPtsLost: parseFloat(maxPtsLost.toFixed(2)),
-        possibleScore: POSSIBLE_SCORE,
+        possibleScore: UNIT_TOTAL_POSSIBLE_POINTS,
         score: parseFloat(score.toFixed(2)),
         severity: severity,
     };
