@@ -2255,17 +2255,22 @@ const styles = StyleSheet.create({
   reportRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: 12,
   },
   reportLabel: {
     fontSize: 14,
     fontWeight: '600',
     color: '#1F2937',
+    flexShrink: 0,
   },
   reportValue: {
     fontSize: 14,
     color: '#374151',
+    flex: 1,
+    flexShrink: 1,
+    textAlign: 'right',
+    marginLeft: 12,
   },
   complianceContainer: {
     flexDirection: 'row',

@@ -919,7 +919,7 @@ const styles = StyleSheet.create({
   },
   propertyCardHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: 10,
     marginBottom: 6,
   },
@@ -1026,6 +1026,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#1F2937",
     marginBottom: 10,
+    flexShrink: 1,
   },
   propertyDetail: {
     fontSize: 14,

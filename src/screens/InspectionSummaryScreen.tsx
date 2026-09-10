@@ -1616,7 +1616,7 @@ const styles = StyleSheet.create({
   deficiencyHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: 12,
   },
   deficiencyItemName: {
@@ -1624,11 +1624,15 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#999999',
     textTransform: 'uppercase',
+    flex: 1,
+    flexShrink: 1,
+    marginRight: 8,
   },
   severityBadge: {
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
+    flexShrink: 0,
   },
   lifethreateningBadge: {
     backgroundColor: '#DC2626',
