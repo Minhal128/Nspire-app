@@ -33,6 +33,7 @@ import { RootStackParamList } from '../types/navigation';
 import { Ionicons } from '@expo/vector-icons';
 import { OUTSIDE_ITEMS, INSIDE_ITEMS, UNIT_ITEMS, UNIT_LOCATIONS } from '../data/inspectionData';
 import { getCompletedUnits } from '../utils/unitInspectionStorage';
+import authService from '../services/authService';
 
 type InspectionCategoriesScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -110,7 +111,24 @@ const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
   const [outsideProgress, setOutsideProgress] = useState(0);
   const [insideProgress, setInsideProgress] = useState(0);
   const [unitsProgress, setUnitsProgress] = useState(0);
+  // Web shows a "View Deficiency Summary (n)" pill per section; n is the number
+  // of items answered OD in that section's response map.
+  const [outsideDeficiencies, setOutsideDeficiencies] = useState(0);
+  const [insideDeficiencies, setInsideDeficiencies] = useState(0);
+  const [unitsDeficiencies, setUnitsDeficiencies] = useState(0);
+  // Web counts the UNITS section in whole units ("(0/1)"), not in answered
+  // items — the item-level tally still drives the other sections.
+  const [unitsCompleted, setUnitsCompleted] = useState(0);
   const [resolvedPropertyId, setResolvedPropertyId] = useState<string>('');
+  const [userLabel, setUserLabel] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    authService.getStoredUser()
+      .then((user) => { if (active) setUserLabel(user?.fullName || ''); })
+      .catch(() => {});
+    return () => { active = false; };
+  }, []);
   const cachedUnitStatusMapRef = useRef<Record<string, boolean>>({});
   const unitStatusRequestRef = useRef<{
     requestKey: string;
@@ -570,13 +588,20 @@ const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
       return isInsideInspectionTypeToken(inspectionTypeToken);
     });
 
+    const countOD = (responses?: Record<string, any> | null) =>
+      Object.values(responses || {}).filter((r) => r === 'OD').length;
+
     setOutsideProgress(outsideEntry ? Object.keys(outsideEntry[1] || {}).length : 0);
     setInsideProgress(insideEntry ? Object.keys(insideEntry[1] || {}).length : 0);
+    setOutsideDeficiencies(countOD(outsideEntry?.[1]));
+    setInsideDeficiencies(countOD(insideEntry?.[1]));
 
     const unitEntries = progressEntries.filter(([key]) => {
       const inspectionTypeToken = extractInspectionTypeTokenFromProgressKey(key, keyPrefix);
       return isUnitInspectionTypeToken(inspectionTypeToken);
     });
+
+    setUnitsDeficiencies(unitEntries.reduce((sum, [, responses]) => sum + countOD(responses), 0));
 
     let totalUn = 0;
     const selectedUnitSet = new Set(
@@ -619,6 +644,9 @@ const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
     );
 
     setUnitsProgress(effectiveUnitProgress);
+    setUnitsCompleted(
+      UNIT_ITEMS.length > 0 ? Math.floor(effectiveUnitProgress / UNIT_ITEMS.length) : 0
+    );
   }, [buildingId, selectedUnits, getPropertyIdentifier, totalUnitPossible]);
 
   useFocusEffect(
@@ -819,24 +847,17 @@ const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#1A1A1A" />
+      {/* Mobile web parity: teal NSPIRE INSPECTION bar carries the back arrow,
+          then the Building Unique ID row with its pencil and the Summary pill. */}
+      <View style={styles.nspireBar}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.nspireBack}>
+          <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Inspection Categories</Text>
-        <TouchableOpacity
-          style={styles.summaryButton}
-          onPress={() => navigation.navigate('InspectionSummary' as any, {
-            property,
-            selectedUnits,
-            buildingId,
-            inspectionData: null,
-          })}
-        >
-          <Ionicons name="document-text-outline" size={14} color="#FFFFFF" />
-          <Text style={styles.summaryButtonText}>Summary</Text>
-        </TouchableOpacity>
+        <View style={styles.nspirePill}>
+          <Ionicons name="shield-checkmark" size={20} color="#006795" />
+          <Text style={styles.nspirePillText}>NSPIRE INSPECTION</Text>
+        </View>
+        <Text style={styles.nspireUser} numberOfLines={1}>{userLabel}</Text>
       </View>
 
       <ScrollView
@@ -844,101 +865,91 @@ const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        {/* Building Info Card */}
-        <View style={styles.buildingCard}>
-          <View style={styles.buildingHeader}>
-            <Ionicons name="business-outline" size={24} color="#FFFFFF" />
-            <Text style={styles.buildingTitle}>BUILDING NO: {buildingLabel}</Text>
+        <View style={styles.buildingRow}>
+          <View style={styles.buildingRowLeft}>
+            <Text style={styles.buildingTitle}>BUILDING UNIQUE ID: {buildingLabel}</Text>
+            <TouchableOpacity onPress={openBuildingEditModal} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Ionicons name="create-outline" size={18} color="#006795" />
+            </TouchableOpacity>
           </View>
+          <TouchableOpacity
+            style={styles.summaryButton}
+            onPress={() => navigation.navigate('InspectionSummary' as any, {
+              property,
+              selectedUnits,
+              buildingId,
+              inspectionData: null,
+            })}
+          >
+            <Ionicons name="document-text-outline" size={14} color="#FFFFFF" />
+            <Text style={styles.summaryButtonText}>SUMMARY</Text>
+          </TouchableOpacity>
         </View>
 
-
-        {/* OUTSIDE Section */}
-        <TouchableOpacity
-          style={styles.categoryCard}
-          onPress={handleOutsidePress}
-          activeOpacity={0.7}
-        >
-          <View style={styles.categoryContent}>
-            <View style={styles.categoryIconContainer}>
-              <Ionicons name="rainy-outline" size={28} color="#0E7490" />
-            </View>
-            <View style={styles.categoryInfo}>
-              <Text style={styles.categoryTitle}>OUTSIDE</Text>
-              <Text style={styles.categorySubtitle}>
-                Areas affected by rain, snow, wind
-              </Text>
-              <View style={styles.progressContainer}>
-                <View style={styles.progressBar}>
-                  <View style={[styles.progressFill, { width: `${Math.min(100, Math.round((outsideProgress / OUTSIDE_ITEMS.length) * 100))}%` }]} />
+        {[
+          {
+            title: 'OUTSIDE (AREAS AFFECTED BY RAIN, SNOW, WIND)',
+            done: outsideProgress,
+            total: OUTSIDE_ITEMS.length,
+            deficiencies: outsideDeficiencies,
+            onPress: handleOutsidePress,
+          },
+          {
+            title: 'INSIDE (INTERIOR COMMON AREA, UTILITY CLOSET, MECHANICAL ROOMS)',
+            done: insideProgress,
+            total: INSIDE_ITEMS.length,
+            deficiencies: insideDeficiencies,
+            onPress: handleInsidePress,
+          },
+          {
+            title: 'UNITS (INDIVIDUAL UNIT INSPECTIONS)',
+            done: unitsCompleted,
+            total: selectedUnits?.length || 0,
+            deficiencies: unitsDeficiencies,
+            onPress: handleUnitsPress,
+          },
+        ].map((section) => {
+          const pct = section.total > 0
+            ? Math.min(100, Math.round((section.done / section.total) * 100))
+            : 0;
+          return (
+            <View key={section.title} style={styles.categoryCard}>
+              <TouchableOpacity
+                style={styles.categoryInner}
+                onPress={section.onPress}
+                activeOpacity={0.7}
+              >
+                <View style={styles.categoryInfo}>
+                  <Text style={styles.categoryTitle}>{section.title}</Text>
+                  <View style={styles.categoryCountRow}>
+                    <Text style={styles.categoryCount}>({section.done}/{section.total})</Text>
+                    <Text style={styles.categoryCount}>{pct}% Completed</Text>
+                  </View>
+                  <View style={styles.progressBar}>
+                    <View style={[styles.progressFill, { width: `${pct}%` }]} />
+                  </View>
+                  {section.deficiencies > 0 && (
+                    <TouchableOpacity
+                      style={styles.deficiencyButton}
+                      onPress={() => navigation.navigate('InspectionSummary' as any, {
+                        property,
+                        selectedUnits,
+                        buildingId,
+                        inspectionData: null,
+                      })}
+                    >
+                      <Ionicons name="document-text-outline" size={12} color="#FFFFFF" />
+                      <Text style={styles.deficiencyButtonText}>
+                        View Deficiency Summary ({section.deficiencies})
+                      </Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
-                <Text style={styles.progressText}>
-                  {outsideProgress}/{OUTSIDE_ITEMS.length} • {Math.min(100, Math.round((outsideProgress / OUTSIDE_ITEMS.length) * 100))}% Complete
-                </Text>
-              </View>
+                <Ionicons name="chevron-down" size={24} color="#006795" />
+              </TouchableOpacity>
             </View>
-            <Ionicons name="chevron-forward" size={24} color="#666666" />
-          </View>
-        </TouchableOpacity>
-
-        {/* INSIDE Section */}
-        <TouchableOpacity
-          style={styles.categoryCard}
-          onPress={handleInsidePress}
-          activeOpacity={0.7}
-        >
-          <View style={styles.categoryContent}>
-            <View style={styles.categoryIconContainer}>
-              <Ionicons name="home-outline" size={28} color="#0E7490" />
-            </View>
-            <View style={styles.categoryInfo}>
-              <Text style={styles.categoryTitle}>INSIDE</Text>
-              <Text style={styles.categorySubtitle}>
-                Interior common area, utility closet, mechanical rooms
-              </Text>
-              <View style={styles.progressContainer}>
-                <View style={styles.progressBar}>
-                  <View style={[styles.progressFill, { width: `${Math.min(100, Math.round((insideProgress / INSIDE_ITEMS.length) * 100))}%` }]} />
-                </View>
-                <Text style={styles.progressText}>
-                  {insideProgress}/{INSIDE_ITEMS.length} • {Math.min(100, Math.round((insideProgress / INSIDE_ITEMS.length) * 100))}% Complete
-                </Text>
-              </View>
-            </View>
-            <Ionicons name="chevron-forward" size={24} color="#666666" />
-          </View>
-        </TouchableOpacity>
-
-        {/* UNITS Section */}
-        <TouchableOpacity
-          style={styles.categoryCard}
-          onPress={handleUnitsPress}
-          activeOpacity={0.7}
-        >
-          <View style={styles.categoryContent}>
-            <View style={styles.categoryIconContainer}>
-              <Ionicons name="grid-outline" size={28} color="#0E7490" />
-            </View>
-            <View style={styles.categoryInfo}>
-              <Text style={styles.categoryTitle}>UNITS</Text>
-              <Text style={styles.categorySubtitle}>
-                Individual unit inspections
-              </Text>
-              <View style={styles.progressContainer}>
-                <View style={styles.progressBar}>
-                  {(() => {
-                    const pct = Math.min(100, Math.round((unitsProgress / totalUnitPossible) * 100)) || 0;
-                    return <View style={[styles.progressFill, { width: `${pct}%` }]} />;
-                  })()}
-                </View>
-                <Text style={styles.progressText}>
-                  {unitsProgress}/{totalUnitPossible} • {Math.min(100, Math.round((unitsProgress / totalUnitPossible) * 100)) || 0}% Complete
-                </Text>
-              </View>
-            </View>
-            <Ionicons name="chevron-forward" size={24} color="#666666" />
-          </View>
-        </TouchableOpacity>
+          );
+        })}
       </ScrollView>
 
       {/* Edit Building Name Modal */}
@@ -990,46 +1001,116 @@ const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
 };
 
 const styles = StyleSheet.create({
+  // --- Mobile web (/dashboard/inspection-category) parity ---
+  nspireBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#0D7FA8',
+    borderRadius: 14,
+    margin: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 12,
+  },
+  nspireBack: {
+    padding: 4,
+  },
+  nspirePill: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+  },
+  nspirePillText: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: '#006795',
+    letterSpacing: -0.3,
+  },
+  nspireUser: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    maxWidth: 70,
+  },
+  buildingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+    gap: 8,
+  },
+  buildingRowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flexShrink: 1,
+  },
+  categoryCard: {
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: '#DBEAFE',
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
+  categoryInner: {
+    backgroundColor: '#EBF5FF',
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  categoryCountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    marginBottom: 8,
+  },
+  categoryCount: {
+    fontSize: 11,
+    fontWeight: '900',
+    color: '#006795',
+  },
+  deficiencyButton: {
+    marginTop: 8,
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#F84B5F',
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  deficiencyButtonText: {
+    fontSize: 11,
+    fontWeight: '900',
+    color: '#FFFFFF',
+  },
+
   container: {
     flex: 1,
     backgroundColor: '#F5F7FA',
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 12,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5E5',
-  },
-  backButton: {
-    padding: 4,
-  },
   summaryButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 6,
     backgroundColor: '#006795',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 14,
   },
   summaryButtonText: {
+    fontSize: 10,
+    fontWeight: '900',
     color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '800',
-    textTransform: 'uppercase',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1A1A1A',
-  },
-  headerRight: {
-    width: 32,
   },
   scrollView: {
     flex: 1,
@@ -1038,36 +1119,11 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 32,
   },
-  buildingCard: {
-    backgroundColor: '#0E7490',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  buildingHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-    gap: 8,
-  },
-  buildingEditBtn: {
-    marginLeft: 'auto',
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 14,
-    padding: 6,
-  },
   buildingTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    textShadowColor: 'rgba(0, 0, 0, 0.1)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#111827',
+    flexShrink: 1,
   },
   unitsInfo: {
     fontSize: 14,
@@ -1076,64 +1132,26 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginLeft: 32,
   },
-  categoryCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  categoryContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  categoryIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: '#E0F2FE',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   categoryInfo: {
     flex: 1,
   },
   categoryTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1A1A1A',
+    fontSize: 14,
+    fontWeight: '900',
+    color: '#006795',
     marginBottom: 4,
-    letterSpacing: 0.5,
-  },
-  categorySubtitle: {
-    fontSize: 13,
-    color: '#666666',
-    marginBottom: 8,
-    lineHeight: 18,
-  },
-  progressContainer: {
-    gap: 6,
+    letterSpacing: -0.3,
   },
   progressBar: {
-    height: 6,
-    backgroundColor: '#E5E5E5',
-    borderRadius: 3,
+    height: 8,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 999,
     overflow: 'hidden',
   },
   progressFill: {
-    height: '100%',
-    backgroundColor: '#0E7490',
-    borderRadius: 3,
-  },
-  progressText: {
-    fontSize: 12,
-    color: '#999999',
-    fontWeight: '500',
+    height: 8,
+    backgroundColor: '#006795',
+    borderRadius: 999,
   },
   // Modal styles
   modalOverlay: {

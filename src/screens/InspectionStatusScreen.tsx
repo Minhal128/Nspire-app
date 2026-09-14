@@ -263,6 +263,16 @@ export default function InspectionStatusScreen({ navigation }: InspectionStatusS
     if (!ok && payment.error) Alert.alert('Error', payment.error);
   };
 
+  /** Web lands a locked report on the HUD progress page, which carries the
+   *  unlock + View Deficiency actions. Nothing reached NSPIREReport before. */
+  const handleViewReport = (property: PropertyWithInspection) => {
+    navigation.navigate('NSPIREReport' as never, {
+      report: buildReport(property),
+      inspectionData: property.inspection,
+      property,
+    } as never);
+  };
+
   const handleStartInspection = (property: PropertyWithInspection) => {
     navigation.navigate('BuildingInspection' as never, {
       property,
@@ -550,13 +560,22 @@ export default function InspectionStatusScreen({ navigation }: InspectionStatusS
                               </TouchableOpacity>
                             </>
                           ) : (
-                            <TouchableOpacity
-                              style={[styles.actionButton, styles.unlockButton]}
-                              onPress={() => handlePayToUnlock(property)}
-                            >
-                              <Ionicons name="lock-closed-outline" size={16} color="#FFFFFF" />
-                              <Text style={styles.actionButtonText}>Pay to Unlock Report</Text>
-                            </TouchableOpacity>
+                            <>
+                              <TouchableOpacity
+                                style={[styles.actionButton, styles.unlockButton]}
+                                onPress={() => handlePayToUnlock(property)}
+                              >
+                                <Ionicons name="lock-closed-outline" size={16} color="#FFFFFF" />
+                                <Text style={styles.actionButtonText}>Pay to Unlock Report</Text>
+                              </TouchableOpacity>
+                              <TouchableOpacity
+                                style={[styles.actionButton, styles.startButton]}
+                                onPress={() => handleViewReport(property)}
+                              >
+                                <Ionicons name="document-text-outline" size={16} color="#FFFFFF" />
+                                <Text style={styles.actionButtonText}>View Report</Text>
+                              </TouchableOpacity>
+                            </>
                           )
                         ) : (
                           <TouchableOpacity

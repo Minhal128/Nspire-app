@@ -16,13 +16,11 @@ interface AppHeaderProps {
   onNotificationsPress: () => void;
 }
 
-const initialsOf = (name?: string) =>
-  (name || 'U')
-    .split(/[\s@.]+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0].toUpperCase())
-    .join('');
+// Web (/dashboard) labels the avatar off the email's local part, not the full
+// name: bapofi6313@… renders "BA", never "TU". ui-avatars defaults to length=2,
+// so it's the first two characters, not one per word.
+const initialsOf = (email?: string) =>
+  (email || 'U').split('@')[0].slice(0, 2).toUpperCase();
 
 /** Teal bar shared by every portal screen (web parity). */
 export default function AppHeader({ onMenuPress, onNotificationsPress }: AppHeaderProps) {
@@ -33,7 +31,7 @@ export default function AppHeader({ onMenuPress, onNotificationsPress }: AppHead
     authService
       .getStoredUser()
       .then((user) => {
-        if (active) setInitials(initialsOf(user?.fullName || user?.email));
+        if (active) setInitials(initialsOf(user?.email));
       })
       .catch(() => {});
     return () => {

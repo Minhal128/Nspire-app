@@ -100,9 +100,6 @@ export default function DashboardScreen({
   // Web parity: per-property completion percentage
   const [propertyProgress, setPropertyProgress] = useState<Record<string, number>>({});
 
-  // Web parity: multi-select + bulk delete
-  const [selectedProperties, setSelectedProperties] = useState<Set<string>>(new Set());
-
   // Load user and properties on mount
   useEffect(() => {
     loadInitialData();
@@ -213,53 +210,7 @@ export default function DashboardScreen({
     }
   };
 
-  const handleSelectAll = () => {
-    if (selectedProperties.size === properties.length) {
-      setSelectedProperties(new Set());
-    } else {
-      setSelectedProperties(new Set(properties.map(p => p._id || p.id)));
-    }
-  };
 
-  const handleSelectProperty = (propertyId: string) => {
-    setSelectedProperties(prev => {
-      const next = new Set(prev);
-      if (next.has(propertyId)) next.delete(propertyId);
-      else next.add(propertyId);
-      return next;
-    });
-  };
-
-  const handleBulkDelete = () => {
-    if (selectedProperties.size === 0) {
-      Alert.alert('No Selection', 'Please select properties to delete');
-      return;
-    }
-    const count = selectedProperties.size;
-    Alert.alert(
-      'Remove Properties',
-      `Are you sure you want to remove ${count} ${count === 1 ? 'property' : 'properties'}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Remove',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const response = await propertyService.bulkDelete(Array.from(selectedProperties));
-              if (response.success) {
-                Alert.alert('Success', response.message || `${count} ${count === 1 ? 'property' : 'properties'} removed successfully`);
-                setSelectedProperties(new Set());
-                await fetchProperties();
-              }
-            } catch (error: any) {
-              Alert.alert('Error', error.message || 'Failed to remove properties');
-            }
-          },
-        },
-      ]
-    );
-  };
 
   // Refresh properties when the screen gains focus (so edits/updates reflect immediately)
   useFocusEffect(
@@ -310,6 +261,11 @@ export default function DashboardScreen({
       navigation.navigate("Boarding");
     }
   };
+
+  // Web parity: the dashboard ACTIONS column is labelled by progress, not by a
+  // fixed "Inspection Status"/"Initiate" pair.
+  const statusLabel = (progress: number) =>
+    progress >= 100 ? 'Completed' : progress > 0 ? 'In Progress' : 'Not Started';
 
   const handleEditPress = (property: Property) => {
     setSelectedProperty(property);
@@ -482,15 +438,18 @@ export default function DashboardScreen({
     setSelectedUnitOption("");
   };
 
-  const handleRemoveProperty = async () => {
-    if (!selectedProperty?._id) {
+  // Web parity: the dashboard row has its own Remove, so the target is passed
+  // in; the action modal still calls it with no arg and hits selectedProperty.
+  const handleRemoveProperty = async (target?: Property) => {
+    const victim = target || selectedProperty;
+    if (!victim?._id) {
       setActionModalVisible(false);
       return;
     }
 
     Alert.alert(
       'Remove Property',
-      `Are you sure you want to remove "${selectedProperty.name}"?`,
+      `Are you sure you want to remove "${victim.name}"?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -498,7 +457,7 @@ export default function DashboardScreen({
           style: 'destructive',
           onPress: async () => {
             try {
-              const response = await propertyService.deleteProperty(selectedProperty._id!);
+              const response = await propertyService.deleteProperty(victim._id!);
               if (response.success) {
                 Alert.alert('Success', 'Property removed successfully');
                 await fetchProperties();
@@ -672,7 +631,7 @@ export default function DashboardScreen({
 
             <TouchableOpacity
               style={[styles.actionButton, styles.removeButton]}
-              onPress={handleRemoveProperty}
+              onPress={() => handleRemoveProperty()}
             >
               <Text
                 style={[styles.actionButtonText, styles.removeButtonText]}
@@ -718,34 +677,15 @@ export default function DashboardScreen({
 
           {/* Your Properties card (web parity) */}
           <View style={styles.propertiesCard}>
+            {/* Mobile web shows no select-all checkbox and no bulk delete. */}
             <View style={styles.listHeaderRow}>
-              {properties.length > 0 ? (
-                <TouchableOpacity style={styles.selectAllTouch} onPress={handleSelectAll}>
-                  <Ionicons
-                    name={selectedProperties.size === properties.length ? 'checkbox' : 'square-outline'}
-                    size={22}
-                    color="#0E7490"
-                  />
-                  <Text style={styles.selectAllText} numberOfLines={1}>Your Properties</Text>
-                </TouchableOpacity>
-              ) : (
-                <Text style={styles.selectAllText} numberOfLines={1}>Your Properties</Text>
-              )}
+              <Text style={styles.selectAllText} numberOfLines={1}>Your Properties</Text>
               <View style={styles.countPill}>
                 <Text style={styles.countPillText}>
-                  {properties.length} {properties.length === 1 ? 'property' : 'properties'}
+                  {properties.length} properties
                 </Text>
               </View>
             </View>
-
-            {selectedProperties.size > 0 && (
-              <TouchableOpacity style={styles.bulkDeleteButton} onPress={handleBulkDelete}>
-                <Ionicons name="trash-outline" size={18} color="#FFFFFF" />
-                <Text style={styles.bulkDeleteButtonText}>
-                  Remove {selectedProperties.size} {selectedProperties.size === 1 ? 'Property' : 'Properties'}
-                </Text>
-              </TouchableOpacity>
-            )}
 
             {loading ? (
               <View style={styles.loadingContainer}>
@@ -758,72 +698,60 @@ export default function DashboardScreen({
                   {properties.map((property) => {
                     const propId = property._id || property.id;
                     const progress = propertyProgress[propId] || 0;
-                    const isSelected = selectedProperties.has(propId);
                     return (
                       <View key={property.id} style={styles.propertyCard}>
+                        {/* Mobile web: chips + status button on one row, then
+                            name, then address — no checkbox, no "Property ID:"
+                            or "Address:" labels. */}
                         <View style={styles.propertyCardHeader}>
+                          <View style={styles.propertyCardHeaderLeft}>
+                            <View style={styles.chipRow}>
+                              <View style={styles.propertyIdChip}>
+                                <Text style={styles.propertyIdChipText}>{property.propertyId}</Text>
+                              </View>
+                              {!!property.state && (
+                                <View style={styles.statePill}>
+                                  <Text style={styles.statePillText}>{property.state}</Text>
+                                </View>
+                              )}
+                            </View>
+                            <Text style={styles.propertyName}>{property.name}</Text>
+                            <Text style={styles.addressText}>{property.address}</Text>
+                          </View>
                           <TouchableOpacity
-                            onPress={() => handleSelectProperty(propId)}
-                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            style={styles.statusButton}
+                            onPress={() => handleEditPress(property)}
                           >
-                            <Ionicons
-                              name={isSelected ? 'checkbox' : 'square-outline'}
-                              size={22}
-                              color={isSelected ? '#0E7490' : '#9CA3AF'}
-                            />
+                            <Text style={styles.statusButtonText}>{statusLabel(progress)}</Text>
                           </TouchableOpacity>
-                          <Text style={styles.propertyName}>{property.name}</Text>
                         </View>
-                        <Text style={styles.propertyDetail}>
-                          Property ID:{" "}
-                          <Text style={styles.propertyId}>{property.propertyId}</Text>
-                        </Text>
-                        <Text style={styles.propertyDetail}>
-                          Address:{" "}
-                          <Text style={styles.addressLink}>{property.address}</Text>
-                        </Text>
+
                         <View style={styles.propertyMetaGrid}>
-                          <View style={styles.propertyMetaCell}>
-                            <Text style={styles.propertyMetaLabel}>City/Area</Text>
-                            <Text style={styles.propertyMetaValue}>{property.city || '-'}</Text>
-                          </View>
-                          <View style={styles.propertyMetaCell}>
-                            <Text style={styles.propertyMetaLabel}>State/Province</Text>
-                            <Text style={styles.propertyMetaValue}>{property.state || '-'}</Text>
-                          </View>
-                          <View style={styles.propertyMetaCell}>
-                            <Text style={styles.propertyMetaLabel}>Postal Code</Text>
-                            <Text style={styles.propertyMetaValue}>{property.zipCode || '-'}</Text>
-                          </View>
-                          <View style={styles.propertyMetaCell}>
-                            <Text style={styles.propertyMetaLabel}>Buildings</Text>
-                            <Text style={styles.propertyMetaValue}>{property.buildings}</Text>
-                          </View>
-                          <View style={styles.propertyMetaCell}>
-                            <Text style={styles.propertyMetaLabel}>Units</Text>
-                            <Text style={styles.propertyMetaValue}>{property.units}</Text>
+                          {[
+                            ['State/Province', property.state || '-', false],
+                            ['City/Area', property.city || '-', false],
+                            ['Postal Code', property.zipCode || '-', true],
+                            ['Buildings', String(property.buildings), true],
+                            ['Units', String(property.units), true],
+                          ].map(([label, value, large]) => (
+                            <View key={label as string} style={styles.propertyMetaCell}>
+                              <Text style={styles.propertyMetaLabel}>{label as string}</Text>
+                              <Text style={[styles.propertyMetaValue, !!large && styles.propertyMetaValueLarge]}>
+                                {value as string}
+                              </Text>
+                            </View>
+                          ))}
+
+                          <View style={styles.progressBlock}>
+                            <View style={styles.progressLabelRow}>
+                              <Text style={styles.progressLabel}>Progress</Text>
+                              <Text style={styles.progressPercent}>{progress} %</Text>
+                            </View>
+                            <View style={styles.progressTrack}>
+                              <View style={[styles.progressFill, { width: (progress + '%') as any }]} />
+                            </View>
                           </View>
                         </View>
-
-                        {/* Progress (web parity) */}
-                        <View style={styles.progressBlock}>
-                          <View style={styles.progressLabelRow}>
-                            <Text style={styles.propertyMetaLabel}>Progress</Text>
-                            <Text style={styles.progressPercent}>{progress}%</Text>
-                          </View>
-                          <View style={styles.progressTrack}>
-                            <View style={[styles.progressFill, { width: (progress + '%') as any }]} />
-                          </View>
-                        </View>
-
-                        <TouchableOpacity
-                          style={styles.editButton}
-                          onPress={() => handleEditPress(property)}
-                        >
-                          <Text style={styles.editButtonText}>
-                            {progress > 0 ? 'Inspection Status' : 'Initiate'}
-                          </Text>
-                        </TouchableOpacity>
                       </View>
                     );
                   })}
@@ -884,32 +812,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#4B5563',
   },
-  bulkDeleteButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: '#DC2626',
-    paddingVertical: 12,
-    borderRadius: 8,
-    marginTop: 10,
-  },
-  bulkDeleteButtonText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '700',
-  },
   listHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingBottom: 16,
-  },
-  selectAllTouch: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    flexShrink: 1,
   },
   selectAllText: {
     fontSize: 18,
@@ -920,55 +827,81 @@ const styles = StyleSheet.create({
   propertyCardHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',
+    justifyContent: 'space-between',
     gap: 10,
-    marginBottom: 6,
+    marginBottom: 16,
   },
+  propertyCardHeaderLeft: {
+    flex: 1,
+  },
+  chipRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 8,
+  },
+  // Mobile web: <div class="grid grid-cols-2 gap-3"> of bg-gray-50 boxes,
+  // Title-Case labels, with Progress spanning both columns.
   propertyMetaGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginTop: 10,
+    gap: 12,
   },
   propertyMetaCell: {
-    width: '33.33%',
-    paddingVertical: 6,
-    paddingRight: 8,
+    // 2 columns with a 12px gap: (100% - 12) / 2.
+    width: '47.8%',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 10,
+    padding: 8,
   },
   propertyMetaLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#9CA3AF',
-    textTransform: 'uppercase',
-    marginBottom: 2,
+    fontSize: 12,
+    color: '#6B7280',
+    marginBottom: 4,
   },
   propertyMetaValue: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
     color: '#111827',
   },
+  propertyMetaValueLarge: {
+    fontSize: 16,
+  },
   progressBlock: {
-    marginTop: 10,
+    width: '100%',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 10,
+    padding: 12,
+  },
+  progressLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#6B7280',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   progressLabelRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 6,
+    marginBottom: 4,
   },
   progressPercent: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
-    color: '#0E7490',
+    color: '#2563EB',
   },
   progressTrack: {
-    height: 8,
-    borderRadius: 4,
+    height: 10,
+    borderRadius: 999,
     backgroundColor: '#E5E7EB',
     overflow: 'hidden',
   },
   progressFill: {
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#0E7490',
+    height: 10,
+    borderRadius: 999,
+    backgroundColor: '#2563EB',
   },
   container: {
     flex: 1,
@@ -1014,7 +947,8 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   propertyCard: {
-    backgroundColor: "#F8FAFC",
+    // White, so the bg-gray-50 meta boxes inside actually read as boxes.
+    backgroundColor: "#FFFFFF",
     borderRadius: 10,
     borderWidth: 1,
     borderColor: "#E5E7EB",
@@ -1022,10 +956,10 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   propertyName: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "700",
-    color: "#1F2937",
-    marginBottom: 10,
+    color: "#111827",
+    marginBottom: 4,
     flexShrink: 1,
   },
   propertyDetail: {
@@ -1035,25 +969,43 @@ const styles = StyleSheet.create({
   },
 
 
-  propertyId: {
-    color: "#0E7490",
+  // Mobile web chips: <span class="text-blue-600 bg-blue-50 px-2 py-1 rounded">
+  propertyIdChip: {
+    backgroundColor: "#EFF6FF",
+    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  propertyIdChipText: {
+    color: "#2563EB",
     fontWeight: "600",
-  },
-  addressLink: {
-    color: "#0E7490",
-    textDecorationLine: "underline",
-  },
-  editButton: {
-    backgroundColor: "#84CC16",
-    borderRadius: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    marginTop: 15,
-    alignSelf: "flex-start",
-  },
-  editButtonText: {
-    color: "#FFFFFF",
     fontSize: 14,
+  },
+  // <span class="bg-green-100 text-green-800 rounded-full px-2 py-1">
+  statePill: {
+    backgroundColor: "#DCFCE7",
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  statePillText: {
+    color: "#166534",
+    fontSize: 12,
+    fontWeight: "500",
+  },
+  addressText: {
+    fontSize: 14,
+    color: "#4B5563",
+  },
+  statusButton: {
+    backgroundColor: "#006795",
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  statusButtonText: {
+    color: "#FFFFFF",
+    fontSize: 12,
     fontWeight: "600",
   },
   modalOverlay: {

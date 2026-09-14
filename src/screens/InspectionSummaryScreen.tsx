@@ -812,102 +812,103 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        {/* Report Header Card */}
+        {/* Web /dashboard/inspection/summary parity */}
         <View style={styles.reportCard}>
-          <Text style={styles.reportTitle}>INSPIRE INSPECTION REPORT</Text>
+          <Text style={styles.reportTitle}>HUD INSPIRE INSPECTION PROGRESS</Text>
           <Text style={styles.propertyName}>{property.name || 'Golden Town'}</Text>
           <Text style={styles.propertyAddress}>{property.address}</Text>
           <Text style={styles.inspectionInfo}>
             Inspection #{inspectionId} | {inspectionDate}
           </Text>
 
-          {/* Payment Status Badge - Always visible */}
-          <View style={[
-            styles.paymentStatusBadge,
-            isReportUnlocked ? styles.paymentStatusBadgeUnlocked :
-              (checkingUnlock ? styles.paymentStatusBadgeChecking : styles.paymentStatusBadgeLocked)
-          ]}>
-            {isReportUnlocked ? (
-              <>
-                <Ionicons name="checkmark-circle" size={16} color="#10B981" />
-                <Text style={styles.paymentStatusTextUnlocked}>Report Unlocked</Text>
-              </>
-            ) : checkingUnlock ? (
-              <>
-                <ActivityIndicator size="small" color="#0E7490" />
-                <Text style={styles.paymentStatusTextChecking}>Checking payment status...</Text>
-              </>
-            ) : (
-              <>
-                <Ionicons name="lock-closed" size={16} color="#F97316" />
-                <Text style={styles.paymentStatusTextLocked}>Payment required for export</Text>
-              </>
-            )}
+          <View style={styles.hudButtonRow}>
+            <TouchableOpacity
+              style={[styles.hudPill, styles.hudPillTeal]}
+              onPress={() => gateExport('pdf', handleExportPDF)}
+              disabled={exportingPDF}
+            >
+              {exportingPDF ? (
+                <ActivityIndicator color="#FFFFFF" size="small" />
+              ) : (
+                <>
+                  <Ionicons name="lock-closed-outline" size={14} color="#FFFFFF" />
+                  <Text style={styles.hudPillText}>Unlock to Export</Text>
+                </>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.hudPill, styles.hudPillGreen]}
+              onPress={() => gateExport('excel', handleExportExcel)}
+              disabled={exportingExcel}
+            >
+              {exportingExcel ? (
+                <ActivityIndicator color="#FFFFFF" size="small" />
+              ) : (
+                <>
+                  <Ionicons name="clipboard-outline" size={14} color="#FFFFFF" />
+                  <Text style={styles.hudPillText}>Work Order</Text>
+                </>
+              )}
+            </TouchableOpacity>
           </View>
-
           <TouchableOpacity
-            style={styles.exportButton}
-            onPress={() => gateExport('pdf', handleExportPDF)}
-            disabled={exportingPDF}
-          >
-            {exportingPDF ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <>
-                {!isReportUnlocked && <Ionicons name="lock-closed" size={16} color="#FFFFFF" style={{ marginRight: 4 }} />}
-                <Ionicons name="download-outline" size={20} color="#FFFFFF" />
-                <Text style={styles.exportButtonText}>Export PDF</Text>
-              </>
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.htmlButton}
-            onPress={() => gateExport('html', handleExportHTML)}
-            disabled={exportingHTML}
-          >
-            {exportingHTML ? (
-              <ActivityIndicator color="#0E7490" />
-            ) : (
-              <>
-                {!isReportUnlocked && <Ionicons name="lock-closed" size={16} color="#0E7490" style={{ marginRight: 4 }} />}
-                <Ionicons name="code-slash-outline" size={20} color="#0E7490" />
-                <Text style={styles.htmlButtonText}>Export HTML</Text>
-              </>
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.excelButton}
-            onPress={() => gateExport('excel', handleExportExcel)}
-            disabled={exportingExcel}
-          >
-            {exportingExcel ? (
-              <ActivityIndicator color="#217346" />
-            ) : (
-              <>
-                {!isReportUnlocked && <Ionicons name="lock-closed" size={16} color="#217346" style={{ marginRight: 4 }} />}
-                <Ionicons name="grid-outline" size={20} color="#217346" />
-                <Text style={styles.excelButtonText}>Export Excel</Text>
-              </>
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.previewButton}
-            onPress={handlePreviewReport}
-          >
-            <Ionicons name="eye-outline" size={20} color="#0E7490" />
-            <Text style={styles.previewButtonText}>Preview Report</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.continueButton}
+            style={[styles.hudPill, styles.hudPillOrange, styles.hudPillWide]}
             onPress={handleContinueInspection}
           >
-            <Ionicons name="arrow-forward-circle-outline" size={20} color="#FFFFFF" />
-            <Text style={styles.continueButtonText}>Continue Inspection</Text>
+            <Ionicons name="chevron-back" size={14} color="#FFFFFF" />
+            <Text style={[styles.hudPillText, { fontWeight: '700' }]}>CONTINUE INSPECTION</Text>
           </TouchableOpacity>
+        </View>
+
+        {!isReportUnlocked && (
+          <View style={styles.lockedCard}>
+            <View style={styles.lockedHeaderRow}>
+              <Ionicons name="lock-closed" size={16} color="#B45309" />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.lockedTitle}>Report Locked</Text>
+                <Text style={styles.lockedSubtitle}>
+                  {checkingUnlock ? 'Checking payment status...' : 'Pay once to unlock full export access'}
+                </Text>
+              </View>
+            </View>
+            <TouchableOpacity style={styles.unlockPayButton} onPress={() => gateExport('pdf', handleExportPDF)}>
+              <Ionicons name="lock-closed-outline" size={14} color="#FFFFFF" />
+              <Text style={styles.unlockPayButtonText}>Unlock Report · $1</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.viewDeficiencyButton} onPress={handlePreviewReport}>
+              <Ionicons name="mail-outline" size={14} color="#B45309" />
+              <Text style={styles.viewDeficiencyButtonText}>View Deficiency</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        <View style={styles.hudCard}>
+          <Text style={styles.hudHeading}>INSPECTION DATA</Text>
+          <View style={styles.hudHeadingRule} />
+          {[
+            ['Building', property.totalBuildings || property.buildings || 0],
+            ['Unit', property.totalUnits || property.units || 0],
+            ['Site', 1],
+            ['Common Area', 1],
+          ].map(([label, total]) => (
+            <View key={label as string} style={styles.dataBlock}>
+              <Text style={styles.dataBlockTitle}>{label as string}</Text>
+              <View style={styles.dataBlockRow}>
+                <View style={styles.dataBlockCell}>
+                  <Text style={styles.dataBlockLabel}>Property Total</Text>
+                  <Text style={styles.dataBlockValue}>{String(total)}</Text>
+                </View>
+                <View style={styles.dataBlockCell}>
+                  <Text style={styles.dataBlockLabel}>Sample Size</Text>
+                  <Text style={styles.dataBlockValue}>1</Text>
+                </View>
+                <View style={styles.dataBlockCell}>
+                  <Text style={styles.dataBlockLabel}>Inspected</Text>
+                  <Text style={styles.dataBlockValue}>1</Text>
+                </View>
+              </View>
+            </View>
+          ))}
         </View>
 
         {/* Score Card */}
@@ -915,6 +916,13 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
           <View style={styles.scoreSection}>
             <Text style={styles.scoreLabel}>PRELIMINARY SCORE</Text>
             <Text style={styles.scoreValue}>{preliminaryScore}</Text>
+          </View>
+
+          <View style={styles.scoreDivider} />
+
+          <View style={styles.scoreSection}>
+            <Text style={styles.scoreLabel}>POINTS LOST</Text>
+            <Text style={[styles.scoreValue, styles.pointsLostValue]}>-{deductionPoints}</Text>
           </View>
 
           <View style={styles.scoreDivider} />
@@ -934,6 +942,34 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
               <Text style={styles.passingText}>{isPassing ? 'Passing' : 'Failing'}</Text>
             </View>
           </View>
+        </View>
+
+        <View style={styles.hudCard}>
+          <Text style={styles.hudHeading}>PROPERTY INFORMATION</Text>
+          <View style={styles.hudHeadingRule} />
+          {[
+            ['Property Name', property.name || '-'],
+            ['Address', property.address || '-'],
+            ['Property ID', String(property.id || '-')],
+            ['Inspector', 'Inspector'],
+          ].map(([label, value]) => (
+            <View key={label as string} style={styles.hudInfoRow}>
+              <Text style={styles.hudInfoLabel}>{label as string}</Text>
+              <Text style={styles.hudInfoValue}>{value as string}</Text>
+            </View>
+          ))}
+        </View>
+
+        <View style={styles.hudFooterRow}>
+          <TouchableOpacity style={styles.hudFooterPrimary} onPress={handleContinueInspection}>
+            <Text style={styles.hudFooterPrimaryText}>BACK TO INSPECTION</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.hudFooterSecondary}
+            onPress={() => navigation.navigate('MyInspections' as never)}
+          >
+            <Text style={styles.hudFooterSecondaryText}>MY INSPECTIONS</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Tabs */}
@@ -1313,6 +1349,92 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
 };
 
 const styles = StyleSheet.create({
+  // --- Web /dashboard/inspection/summary parity ---
+  hudButtonRow: { flexDirection: 'row', gap: 10, marginTop: 16 },
+  hudPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderRadius: 999,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+  },
+  hudPillWide: { marginTop: 10, alignSelf: 'flex-start' },
+  hudPillTeal: { backgroundColor: '#006795' },
+  hudPillGreen: { backgroundColor: '#0E8A5F' },
+  hudPillOrange: { backgroundColor: '#F59E0B' },
+  hudPillText: { color: '#FFFFFF', fontSize: 14, fontWeight: '500' },
+  lockedCard: {
+    backgroundColor: '#FFFBEB',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+  },
+  lockedHeaderRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 12 },
+  lockedTitle: { fontSize: 14, fontWeight: '700', color: '#92400E' },
+  lockedSubtitle: { fontSize: 12, color: '#B45309' },
+  unlockPayButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#F59E0B',
+    borderRadius: 10,
+    paddingVertical: 12,
+    marginBottom: 10,
+  },
+  unlockPayButtonText: { color: '#FFFFFF', fontSize: 12, fontWeight: '700' },
+  viewDeficiencyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    borderRadius: 10,
+    paddingVertical: 12,
+  },
+  viewDeficiencyButtonText: { color: '#B45309', fontSize: 12, fontWeight: '700' },
+  hudCard: { backgroundColor: '#FFFFFF', borderRadius: 12, padding: 16, marginBottom: 12 },
+  hudHeading: { fontSize: 18, fontWeight: '700', color: '#006795' },
+  hudHeadingRule: { height: 2, backgroundColor: '#006795', marginTop: 8, marginBottom: 14 },
+  dataBlock: { backgroundColor: '#F9FAFB', borderRadius: 10, padding: 12, marginBottom: 10 },
+  dataBlockTitle: { fontSize: 16, fontWeight: '700', color: '#006795', marginBottom: 8 },
+  dataBlockRow: { flexDirection: 'row' },
+  dataBlockCell: { flex: 1 },
+  dataBlockLabel: { fontSize: 11, color: '#6B7280', marginBottom: 2 },
+  dataBlockValue: { fontSize: 15, fontWeight: '700', color: '#111827' },
+  hudInfoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+    paddingVertical: 8,
+  },
+  hudInfoLabel: { fontSize: 15, color: '#4B5563' },
+  hudInfoValue: { fontSize: 15, fontWeight: '600', color: '#111827', flexShrink: 1, textAlign: 'right' },
+  hudFooterRow: { flexDirection: 'row', gap: 10, marginTop: 4, marginBottom: 20 },
+  hudFooterPrimary: {
+    flex: 1,
+    backgroundColor: '#F59E0B',
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  hudFooterPrimaryText: { color: '#FFFFFF', fontSize: 14, fontWeight: '900' },
+  hudFooterSecondary: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  hudFooterSecondaryText: { color: '#4B5563', fontSize: 14, fontWeight: '900' },
+  pointsLostValue: { color: '#FCA5A5' },
+
   totalBar: { backgroundColor: '#16A34A' },
   totalCount: { color: '#16A34A' },
   totalLabel: { color: '#16A34A' },

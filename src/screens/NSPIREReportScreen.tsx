@@ -16,11 +16,13 @@ import {
   Modal,
   Image,
   Dimensions,
+  TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { WebView } from 'react-native-webview';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Colors } from '../constants/Colors';
+import { usePaymentLink } from '../hooks/usePaymentLink';
 import {
   nspirePDFService,
   generateNSPIREReportHTML,
@@ -58,10 +60,21 @@ export default function NSPIREReportScreen({ navigation, route }: NSPIREReportSc
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [pdfOptions, setPdfOptions] = useState<PDFGenerationOptions>(DEFAULT_PDF_OPTIONS);
-  const [activeTab, setActiveTab] = useState<'summary' | 'deficiencies' | 'preview'>(preGeneratedHtml ? 'preview' : 'summary');
   const [showOptionsModal, setShowOptionsModal] = useState(false);
   const [previewHtml, setPreviewHtml] = useState<string>(preGeneratedHtml || '');
   const [preparingPreview, setPreparingPreview] = useState(false);
+  // Web landing page: report stays locked until paid; "View Deficiency" opens
+  // the PDF preview, and the email box mails the full report link.
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [showEmailBox, setShowEmailBox] = useState(true);
+  const [unlocked, setUnlocked] = useState(false);
+  // Same email-link Stripe unlock the Inspection Status screen uses: the
+  // backend mails a checkout link, so there is no card entry here either.
+  const payment = usePaymentLink(
+    (inspectionData as any)?._id || '',
+    () => setUnlocked(true),
+    showEmailBox,
+  );
 
   const webViewRef = useRef<WebView>(null);
 
@@ -505,264 +518,6 @@ export default function NSPIREReportScreen({ navigation, route }: NSPIREReportSc
     </View>
   );
 
-  const renderTabs = () => (
-    <View style={styles.tabContainer}>
-      {(['summary', 'deficiencies', 'preview'] as const).map((tab) => (
-        <TouchableOpacity
-          key={tab}
-          style={[styles.tab, activeTab === tab && styles.activeTab]}
-          onPress={() => setActiveTab(tab)}
-        >
-          <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>
-            {tab.charAt(0).toUpperCase() + tab.slice(1)}
-          </Text>
-        </TouchableOpacity>
-      ))}
-    </View>
-  );
-
-  const renderSummaryTab = () => {
-    if (!report) return null;
-
-    return (
-      <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
-        {/* Score Cards - Compact Professional Style */}
-        <View style={styles.scoreContainer}>
-          <View style={styles.scoreCard}>
-            <Text style={styles.scoreLabel}>Preliminary Score</Text>
-            <Text style={styles.scoreValue}>{report.metadata.preliminaryScore}</Text>
-          </View>
-          <View style={styles.scoreCard}>
-            <Text style={styles.scoreLabel}>Calculated Score</Text>
-            <Text style={styles.scoreValue}>{report.metadata.calculatedScore}</Text>
-          </View>
-          <View style={[styles.scoreCard, styles.mainScoreCard]}>
-            <Text style={[styles.scoreLabel, { color: 'rgba(255,255,255,0.9)' }]}>Final Score</Text>
-            <Text style={[styles.scoreValue, styles.mainScoreValue]}>{report.metadata.finalScore}</Text>
-            <Text style={styles.scoreStatus}>
-              {report.metadata.finalScore >= 60 ? '✓ Passing' : '✗ Below Threshold'}
-            </Text>
-          </View>
-        </View>
-
-        {/* Summary Cards - Professional Compact Grid */}
-        <Text style={styles.sectionTitle}>Deficiency Summary</Text>
-        <View style={styles.summaryRow}>
-          <View style={[styles.summaryCardCompact, { borderLeftColor: SEVERITY_COLORS['Life-Threatening'], backgroundColor: '#FEF2F2' }]}>
-            <Text style={[styles.summaryCountCompact, { color: SEVERITY_COLORS['Life-Threatening'] }]}>
-              {report.summary.lifeThreatening}
-            </Text>
-            <Text style={[styles.summaryLabelCompact, { color: SEVERITY_COLORS['Life-Threatening'] }]}>
-              LIFE-THREAT
-            </Text>
-          </View>
-          <View style={[styles.summaryCardCompact, { borderLeftColor: SEVERITY_COLORS['Severe'], backgroundColor: '#FFFBEB' }]}>
-            <Text style={[styles.summaryCountCompact, { color: SEVERITY_COLORS['Severe'] }]}>
-              {report.summary.severe}
-            </Text>
-            <Text style={[styles.summaryLabelCompact, { color: SEVERITY_COLORS['Severe'] }]}>SEVERE</Text>
-          </View>
-          <View style={[styles.summaryCardCompact, { borderLeftColor: SEVERITY_COLORS['Moderate'], backgroundColor: '#EFF6FF' }]}>
-            <Text style={[styles.summaryCountCompact, { color: SEVERITY_COLORS['Moderate'] }]}>
-              {report.summary.moderate}
-            </Text>
-            <Text style={[styles.summaryLabelCompact, { color: SEVERITY_COLORS['Moderate'] }]}>MODERATE</Text>
-          </View>
-          <View style={[styles.summaryCardCompact, { borderLeftColor: SEVERITY_COLORS['Low'], backgroundColor: '#F9FAFB' }]}>
-            <Text style={[styles.summaryCountCompact, { color: SEVERITY_COLORS['Low'] }]}>
-              {report.summary.low}
-            </Text>
-            <Text style={[styles.summaryLabelCompact, { color: SEVERITY_COLORS['Low'] }]}>LOW</Text>
-          </View>
-          <View style={[styles.summaryCardCompact, { borderLeftColor: '#10B981', backgroundColor: '#F0FDF4' }]}>
-            <Text style={[styles.summaryCountCompact, { color: '#10B981' }]}>
-              {report.summary.total}
-            </Text>
-            <Text style={[styles.summaryLabelCompact, { color: '#10B981' }]}>TOTAL</Text>
-          </View>
-        </View>
-
-        {/* Repeat/New Deficiencies Row */}
-        <View style={styles.deficiencyCountsRow}>
-          <View style={styles.deficiencyCountCard}>
-            <Text style={[styles.deficiencyCountValue, { color: '#92400E' }]}>{report.summary.repeatDeficiencies}</Text>
-            <Text style={styles.deficiencyCountLabel}>Repeat Deficiencies</Text>
-          </View>
-          <View style={styles.deficiencyCountCard}>
-            <Text style={[styles.deficiencyCountValue, { color: '#1E40AF' }]}>{report.summary.newDeficiencies}</Text>
-            <Text style={styles.deficiencyCountLabel}>New Deficiencies</Text>
-          </View>
-        </View>
-
-        {/* Property Info */}
-        <Text style={styles.sectionTitle}>Property Information</Text>
-        <View style={styles.infoCard}>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Property Name</Text>
-            <Text style={styles.infoValue}>{report.metadata.propertyName}</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Address</Text>
-            <Text style={styles.infoValue}>{report.metadata.propertyAddress}</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Inspector</Text>
-            <Text style={styles.infoValue}>{report.metadata.inspectorName}</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Inspection Date</Text>
-            <Text style={styles.infoValue}>{report.metadata.startDate}</Text>
-          </View>
-        </View>
-
-        {/* Inspection Data */}
-        <Text style={styles.sectionTitle}>Inspection Data</Text>
-        <View style={styles.tableContainer}>
-          <View style={styles.tableHeader}>
-            <Text style={[styles.tableHeaderCell, { flex: 1.5 }]}>Type</Text>
-            <Text style={styles.tableHeaderCell}>Total</Text>
-            <Text style={styles.tableHeaderCell}>Sample</Text>
-            <Text style={styles.tableHeaderCell}>Inspected</Text>
-          </View>
-          {report.inspectionData.map((row, index) => (
-            <View key={index} style={[styles.tableRow, index % 2 === 0 && styles.tableRowEven]}>
-              <Text style={[styles.tableCell, { flex: 1.5, fontWeight: '600' }]}>{row.type}</Text>
-              <Text style={styles.tableCell}>{row.propertyTotal}</Text>
-              <Text style={styles.tableCell}>{row.sampleSize}</Text>
-              <Text style={styles.tableCell}>{row.totalUnitsInspected}</Text>
-            </View>
-          ))}
-        </View>
-
-        {/* Occupancy */}
-        <Text style={styles.sectionTitle}>Occupancy Information</Text>
-        <View style={styles.occupancyGrid}>
-          <View style={styles.occupancyCard}>
-            <Text style={styles.occupancyValue}>{report.occupancyInfo.totalUnits}</Text>
-            <Text style={styles.occupancyLabel}>Total Units</Text>
-          </View>
-          <View style={styles.occupancyCard}>
-            <Text style={styles.occupancyValue}>{report.occupancyInfo.occupiedUnits}</Text>
-            <Text style={styles.occupancyLabel}>Occupied</Text>
-          </View>
-          <View style={styles.occupancyCard}>
-            <Text style={styles.occupancyValue}>{report.occupancyInfo.occupancyRate.toFixed(0)}%</Text>
-            <Text style={styles.occupancyLabel}>Rate</Text>
-          </View>
-        </View>
-
-        <View style={{ height: 100 }} />
-      </ScrollView>
-    );
-  };
-
-  const renderDeficienciesTab = () => {
-    if (!report) return null;
-
-    return (
-      <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
-        {report.deficiencies.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Ionicons name="checkmark-circle" size={64} color={Colors.status.success} />
-            <Text style={styles.emptyStateTitle}>No Deficiencies Found</Text>
-            <Text style={styles.emptyStateText}>
-              This property passed inspection with no issues identified.
-            </Text>
-          </View>
-        ) : (
-          report.deficiencies.map((deficiency, index) => (
-            <View key={deficiency.id} style={styles.deficiencyCard}>
-              <View style={styles.deficiencyHeader}>
-                <View style={styles.deficiencyTitleRow}>
-                  <Text style={styles.deficiencyNumber}>#{index + 1}</Text>
-                  <View style={[
-                    styles.severityBadge,
-                    { backgroundColor: getSeverityColor(deficiency.severity) }
-                  ]}>
-                    <Text style={styles.severityText}>{deficiency.severity}</Text>
-                  </View>
-                  {deficiency.repeatIndicator && (
-                    <View style={styles.repeatBadge}>
-                      <Ionicons name="repeat" size={12} color="#92400E" />
-                      <Text style={styles.repeatText}>REPEAT</Text>
-                    </View>
-                  )}
-                </View>
-                <Text style={styles.deductionText}>-{deficiency.deductionPts} pts</Text>
-              </View>
-
-              <View style={styles.deficiencyContent}>
-                {deficiency.imageUri ? (
-                  <Image
-                    source={{ uri: deficiency.imageUri }}
-                    style={styles.deficiencyImage}
-                    resizeMode="cover"
-                  />
-                ) : (
-                  <View style={styles.imagePlaceholder}>
-                    <Ionicons name="image-outline" size={32} color={Colors.neutral.gray400} />
-                    <Text style={styles.imagePlaceholderText}>No Image</Text>
-                  </View>
-                )}
-
-                <View style={styles.deficiencyDetails}>
-                  <Text style={styles.deficiencyName}>{deficiency.deficiencyName}</Text>
-                  <View style={styles.nspireCodeBadge}>
-                    <Text style={styles.nspireCodeText}>{deficiency.nspireCode}</Text>
-                  </View>
-
-                  <View style={styles.locationInfo}>
-                    <View style={styles.locationRow}>
-                      <Text style={styles.locationLabel}>Building:</Text>
-                      <Text style={styles.locationValue}>{deficiency.building}</Text>
-                    </View>
-                    <View style={styles.locationRow}>
-                      <Text style={styles.locationLabel}>Unit:</Text>
-                      <Text style={styles.locationValue}>{deficiency.unit}</Text>
-                    </View>
-                    <View style={styles.locationRow}>
-                      <Text style={styles.locationLabel}>Room:</Text>
-                      <Text style={styles.locationValue}>{deficiency.room}</Text>
-                    </View>
-                  </View>
-                </View>
-              </View>
-
-              <View style={styles.deficiencyDescription}>
-                <Text style={styles.descriptionLabel}>Details:</Text>
-                <Text style={styles.descriptionText}>
-                  {sanitizeAIDescription(deficiency.deficiencyDetails)}
-                </Text>
-              </View>
-
-              {deficiency.comments && (
-                <View style={styles.commentsSection}>
-                  <Text style={styles.commentsLabel}>Inspector Comments:</Text>
-                  <Text style={styles.commentsText}>{deficiency.comments}</Text>
-                </View>
-              )}
-            </View>
-          ))
-        )}
-        <View style={{ height: 100 }} />
-      </ScrollView>
-    );
-  };
-
-  // Prepare preview when tab changes to preview
-  useEffect(() => {
-    if (activeTab === 'preview' && report && !previewHtml && !preparingPreview) {
-      preparePreview();
-    }
-  }, [activeTab, report, previewHtml, preparingPreview]);
-
-  // Reset preview when options change
-  useEffect(() => {
-    if (previewHtml) {
-      setPreviewHtml('');
-    }
-  }, [pdfOptions]);
-
   const preparePreview = async () => {
     if (!report || preparingPreview) return;
 
@@ -819,6 +574,208 @@ export default function NSPIREReportScreen({ navigation, route }: NSPIREReportSc
     } finally {
       setPreparingPreview(false);
     }
+  };
+
+
+
+  /** "View Deficiency" on the web opens the PDF preview; reuse the WebView. */
+  const handleOpenPreview = async () => {
+    setShowPreviewModal(true);
+    if (!previewHtml) await preparePreview();
+  };
+
+  const handleSendReportLink = async () => {
+    const ok = await payment.send();
+    if (!ok && payment.error) Alert.alert('Error', payment.error);
+  };
+
+  const renderPreviewModal = () => (
+    <Modal
+      visible={showPreviewModal}
+      animationType="slide"
+      onRequestClose={() => setShowPreviewModal(false)}
+    >
+      <SafeAreaView style={styles.container}>
+        <View style={styles.previewModalHeader}>
+          <Text style={styles.previewModalTitle}>Report PDF Preview</Text>
+          <TouchableOpacity onPress={() => setShowPreviewModal(false)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <Ionicons name="close" size={24} color={Colors.neutral.gray600} />
+          </TouchableOpacity>
+        </View>
+        {renderPreviewTab()}
+      </SafeAreaView>
+    </Modal>
+  );
+
+  const renderProgressPage = () => {
+    if (!report) return null;
+    const m = report.metadata;
+    const started = m.startDate ? new Date(m.startDate).toLocaleDateString() : '-';
+    const firstDeficiency = report.deficiencies?.[0];
+
+    return (
+      <ScrollView style={styles.tabContent} contentContainerStyle={styles.progressContent} showsVerticalScrollIndicator={false}>
+        <View style={styles.webCard}>
+          <Text style={styles.progressTitle}>HUD INSPIRE INSPECTION PROGRESS</Text>
+          <Text style={styles.progressProperty}>{m.propertyName}</Text>
+          <Text style={styles.progressMeta}>{m.propertyAddress}</Text>
+          <Text style={styles.progressMeta}>Inspection #{m.inspectionNo} | {started}</Text>
+
+          <View style={styles.progressButtonRow}>
+            <TouchableOpacity style={[styles.webButton, styles.webButtonNavy]} onPress={() => setShowEmailBox(true)}>
+              <Ionicons name="lock-closed-outline" size={14} color="#FFFFFF" />
+              <Text style={styles.webButtonText}>Unlock to Export</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.webButton, styles.webButtonGreen]} onPress={() => setShowOptionsModal(true)}>
+              <Ionicons name="clipboard-outline" size={14} color="#FFFFFF" />
+              <Text style={styles.webButtonText}>Work Order</Text>
+            </TouchableOpacity>
+          </View>
+          <TouchableOpacity style={[styles.webButton, styles.webButtonOrange, styles.webButtonWide]} onPress={() => navigation.goBack()}>
+            <Ionicons name="chevron-back" size={14} color="#FFFFFF" />
+            <Text style={styles.webButtonText}>CONTINUE INSPECTION</Text>
+          </TouchableOpacity>
+        </View>
+
+        {!unlocked && (
+        <View style={styles.lockedCard}>
+          <View style={styles.lockedHeaderRow}>
+            <Ionicons name="lock-closed" size={16} color="#B45309" />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.lockedTitle}>REPORT LOCKED</Text>
+              <Text style={styles.lockedSubtitle}>Pay once to unlock full export access</Text>
+            </View>
+          </View>
+          <TouchableOpacity style={styles.unlockButton} onPress={() => setShowEmailBox(true)}>
+            <Ionicons name="lock-closed-outline" size={14} color="#FFFFFF" />
+            <Text style={styles.unlockButtonText}>Unlock Report - $1</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.viewDeficiencyButton} onPress={handleOpenPreview}>
+            <Ionicons name="mail-outline" size={14} color="#374151" />
+            <Text style={styles.viewDeficiencyText}>View Deficiency</Text>
+          </TouchableOpacity>
+        </View>
+        )}
+
+        <View style={styles.webCard}>
+          <Text style={styles.webCardHeading}>INSPECTION DATA</Text>
+          <View style={styles.webCardHeadingRule} />
+          {report.inspectionData.map((row, i) => (
+            <View key={i} style={styles.dataBlock}>
+              <Text style={styles.dataBlockTitle}>{row.type}</Text>
+              <View style={styles.dataBlockRow}>
+                <View style={styles.dataBlockCell}>
+                  <Text style={styles.dataBlockLabel}>Property Total</Text>
+                  <Text style={styles.dataBlockValue}>{row.propertyTotal}</Text>
+                </View>
+                <View style={styles.dataBlockCell}>
+                  <Text style={styles.dataBlockLabel}>Sample Size</Text>
+                  <Text style={styles.dataBlockValue}>{row.sampleSize}</Text>
+                </View>
+                <View style={styles.dataBlockCell}>
+                  <Text style={styles.dataBlockLabel}>Inspected</Text>
+                  <Text style={styles.dataBlockValue}>{row.totalUnitsInspected}</Text>
+                </View>
+              </View>
+            </View>
+          ))}
+
+          <View style={styles.repeatNewRow}>
+            <View style={[styles.repeatNewCell, styles.repeatCell]}>
+              <Text style={styles.repeatValue}>{report.summary.repeatDeficiencies}</Text>
+              <Text style={styles.repeatLabel}>Repeat</Text>
+            </View>
+            <View style={[styles.repeatNewCell, styles.newCell]}>
+              <Text style={styles.newValue}>{report.summary.newDeficiencies}</Text>
+              <Text style={styles.newLabel}>New</Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.scoreBanner}>
+          <Text style={styles.scoreBannerTitle}>Inspection Score</Text>
+          <View style={styles.scoreBannerRow}>
+            <View style={styles.scoreBannerCell}>
+              <Text style={styles.scoreBannerLabel}>PRELIMINARY</Text>
+              <Text style={styles.scoreBannerValue}>{m.preliminaryScore}</Text>
+            </View>
+            <View style={styles.scoreBannerCell}>
+              <Text style={styles.scoreBannerLabel}>CALCULATED</Text>
+              <Text style={styles.scoreBannerValue}>{m.calculatedScore}</Text>
+            </View>
+            <View style={styles.scoreBannerCell}>
+              <Text style={styles.scoreBannerLabel}>FINAL SCORE</Text>
+              <Text style={styles.scoreBannerValue}>{m.finalScore}</Text>
+            </View>
+          </View>
+        </View>
+
+        {!!firstDeficiency && (
+          <View style={styles.webCard}>
+            <Text style={styles.deficiencyPreviewHeading}>
+              Deficiency Preview (1 of {report.deficiencies.length})
+            </Text>
+            <TouchableOpacity style={styles.deficiencyPreviewCard} onPress={handleOpenPreview}>
+              {!!firstDeficiency.imageUri && (
+                <Image source={{ uri: firstDeficiency.imageUri }} style={styles.deficiencyThumb} />
+              )}
+              <View style={{ flex: 1 }}>
+                <View style={styles.deficiencyPreviewTitleRow}>
+                  <Text style={styles.deficiencyPreviewName} numberOfLines={1}>{firstDeficiency.deficiencyName}</Text>
+                  <Text style={styles.deficiencyPreviewSeverity}>
+                    {String(firstDeficiency.severity || '').toUpperCase()}
+                  </Text>
+                </View>
+                <Text style={styles.deficiencyPreviewDetail} numberOfLines={2}>
+                  {firstDeficiency.deficiencyDetails}
+                </Text>
+                <Text style={styles.deficiencyPreviewMeta}>
+                  {firstDeficiency.area || firstDeficiency.room || '-'} · {firstDeficiency.building || '-'} · {firstDeficiency.unit || '-'}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {showEmailBox && (
+          <View style={styles.emailCard}>
+            <View style={styles.lockedHeaderRow}>
+              <Ionicons name="mail-outline" size={16} color="#B45309" />
+              <Text style={styles.emailCardTitle}>Get Full Report via Email</Text>
+            </View>
+            <Text style={styles.emailCardBody}>
+              Enter your email to receive the complete inspection report with all deficiency details, photos, and recommendations.
+            </Text>
+            <TextInput
+              style={styles.emailInput}
+              placeholder="Enter your email address"
+              placeholderTextColor="#9CA3AF"
+              value={payment.email}
+              onChangeText={payment.setEmail}
+              editable={!payment.sending}
+              autoCapitalize="none"
+              keyboardType="email-address"
+            />
+            <View style={styles.emailButtonRow}>
+              <TouchableOpacity style={styles.sendReportButton} onPress={handleSendReportLink} disabled={payment.sending}>
+                <Text style={styles.sendReportButtonText}>
+                  {payment.sending ? 'Sending...' : 'Send Full Report Link'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.emailCancelButton} onPress={() => setShowEmailBox(false)}>
+                <Text style={styles.emailCancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        <View style={styles.noteCard}>
+          <Text style={styles.noteText}>
+            💡 Note: The full report includes detailed photos, inspector comments, repair timelines, and compliance codes for each deficiency.
+          </Text>
+        </View>
+      </ScrollView>
+    );
   };
 
   const renderPreviewTab = () => {
@@ -984,42 +941,6 @@ export default function NSPIREReportScreen({ navigation, route }: NSPIREReportSc
     </Modal>
   );
 
-  const renderActionButtons = () => (
-    <View style={styles.actionContainer}>
-      <TouchableOpacity
-        style={[styles.actionButton, styles.secondaryButton]}
-        onPress={handlePrintPDF}
-        disabled={exporting}
-      >
-        <Ionicons name="print-outline" size={20} color={Colors.primary.teal} />
-        <Text style={styles.secondaryButtonText}>Print</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={[styles.actionButton, styles.secondaryButton]}
-        onPress={handleSavePDF}
-        disabled={exporting}
-      >
-        <Ionicons name="download-outline" size={20} color={Colors.primary.teal} />
-        <Text style={styles.secondaryButtonText}>Save</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={[styles.actionButton, styles.primaryButton]}
-        onPress={handleExportPDF}
-        disabled={exporting}
-      >
-        {exporting ? (
-          <ActivityIndicator size="small" color={Colors.neutral.white} />
-        ) : (
-          <>
-            <Ionicons name="share-outline" size={20} color={Colors.neutral.white} />
-            <Text style={styles.primaryButtonText}>Export PDF</Text>
-          </>
-        )}
-      </TouchableOpacity>
-    </View>
-  );
 
   if (loading) {
     return (
@@ -1035,19 +956,336 @@ export default function NSPIREReportScreen({ navigation, route }: NSPIREReportSc
   return (
     <SafeAreaView style={styles.container}>
       {renderHeader()}
-      {renderTabs()}
-
-      {activeTab === 'summary' && renderSummaryTab()}
-      {activeTab === 'deficiencies' && renderDeficienciesTab()}
-      {activeTab === 'preview' && renderPreviewTab()}
-
-      {renderActionButtons()}
+      {renderProgressPage()}
+      {renderPreviewModal()}
       {renderOptionsModal()}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  // --- Web /report landing page parity (built from the web screens) ---
+  progressContent: {
+    padding: 12,
+    paddingBottom: 40,
+  },
+  webCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+  },
+  progressTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#0E7490',
+    marginBottom: 8,
+  },
+  progressProperty: {
+    fontSize: 13,
+    color: '#374151',
+    marginBottom: 2,
+  },
+  progressMeta: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginBottom: 2,
+  },
+  progressButtonRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 14,
+  },
+  webButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+  },
+  webButtonWide: {
+    marginTop: 10,
+    alignSelf: 'flex-start',
+  },
+  webButtonNavy: { backgroundColor: '#0E5C86' },
+  webButtonGreen: { backgroundColor: '#0E8A5F' },
+  webButtonOrange: { backgroundColor: '#F59E0B' },
+  webButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  lockedCard: {
+    backgroundColor: '#FFFBEB',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+  },
+  lockedHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    marginBottom: 12,
+  },
+  lockedTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#B45309',
+  },
+  lockedSubtitle: {
+    fontSize: 11,
+    color: '#B45309',
+  },
+  unlockButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#F59E0B',
+    borderRadius: 8,
+    paddingVertical: 12,
+    marginBottom: 10,
+  },
+  unlockButtonText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  viewDeficiencyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 8,
+    paddingVertical: 12,
+  },
+  viewDeficiencyText: {
+    color: '#374151',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  webCardHeading: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0E7490',
+    letterSpacing: 0.5,
+  },
+  webCardHeadingRule: {
+    height: 2,
+    backgroundColor: '#0E7490',
+    marginTop: 8,
+    marginBottom: 14,
+  },
+  dataBlock: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 10,
+  },
+  dataBlockTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#0E7490',
+    marginBottom: 8,
+  },
+  dataBlockRow: {
+    flexDirection: 'row',
+  },
+  dataBlockCell: {
+    flex: 1,
+  },
+  dataBlockLabel: {
+    fontSize: 10,
+    color: '#6B7280',
+    marginBottom: 2,
+  },
+  dataBlockValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  repeatNewRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  repeatNewCell: {
+    flex: 1,
+    borderRadius: 10,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  repeatCell: { backgroundColor: '#FFFBEB' },
+  newCell: { backgroundColor: '#EFF6FF' },
+  repeatValue: { fontSize: 16, fontWeight: '800', color: '#B45309' },
+  repeatLabel: { fontSize: 11, color: '#B45309' },
+  newValue: { fontSize: 16, fontWeight: '800', color: '#2563EB' },
+  newLabel: { fontSize: 11, color: '#2563EB' },
+  scoreBanner: {
+    backgroundColor: '#0E7490',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+  },
+  scoreBannerTitle: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '800',
+    marginBottom: 12,
+  },
+  scoreBannerRow: {
+    flexDirection: 'row',
+  },
+  scoreBannerCell: {
+    flex: 1,
+  },
+  scoreBannerLabel: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 10,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  scoreBannerValue: {
+    color: '#FFFFFF',
+    fontSize: 22,
+    fontWeight: '800',
+  },
+  deficiencyPreviewHeading: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0E7490',
+    marginBottom: 12,
+  },
+  deficiencyPreviewCard: {
+    flexDirection: 'row',
+    gap: 10,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 10,
+    padding: 10,
+  },
+  deficiencyThumb: {
+    width: 56,
+    height: 56,
+    borderRadius: 6,
+    backgroundColor: '#E5E7EB',
+  },
+  deficiencyPreviewTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  deficiencyPreviewName: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  deficiencyPreviewSeverity: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#6B7280',
+  },
+  deficiencyPreviewDetail: {
+    fontSize: 11,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  deficiencyPreviewMeta: {
+    fontSize: 10,
+    color: '#9CA3AF',
+    marginTop: 4,
+  },
+  emailCard: {
+    backgroundColor: '#FFFBEB',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+  },
+  emailCardTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#B45309',
+  },
+  emailCardBody: {
+    fontSize: 11,
+    color: '#92400E',
+    marginBottom: 12,
+  },
+  emailInput: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    fontSize: 13,
+    color: '#111827',
+    marginBottom: 10,
+  },
+  emailButtonRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  sendReportButton: {
+    flex: 1,
+    backgroundColor: '#FBBF24',
+    borderRadius: 8,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  sendReportButtonText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  emailCancelButton: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 22,
+  },
+  emailCancelButtonText: {
+    color: '#374151',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  noteCard: {
+    backgroundColor: '#EFF6FF',
+    borderRadius: 12,
+    padding: 14,
+  },
+  noteText: {
+    fontSize: 11,
+    color: '#1E40AF',
+    lineHeight: 16,
+  },
+  previewModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  previewModalTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0E7490',
+  },
+
   container: {
     flex: 1,
     backgroundColor: Colors.neutral.gray100,

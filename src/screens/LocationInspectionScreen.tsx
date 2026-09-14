@@ -15,6 +15,7 @@ import {
   Alert,
   ActivityIndicator,
   Platform,
+  Image,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -22,6 +23,7 @@ import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../types/navigation';
 import { Ionicons } from '@expo/vector-icons';
 import ModalZoomWrapper from '../components/ModalZoomWrapper';
+import { INSPIRE_LOGO_BASE64 } from '../constants/inspireLogo';
 import { OUTSIDE_ITEMS, INSIDE_ITEMS, UNIT_ITEMS, UNIT_LOCATIONS, InspectionResponse } from '../data/inspectionData';
 import api from '../services/api';
 import { canonicalizeInspectionType } from '../utils/inspectionProgressUtils';
@@ -535,14 +537,24 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>{selectedItem?.name}</Text>
+                {!!INSPIRE_LOGO_BASE64 && (
+                  <Image source={{ uri: INSPIRE_LOGO_BASE64 }} style={styles.modalBadge} resizeMode="contain" />
+                )}
+                <View style={styles.modalHeaderText}>
+                  <Text style={styles.modalTitle} numberOfLines={1}>{selectedItem?.name}</Text>
+                  <Text style={styles.modalSubtitle}>NSPIRE Deficiency Inspection</Text>
+                </View>
                 <TouchableOpacity onPress={() => setShowDeficiencyModal(false)}>
                   <Ionicons name="close" size={24} color="#666666" />
                 </TouchableOpacity>
               </View>
 
               <View style={styles.emptyState}>
-                <Ionicons name="add-circle-outline" size={80} color="#E5E5E5" />
+                {INSPIRE_LOGO_BASE64 ? (
+                  <Image source={{ uri: INSPIRE_LOGO_BASE64 }} style={styles.emptyStateLogo} resizeMode="contain" />
+                ) : (
+                  <Ionicons name="add-circle-outline" size={80} color="#E5E5E5" />
+                )}
                 <Text style={styles.emptyStateText}>
                   No existing deficiency record for this item.
                 </Text>
@@ -836,19 +848,37 @@ const styles = StyleSheet.create({
   },
   modalHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 24,
   },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1A1A1A',
+  modalBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 6,
+    marginRight: 10,
+  },
+  modalHeaderText: {
     flex: 1,
+    marginRight: 8,
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#1A1A1A',
+  },
+  modalSubtitle: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#9CA3AF',
+    marginTop: 2,
   },
   emptyState: {
     alignItems: 'center',
     paddingVertical: 40,
+  },
+  emptyStateLogo: {
+    width: 140,
+    height: 140,
   },
   emptyStateText: {
     fontSize: 14,
