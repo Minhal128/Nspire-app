@@ -7,6 +7,19 @@ export interface OutsideSeverityConfig {
   pointsLostFormula: number; // The numerator in the formula Pts Lost = X / n
 }
 
+export const OUTSIDE_LOCATION_OPTIONS = [
+  'Building Site S',
+  'Building Site N',
+  'Building Site E',
+  'Building Site W',
+  'Parking Lot',
+  'Driveway',
+  'Sidewalk',
+  'Roof',
+  'Common Area',
+  'Other'
+];
+
 // Category-based severity mapping for Outside inspection
 // Maps category number to severity level and points lost numerator
 
@@ -206,6 +219,10 @@ export interface OutsideScoringResult {
   score: number;                // Score = 25 - maxPtsLost
   formulaNumerator: number;     // The numerator used in the formula
   isDeficiencyOverride: boolean; // Whether deficiency-based override was applied
+  // Backward compatibility aliases
+  allSample: number;
+  ptsLostRaw: number;
+  ptsLost: number;
 }
 
 const POSSIBLE_SCORE = 25;
@@ -281,9 +298,12 @@ export function calculateOutsideScore(input: OutsideScoringInput): OutsideScorin
   return {
     categoryNumber,
     totalSamples: n,
+    allSample: n,
     severity,
     pointsLostRaw: parseFloat(pointsLostRaw.toFixed(4)),
+    ptsLostRaw: parseFloat(pointsLostRaw.toFixed(4)),
     pointsLost: parseFloat(pointsLost.toFixed(4)),
+    ptsLost: parseFloat(pointsLost.toFixed(4)),
     deficiencyCount: count,
     possibleScore: POSSIBLE_SCORE,
     maxPtsLost: parseFloat(maxPtsLost.toFixed(4)),
@@ -336,3 +356,6 @@ export const DEFICIENCY_OVERRIDE_PATTERNS = {
   SEVERE: SEVERE_DEFICIENCY_PATTERNS,
   LOW: LOW_DEFICIENCY_PATTERNS,
 };
+
+// Export the possible score constant
+export const OUTSIDE_POSSIBLE_SCORE = POSSIBLE_SCORE;

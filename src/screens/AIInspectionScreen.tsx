@@ -26,7 +26,7 @@ import authService from '../services/authService';
 import { inspectionService } from '../services/inspectionService';
 import { nspirePDFService } from '../services/nspirePDFService';
 import { INSIDE_LOCATIONS, OUTSIDE_LOCATIONS, DEFICIENCY_OPTIONS, DEFICIENCY_DATA, DeficiencyItem, getShortDeficiencyName, getDeficiencyOptions } from '../data/deficiencyData';
-import { ALL_UNIT_CATEGORIES } from '../data/unitDeficiencyMapping';
+import { ALL_UNIT_CATEGORIES } from '../data/web/insideAppData';
 
 const { width } = Dimensions.get('window');
 

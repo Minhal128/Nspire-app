@@ -16,11 +16,12 @@ import {
     ScoringResult,
     SEVERITY_LEVELS,
     POSSIBLE_SCORE,
-    UNIT_TOTAL_POSSIBLE_POINTS,
     DEFICIENCY_OPTIONS,
     getSeverityColor,
     getScoreStatus,
 } from '../utils/scoringCalculations';
+import { OUTSIDE_POSSIBLE_SCORE } from '../utils/outsideScoringCalculations';
+import { INSIDE_POSSIBLE_SCORE } from '../utils/insideScoringCalculations';
 import { isUnitLocation } from '../data/deficiencyMapping';
 
 interface ScoringModalProps {
@@ -51,7 +52,8 @@ const ScoringModal: React.FC<ScoringModalProps> = ({
 
     // Determine if this is a Unit location (50 possible points) vs Inside/Outside (25 possible points)
     const isUnit = isUnitLocation(location);
-    const possibleScore = isUnit ? UNIT_TOTAL_POSSIBLE_POINTS : POSSIBLE_SCORE;
+    const isOutside = location?.toLowerCase() === 'outside';
+    const possibleScore = isOutside ? OUTSIDE_POSSIBLE_SCORE : isUnit ? POSSIBLE_SCORE : INSIDE_POSSIBLE_SCORE;
 
     // Calculate score dynamically whenever inputs change
     useEffect(() => {
@@ -60,8 +62,12 @@ const ScoringModal: React.FC<ScoringModalProps> = ({
             deficiencies,
             severity,
         });
+        // calculateUnitScore works off the Unit 50-point base; Inside/Outside score out of 25,
+        // so re-base the section score on the possible score for this location.
+        result.possibleScore = possibleScore;
+        result.score = parseFloat((possibleScore - result.ptsLost).toFixed(2));
         setScoringResult(result);
-    }, [totalSamples, deficiencies, severity]);
+    }, [totalSamples, deficiencies, severity, possibleScore]);
 
     // Reset state when modal opens
     useEffect(() => {

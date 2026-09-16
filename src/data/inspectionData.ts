@@ -1,6 +1,7 @@
 // Inspection data for NSPIRE compliance
-import { ALL_UNIT_CATEGORIES } from './unitDeficiencyMapping';
-import { ALL_INSIDE_CATEGORIES } from './insideDeficiencyMapping';
+import { ALL_UNIT_CATEGORIES } from './web/insideAppData';
+import { ALL_INSIDE_CATEGORIES } from './web/unitAppData';
+import inspectionDeficiencies from './inspectionDeficiencies.json';
 
 export const UNIT_LOCATIONS = [
   'Attic/Loft',
@@ -33,6 +34,8 @@ export const UNIT_LOCATIONS = [
 export interface InspectionItem {
   id: string;
   name: string;
+  standard?: string;
+  inspectionProtocol?: string;
   hasSelectAll?: boolean;
 }
 
@@ -54,7 +57,7 @@ export const OUTSIDE_ITEMS: InspectionItem[] = [
   { id: '15', name: 'Leak - Water' },
   { id: '16', name: 'Lighting' },
   { id: '17', name: 'Parking Lots, Driveways, Roads' },
-  { id: '18', name: 'Paint - Lead-Based Paint' },
+  { id: '18', name: 'Paint - Potential Lead-Based Paint Hazards – Visual Assessment' },
   { id: '19', name: 'Railings' },
   { id: '20', name: 'Roof Assembly' },
   { id: '21', name: 'Sidewalk, Walkway, and Ramp' },
@@ -65,21 +68,18 @@ export const OUTSIDE_ITEMS: InspectionItem[] = [
   { id: '26', name: 'General Comment' }
 ];
 
-// Inside items generated directly from unitDeficiencyMapping.ts (35 categories)
-export const INSIDE_ITEMS: InspectionItem[] = (ALL_UNIT_CATEGORIES || []).map((cat, index) => {
-  if (!cat) return { id: String(index + 1), name: 'Unknown' };
-  let name = (cat as any).category || (cat as any).itemName || 'Unknown';
-  name = name.replace(/^\d+\.\s*/, ''); // Remove number prefix like "1. "
+// Inside items (Common Areas) generated from ALL_UNIT_CATEGORIES in insideAppData.ts
+export const INSIDE_ITEMS: InspectionItem[] = ALL_UNIT_CATEGORIES.map((cat: any, index: number) => {
+  let name = cat.category.replace(/^\d+\.\s*/, ''); // Remove number prefix like "1. "
   if (name.toLowerCase().includes('general comment')) {
     name = 'General Comment';
   }
   return { id: String(index + 1), name };
 });
 
-// Unit items generated from insideDeficiencyMapping.ts (32 categories)
-export const UNIT_ITEMS: InspectionItem[] = (ALL_INSIDE_CATEGORIES || []).map((cat, index) => {
-  if (!cat) return { id: String(index + 1), name: 'Unknown' };
-  let name = (cat as any).itemName || (cat as any).category || 'Unknown';
+// Unit items (Apartments) generated from ALL_INSIDE_CATEGORIES in unitAppData.ts
+export const UNIT_ITEMS: InspectionItem[] = ALL_INSIDE_CATEGORIES.map((item: any, index: number) => {
+  let name = item.itemName;
   if (name.toLowerCase().includes('general comment')) {
     name = 'General Comment';
   }
@@ -105,4 +105,61 @@ export interface InspectionSession {
   };
   startedAt: number;
   completedAt?: number;
+}
+
+// Helper function to get Standard and Inspection Protocol for a deficiency
+export function getInspectionStandardAndProtocol(
+  section: 'outside' | 'inside' | 'unit',
+  categoryName: string,
+  deficiencyName?: string
+): { standard: string; inspectionProtocol: string } | null {
+  const data = inspectionDeficiencies[section];
+  if (!data) return null;
+  
+  // Clean category name for matching (remove number prefix like "1. ")
+  const cleanCategory = categoryName.replace(/^\d+\.\s*/, '').trim().toLowerCase();
+  
+  // If deficiency name is provided, try to match by deficiency first
+  if (deficiencyName) {
+    const cleanDeficiency = deficiencyName.trim().toLowerCase();
+    
+    // Try exact match on deficiencySelected
+    let match = data.find((item: any) => {
+      const itemCleanCategory = item.category.replace(/^\d+\.\s*/, '').trim().toLowerCase();
+      const itemCleanDeficiency = item.deficiencySelected.trim().toLowerCase();
+      return itemCleanCategory === cleanCategory && itemCleanDeficiency === cleanDeficiency;
+    });
+    
+    // If no exact match, try partial match
+    if (!match) {
+      match = data.find((item: any) => {
+        const itemCleanCategory = item.category.replace(/^\d+\.\s*/, '').trim().toLowerCase();
+        const itemCleanDeficiency = item.deficiencySelected.trim().toLowerCase();
+        return (itemCleanCategory === cleanCategory || itemCleanCategory.includes(cleanCategory) || cleanCategory.includes(itemCleanCategory)) 
+          && (itemCleanDeficiency.includes(cleanDeficiency) || cleanDeficiency.includes(itemCleanDeficiency));
+      });
+    }
+    
+    if (match) {
+      return {
+        standard: match.standard || '',
+        inspectionProtocol: match.inspectionProtocol || ''
+      };
+    }
+  }
+  
+  // Fallback: match by category only and return first deficiency in that category
+  const match = data.find((item: any) => {
+    const itemCleanCategory = item.category.replace(/^\d+\.\s*/, '').trim().toLowerCase();
+    return itemCleanCategory === cleanCategory || itemCleanCategory.includes(cleanCategory) || cleanCategory.includes(itemCleanCategory);
+  });
+  
+  if (match) {
+    return {
+      standard: match.standard || '',
+      inspectionProtocol: match.inspectionProtocol || ''
+    };
+  }
+  
+  return null;
 }

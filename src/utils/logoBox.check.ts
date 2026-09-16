@@ -36,7 +36,9 @@ walk(new URL('src/', root));
 
 let checked = 0;
 for (const file of files) {
-  const src = readFileSync(file, 'utf8');
+  // Normalised: git's autocrlf leaves the working tree CRLF, and the style-block
+  // patterns below are written against \n.
+  const src = readFileSync(file, 'utf8').replace(/\r\n/g, '\n');
   const name = file.pathname.split('/').pop();
 
   for (const image of src.match(/<Image\b[\s\S]*?\/>/g) || []) {

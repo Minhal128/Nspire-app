@@ -27,22 +27,25 @@ import {
   DeficiencyOption,
   isUnitLocation
 } from '../data/deficiencyMapping';
+import { getInspectionStandardAndProtocol } from '../data/inspectionData';
 import { INSPIRE_LOGO_BASE64 } from '../constants/inspireLogo';
 import { cloudinaryService } from '../services/cloudinaryService';
 import ModalZoomWrapper from '../components/ModalZoomWrapper';
 import { geminiService } from '../services/openaiService';
 import { inspectionService } from '../services/inspectionService';
 import { autoSaveInspectionDeficiency } from '../utils/storage';
-import { ScoringResult, calculateUnitScore, POSSIBLE_SCORE, UNIT_TOTAL_POSSIBLE_POINTS } from '../utils/scoringCalculations';
+import { ScoringResult, calculateUnitScore, POSSIBLE_SCORE } from '../utils/scoringCalculations';
 import {
   calculateOutsideScore,
   extractCategoryNumber,
-  OutsideScoringResult
+  OutsideScoringResult,
+  OUTSIDE_POSSIBLE_SCORE
 } from '../utils/outsideScoringCalculations';
 import {
   calculateInsideScore,
   extractInsideCategoryNumber,
-  InsideScoringResult
+  InsideScoringResult,
+  INSIDE_POSSIBLE_SCORE
 } from '../utils/insideScoringCalculations';
 import {
   calculateUnitInspectionScore,
@@ -121,6 +124,10 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const [availableDeficiencies, setAvailableDeficiencies] = useState<DeficiencyOption[]>([]);
   const [selectedDeficiency, setSelectedDeficiency] = useState<DeficiencyOption | null>(null);
   const [showDeficiencyPicker, setShowDeficiencyPicker] = useState(false);
+  // Web picks a deficiency in two steps: first the name, then — only when that
+  // name has more than one detail — the detail. (web selectionType/detailFilterName)
+  const [selectionType, setSelectionType] = useState<'selected' | 'detail'>('selected');
+  const [detailFilterName, setDetailFilterName] = useState<string | null>(null);
   const [showDetailPicker, setShowDetailPicker] = useState(false);
 
   const [repairBy, setRepairBy] = useState('');
@@ -141,8 +148,6 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   // Web keeps STANDARD / INSPECTION PROTOCOL in the same scroll, empty until a
   // deficiency is picked.
   const hasDeficiencySelected = Boolean(selectedDeficiency || customDeficiencyDetail);
-  const standardText = selectedDeficiency?.criteria || customDeficiencyCriteria || '';
-  const inspectionProtocolText = selectedDeficiency?.detail || customDeficiencyDetail || '';
   const [showStandardText, setShowStandardText] = useState(false);
   const [showProtocolText, setShowProtocolText] = useState(false);
   const [isCustomEntry, setIsCustomEntry] = useState(false);
@@ -194,6 +199,19 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
   // Check if we're in a Unit location (specific room like Basement, Bedroom, etc.)
   const isUnit = isUnitLocation(location);
+
+  // Same source as web: the Standard / Inspection Protocol text comes from
+  // inspectionDeficiencies.json via getInspectionStandardAndProtocol, not from the
+  // deficiency's own criteria/detail fields.
+  const standardProtocol = itemName
+    ? getInspectionStandardAndProtocol(
+        isOutsideLocation ? 'outside' : isUnit ? 'unit' : 'inside',
+        itemName,
+        selectedDeficiency?.name || undefined,
+      )
+    : null;
+  const standardText = standardProtocol?.standard || customDeficiencyCriteria || '';
+  const inspectionProtocolText = standardProtocol?.inspectionProtocol || customDeficiencyDetail || '';
 
   // Get total samples from selectedUnits (default to 20 if not available)
   const totalSamples = selectedUnits?.length || 20;
@@ -398,7 +416,44 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     setDeficiencyCriteria('');
   };
 
+  /** Web's getDisplayDeficiencies: unique names first, then the details for one name. */
+  const getDisplayDeficiencies = (): DeficiencyOption[] => {
+    if (selectionType === 'selected') {
+      const seen = new Set<string>();
+      return availableDeficiencies.filter((def) => {
+        const normalized = (def.name || '').trim().toLowerCase();
+        if (seen.has(normalized)) return false;
+        seen.add(normalized);
+        return true;
+      });
+    }
+    if (selectionType === 'detail' && detailFilterName) {
+      const currentSelected = detailFilterName.trim().toLowerCase();
+      return availableDeficiencies.filter(
+        (def) => (def.name || '').trim().toLowerCase() === currentSelected,
+      );
+    }
+    return availableDeficiencies;
+  };
+
+  const openDeficiencyPicker = () => {
+    setSelectionType('selected');
+    setDetailFilterName(null);
+    setShowDeficiencyPicker(true);
+  };
+
   const handleSelectDeficiency = (deficiency: DeficiencyOption) => {
+    // Web: picking a name that covers several details opens the detail step instead.
+    const normalized = (deficiency.name || '').trim().toLowerCase();
+    const matchingDetails = availableDeficiencies.filter(
+      (d) => (d.name || '').trim().toLowerCase() === normalized,
+    );
+    if (selectionType === 'selected' && matchingDetails.length > 1) {
+      setDetailFilterName((deficiency.name || '').trim());
+      setSelectionType('detail');
+      return;
+    }
+
     setSelectedDeficiency(deficiency);
     setRepairBy(deficiency.repairBy);
     setDeficiencyCriteria(deficiency.criteria);
@@ -941,7 +996,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               <>
                 <TouchableOpacity
                   style={[styles.dropdown, selectedDeficiency && styles.dropdownSelected]}
-                  onPress={() => setShowDeficiencyPicker(true)}
+                  onPress={openDeficiencyPicker}
                   activeOpacity={0.7}
                 >
                   <Text style={[styles.dropdownText, !selectedDeficiency && styles.placeholderText]}>
@@ -978,7 +1033,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                       Alert.alert('Select Deficiency', 'Please select a deficiency first.');
                       return;
                     }
-                    setShowDeficiencyPicker(true);
+                    openDeficiencyPicker();
                   }}
                   activeOpacity={0.7}
                 >
@@ -1179,7 +1234,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                 </View>
                 <View style={styles.scoringField}>
                   <Text style={styles.scoringFieldLabel}>Possible Score</Text>
-                  <Text style={styles.scoringFieldValue}>{isUnit ? UNIT_TOTAL_POSSIBLE_POINTS : POSSIBLE_SCORE}</Text>
+                  <Text style={styles.scoringFieldValue}>{isOutsideLocation ? OUTSIDE_POSSIBLE_SCORE : isUnit ? POSSIBLE_SCORE : INSIDE_POSSIBLE_SCORE}</Text>
                 </View>
               </View>
               <View style={styles.scoringRow}>
@@ -1316,20 +1371,32 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             <View style={styles.pickerModalContent}>
               <View style={styles.pickerHeader}>
                 <Text style={styles.pickerTitle}>
-                  {itemHasSubcategories ? 'Select Deficiency Detail' : 'Select Deficiency'}
+                  {selectionType === 'selected' ? 'Select Deficiency' : 'Select detail'}
                 </Text>
                 <TouchableOpacity
-                  onPress={() => setShowDeficiencyPicker(false)}
+                  onPress={() => {
+                    // Web: the detail step steps back to the name list, it does not close.
+                    if (selectionType === 'detail') {
+                      setSelectionType('selected');
+                      setDetailFilterName(null);
+                    } else {
+                      setShowDeficiencyPicker(false);
+                    }
+                  }}
                   style={styles.pickerCloseButton}
                 >
-                  <Ionicons name="close" size={24} color="#666666" />
+                  <Ionicons
+                    name={selectionType === 'detail' ? 'chevron-back' : 'close'}
+                    size={24}
+                    color="#666666"
+                  />
                 </TouchableOpacity>
               </View>
               <Text style={styles.pickerSubtitle}>
-                {availableDeficiencies.length} detail{availableDeficiencies.length !== 1 ? 's' : ''} available
+                {getDisplayDeficiencies().length} option{getDisplayDeficiencies().length !== 1 ? 's' : ''} available
               </Text>
               <ScrollView style={styles.pickerList} showsVerticalScrollIndicator={true}>
-                {availableDeficiencies.map((deficiency, index) => (
+                {getDisplayDeficiencies().length > 0 ? getDisplayDeficiencies().map((deficiency) => (
                   <TouchableOpacity
                     key={deficiency.id}
                     style={[
@@ -1340,33 +1407,21 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                     activeOpacity={0.7}
                   >
                     <View style={styles.pickerItemHeader}>
+                      {/* Web shows a single line per row: the name, then the detail on step 2 */}
                       <Text style={[
                         styles.pickerItemText,
                         selectedDeficiency?.id === deficiency.id && styles.pickerItemTextSelected
                       ]}>
-                        {deficiency.name}
+                        {selectionType === 'selected' ? deficiency.name : deficiency.detail}
                       </Text>
                       {selectedDeficiency?.id === deficiency.id && (
                         <Ionicons name="checkmark-circle" size={20} color="#0E7490" />
                       )}
                     </View>
-                    <Text style={styles.pickerItemDetail} numberOfLines={2}>
-                      {deficiency.detail}
-                    </Text>
-                    <View style={styles.pickerItemMeta}>
-                      <View style={[
-                        styles.severityBadge,
-                        deficiency.severity === 'Life-Threatening' && styles.severityLifeThreatening,
-                        deficiency.severity === 'Severe' && styles.severitySevere,
-                        deficiency.severity === 'Moderate' && styles.severityModerate,
-                        deficiency.severity === 'Low' && styles.severityLow,
-                      ]}>
-                        <Text style={styles.severityText}>{deficiency.severity}</Text>
-                      </View>
-                      <Text style={styles.repairByText}>Repair: {deficiency.repairBy}</Text>
-                    </View>
                   </TouchableOpacity>
-                ))}
+                )) : (
+                  <Text style={styles.pickerEmptyText}>No options found.</Text>
+                )}
               </ScrollView>
             </View>
           </View>
@@ -2276,6 +2331,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     marginBottom: 8,
+  },
+  pickerEmptyText: {
+    paddingVertical: 40,
+    textAlign: 'center',
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#9CA3AF',
+    fontStyle: 'italic',
   },
   pickerItemText: {
     fontSize: 16,

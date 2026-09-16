@@ -541,7 +541,7 @@ const CAT_17_HVAC_LIFE_THREATENING_PATTERNS = [
   'exhaust vent is damaged',
   'exhaust vent is missing',
   'inspection date is on or between october 1 and march 31 and the permanently installed heating source is not working',
-  'permanently installed heating source is not working',
+  'permanally installed heating source is not working',
   'interior temperature is below 64 degrees fahrenheit',
   'permanently installed heating source is not working to create heat',
   'unvented space heater is present',
@@ -1683,3 +1683,5 @@ export const INSIDE_DEFICIENCY_PATTERNS = {
   CAT_34_WINDOW_MODERATE: CAT_34_WINDOW_MODERATE_PATTERNS,
   CAT_34_WINDOW_SEVERE: CAT_34_WINDOW_SEVERE_PATTERNS,
 };
+
+export const INSIDE_POSSIBLE_SCORE = POSSIBLE_SCORE;
