@@ -40,6 +40,7 @@ import { COVERAGE_OPTIONS } from '../constants/inspectionCoverage';
 
 interface DashboardScreenProps {
   navigation: DashboardScreenNavigationProp;
+  route?: any;
   onMenuPress?: () => void;
 }
 
@@ -62,6 +63,7 @@ interface Property {
 
 export default function DashboardScreen({
   navigation,
+  route,
   onMenuPress,
 }: DashboardScreenProps) {
   const { signOut } = useClerk();
@@ -218,6 +220,16 @@ export default function DashboardScreen({
       fetchProperties();
     }, [])
   );
+
+  // Web parity: after the building-division step saves, the dashboard opens the
+  // action modal on the new property (web handleBuildingUpdate -> setShowActionModal).
+  useEffect(() => {
+    const newProperty = route?.params?.newProperty;
+    if (!newProperty) return;
+    setSelectedProperty(newProperty);
+    setActionModalVisible(true);
+    navigation.setParams({ newProperty: undefined } as any);
+  }, [route?.params?.newProperty]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);

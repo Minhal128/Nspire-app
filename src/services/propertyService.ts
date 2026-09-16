@@ -14,6 +14,8 @@ export interface CreatePropertyData {
   zipCode: string;
   buildings?: number;
   units?: number;
+  // Sent by the building-division step; mirrors the web propertiesAPI.create payload.
+  buildingDetails?: { buildingId: string; totalUnits: number; unitsForInspection: number }[];
 }
 
 export interface UpdatePropertyData {

@@ -535,75 +535,17 @@ export default function AddPropertyScreen({
     return true;
   };
 
-  // Submit all properties using bulk API
-  const handleSubmitAll = async () => {
+  // Web parity: Next validates every property, then hands the FIRST one to the
+  // building-division step (web AddPropertyModal -> handleAddPropertyNext, which
+  // does `Array.isArray(data) ? data[0] : data`). The property is created there,
+  // not here, so the unit total entered above stays fixed.
+  const handleNext = () => {
     for (let i = 0; i < forms.length; i++) {
       if (!validateForm(forms[i], i)) return;
     }
 
-    setLoading(true);
-
-    try {
-      // Build the property data array for bulk submission
-      const propertiesPayload = forms.map((form, i) => buildPropertyPayload(form, i));
-
-      // Use bulk endpoint for multiple properties, single endpoint for one
-      if (propertiesPayload.length === 1) {
-        const response = await propertyService.createProperty(propertiesPayload[0]);
-        if (response.success) {
-          Alert.alert('Success', 'Property added successfully!', [
-            { text: 'Add More', onPress: () => { setForms([createEmptyForm()]); setUploadedFile(null); } },
-            { text: 'Go to Dashboard', onPress: () => { handleSafeBack(); } },
-          ]);
-        } else {
-          Alert.alert('Error', response.message || 'Failed to add property.');
-        }
-      } else {
-        // Bulk submit
-        try {
-          const response = await propertyService.createBulkProperties(propertiesPayload);
-          if (response.success) {
-            const count = response.properties?.length || propertiesPayload.length;
-            Alert.alert(
-              'Success',
-              `All ${count} properties added successfully!`,
-              [
-                { text: 'Add More', onPress: () => { setForms([createEmptyForm()]); setUploadedFile(null); } },
-                { text: 'Go to Dashboard', onPress: () => { handleSafeBack(); } },
-              ],
-            );
-          } else {
-            Alert.alert('Error', response.message || 'Bulk submission failed.');
-          }
-        } catch (bulkError: any) {
-          // Fallback: submit one-by-one if bulk endpoint fails
-          const results: { success: boolean; name: string; error?: string }[] = [];
-          for (let i = 0; i < propertiesPayload.length; i++) {
-            try {
-              const resp = await propertyService.createProperty(propertiesPayload[i]);
-              results.push({ success: resp.success, name: forms[i].propertyName, error: resp.success ? undefined : resp.message });
-            } catch (err: any) {
-              results.push({ success: false, name: forms[i].propertyName, error: err.message });
-            }
-          }
-          const successCount = results.filter((r) => r.success).length;
-          const failCount = results.filter((r) => !r.success).length;
-          if (failCount === 0) {
-            Alert.alert('Success', `All ${successCount} properties added successfully!`, [
-              { text: 'Add More', onPress: () => { setForms([createEmptyForm()]); setUploadedFile(null); } },
-              { text: 'Go to Dashboard', onPress: () => { handleSafeBack(); } },
-            ]);
-          } else {
-            const failedNames = results.filter((r) => !r.success).map((r) => r.name).join(', ');
-            Alert.alert('Partial Success', `${successCount} added, ${failCount} failed.\nFailed: ${failedNames}`);
-          }
-        }
-      }
-    } catch (error: any) {
-      Alert.alert('Error', error.message || 'An unexpected error occurred.');
-    } finally {
-      setLoading(false);
-    }
+    const propertiesPayload = forms.map((form, i) => buildPropertyPayload(form, i));
+    navigation.navigate('BuildingDivision', { propertyData: propertiesPayload[0] });
   };
 
   // Label helpers
@@ -746,7 +688,7 @@ export default function AddPropertyScreen({
   const nextButton = (
     <TouchableOpacity
       style={[styles.nextButton, loading && styles.submitButtonDisabled]}
-      onPress={handleSubmitAll}
+      onPress={handleNext}
       disabled={loading}
     >
       {loading ? (

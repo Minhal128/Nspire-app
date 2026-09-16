@@ -25,6 +25,7 @@ import MyInspectionsScreen from "./src/screens/MyInspectionsScreen";
 import ReportsScreen from "./src/screens/ReportsScreen";
 import InspectionStatusScreen from "./src/screens/InspectionStatusScreen";
 import AddPropertyScreen from "./src/screens/AddPropertyScreen";
+import BuildingDivisionScreen from "./src/screens/BuildingDivisionScreen";
 import RequestInspectionScreen from "./src/screens/RequestInspectionScreen";
 import EditPropertyScreen from "./src/screens/EditPropertyScreen";
 import AnalyticsScreen from "./src/screens/AnalyticsScreen";
@@ -63,13 +64,14 @@ export type RootStackParamList = {
   EmailVerification: { email: string; role: string };
   ForgotPassword: undefined;
   Notifications: undefined;
-  Dashboard: undefined;
+  Dashboard: { newProperty?: any } | undefined;
   MyInspections: undefined;
   Reports: undefined;
   InspectionStatus: undefined;
   ManagementReports: undefined;
   Settings: undefined;
   AddProperty: undefined;
+  BuildingDivision: { propertyData: any };
   RequestInspection: undefined;
   EditProperty: { property: any };
   PropertyDetails: { property: any };
@@ -161,6 +163,7 @@ const linking: LinkingOptions<RootStackParamList> = {
       ManagementReports: "management-reports",
       Settings: "settings",
       AddProperty: "add-property",
+      BuildingDivision: "building-division",
       RequestInspection: "request-inspection",
       EditProperty: "edit-property",
       Analytics: "analytics",
@@ -391,6 +394,7 @@ function AppContent() {
                   <Stack.Screen name="InspectionStatus" component={InspectionStatusScreen} />
                   <Stack.Screen name="ManagementReports" component={ManagementReportsScreen} />
                   <Stack.Screen name="AddProperty" component={AddPropertyScreen} />
+                  <Stack.Screen name="BuildingDivision" component={BuildingDivisionScreen} />
                   <Stack.Screen
                     name="RequestInspection"
                     component={RequestInspectionScreen}
