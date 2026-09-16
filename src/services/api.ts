@@ -29,6 +29,7 @@ export interface User {
   email: string;
   role: string;
   lastLogin?: string;
+  createdAt?: string;
   phone?: string;
   profileImage?: string;
 }
@@ -51,6 +52,9 @@ export interface Property {
   buildings: number;
   units: number;
   unitList?: string[];  // Optional list of specific unit names/numbers
+  inspectionCoverage?: string;
+  calculatedUnits?: number;
+  buildingDetails?: { buildingId: string; totalUnits: number; unitsForInspection: number }[];
   status: string;
   owner: string;
   createdAt: string;

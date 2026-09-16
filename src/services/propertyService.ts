@@ -25,6 +25,9 @@ export interface UpdatePropertyData {
   buildings?: number;
   units?: number;
   status?: string;
+  inspectionCoverage?: string;
+  calculatedUnits?: number;
+  buildingDetails?: any[];
 }
 
 export interface PropertyFilters {
@@ -129,6 +132,30 @@ class PropertyService {
       return response;
     } catch (error: any) {
       throw new Error(error.message || 'Failed to delete property');
+    }
+  }
+
+  /**
+   * Delete multiple properties in bulk
+   */
+  async bulkDelete(propertyIds: string[]): Promise<{ success: boolean; message: string; deletedCount: number }> {
+    try {
+      const response = await api.post<{ success: boolean; message: string; deletedCount: number }>('/properties/bulk-delete', { propertyIds });
+      return response;
+    } catch (error: any) {
+      throw new Error(error.message || 'Failed to delete properties');
+    }
+  }
+
+  /**
+   * Toggle hold status for a property's inspection
+   */
+  async hold(id: string): Promise<{ success: boolean; message: string; property: Property }> {
+    try {
+      const response = await api.patch<{ success: boolean; message: string; property: Property }>(`/properties/${id}/hold`);
+      return response;
+    } catch (error: any) {
+      throw new Error(error.message || 'Failed to hold inspection');
     }
   }
 

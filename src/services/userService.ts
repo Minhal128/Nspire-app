@@ -108,6 +108,22 @@ class UserService {
       throw new Error(error.message || 'Failed to fetch users');
     }
   }
+
+  /**
+   * Permanently delete the signed-in account.
+   * Same endpoint and password confirmation as web /dashboard/delete-account.
+   */
+  async deleteAccount(password: string): Promise<{ success: boolean; message: string }> {
+    try {
+      const response = await api.delete<{ success: boolean; message: string }>(
+        '/auth/delete-account',
+        { body: JSON.stringify({ password }) }
+      );
+      return response;
+    } catch (error: any) {
+      throw new Error(error.message || 'Failed to delete account');
+    }
+  }
 }
 
 export const userService = new UserService();

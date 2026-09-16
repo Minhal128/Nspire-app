@@ -26,7 +26,6 @@ import {
 // Import Inside deficiencies for Inside inspections (Unit locations use this - 32 categories)
 import {
   getInsideDeficienciesForItem,
-  getAllInsideDeficienciesForItem,
   getInsideSubcategories,
   getInsideSubcategoryDeficiencies,
   ALL_INSIDE_CATEGORIES,
@@ -4743,7 +4742,10 @@ export const getDeficienciesForItem = (itemName: string, locationType?: string):
   // UNIT INSPECTIONS - Use insideDeficiencyMapping.ts ONLY (32 categories for dwelling rooms)
   // ==========================================
   if (isUnit) {
-    const insideResult = getAllInsideDeficienciesForItem(cleanedName);
+    // getAllInsideDeficienciesForItem returns a flat UnitDeficiencyOption[]; the code
+    // below reads .subcategories/.deficiencies/.itemName off it, which on an array are
+    // all undefined -- every Unit location came back with zero deficiency options.
+    const insideResult = getInsideDeficienciesForItem(cleanedName);
     if (insideResult) {
       let allDeficiencies: DeficiencyOption[] = [];
       if (insideResult.subcategories) {

@@ -250,7 +250,7 @@ export default function NotificationScreen({ navigation }: NotificationScreenPro
             <Ionicons name="arrow-back" size={28} color="#1F2937" />
           </TouchableOpacity>
           <Image
-            source={require("../../inspire_logo.png")}
+            source={require("../../public/logo.png")}
             style={styles.headerLogo}
             resizeMode="contain"
           />
@@ -336,7 +336,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   headerLogo: {
-    width: 100,
+    width: 70,
     height: 40,
   },
   headerActions: {

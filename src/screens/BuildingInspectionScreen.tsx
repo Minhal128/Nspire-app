@@ -1,4 +1,5 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useMemo, useRef } from 'react';
+import { Modal } from 'react-native';
 import {
   View,
   Text,
@@ -22,11 +23,16 @@ import { RootStackParamList } from '../types/navigation';
 import offlineStorageService from '../services/offlineStorageService';
 import { globalInspectionProgress } from '../utils/globalState';
 import { generateNSPIREReport } from '../utils/nspireReportUtils';
+import { resolveCoverageUnits } from '../utils/coverageUnits';
 import { buildInProgressReportHtml } from '../utils/reportPreviewUtils';
 import { enhancedNspirePDFService } from '../services/enhancedNspirePDFService';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
 import { OUTSIDE_ITEMS, INSIDE_ITEMS, UNIT_ITEMS } from '../data/inspectionData';
+import { useFocusEffect } from '@react-navigation/native';
+import { generateRandomUnitSample, isRandomSelectionAvailable } from '../services';
+import propertyService from '../services/propertyService';
+import { COVERAGE_OPTIONS } from '../constants/inspectionCoverage';
 import authService from '../services/authService';
 import { inspectionService } from '../services/inspectionService';
 import { useReportPreview } from '../contexts/ReportPreviewContext';
@@ -83,7 +89,34 @@ interface BuildingProgressEntry {
 export default function BuildingInspectionScreen() {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<BuildingInspectionRouteProp>();
-  const { property, calculatedUnits, selectedUnits, coverage } = route.params;
+  const {
+    property,
+    calculatedUnits: routeCalculatedUnits,
+    selectedUnits,
+    coverage: routeCoverage,
+  } = route.params;
+
+  // Callers that resume an inspection (My Inspection -> Continue) don't carry
+  // coverage, and `undefined / totalBuildings` turned every building row into
+  // NaN. Fall back to what the property already has, then to the NSPIRE sample.
+  const seeded = useMemo(
+    () =>
+      resolveCoverageUnits(
+        routeCoverage || property.inspectionCoverage || 'random',
+        property.units || 1,
+        String(property._id || property.propertyId || 'property')
+      ),
+    [routeCoverage, property]
+  );
+
+  // Coverage is re-selectable from this screen (web /dashboard/property-details
+  // parity), so it and the derived unit allocation live in state.
+  const [coverage, setCoverage] = useState<string>(
+    routeCoverage || property.inspectionCoverage || 'random'
+  );
+  const [calculatedUnits, setCalculatedUnits] = useState<number>(
+    routeCalculatedUnits ?? property.calculatedUnits ?? seeded.calculatedUnits
+  );
 
   const totalBuildings = property.buildings || 1;
   const totalUnits = property.units || 1;
@@ -108,6 +141,21 @@ export default function BuildingInspectionScreen() {
   }, [totalBuildings, totalUnits, calculatedUnits]);
 
   const [buildings, setBuildings] = useState<BuildingRow[]>(initBuildings);
+
+  // Web parity: per-building completed tasks + renamable ID column
+  const [completedUnitsMap, setCompletedUnitsMap] = useState<Record<string, string[]>>({});
+  const [columnHeaderName, setColumnHeaderName] = useState('Building Unique ID');
+  const [editColumnHeaderOpen, setEditColumnHeaderOpen] = useState(false);
+  const [tempColumnHeaderName, setTempColumnHeaderName] = useState('Building Unique ID');
+  const [coverageModalVisible, setCoverageModalVisible] = useState(false);
+  // Seeded the same way as the live values, so opening the coverage modal on a
+  // resumed inspection preselects the real coverage instead of blank/NaN.
+  const [pendingCoverage, setPendingCoverage] = useState<string>(
+    routeCoverage || property.inspectionCoverage || 'random'
+  );
+  const [pendingCalculatedUnits, setPendingCalculatedUnits] = useState<number>(
+    routeCalculatedUnits ?? property.calculatedUnits ?? seeded.calculatedUnits
+  );
 
   // Export state
   const [isExporting, setIsExporting] = useState(false);
@@ -262,6 +310,99 @@ export default function BuildingInspectionScreen() {
   };
 
   const totalInspectionUnits = buildings.reduce((s, b) => s + b.unitsForInspection, 0);
+
+  // Which tasks are done per building, from the same /inspections/unit-status
+  // source the web property-details page reads.
+  const refreshCompletedUnits = useCallback(async () => {
+    const propId = property._id || (property as any).id;
+    if (!propId || buildings.length === 0) return;
+
+    const map: Record<string, string[]> = {};
+    await Promise.all(
+      buildings.map(async (b) => {
+        try {
+          const res = await inspectionService.getUnitInspectionStatus({
+            property_id: String(propId),
+            building_id: b.buildingId,
+          });
+          map[b.buildingId] = res.success
+            ? res.statuses.filter(st => st.isInspected).map(st => st.unitLabel)
+            : [];
+        } catch {
+          map[b.buildingId] = [];
+        }
+      })
+    );
+    setCompletedUnitsMap(map);
+  }, [property, buildings]);
+
+  // Refresh on mount and whenever we come back from an inspection screen
+  useFocusEffect(
+    useCallback(() => {
+      refreshCompletedUnits();
+    }, [refreshCompletedUnits])
+  );
+
+  const totalTasks = buildings.reduce((sum, b) => sum + (2 + b.unitsForInspection), 0);
+  const tasksDone = Object.values(completedUnitsMap).reduce((sum, arr) => sum + arr.length, 0);
+  const overallProgress = totalTasks > 0
+    ? Math.min(100, Math.round((tasksDone / totalTasks) * 100))
+    : 0;
+
+  const handleSaveColumnHeader = () => {
+    setColumnHeaderName(tempColumnHeaderName.trim() || 'Building Unique ID');
+    setEditColumnHeaderOpen(false);
+  };
+
+  const openCoverageModal = () => {
+    setPendingCoverage(coverage);
+    setPendingCalculatedUnits(calculatedUnits);
+    setCoverageModalVisible(true);
+  };
+
+  const computeUnitsForCoverage = (nextCoverage: string): number => {
+    if (nextCoverage === '100') return totalUnits;
+    if (nextCoverage === '50') return Math.ceil(totalUnits / 2);
+    if (isRandomSelectionAvailable(totalUnits)) {
+      try {
+        const propId = property._id || (property as any).id || `property_${Date.now()}`;
+        return generateRandomUnitSample(totalUnits, propId).unitsToInspect;
+      } catch {
+        /* fall through to the heuristic below */
+      }
+    }
+    return Math.min(totalUnits, Math.max(5, Math.ceil(Math.sqrt(totalUnits))));
+  };
+
+  const handlePendingCoverageChange = (nextCoverage: string) => {
+    setPendingCoverage(nextCoverage);
+    setPendingCalculatedUnits(computeUnitsForCoverage(nextCoverage));
+  };
+
+  const handleApplyCoverage = async () => {
+    setCoverageModalVisible(false);
+    setCoverage(pendingCoverage);
+    setCalculatedUnits(pendingCalculatedUnits);
+
+    // Redistribute the new allocation evenly across buildings
+    const base = Math.floor(pendingCalculatedUnits / totalBuildings);
+    const remainder = pendingCalculatedUnits % totalBuildings;
+    setBuildings(prev => prev.map((b, i) => ({
+      ...b,
+      unitsForInspection: base + (i < remainder ? 1 : 0),
+    })));
+
+    const propId = property._id || (property as any).id;
+    if (!propId) return;
+    try {
+      await propertyService.updateProperty(String(propId), {
+        inspectionCoverage: pendingCoverage,
+        calculatedUnits: pendingCalculatedUnits,
+      });
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to save coverage selection');
+    }
+  };
 
   const handleStartInspectionForBuilding = (building: BuildingRow) => {
     if (building.unitsForInspection <= 0) {
@@ -1448,7 +1589,38 @@ export default function BuildingInspectionScreen() {
             </View>
             <View style={styles.infoPair}>
               <Text style={styles.infoLabel}>Selection:</Text>
-              <Text style={styles.infoValue}>{getCoverageLabel()} ({calculatedUnits} units)</Text>
+              <View style={styles.selectionValueRow}>
+                <Text style={styles.infoValue}>{getCoverageLabel()} ({calculatedUnits} units)</Text>
+                <TouchableOpacity onPress={openCoverageModal} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <Ionicons name="create-outline" size={16} color="#006795" />
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+
+          {/* Unit Status Summary (web parity) */}
+          <Text style={styles.sectionTitle}>Unit Status Summary</Text>
+          <View style={styles.summaryCard}>
+            <View style={styles.summaryHeaderRow}>
+              <Text style={styles.summaryLabel}>Overall Inspection Progress</Text>
+              <Text style={styles.summaryPercent}>{overallProgress}%</Text>
+            </View>
+            <View style={styles.summaryTrack}>
+              <View style={[styles.summaryFill, { width: (overallProgress + '%') as any }]} />
+            </View>
+            <View style={styles.summaryHeaderRow}>
+              <Text style={styles.summaryEndLabel}>Not Started</Text>
+              <Text style={styles.summaryEndLabel}>Completed</Text>
+            </View>
+            <View style={styles.summaryStatsRow}>
+              <View style={styles.summaryStat}>
+                <Text style={styles.summaryStatValue}>{tasksDone}</Text>
+                <Text style={styles.summaryStatLabel}>Tasks Done</Text>
+              </View>
+              <View style={styles.summaryStat}>
+                <Text style={styles.summaryStatValue}>{totalTasks}</Text>
+                <Text style={styles.summaryStatLabel}>Total Tasks</Text>
+              </View>
             </View>
           </View>
 
@@ -1471,9 +1643,18 @@ export default function BuildingInspectionScreen() {
 
           {/* Table Header */}
           <View style={styles.tableHeader}>
-            <Text style={[styles.tableHeaderText, styles.colBuildingId]}>Building Unique ID</Text>
+            <View style={[styles.colBuildingId, styles.headerCellRow]}>
+              <Text style={styles.tableHeaderText}>{columnHeaderName}</Text>
+              <TouchableOpacity
+                onPress={() => { setTempColumnHeaderName(columnHeaderName); setEditColumnHeaderOpen(true); }}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons name="create-outline" size={14} color="#006795" />
+              </TouchableOpacity>
+            </View>
             <Text style={[styles.tableHeaderText, styles.colTotalUnits]}>Total Units</Text>
             <Text style={[styles.tableHeaderText, styles.colInspectionUnits]}>Unit for Inspection</Text>
+            <Text style={[styles.tableHeaderText, styles.colProgress]}>Progress</Text>
             <Text style={[styles.tableHeaderText, styles.colAction]}></Text>
           </View>
 
@@ -1515,6 +1696,42 @@ export default function BuildingInspectionScreen() {
                 />
               </View>
 
+              {/* Progress (web parity: Outside / Inside / Units breakdown) */}
+              <View style={styles.colProgress}>
+                {(() => {
+                  const completedUnits = completedUnitsMap[building.buildingId] || [];
+                  if (completedUnits.length === 0) {
+                    return <Text style={styles.notStartedText}>Not started</Text>;
+                  }
+                  const hasOutside = completedUnits.includes('Outside');
+                  const hasInside = completedUnits.includes('Inside');
+                  const unitCompletedCount = completedUnits.filter(u => u !== 'Outside' && u !== 'Inside').length;
+                  const unitsPct = building.unitsForInspection > 0
+                    ? Math.round((unitCompletedCount / building.unitsForInspection) * 100)
+                    : 0;
+                  return (
+                    <>
+                      <Text style={[styles.progressLine, hasOutside ? styles.progressDone : styles.progressPending]}>
+                        Outside {hasOutside ? '100%' : '0%'}
+                      </Text>
+                      <Text style={[styles.progressLine, hasInside ? styles.progressDone : styles.progressPending]}>
+                        Inside {hasInside ? '100%' : '0%'}
+                      </Text>
+                      {building.unitsForInspection > 0 && (
+                        <Text
+                          style={[
+                            styles.progressLine,
+                            unitCompletedCount >= building.unitsForInspection ? styles.progressDone : styles.progressPartial,
+                          ]}
+                        >
+                          Units {unitsPct}%
+                        </Text>
+                      )}
+                    </>
+                  );
+                })()}
+              </View>
+
               <View style={styles.colAction}>
                 <TouchableOpacity
                   style={[
@@ -1547,6 +1764,90 @@ export default function BuildingInspectionScreen() {
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Edit Column Name (web parity) */}
+      <Modal
+        visible={editColumnHeaderOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setEditColumnHeaderOpen(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeaderRow}>
+              <Text style={styles.editModalTitle}>Edit Column Name</Text>
+              <TouchableOpacity onPress={() => setEditColumnHeaderOpen(false)}>
+                <Ionicons name="close" size={22} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.modalLabel}>Column Name</Text>
+            <TextInput
+              style={styles.modalInput}
+              value={tempColumnHeaderName}
+              onChangeText={setTempColumnHeaderName}
+              placeholder="Building Unique ID"
+              placeholderTextColor="#9CA3AF"
+            />
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setEditColumnHeaderOpen(false)}>
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.modalSaveBtn} onPress={handleSaveColumnHeader}>
+                <Text style={styles.modalSaveText}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Coverage re-selection (web parity) */}
+      <Modal
+        visible={coverageModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setCoverageModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeaderRow}>
+              <Text style={styles.editModalTitle}>Continue Inspection</Text>
+              <TouchableOpacity onPress={() => setCoverageModalVisible(false)}>
+                <Ionicons name="close" size={22} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.coveragePropertyName}>{property.name || 'N/A'}</Text>
+            <Text style={styles.coverageTotalUnits}>Total Units: {totalUnits}</Text>
+            <Text style={styles.modalLabel}>Select Inspection Coverage</Text>
+            {COVERAGE_OPTIONS.map(option => {
+              const selected = pendingCoverage === option.value;
+              return (
+                <TouchableOpacity
+                  key={option.value}
+                  style={[styles.coverageOption, selected && styles.coverageOptionSelected]}
+                  onPress={() => handlePendingCoverageChange(option.value)}
+                >
+                  <View style={[styles.radioOuter, selected && styles.radioOuterSelected]}>
+                    {selected && <View style={styles.radioInner} />}
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.coverageOptionLabel, selected && styles.coverageOptionLabelSelected]}>
+                      {option.label}
+                    </Text>
+                    <Text style={styles.coverageOptionDescription}>{option.description}</Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+            <View style={styles.unitsToInspectRow}>
+              <Text style={styles.unitsToInspectLabel}>Units to Inspect:</Text>
+              <Text style={styles.unitsToInspectValue}>{pendingCalculatedUnits}</Text>
+            </View>
+            <TouchableOpacity style={styles.modalSaveBtnFull} onPress={handleApplyCoverage}>
+              <Text style={styles.modalSaveText}>Start Inspection</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -1556,6 +1857,116 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F3F4F6',
   },
+  selectionValueRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1 },
+  summaryCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  summaryHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  summaryLabel: { fontSize: 12, fontWeight: '800', color: '#6B7280', textTransform: 'uppercase' },
+  summaryPercent: { fontSize: 22, fontWeight: '800', color: '#006795' },
+  summaryTrack: {
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#F3F4F6',
+    overflow: 'hidden',
+    marginVertical: 8,
+  },
+  summaryFill: { height: 14, borderRadius: 7, backgroundColor: '#006795' },
+  summaryEndLabel: { fontSize: 10, fontWeight: '700', color: '#9CA3AF', textTransform: 'uppercase' },
+  summaryStatsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+    paddingTop: 12,
+  },
+  summaryStat: { alignItems: 'center' },
+  summaryStatValue: { fontSize: 22, fontWeight: '800', color: '#111827' },
+  summaryStatLabel: { fontSize: 10, fontWeight: '800', color: '#9CA3AF', textTransform: 'uppercase' },
+  headerCellRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  colProgress: { flex: 1.1, paddingHorizontal: 2 },
+  notStartedText: { fontSize: 10, fontWeight: '700', color: '#9CA3AF', textAlign: 'center' },
+  progressLine: { fontSize: 10, fontWeight: '700', textAlign: 'center' },
+  progressDone: { color: '#16A34A' },
+  progressPending: { color: '#9CA3AF' },
+  progressPartial: { color: '#D97706' },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  modalCard: { width: '100%', maxWidth: 460, backgroundColor: '#FFFFFF', borderRadius: 14, padding: 20 },
+  modalHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
+  editModalTitle: { fontSize: 17, fontWeight: '800', color: '#111827' },
+  modalLabel: { fontSize: 13, fontWeight: '700', color: '#374151', marginBottom: 8, marginTop: 6 },
+  modalInput: {
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 15,
+    color: '#111827',
+  },
+  modalActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 18 },
+  modalCancelBtn: { paddingHorizontal: 18, paddingVertical: 10, borderRadius: 8, backgroundColor: '#F3F4F6' },
+  modalCancelText: { color: '#374151', fontWeight: '700' },
+  modalSaveBtn: { paddingHorizontal: 18, paddingVertical: 10, borderRadius: 8, backgroundColor: '#006795' },
+  modalSaveBtnFull: {
+    marginTop: 16,
+    paddingVertical: 13,
+    borderRadius: 10,
+    backgroundColor: '#006795',
+    alignItems: 'center',
+  },
+  modalSaveText: { color: '#FFFFFF', fontWeight: '700' },
+  coveragePropertyName: { fontSize: 15, fontWeight: '800', color: '#111827' },
+  coverageTotalUnits: { fontSize: 13, color: '#4B5563', marginTop: 2 },
+  coverageOption: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+    marginBottom: 10,
+  },
+  coverageOptionSelected: { borderColor: '#006795', backgroundColor: '#E8F4F8' },
+  radioOuter: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#D1D5DB',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+  },
+  radioOuterSelected: { borderColor: '#006795' },
+  radioInner: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#006795' },
+  coverageOptionLabel: { fontSize: 13, fontWeight: '700', color: '#111827' },
+  coverageOptionLabelSelected: { color: '#006795' },
+  coverageOptionDescription: { fontSize: 11, color: '#6B7280', marginTop: 2 },
+  unitsToInspectRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F1F7FE',
+    borderRadius: 10,
+    padding: 14,
+    marginTop: 4,
+  },
+  unitsToInspectLabel: { fontSize: 13, fontWeight: '700', color: '#374151' },
+  unitsToInspectValue: { fontSize: 17, fontWeight: '800', color: '#006795' },
   header: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -1299,6 +1299,8 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
       navigation.navigate('Analytics' as never);
     } else if (screen === 'Settings') {
       navigation.navigate('Settings' as never);
+    } else {
+      navigation.navigate(screen as never);
     }
   };
 
@@ -1907,7 +1909,7 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
               <Ionicons name="menu" size={28} color="#1F2937" />
             </TouchableOpacity>
             <Image
-              source={require('../../inspire_logo.png')}
+              source={require('../../public/logo.png')}
               style={styles.headerLogo}
               resizeMode="contain"
             />
@@ -2173,7 +2175,7 @@ const styles = StyleSheet.create({
     marginTop: 15,
   },
   headerLogo: {
-    width: 240,
+    width: 114,
     height: 65,
   },
   scrollView: {
@@ -2253,17 +2255,22 @@ const styles = StyleSheet.create({
   reportRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: 12,
   },
   reportLabel: {
     fontSize: 14,
     fontWeight: '600',
     color: '#1F2937',
+    flexShrink: 0,
   },
   reportValue: {
     fontSize: 14,
     color: '#374151',
+    flex: 1,
+    flexShrink: 1,
+    textAlign: 'right',
+    marginLeft: 12,
   },
   complianceContainer: {
     flexDirection: 'row',

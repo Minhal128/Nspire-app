@@ -96,7 +96,7 @@ async function getLogoBase64(): Promise<string> {
     // On web, use fetch to get the logo
     if (Platform.OS === 'web') {
       // Try to load from public folder or bundled asset
-      const logoUrl = INSPIRE_LOGO_BASE64 || '/inspire_logo.png';
+      const logoUrl = INSPIRE_LOGO_BASE64 || '/logo.png';
       if (logoUrl.startsWith('data:')) {
         cachedLogoBase64 = logoUrl;
         return cachedLogoBase64;
@@ -121,7 +121,7 @@ async function getLogoBase64(): Promise<string> {
     
     // On native, use Image.resolveAssetSource and FileSystem
     const { Image } = require('react-native');
-    const logo = require('../../inspire_logo.png');
+    const logo = require('../../public/logo.png');
     const asset = Image.resolveAssetSource(logo);
     
     if (!asset?.uri) {
@@ -144,7 +144,7 @@ async function getLogoBase64(): Promise<string> {
     
     // If it's an HTTP URI (bundled asset in dev), fetch it
     if (asset.uri.startsWith('http')) {
-      const tmpPath = FileSystem.cacheDirectory + 'inspire_logo_' + Date.now() + '.png';
+      const tmpPath = FileSystem.cacheDirectory + 'logo_' + Date.now() + '.png';
       const result = await FileSystem.downloadAsync(asset.uri, tmpPath);
       if (result?.uri) {
         const b64 = await FileSystem.readAsStringAsync(result.uri, { encoding: FileSystem.EncodingType.Base64 });
@@ -585,9 +585,12 @@ function generateEnhancedDeficiencyTable(
         if (normalized.startsWith('data:')) {
           // Already a base64 data URI — use directly
           imgSrc = normalized;
+        } else if (normalized.startsWith('http://') || normalized.startsWith('https://')) {
+          // Remote URL — try base64 first, fall back to original URL
+          imgSrc = imageMap.get(normalized) || normalized;
         } else {
-          // Look up from the preloaded image map
-          imgSrc = imageMap.get(normalized) || (normalized.startsWith('http') ? normalized : '');
+          // Local file or other — try from map
+          imgSrc = imageMap.get(normalized) || '';
         }
       }
       const imgCell = imgSrc
@@ -1224,8 +1227,10 @@ function generateInProgressDeficiencyTable(
               const normalized = String(def.imageUri).trim();
               if (normalized.startsWith('data:')) {
                 imgSrc = normalized;
+              } else if (normalized.startsWith('http://') || normalized.startsWith('https://')) {
+                imgSrc = imageMap.get(normalized) || normalized;
               } else {
-                imgSrc = imageMap.get(normalized) || (normalized.startsWith('http') ? normalized : '');
+                imgSrc = imageMap.get(normalized) || '';
               }
             }
 
@@ -1279,8 +1284,10 @@ function generateInProgressDeficiencyTable(
             const normalized = String(def.imageUri).trim();
             if (normalized.startsWith('data:')) {
               imgSrc = normalized;
+            } else if (normalized.startsWith('http://') || normalized.startsWith('https://')) {
+              imgSrc = imageMap.get(normalized) || normalized;
             } else {
-              imgSrc = imageMap.get(normalized) || (normalized.startsWith('http') ? normalized : '');
+              imgSrc = imageMap.get(normalized) || '';
             }
           }
           const imgCell = imgSrc

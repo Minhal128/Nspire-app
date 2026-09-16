@@ -33,7 +33,7 @@ export default function BoardingScreen({ navigation }: BoardingScreenProps) {
       <View style={styles.content}>
         {/* Logo */}
         <Image
-          source={require("../../inspire_logo.png")}
+          source={require("../../public/logo.png")}
           style={styles.logo}
           resizeMode="contain"
         />
@@ -130,7 +130,7 @@ const styles = StyleSheet.create({
     justifyContent: "flex-start",
   },
   logo: {
-    width: 300,
+    width: 211,
     height: 120,
     marginBottom: -20,
   },

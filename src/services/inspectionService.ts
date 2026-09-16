@@ -422,6 +422,26 @@ class InspectionService {
       throw new Error(error.message || 'Failed to fetch inspection requests');
     }
   }
+
+  /**
+   * Expiring public link to a report — same endpoint the web portals' Share
+   * button uses, so a link shared from the app opens the web /shared-report page.
+   */
+  async generateShareLink(
+    id: string
+  ): Promise<{ success: boolean; message: string; shareUrl: string; expiresAt: string }> {
+    try {
+      const response = await api.post<{
+        success: boolean;
+        message: string;
+        shareUrl: string;
+        expiresAt: string;
+      }>(`/inspections/${id}/share`);
+      return response;
+    } catch (error: any) {
+      throw new Error(error.message || 'Failed to generate share link');
+    }
+  }
 }
 
 export const inspectionService = new InspectionService();

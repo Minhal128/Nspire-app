@@ -25,15 +25,15 @@ import {
   hasSubcategories,
   getSubcategoriesForItem,
   DeficiencyOption,
-  CODE_COMPLIANCE,
   isUnitLocation
 } from '../data/deficiencyMapping';
+import { INSPIRE_LOGO_BASE64 } from '../constants/inspireLogo';
 import { cloudinaryService } from '../services/cloudinaryService';
 import ModalZoomWrapper from '../components/ModalZoomWrapper';
 import { geminiService } from '../services/openaiService';
 import { inspectionService } from '../services/inspectionService';
-import { ScoringResult, calculateUnitScore, POSSIBLE_SCORE } from '../utils/scoringCalculations';
-import { UNIT_TOTAL_POSSIBLE_POINTS } from '../data/insideDeficiencyMapping';
+import { autoSaveInspectionDeficiency } from '../utils/storage';
+import { ScoringResult, calculateUnitScore, POSSIBLE_SCORE, UNIT_TOTAL_POSSIBLE_POINTS } from '../utils/scoringCalculations';
 import {
   calculateOutsideScore,
   extractCategoryNumber,
@@ -50,82 +50,50 @@ import {
   UnitScoringResult
 } from '../utils/unitScoringCalculations';
 
-// Outside inspection location options
+// Outside inspection location options (web parity)
 const OUTSIDE_LOCATION_OPTIONS = [
-  'Building Site N',
   'Building Site S',
-  'Building Site W',
+  'Building Site N',
   'Building Site E',
-  'Courtyard',
-  'Exterior E',
-  'Exterior N',
-  'Exterior S',
-  'Exterior W',
-  'Garage/Carport',
-  'Grounds',
-  'Other',
-  'Parking Lot/Driveway/Roads',
+  'Building Site W',
+  'Parking Lot',
+  'Driveway',
+  'Sidewalk',
+  'Roof',
   'Patio/Porch/Balcony',
-  'Playground',
-  'Roof (flat)',
-  'Sidewalks/Walkways/Stoops',
 ];
 
-// Inside inspection location options
+// Inside inspection location options (web parity)
 const INSIDE_LOCATION_OPTIONS = [
-  'Basement',
-  'Business Space',
-  'Classroom',
-  'Closet/Utility',
-  'Day Care',
-  'Halls/Corridors/Stairs',
-  'Kitchen',
-  'Laundry Room',
-  'Leased Commercial',
-  'Library',
-  'Lobby',
-  'Maintenance Shop',
+  'Common Area',
+  'Main Lobby',
+  'Hallway/Stairs',
   'Mechanical Room',
-  'Office',
-  'Other Community Space',
-  'Parking Garage',
-  'Patio/Porch/Balcony',
-  'Recreational Room',
-  'Recreation Room',
-  'Refuse/Compactor Room',
-  'Restrooms',
-  'Salon',
-  'Store',
-  'Workout Room',
+  'Storage Room',
+  'Other',
 ];
 
-// Unit inspection location options (25 locations)
+// Unit inspection location options (web parity)
 const UNIT_LOCATION_OPTIONS = [
-  'Attic/Loft',
   'Basement',
-  'Bathroom1',
-  'Bathroom2',
-  'Bathroom3',
+  'Attic/Loft',
+  'Bathroom 1',
+  'Bathroom 2',
+  'Bathroom 3',
   'Bedroom 1',
   'Bedroom 2',
   'Bedroom 3',
   'Bedroom 4',
   'Bedroom 5',
   'Closet',
-  'Dinning Area',
-  'Entryway(Front/Rear',
+  'Dining Area',
+  'Entryway',
   'Garage',
-  'Hallway/Stairs',
   'Home Office/Study',
   'Kitchen',
   'Laundry Room',
   'Living Room',
-  'Location',
-  'Mechanical Room',
   'Office',
-  'Other',
-  'Patio/Porch/Balcony',
-  'Storage Room',
 ];
 
 type DeficiencyDetailScreenNavigationProp = NativeStackNavigationProp<
@@ -169,6 +137,14 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const [customDeficiencyName, setCustomDeficiencyName] = useState('');
   const [customDeficiencyDetail, setCustomDeficiencyDetail] = useState('');
   const [customDeficiencyCriteria, setCustomDeficiencyCriteria] = useState('');
+
+  // Web keeps STANDARD / INSPECTION PROTOCOL in the same scroll, empty until a
+  // deficiency is picked.
+  const hasDeficiencySelected = Boolean(selectedDeficiency || customDeficiencyDetail);
+  const standardText = selectedDeficiency?.criteria || customDeficiencyCriteria || '';
+  const inspectionProtocolText = selectedDeficiency?.detail || customDeficiencyDetail || '';
+  const [showStandardText, setShowStandardText] = useState(false);
+  const [showProtocolText, setShowProtocolText] = useState(false);
   const [isCustomEntry, setIsCustomEntry] = useState(false);
 
   // Scoring state - automatically calculated based on deficiency selection
@@ -187,15 +163,22 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const [selectedUnitLocation, setSelectedUnitLocation] = useState<string>(UNIT_LOCATION_OPTIONS[0]);
   const [showUnitLocationPicker, setShowUnitLocationPicker] = useState(false);
 
-  // Code Reference modal state
-  const [showCodeReference, setShowCodeReference] = useState(false);
-  const [codeReferenceContent, setCodeReferenceContent] = useState('');
-  const [codeRefFontSize, setCodeRefFontSize] = useState(15);
+  // Inspection Scoring confirmation step, shown between the form and the saved panel
+
+  // "Saved for Summary Report" panel shown after Proceed (web parity: OD modal step 4)
+  const [savedPanelVisible, setSavedPanelVisible] = useState(false);
+  const [savedItemFindings, setSavedItemFindings] = useState<any[]>([]);
+  const [lastSavedFindingId, setLastSavedFindingId] = useState<string | null>(null);
 
   // Processing modal state
   const [showProcessingModal, setShowProcessingModal] = useState(false);
   const [processingMessage, setProcessingMessage] = useState('');
   const processingTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Code reference ("How To Inspect") modal state
+  const [showCodeReference, setShowCodeReference] = useState(false);
+  const [codeReferenceContent, setCodeReferenceContent] = useState('');
+  const [codeRefFontSize, setCodeRefFontSize] = useState(15);
 
   // Cleanup timer on unmount
   useEffect(() => {
@@ -224,31 +207,6 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     return `QR-${randomNum}`;
   };
 
-  // Get the raw points formula from the selected deficiency (e.g., "2.20/n", "27.25/n")
-  const getPointsFormula = (): number => {
-    if (!selectedDeficiency?.points) return 0;
-    const pointsStr = selectedDeficiency.points;
-    // Parse the formula like "2.20/n" or "27.25/50xn" to get the base value
-    const match = pointsStr.match(/^([\d.]+)/);
-    if (match) {
-      return parseFloat(match[1]);
-    }
-    return 0;
-  };
-
-  // Calculate PTS LOST from formula: formula_value / n (where n = totalSamples)
-  const calculatePtsLost = (): number => {
-    const rawPoints = getPointsFormula();
-    if (rawPoints === 0 || totalSamples === 0) return 0;
-    return rawPoints / totalSamples;
-  };
-
-  // Calculate SCORE: Possible Score - PTS LOST
-  // Unit inspections have 50 possible points, Inside/Outside have 25
-  const getPossibleScore = (): number => {
-    return isUnit ? UNIT_TOTAL_POSSIBLE_POINTS : POSSIBLE_SCORE;
-  };
-
   // Check if the current deficiency should force Score to 0.00
   const isZeroScoreDeficiency = (): boolean => {
     if (!selectedDeficiency && !isCustomEntry) return false;
@@ -267,12 +225,6 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       return true;
     }
     return false;
-  };
-
-  const calculateScore = (): number => {
-    if (isZeroScoreDeficiency()) return 0;
-    const ptsLost = calculatePtsLost();
-    return getPossibleScore() - ptsLost;
   };
 
   // Update scoring dynamically when deficiency is selected/changed
@@ -453,6 +405,50 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     setShowDeficiencyPicker(false);
   };
 
+  /**
+   * Clear the form so another deficiency can be logged against the same item,
+   * without leaving the screen (web: "Add Deficiency" on the saved panel).
+   */
+  const resetFormForNewDeficiency = () => {
+    setSavedPanelVisible(false);
+    setSelectedDeficiency(null);
+    setSelectedSubcategory(null);
+    setRepairBy('');
+    setDeficiencyCriteria('');
+    setCustomDeficiencyName('');
+    setCustomDeficiencyDetail('');
+    setCustomDeficiencyCriteria('');
+    setIsCustomEntry(false);
+    setNote('');
+    setImages([]);
+    setLastSavedFindingId(null);
+  };
+
+  const handleRemoveSavedFinding = (findingId: string) => {
+    Alert.alert(
+      'Remove Deficiency',
+      'Remove this saved deficiency from the report?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: () => {
+            setSavedItemFindings(prev =>
+              prev.filter((f: any, i: number) => (f?.deficiencyQRId ?? f?.id ?? String(i)) !== findingId)
+            );
+            if (lastSavedFindingId === findingId) setLastSavedFindingId(null);
+          },
+        },
+      ]
+    );
+  };
+
+  const handleContinueInspection = () => {
+    setSavedPanelVisible(false);
+    navigation.goBack();
+  };
+
   const handleClearSelection = () => {
     setSelectedDeficiency(null);
     setRepairBy('');
@@ -472,39 +468,24 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     }
   };
 
-  const requestPermissions = async (useCamera: boolean) => {
-    if (useCamera) {
-      const { status } = await ImagePicker.requestCameraPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert(
-          'Camera Permission Required',
-          'Please enable camera access in your device Settings to take photos.',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Open Settings', onPress: () => Linking.openSettings() }
-          ]
-        );
-        return false;
-      }
-    } else {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert(
-          'Photo Library Permission Required',
-          'Please enable photo library access in your device Settings to select photos.',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Open Settings', onPress: () => Linking.openSettings() }
-          ]
-        );
-        return false;
-      }
+  const requestCameraPermission = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert(
+        'Camera Permission Required',
+        'Please enable camera access in your device Settings to take photos.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Open Settings', onPress: () => Linking.openSettings() }
+        ]
+      );
+      return false;
     }
     return true;
   };
 
   const handleTakePhoto = async () => {
-    const hasPermission = await requestPermissions(true);
+    const hasPermission = await requestCameraPermission();
     if (!hasPermission) return;
 
     const mediaTypes: any = ['images'];
@@ -521,28 +502,33 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     }
   };
 
-  const handlePickImage = async () => {
-    const hasPermission = await requestPermissions(false);
-    if (!hasPermission) return;
-
-    const mediaTypes: any = ['images'];
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes,
-      aspect: [4, 3],
-      quality: 0.8,
-      allowsMultipleSelection: true,
-    });
-
-    if (!result.canceled && result.assets) {
-      const newImages = result.assets.map(asset => asset.uri);
-      setImages([...images, ...newImages]);
-    }
-  };
-
   const handleRemoveImage = (index: number) => {
     const newImages = images.filter((_, i) => i !== index);
     setImages(newImages);
+  };
+
+  /**
+   * Gate the move from the form into the Inspection Scoring confirmation step.
+   * Same validation handleProceed applies, without doing the actual save yet.
+   */
+  const handleShowScoring = () => {
+    if (!isGeneralComment) {
+      if (isCustomEntry) {
+        if (!customDeficiencyDetail) {
+          Alert.alert('Error', 'Please enter details for the custom deficiency');
+          return;
+        }
+      } else if (!selectedDeficiency) {
+        Alert.alert('Error', 'Please select a deficiency');
+        return;
+      }
+    }
+
+    if (images.length === 0) {
+      Alert.alert('Error', 'Please add at least one photo');
+      return;
+    }
+
   };
 
   const handleProceed = async () => {
@@ -704,6 +690,13 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         }
       }
 
+      // Auto-save each new deficiency to local storage immediately
+      for (const def of analyzedDeficiencies) {
+        const propertyId = String(property?._id || property?.id || property?.propertyId || 'unknown');
+        const buildingIdStr = normalizedBuildingLabel || 'default';
+        await autoSaveInspectionDeficiency(propertyId, buildingIdStr, def);
+      }
+
       const propertyIdentifier = String(property?._id || property?.id || property?.propertyId || 'unknown');
       const draftSavedAt = new Date().toISOString();
 
@@ -782,6 +775,9 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         return Array.from(new Set(notes)).join('\n\n');
       };
 
+      // Falls back to just the new deficiencies if the local merge below fails.
+      let mergedDeficiencies: any[] = analyzedDeficiencies;
+
       try {
         const buildingToken = String(normalizedBuildingLabel || buildingId || 'Building').trim() || 'Building';
         const draftStorageKeys = Array.from(new Set([
@@ -806,7 +802,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               ? existingPayload.deficiencies
               : (Array.isArray(existingPayload?.findings) ? existingPayload.findings : []);
 
-          const mergedDeficiencies = mergeDraftDeficiencies(existingDeficiencies, analyzedDeficiencies);
+          mergedDeficiencies = mergeDraftDeficiencies(existingDeficiencies, analyzedDeficiencies);
 
           const mergedPayload = {
             ...existingPayload,
@@ -844,7 +840,8 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           unit_id: 'ALL_UNITS',
           inspection_type: 'REPORT_DRAFT_PROPERTY',
           inspectionData: {
-            deficiencies: analyzedDeficiencies,
+            // Save ALL deficiencies (existing + new) for complete report
+            deficiencies: mergedDeficiencies,
             property: {
               _id: propertyIdentifier,
               name: property?.name || 'Property',
@@ -853,8 +850,14 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             unit: normalizedUnit,
             inspectionType: 'Draft Inspection',
             savedAt: draftSavedAt,
+            // Include unit/area context for proper display
+            selectedUnits: selectedUnits,
+            currentUnit: currentUnit,
+            isOutsideInspection: isOutsideLocation,
+            location: isOutsideLocation ? selectedOutsideLocation : location,
           },
         });
+        console.log('Backend sync: Saved', mergedDeficiencies.length, 'deficiencies for property', propertyIdentifier);
       } catch (draftSaveError) {
         console.warn('Could not persist draft from detail screen:', draftSaveError);
       }
@@ -865,40 +868,19 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       }
       setShowProcessingModal(false);
 
-      // Navigate to summary with all analyzed deficiencies
-      navigation.navigate('InspectionSummary', {
-        property,
-        selectedUnits,
-        buildingId,
-        inspectionData: {
-          deficiencies: analyzedDeficiencies, // Array of deficiencies
-          totalImages: images.length,
-          location: isOutsideLocation ? selectedOutsideLocation : location,
-          itemName,
-          itemId,
-          scoringResult: scoringResult || calculateUnitScore({
-            totalSamples,
-            deficiencies: deficiencyCount,
-            severity: isOutsideLocation && outsideScoringResult
-              ? outsideScoringResult.severity as 'Life-Threatening' | 'Severe' | 'Moderate' | 'Low'
-              : (currentDeficiency?.severity || 'Moderate'),
-          }),
-          // Include Outside-specific scoring information
-          outsideScoringResult: isOutsideLocation ? outsideScoringResult : undefined,
-          isOutsideInspection: isOutsideLocation,
-          outsideLocation: isOutsideLocation ? selectedOutsideLocation : undefined,
-        },
-        currentUnit: currentUnit || selectedUnits[0] || undefined,
-        allUnits: selectedUnits,
+      // Web parity: stay on the item and show what has been saved for the report.
+      // The inspector then either logs another deficiency or continues the walk;
+      // the Summary is reached from the Inspection Categories header.
+      const savedForItem = (mergedDeficiencies || analyzedDeficiencies).filter((d: any) => {
+        const itemMatch = String(d?.item ?? d?.itemName ?? itemName);
+        return itemMatch === itemName;
       });
+      const panelFindings = savedForItem.length > 0 ? savedForItem : analyzedDeficiencies;
 
-      // Show success message
-      setTimeout(() => {
-        Alert.alert(
-          'Success',
-          `${analyzedDeficiencies.length} deficienc${analyzedDeficiencies.length === 1 ? 'y' : 'ies'} recorded and analyzed successfully!`
-        );
-      }, 500);
+      setSavedItemFindings(panelFindings);
+      const newest: any = analyzedDeficiencies[analyzedDeficiencies.length - 1];
+      setLastSavedFindingId(newest?.deficiencyQRId ?? newest?.id ?? null);
+      setSavedPanelVisible(true);
     } catch (error) {
       // Hide processing modal on error
       if (processingTimerRef.current) {
@@ -915,14 +897,16 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
-        </TouchableOpacity>
+        {!!INSPIRE_LOGO_BASE64 && (
+          <Image source={{ uri: INSPIRE_LOGO_BASE64 }} style={styles.headerBadge} resizeMode="contain" />
+        )}
         <View style={styles.headerContent}>
-          <Text style={styles.headerTitle}>{itemName}</Text>
-          <Text style={styles.headerSubtitle}>{location}</Text>
+          <Text style={styles.headerTitle} numberOfLines={1}>{itemName}</Text>
+          <Text style={styles.headerSubtitle}>NSPIRE Deficiency Inspection</Text>
         </View>
-        <View style={styles.headerRight} />
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Ionicons name="close" size={24} color="#6B7280" />
+        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -933,7 +917,13 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         {/* DEFICIENCY SELECTED - First dropdown for all items except General Comment */}
         {itemName !== 'General Comment' && (
           <View style={styles.section}>
-            <Text style={styles.sectionLabel}>DEFICIENCY SELECTED</Text>
+            {/* Web pairs the label with a red Back link that clears the pick. */}
+            <View style={styles.sectionLabelRow}>
+              <Text style={styles.sectionLabel}>DEFICIENCY SELECTED</Text>
+              <TouchableOpacity onPress={resetFormForNewDeficiency} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Text style={styles.backLinkText}>Back</Text>
+              </TouchableOpacity>
+            </View>
             {itemHasSubcategories ? (
               // For items with subcategories: Pick subcategory first
               <TouchableOpacity
@@ -1069,25 +1059,9 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           </View>
         )}
 
-        {/* Note */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>NOTE</Text>
-          <View style={styles.textAreaContainer}>
-            <TextInput
-              style={styles.textArea}
-              placeholder="Write your observation..."
-              value={note}
-              onChangeText={setNote}
-              multiline
-              numberOfLines={4}
-              placeholderTextColor="#999999"
-            />
-          </View>
-        </View>
-
         {/* PIC Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>PIC</Text>
+          <Text style={styles.sectionLabel}>PIC (ONE PHOTO FOR THIS DEFICIENCY)</Text>
 
           {/* Image Grid */}
           {images.length > 0 && (
@@ -1106,7 +1080,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             </View>
           )}
 
-          {/* Add Photo Buttons */}
+          {/* Add Photo Button */}
           <View style={styles.photoButtons}>
             <TouchableOpacity style={styles.photoButton} onPress={handleTakePhoto}>
               <View style={styles.photoIconContainer}>
@@ -1114,74 +1088,80 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               </View>
               <Text style={styles.photoButtonText}>Take Photo</Text>
             </TouchableOpacity>
-
-            <TouchableOpacity style={styles.photoButton} onPress={handlePickImage}>
-              <View style={styles.photoIconContainer}>
-                <Ionicons name="images" size={32} color="#0E7490" />
-              </View>
-              <Text style={styles.photoButtonText}>Choose from Gallery</Text>
-            </TouchableOpacity>
+          </View>
+        </View>
+        {/* Comment */}
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>COMMENT</Text>
+          <View style={styles.textAreaContainer}>
+            <TextInput
+              style={styles.textArea}
+              placeholder="Write your observation..."
+              value={note}
+              onChangeText={setNote}
+              multiline
+              numberOfLines={4}
+              placeholderTextColor="#999999"
+            />
           </View>
         </View>
 
-        {/* Scoring Section - Shows placeholder values until deficiency is selected */}
+
+        {/* LOCATION + HEALTH & SAFETY Section (web parity: side-by-side fields, no separate scoring step) */}
         {itemName !== 'General Comment' && (
+          <View style={styles.rowSection}>
+            <View style={styles.halfSection}>
+              <Text style={styles.sectionLabel}>LOCATION</Text>
+              {isOutsideLocation ? (
+                <TouchableOpacity
+                  style={styles.locationDropdown}
+                  onPress={() => setShowLocationPicker(true)}
+                >
+                  <Text style={styles.locationDropdownText} numberOfLines={1}>
+                    {selectedOutsideLocation}
+                  </Text>
+                  <Ionicons name="chevron-down" size={16} color="#0E7490" />
+                </TouchableOpacity>
+              ) : isUnit ? (
+                <TouchableOpacity
+                  style={styles.locationDropdown}
+                  onPress={() => setShowUnitLocationPicker(true)}
+                >
+                  <Text style={styles.locationDropdownText} numberOfLines={1}>
+                    {selectedUnitLocation}
+                  </Text>
+                  <Ionicons name="chevron-down" size={16} color="#0E7490" />
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  style={styles.locationDropdown}
+                  onPress={() => setShowInsideLocationPicker(true)}
+                >
+                  <Text style={styles.locationDropdownText} numberOfLines={1}>
+                    {selectedInsideLocation}
+                  </Text>
+                  <Ionicons name="chevron-down" size={16} color="#0E7490" />
+                </TouchableOpacity>
+              )}
+            </View>
+            <View style={styles.halfSection}>
+              <Text style={styles.sectionLabel}>HEALTH & SAFETY</Text>
+              <View style={[
+                styles.healthSafetyPill,
+                scoringResult?.severity === 'Life-Threatening' && styles.severityLifeThreateningBg,
+                scoringResult?.severity === 'Severe' && styles.severitySevereBg,
+                scoringResult?.severity === 'Moderate' && styles.severityModerateBg,
+                (scoringResult?.severity === 'Low' || !scoringResult?.severity) && styles.severityLowBg,
+              ]}>
+                <Text style={styles.healthSafetyPillText}>{scoringResult?.severity || 'Low'}</Text>
+              </View>
+            </View>
+          </View>
+        )}
+
           <View style={styles.section}>
             <Text style={styles.sectionLabel}>INSPECTION SCORING</Text>
-
             <View style={styles.scoringCard}>
-              {/* Row 1: Location and Severity */}
-              <View style={styles.scoringRow}>
-                <View style={styles.scoringField}>
-                  <Text style={styles.scoringFieldLabel}>Location</Text>
-                  {isOutsideLocation ? (
-                    <TouchableOpacity
-                      style={styles.locationDropdown}
-                      onPress={() => setShowLocationPicker(true)}
-                    >
-                      <Text style={styles.locationDropdownText} numberOfLines={1}>
-                        {selectedOutsideLocation}
-                      </Text>
-                      <Ionicons name="chevron-down" size={16} color="#0E7490" />
-                    </TouchableOpacity>
-                  ) : isUnit ? (
-                    <TouchableOpacity
-                      style={styles.locationDropdown}
-                      onPress={() => setShowUnitLocationPicker(true)}
-                    >
-                      <Text style={styles.locationDropdownText} numberOfLines={1}>
-                        {selectedUnitLocation}
-                      </Text>
-                      <Ionicons name="chevron-down" size={16} color="#0E7490" />
-                    </TouchableOpacity>
-                  ) : (
-                    <TouchableOpacity
-                      style={styles.locationDropdown}
-                      onPress={() => setShowInsideLocationPicker(true)}
-                    >
-                      <Text style={styles.locationDropdownText} numberOfLines={1}>
-                        {selectedInsideLocation}
-                      </Text>
-                      <Ionicons name="chevron-down" size={16} color="#0E7490" />
-                    </TouchableOpacity>
-                  )}
-                </View>
-                <View style={styles.scoringField}>
-                  <Text style={styles.scoringFieldLabel}>Severity</Text>
-                  <Text style={[
-                    styles.scoringFieldValue,
-                    scoringResult?.severity === 'Life-Threatening' && { color: '#DC2626' },
-                    scoringResult?.severity === 'Severe' && { color: '#EA580C' },
-                    scoringResult?.severity === 'Moderate' && { color: '#CA8A04' },
-                    scoringResult?.severity === 'Low' && { color: '#16A34A' },
-                    !scoringResult && { color: '#9CA3AF' },
-                  ]}>
-                    {scoringResult?.severity || '--'}
-                  </Text>
-                </View>
-              </View>
-
-              {/* Row 2: All Sample and Pts Lost (Raw) - Shows general formula from points field */}
               <View style={styles.scoringRow}>
                 <View style={styles.scoringField}>
                   <Text style={styles.scoringFieldLabel}>All Sample</Text>
@@ -1189,64 +1169,90 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                 </View>
                 <View style={styles.scoringField}>
                   <Text style={styles.scoringFieldLabel}>Pts Lost (Raw)</Text>
-                  <Text style={[styles.scoringFieldValue, !selectedDeficiency && { color: '#9CA3AF' }]}>
-                    {selectedDeficiency ? getPointsFormula().toFixed(2) : '--'}
-                  </Text>
+                  <Text style={styles.scoringFieldValue}>{(scoringResult?.ptsLostRaw ?? 0).toFixed(2)}</Text>
                 </View>
               </View>
-
-              {/* Row 3: Pts Lost and Possible Score - PTS LOST calculated from formula */}
               <View style={styles.scoringRow}>
                 <View style={styles.scoringField}>
                   <Text style={styles.scoringFieldLabel}>Pts Lost</Text>
-                  <Text style={[styles.scoringFieldValue, !selectedDeficiency && { color: '#9CA3AF' }]}>
-                    {selectedDeficiency ? calculatePtsLost().toFixed(2) : '--'}
-                  </Text>
+                  <Text style={styles.scoringFieldValue}>{(scoringResult?.ptsLost ?? 0).toFixed(2)}</Text>
                 </View>
                 <View style={styles.scoringField}>
                   <Text style={styles.scoringFieldLabel}>Possible Score</Text>
-                  <Text style={styles.scoringFieldValue}>{getPossibleScore()}</Text>
+                  <Text style={styles.scoringFieldValue}>{isUnit ? UNIT_TOTAL_POSSIBLE_POINTS : POSSIBLE_SCORE}</Text>
                 </View>
               </View>
-
-              {/* Row 4: Max Pts Lost and Score - calculated from formula */}
               <View style={styles.scoringRow}>
                 <View style={styles.scoringField}>
                   <Text style={styles.scoringFieldLabel}>Max Pts Lost</Text>
-                  <Text style={[styles.scoringFieldValue, !selectedDeficiency && { color: '#9CA3AF' }]}>
-                    {selectedDeficiency ? calculatePtsLost().toFixed(2) : '--'}
-                  </Text>
+                  <Text style={styles.scoringFieldValue}>{(scoringResult?.maxPtsLost ?? 0).toFixed(2)}</Text>
                 </View>
                 <View style={styles.scoringField}>
                   <Text style={styles.scoringFieldLabel}>Score</Text>
-                  <Text style={[styles.scoringFieldValue, selectedDeficiency ? styles.scoreHighlight : { color: '#9CA3AF' }]}>
-                    {selectedDeficiency ? calculateScore().toFixed(2) : '--'}
-                  </Text>
+                  <Text style={[styles.scoringFieldValue, styles.scoreHighlight]}>{(scoringResult?.score ?? 0).toFixed(2)}</Text>
                 </View>
               </View>
-
-              {/* Row 5: # of Violations */}
               <View style={styles.scoringRow}>
                 <View style={styles.scoringFieldFull}>
-                  <Text style={styles.scoringFieldLabel}># of Violations</Text>
+                  <Text style={styles.scoringFieldLabel}># of Deficiencies</Text>
                   <Text style={styles.scoringFieldValue}>{deficiencyCount}</Text>
                 </View>
               </View>
-
-              {/* Show override indicator for Outside inspections */}
-              {isOutsideLocation && outsideScoringResult?.isDeficiencyOverride && (
-                <View style={styles.scoringRow}>
-                  <View style={styles.scoringFieldFull}>
-                    <Text style={[styles.scoringFieldLabel, { color: '#0E7490', fontSize: 10 }]}>
-                      * Severity determined by deficiency description override
-                    </Text>
-                  </View>
-                </View>
-              )}
             </View>
           </View>
-        )}
+
+          {/* Web: labelled section + control, not a coloured badge. */}
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>STANDARD ✅</Text>
+            {hasDeficiencySelected ? (
+              <>
+                <TouchableOpacity
+                  style={styles.standardButton}
+                  onPress={() => setShowStandardText((v) => !v)}
+                >
+                  <Text style={styles.standardButtonText}>STANDARD</Text>
+                </TouchableOpacity>
+                {showStandardText && (
+                  <View style={styles.protocolField}>
+                    <Text style={styles.protocolFieldText}>
+                      {standardText || 'No standard text for this deficiency.'}
+                    </Text>
+                  </View>
+                )}
+              </>
+            ) : (
+              <View style={[styles.standardButton, styles.standardButtonDisabled]}>
+                <Text style={styles.standardButtonText}>Select deficiency first to open Inspect</Text>
+              </View>
+            )}
+          </View>
+
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>INSPECTION PROTOCOL</Text>
+            {hasDeficiencySelected ? (
+              <>
+                <TouchableOpacity
+                  style={styles.protocolButton}
+                  onPress={() => setShowProtocolText((v) => !v)}
+                >
+                  <Text style={styles.standardButtonText}>INSPECTION PROTOCOL</Text>
+                </TouchableOpacity>
+                {showProtocolText && (
+                  <View style={styles.protocolField}>
+                    <Text style={styles.protocolFieldText}>
+                      {inspectionProtocolText || 'No protocol text for this deficiency.'}
+                    </Text>
+                  </View>
+                )}
+              </>
+            ) : (
+              <View style={styles.protocolField}>
+                <Text style={styles.protocolFieldText}>Select deficiency first</Text>
+              </View>
+            )}
+          </View>
       </ScrollView>
+
 
       {/* Subcategory Picker Modal */}
       <Modal
@@ -1568,6 +1574,71 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       </Modal>
 
       {/* Processing Modal with 3-second auto-dismiss */}
+      {/* Saved for Summary Report (web parity: OD modal step 4) */}
+      <Modal
+        visible={savedPanelVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={handleContinueInspection}
+      >
+        <View style={styles.savedPanelOverlay}>
+          <View style={styles.savedPanelCard}>
+            <View style={styles.savedPanelHeader}>
+              <Ionicons name="checkmark-circle" size={32} color="#16A34A" style={{ marginBottom: 6 }} />
+              <Text style={styles.savedPanelTitle}>Saved for Summary Report</Text>
+              <Text style={styles.savedPanelSubtitle}>
+                {savedItemFindings.length} {savedItemFindings.length === 1 ? 'deficiency' : 'deficiencies'} on this item
+              </Text>
+            </View>
+
+            <ScrollView style={styles.savedPanelList} showsVerticalScrollIndicator={false}>
+              {savedItemFindings.map((finding: any, idx: number) => {
+                const findingId = finding?.deficiencyQRId ?? finding?.id ?? String(idx);
+                const isLatest = findingId === lastSavedFindingId;
+                const imageUri = finding?.imageUri || finding?.imageUrl || finding?.photos?.[0]?.url;
+                return (
+                  <View
+                    key={findingId}
+                    style={[styles.savedFindingRow, isLatest && styles.savedFindingRowLatest]}
+                  >
+                    {imageUri ? (
+                      <Image source={{ uri: imageUri }} style={styles.savedFindingThumb} />
+                    ) : (
+                      <View style={[styles.savedFindingThumb, styles.savedFindingThumbEmpty]}>
+                        <Ionicons name="image-outline" size={22} color="#D1D5DB" />
+                      </View>
+                    )}
+                    <View style={styles.savedFindingBody}>
+                      <Text style={styles.savedFindingTitle} numberOfLines={1}>
+                        {finding?.title || finding?.deficiencyName || finding?.name || 'Deficiency'}
+                      </Text>
+                      <Text style={styles.savedFindingDescription} numberOfLines={2}>
+                        {finding?.description || finding?.detail || finding?.deficiencyDetails || ''}
+                      </Text>
+                      <Text style={styles.savedFindingSeverity}>{finding?.severity || 'Moderate'}</Text>
+                    </View>
+                    <TouchableOpacity
+                      style={styles.savedFindingRemove}
+                      onPress={() => handleRemoveSavedFinding(findingId)}
+                    >
+                      <Text style={styles.savedFindingRemoveText}>Remove</Text>
+                    </TouchableOpacity>
+                  </View>
+                );
+              })}
+            </ScrollView>
+
+            <TouchableOpacity style={styles.savedPanelAddButton} onPress={resetFormForNewDeficiency}>
+              <Ionicons name="add" size={18} color="#0E7490" />
+              <Text style={[styles.savedPanelButtonText, styles.savedPanelAddButtonText]}>Add Deficiency</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.savedPanelContinueButton} onPress={handleContinueInspection}>
+              <Text style={styles.savedPanelButtonText}>Continue Inspection</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       <Modal
         visible={showProcessingModal}
         animationType="fade"
@@ -1667,6 +1738,127 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 };
 
 const styles = StyleSheet.create({
+  sectionLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  backLinkText: {
+    color: '#DC2626',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+
+  // Web: <button class="bg-[#006795] text-white text-xs font-bold"> and the
+  // protocol read-only field below it.
+  standardButton: {
+    backgroundColor: '#006795',
+    borderRadius: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+  },
+  standardButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  // Web dims this one until a deficiency is picked.
+  standardButtonDisabled: {
+    opacity: 0.55,
+  },
+  protocolButton: {
+    backgroundColor: '#16A34A',
+    borderRadius: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+  },
+  protocolField: {
+    marginTop: 8,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+  },
+  protocolFieldText: {
+    color: '#6B7280',
+    fontSize: 12,
+  },
+
+  savedPanelOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  savedPanelCard: {
+    width: '100%',
+    maxWidth: 480,
+    maxHeight: '85%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 20,
+  },
+  savedPanelHeader: { alignItems: 'center', marginBottom: 14 },
+  savedPanelTitle: { fontSize: 18, fontWeight: '800', color: '#111827' },
+  savedPanelSubtitle: { fontSize: 12, color: '#6B7280', marginTop: 4 },
+  savedPanelList: { flexGrow: 0, marginBottom: 12 },
+  savedFindingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 10,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
+    backgroundColor: '#FFFFFF',
+    marginBottom: 8,
+  },
+  savedFindingRowLatest: { backgroundColor: '#F0FDF4', borderColor: '#86EFAC' },
+  savedFindingThumb: { width: 60, height: 60, borderRadius: 12, backgroundColor: '#F3F4F6' },
+  savedFindingThumbEmpty: { alignItems: 'center', justifyContent: 'center' },
+  savedFindingBody: { flex: 1, minWidth: 0 },
+  savedFindingTitle: { fontSize: 12, fontWeight: '700', color: '#111827' },
+  savedFindingDescription: { fontSize: 10, color: '#6B7280', marginTop: 2 },
+  savedFindingSeverity: { fontSize: 10, fontWeight: '700', color: '#0E7490', marginTop: 4 },
+  savedFindingRemove: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: '#FEF2F2',
+  },
+  savedFindingRemoveText: { fontSize: 10, fontWeight: '700', color: '#DC2626' },
+  savedPanelAddButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    borderColor: '#0E7490',
+    paddingVertical: 14,
+    borderRadius: 12,
+    marginBottom: 10,
+  },
+  savedPanelContinueButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#DC2626',
+    paddingVertical: 14,
+    borderRadius: 12,
+  },
+  savedPanelButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  savedPanelAddButtonText: {
+    color: '#0E7490',
+  },
   container: {
     flex: 1,
     backgroundColor: '#F3F4F6',
@@ -1674,30 +1866,36 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 16,
-    backgroundColor: '#0A4F63',
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
   },
   backButton: {
     padding: 4,
   },
+  headerBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 6,
+    marginRight: 10,
+  },
   headerContent: {
     flex: 1,
-    marginLeft: 12,
+    marginRight: 8,
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '900',
-    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#111827',
     marginBottom: 2,
   },
   headerSubtitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    opacity: 1,
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#9CA3AF',
   },
   headerRight: {
     width: 32,
@@ -2005,11 +2203,11 @@ const styles = StyleSheet.create({
   },
   proceedButton: {
     flex: 1,
-    backgroundColor: '#0E7490',
+    backgroundColor: '#DC2626',
     borderRadius: 50,
     paddingVertical: 16,
     alignItems: 'center',
-    shadowColor: '#0E7490',
+    shadowColor: '#DC2626',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -2020,47 +2218,6 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '900',
     letterSpacing: 0.5,
-  },
-  codeRefButton: {
-    width: '100%',
-    borderRadius: 50,
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'center',
-  },
-  codeRefButtonActive: {
-    backgroundColor: '#0E7490',
-    shadowColor: '#0E7490',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  codeRefButtonDisabled: {
-    backgroundColor: '#0E7490',
-    shadowColor: '#0E7490',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  codeRefButtonText: {
-    color: '#FFFFFF',
-    fontSize: 17,
-    fontWeight: '900',
-    letterSpacing: 0.5,
-  },
-  codeRefButtonTextDisabled: {
-    color: '#FFFFFF',
-  },
-  codeRefHintText: {
-    marginTop: 8,
-    fontSize: 13,
-    color: '#374151',
-    textAlign: 'center',
-    fontWeight: '700',
   },
   pickerModalOverlay: {
     flex: 1,
@@ -2251,7 +2408,33 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
   },
-  // Scoring Section Styles
+  healthSafetyPill: {
+    alignSelf: 'stretch',
+    borderRadius: 8,
+    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 41,
+  },
+  healthSafetyPillText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  severityPill: {
+    alignSelf: 'stretch',
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  severityPillText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
   scoringCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
@@ -2297,8 +2480,26 @@ const styles = StyleSheet.create({
   },
   scoreHighlight: {
     color: '#0E7490',
-    fontWeight: '700',
-    fontSize: 16,
+    fontWeight: '800',
+    backgroundColor: '#E0F2FE',
+    borderColor: '#0E7490',
+  },
+  protocolBadge: {
+    alignSelf: 'stretch',
+    backgroundColor: '#0E7490',
+    borderRadius: 50,
+    paddingVertical: 16,
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  protocolBadgeGreen: {
+    backgroundColor: '#16A34A',
+  },
+  protocolBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '900',
+    letterSpacing: 0.5,
   },
   locationDropdown: {
     flexDirection: 'row',
@@ -2357,6 +2558,47 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   // Modal Styles
+  codeRefButton: {
+    width: '100%',
+    borderRadius: 50,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
+  codeRefButtonActive: {
+    backgroundColor: '#0E7490',
+    shadowColor: '#0E7490',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  codeRefButtonDisabled: {
+    backgroundColor: '#0E7490',
+    shadowColor: '#0E7490',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  codeRefButtonText: {
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  codeRefButtonTextDisabled: {
+    color: '#FFFFFF',
+  },
+  codeRefHintText: {
+    marginTop: 8,
+    fontSize: 13,
+    color: '#374151',
+    textAlign: 'center',
+    fontWeight: '700',
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.6)',

@@ -16,12 +16,12 @@ import {
     ScoringResult,
     SEVERITY_LEVELS,
     POSSIBLE_SCORE,
+    UNIT_TOTAL_POSSIBLE_POINTS,
     DEFICIENCY_OPTIONS,
     getSeverityColor,
     getScoreStatus,
 } from '../utils/scoringCalculations';
 import { isUnitLocation } from '../data/deficiencyMapping';
-import { UNIT_TOTAL_POSSIBLE_POINTS } from '../data/insideDeficiencyMapping';
 
 interface ScoringModalProps {
     visible: boolean;

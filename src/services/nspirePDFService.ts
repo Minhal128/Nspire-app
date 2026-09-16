@@ -36,7 +36,7 @@ async function getLogoBase64(): Promise<string> {
   try {
     // On web, use fetch to get the logo
     if (Platform.OS === 'web') {
-      const logoUrl = INSPIRE_LOGO_BASE64 || '/inspire_logo.png';
+      const logoUrl = INSPIRE_LOGO_BASE64 || '/logo.png';
       if (logoUrl.startsWith('data:')) {
         cachedLogoBase64 = logoUrl;
         return cachedLogoBase64;
@@ -61,7 +61,7 @@ async function getLogoBase64(): Promise<string> {
     
     // On native, use Image.resolveAssetSource and FileSystem
     const { Image } = require('react-native');
-    const logo = require('../../inspire_logo.png');
+    const logo = require('../../public/logo.png');
     const asset = Image.resolveAssetSource(logo);
     
     if (!asset?.uri) {
@@ -81,7 +81,7 @@ async function getLogoBase64(): Promise<string> {
     }
     
     if (asset.uri.startsWith('http')) {
-      const tmpPath = FileSystem.cacheDirectory + 'inspire_logo_' + Date.now() + '.png';
+      const tmpPath = FileSystem.cacheDirectory + 'logo_' + Date.now() + '.png';
       const result = await FileSystem.downloadAsync(asset.uri, tmpPath);
       if (result?.uri) {
         const b64 = await FileSystem.readAsStringAsync(result.uri, { encoding: FileSystem.EncodingType.Base64 });

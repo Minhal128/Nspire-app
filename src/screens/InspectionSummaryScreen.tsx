@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Modal,
   Platform,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
@@ -21,7 +22,8 @@ import * as Sharing from 'expo-sharing';
 import * as XLSX from 'xlsx';
 import { enhancedNspirePDFService } from '../services/enhancedNspirePDFService';
 import { storeData, getData } from '../utils/storage';
-import { iapService, IAP_PRODUCT_ID } from '../utils/iapService';
+import { stripeService } from '../utils/stripeService';
+import { usePaymentLink } from '../hooks/usePaymentLink';
 
 type InspectionSummaryScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -35,7 +37,7 @@ interface Props {
 }
 
 const InspectionSummaryScreen = ({ navigation, route }: Props) => {
-  const { property, selectedUnits, buildingId, inspectionData, currentUnit: routeCurrentUnit } = route.params;
+  const { property, selectedUnits, buildingId, inspectionData, currentUnit: routeCurrentUnit, inspectionId: routeInspectionId } = route.params;
   const [activeTab, setActiveTab] = useState<'summary' | 'deficiencies'>('summary');
   const [exportingPDF, setExportingPDF] = useState(false);
   const [exportingHTML, setExportingHTML] = useState(false);
@@ -46,41 +48,79 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
     inspectionData?.deficiencies || []
   );
 
-  // ── IAP State ────────────────────────────────────────────────────
+  // Use the real inspection ID from route params, or derive a stable per-property+building ID.
+  // Never use a hardcoded ID — that causes all inspections to share the same unlock record.
+  const propertyId = property?._id || property?.id || property?.propertyId || 'unknown';
+  const inspectionId = routeInspectionId || `${propertyId}_${buildingId || 'default'}`;
+  // One key for both the load and the save. The two sites used to build it
+  // differently (one dropped the propertyId fallback, both dropped the
+  // buildingId one), so resumed progress could be written where it is never read.
+  const saveKey = `saved_inspection_${propertyId}_${buildingId || 'default'}`;
+  const inspectionDate = new Date().toLocaleDateString();
+
+  // ── Payment State ────────────────────────────────────────────────
   const [isReportUnlocked, setIsReportUnlocked] = useState(false);
   const [paymentModalVisible, setPaymentModalVisible] = useState(false);
-  const [purchasing, setPurchasing] = useState(false);
   const [checkingUnlock, setCheckingUnlock] = useState(true);
   const pendingExportAction = useRef<'pdf' | 'html' | 'excel' | null>(null);
+  // Holds latest export function references so a deferred export always calls
+  // the current render's version rather than a stale closure.
+  const exportFnRefs = useRef<{ pdf: () => void; html: () => void; excel: () => void }>({
+    pdf: () => {},
+    html: () => {},
+    excel: () => {},
+  });
+
+  // ── Auto-show payment modal when user is coming from inspection flow ──
+  // If there are deficiencies and user navigates here via inspection, show payment modal
+  const [showPaymentOnMount, setShowPaymentOnMount] = useState(false);
+  const hasDeficienciesToExport = mergedDeficiencies.length > 0;
 
   // On mount: load any previously saved deficiencies and merge with the new ones
   useEffect(() => {
     const loadAndMerge = async () => {
       try {
-        const saveKey = `saved_inspection_${property?._id || property?.id || property?.propertyId || 'unknown'}_${buildingId}`;
         const saved = await getData(saveKey);
 
-        // Stamp _area / _unit on incoming deficiencies from the CURRENT session
-        const currentArea: string = inspectionData?.isOutsideInspection
-          ? 'Outside'
-          : (inspectionData?.location === 'Inside' ? 'Inside' : 'Units');
-        const currentUnit = (currentArea === 'Inside' || currentArea === 'Outside')
-          ? '-'
-          : (selectedUnits.join(', ') || 'Unit Multiple');
-
-        const incoming = (inspectionData?.deficiencies || []).map((d: any) => ({
-          ...d,
-          _area: d._area || currentArea,
-          _unit: d._unit !== undefined ? d._unit : currentUnit,
-        }));
-
+        // IMPORTANT: Do NOT re-stamp _area/_unit on saved deficiencies.
+        // They already have their original area from when they were saved.
+        // Only stamp new deficiencies that don't have _area set.
         if (saved?.deficiencies && Array.isArray(saved.deficiencies) && saved.deficiencies.length > 0) {
           // Deduplicate by deficiencyQRId; saved ones first, then new ones not already present
           const existingIds = new Set(saved.deficiencies.map((d: any) => d.deficiencyQRId).filter(Boolean));
+          // Stamp currentArea/unit ONLY on new deficiencies that don't already have _area
+          const incoming = (inspectionData?.deficiencies || []).map((d: any) => {
+            if (d._area !== undefined) {
+              // Already has area - preserve it
+              return d;
+            }
+            // New deficiency without area - stamp it
+            const currentArea: string = inspectionData?.isOutsideInspection
+              ? 'Outside'
+              : (inspectionData?.location === 'Inside' ? 'Inside' : 'Units');
+            const currentUnit = (currentArea === 'Inside' || currentArea === 'Outside')
+              ? '-'
+              : (selectedUnits.join(', ') || 'Unit Multiple');
+            return { ...d, _area: currentArea, _unit: currentUnit };
+          });
           const uniqueNew = incoming.filter((d: any) => !existingIds.has(d.deficiencyQRId));
           setMergedDeficiencies([...saved.deficiencies, ...uniqueNew]);
-        } else if (incoming.length > 0) {
-          setMergedDeficiencies(incoming);
+        } else {
+          // No saved data - stamp all incoming deficiencies with current area
+          const currentArea: string = inspectionData?.isOutsideInspection
+            ? 'Outside'
+            : (inspectionData?.location === 'Inside' ? 'Inside' : 'Units');
+          const currentUnit = (currentArea === 'Inside' || currentArea === 'Outside')
+            ? '-'
+            : (selectedUnits.join(', ') || 'Unit Multiple');
+          const incoming = (inspectionData?.deficiencies || []).map((d: any) => ({
+            ...d,
+            _area: d._area || currentArea,
+            _unit: d._unit !== undefined ? d._unit : currentUnit,
+          }));
+          if (incoming.length > 0) {
+            setMergedDeficiencies(incoming);
+          }
         }
       } catch (e) {
         console.warn('Could not load saved inspection data:', e);
@@ -89,111 +129,71 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
     loadAndMerge();
   }, []);
 
-  // ── IAP: initialise connection & check unlock status ─────────────
+  // ── Is this report already paid for? ─────────────────────────────
   useEffect(() => {
-    let iapCleanup: (() => void) | null = null;
+    let mounted = true;
 
-    const initIAP = async () => {
-      // Check unlock status from backend first
-      try {
-        const unlocked = await iapService.checkUnlockStatus(inspectionId);
-        if (unlocked) {
-          setIsReportUnlocked(true);
-          setCheckingUnlock(false);
-          return; // Already paid — no need to set up IAP
-        }
-      } catch (_) {
-        // If backend check fails, continue with IAP init
-      }
+    (async () => {
+      const unlocked = await stripeService.checkUnlockStatus(inspectionId);
+      if (!mounted) return;
+      if (unlocked) setIsReportUnlocked(true);
       setCheckingUnlock(false);
+    })();
 
-      // Initialise IAP connection on native platforms
-      if (Platform.OS !== 'web') {
-        await iapService.init();
-
-        // Listen for purchase updates (handles deferred / interrupted purchases)
-        iapCleanup = iapService.registerListeners(
-          async (purchase) => {
-            if (purchase.productId === IAP_PRODUCT_ID && purchase.transactionReceipt) {
-              // Verify with backend
-              const result = await iapService.verifyAndUnlock(
-                inspectionId,
-                purchase.purchaseToken || purchase.transactionReceipt,
-              );
-              if (result.isReportUnlocked) {
-                setIsReportUnlocked(true);
-                await iapService.acknowledge(purchase);
-                Alert.alert('Payment Successful', 'Your report has been unlocked! You can now export the full report.');
-                // Auto-trigger pending export
-                if (pendingExportAction.current) {
-                  const action = pendingExportAction.current;
-                  pendingExportAction.current = null;
-                  setTimeout(() => {
-                    if (action === 'pdf') handleExportPDF();
-                    else if (action === 'html') handleExportHTML();
-                    else if (action === 'excel') handleExportExcel();
-                  }, 500);
-                }
-              } else {
-                Alert.alert('Verification Failed', result.message || 'Could not verify your purchase. Please contact support.');
-              }
-              setPurchasing(false);
-              setPaymentModalVisible(false);
-            }
-          },
-          (error) => {
-            console.error('IAP purchase error listener:', error);
-            setPurchasing(false);
-          },
-        );
-      } else {
-        setCheckingUnlock(false);
-      }
-    };
-
-    initIAP();
-
-    return () => {
-      iapCleanup?.();
-      iapService.destroy();
-    };
+    return () => { mounted = false; };
   }, []);
 
-  // ── IAP: handle the purchase flow ────────────────────────────────
-  const handlePurchaseReport = async () => {
-    // On web, IAP is not available — inform user
-    if (Platform.OS === 'web') {
-      Alert.alert(
-        'Mobile Only',
-        'In-App Purchases are only available on the Android app. Please use the mobile app to purchase the report.',
-        [{ text: 'OK', onPress: () => setPaymentModalVisible(false) }],
-      );
-      return;
+  // ── Auto-show payment modal on mount if coming from inspection flow ──
+  useEffect(() => {
+    // Check if user is coming from inspection flow (has deficiencies and is not yet unlocked)
+    if (hasDeficienciesToExport && !isReportUnlocked && !checkingUnlock) {
+      // Small delay to let the screen render first
+      const timer = setTimeout(() => {
+        setPaymentModalVisible(true);
+      }, 500);
+      return () => clearTimeout(timer);
     }
+  }, [hasDeficienciesToExport, isReportUnlocked, checkingUnlock]);
 
-    setPurchasing(true);
-    try {
-      const purchase = await iapService.purchaseReportUnlock();
-      if (!purchase) {
-        // User cancelled
-        setPurchasing(false);
-        return;
-      }
-      // The purchaseUpdatedListener above will handle verification
-    } catch (err: any) {
-      setPurchasing(false);
-      Alert.alert('Purchase Error', err.message || 'Something went wrong with the purchase. Please try again.');
-    }
+  /**
+   * Run whichever export the user was blocked on, now that the report is unlocked.
+   * Reads exportFnRefs (refreshed every render) so it is never a stale closure.
+   */
+  const runPendingExport = () => {
+    const action = pendingExportAction.current;
+    if (!action) return;
+    pendingExportAction.current = null;
+    setTimeout(() => exportFnRefs.current[action](), 500);
   };
+
+  // ── Stripe: the payer gets a checkout link by email ───────────────
+  // No card is entered in the app. Once the link is paid, the hook's poll
+  // flips the unlock and the export the user was blocked on runs itself.
+  const payment = usePaymentLink(inspectionId, () => {
+    setIsReportUnlocked(true);
+    setPaymentModalVisible(false);
+    Alert.alert('Payment Successful', 'Report unlocked. Your download will start now.');
+    runPendingExport();
+  }, paymentModalVisible);
+
+  const handleSendPaymentLink = async () => {
+    const ok = await payment.send();
+    if (!ok && payment.error) Alert.alert('Error', payment.error);
+  };
+
+  // Any payment in flight — the modal must not be dismissible mid-flow.
+  const paymentBusy = payment.sending;
 
   /**
    * Gate an export action behind payment.
-   * If unlocked, runs the callback directly.
-   * On web: always allow exports (IAP is native-only, payment happens on Android device).
-   * If locked on native: opens the payment modal and remembers which action to run after payment.
+   * If unlocked, runs the callback directly; otherwise opens the payment modal
+   * and remembers which export to run once payment lands.
+   *
+   * Web used to skip the gate outright because Play Billing was native-only.
+   * Stripe checkout works on every platform, so the gate now applies everywhere.
    */
   const gateExport = (action: 'pdf' | 'html' | 'excel', callback: () => void) => {
-    if (isReportUnlocked || Platform.OS === 'web') {
+    if (isReportUnlocked) {
       callback();
     } else {
       pendingExportAction.current = action;
@@ -215,6 +215,10 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
     low: mergedDeficiencies.filter((d: any) =>
       (d.deficiency?.aiSeverity || d.deficiency?.severity) === 'Low'
     ).length,
+    // Web parity: the summary also splits repeats from new findings.
+    repeat: mergedDeficiencies.filter((d: any) =>
+      !!(d.repeatIndicator ?? d.deficiency?.repeatIndicator)
+    ).length,
   };
 
   // Calculate scores based on actual deficiencies
@@ -229,9 +233,6 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
   const finalScore = Math.max(0, preliminaryScore - 5); // Slight adjustment for final
   const isPassing = finalScore >= 60;
 
-  const inspectionId = `697e0d82e115b966d90cc009`;
-  const inspectionDate = new Date().toLocaleDateString();
-
   const handleContinueInspection = async () => {
     const nextArea: string = inspectionData?.isOutsideInspection
       ? 'Outside'
@@ -241,7 +242,6 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
       : (selectedUnits.join(', ') || routeCurrentUnit || 'Unit Multiple');
 
     try {
-      const saveKey = `saved_inspection_${property?._id || property?.id || 'unknown'}_${buildingId}`;
 
       // Convert local image URIs to base64 so images survive navigation,
       // and stamp _area / _unit on each deficiency so they survive future merges
@@ -276,7 +276,7 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
             }
           }
           // Fall back to Cloudinary URL if local conversion fails
-          return { ...defItem, _area: area, _unit: unit, imageUri: defItem.imageUrl || null };
+          return { ...defItem, _area: area, _unit: unit, imageUri: defItem.imageUri || defItem.imageUrl || null };
         })
       );
       await storeData(saveKey, {
@@ -291,7 +291,7 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
     navigation.navigate('LocationInspection', {
       property,
       selectedUnits,
-      buildingId,
+      buildingId: buildingId || 'default',
       location: nextArea,
       currentUnit: nextUnit,
     });
@@ -451,23 +451,32 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
         let imageBase64: string | null = null;
         const cloudinaryUrl = defItem.imageUrl || null;
 
-        if (defItem.imageUri && Platform.OS !== 'web') {
-          try {
-            const fileInfo = await FileSystem.getInfoAsync(defItem.imageUri);
-            if (fileInfo.exists) {
-              const base64 = await FileSystem.readAsStringAsync(defItem.imageUri, {
-                encoding: FileSystem.EncodingType.Base64,
-              });
-              if (base64 && base64.length > 100) {
-                imageBase64 = `data:image/jpeg;base64,${base64}`;
+        if (defItem.imageUri) {
+          if (defItem.imageUri.startsWith('data:')) {
+            // Already a base64 data URL — use directly (saved by handleContinueInspection)
+            imageBase64 = defItem.imageUri;
+          } else if (defItem.imageUri.startsWith('http://') || defItem.imageUri.startsWith('https://')) {
+            // Remote URL (Cloudinary etc.) — PDF service will download it
+            imageBase64 = defItem.imageUri;
+          } else if (Platform.OS !== 'web') {
+            // Local file path — convert to base64
+            try {
+              const fileInfo = await FileSystem.getInfoAsync(defItem.imageUri);
+              if (fileInfo.exists) {
+                const base64 = await FileSystem.readAsStringAsync(defItem.imageUri, {
+                  encoding: FileSystem.EncodingType.Base64,
+                });
+                if (base64 && base64.length > 100) {
+                  imageBase64 = `data:image/jpeg;base64,${base64}`;
+                }
               }
+            } catch (imgError) {
+              console.error('Error converting image to base64:', imgError);
             }
-          } catch (imgError) {
-            console.error('Error converting image to base64:', imgError);
           }
         }
 
-        const finalImageUri = imageBase64 || cloudinaryUrl || null;
+        const finalImageUri = imageBase64 || cloudinaryUrl || defItem.imageUri || null;
         // Use per-deficiency saved area (_area) if available (set when continuing inspection),
         // otherwise fall back to the current session's area from inspectionData.
         const inspectionArea: string = defItem._area
@@ -776,6 +785,11 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
     }
   };
 
+  // Keep refs in sync with the latest function versions on every render.
+  exportFnRefs.current.pdf = handleExportPDF;
+  exportFnRefs.current.html = handleExportHTML;
+  exportFnRefs.current.excel = handleExportExcel;
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
@@ -798,78 +812,103 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        {/* Report Header Card */}
+        {/* Web /dashboard/inspection/summary parity */}
         <View style={styles.reportCard}>
-          <Text style={styles.reportTitle}>INSPIRE INSPECTION REPORT</Text>
+          <Text style={styles.reportTitle}>HUD INSPIRE INSPECTION PROGRESS</Text>
           <Text style={styles.propertyName}>{property.name || 'Golden Town'}</Text>
           <Text style={styles.propertyAddress}>{property.address}</Text>
           <Text style={styles.inspectionInfo}>
             Inspection #{inspectionId} | {inspectionDate}
           </Text>
 
+          <View style={styles.hudButtonRow}>
+            <TouchableOpacity
+              style={[styles.hudPill, styles.hudPillTeal]}
+              onPress={() => gateExport('pdf', handleExportPDF)}
+              disabled={exportingPDF}
+            >
+              {exportingPDF ? (
+                <ActivityIndicator color="#FFFFFF" size="small" />
+              ) : (
+                <>
+                  <Ionicons name="lock-closed-outline" size={14} color="#FFFFFF" />
+                  <Text style={styles.hudPillText}>Unlock to Export</Text>
+                </>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.hudPill, styles.hudPillGreen]}
+              onPress={() => gateExport('excel', handleExportExcel)}
+              disabled={exportingExcel}
+            >
+              {exportingExcel ? (
+                <ActivityIndicator color="#FFFFFF" size="small" />
+              ) : (
+                <>
+                  <Ionicons name="clipboard-outline" size={14} color="#FFFFFF" />
+                  <Text style={styles.hudPillText}>Work Order</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
           <TouchableOpacity
-            style={styles.exportButton}
-            onPress={() => gateExport('pdf', handleExportPDF)}
-            disabled={exportingPDF}
-          >
-            {exportingPDF ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <>
-                {!isReportUnlocked && <Ionicons name="lock-closed" size={16} color="#FFFFFF" style={{ marginRight: 4 }} />}
-                <Ionicons name="download-outline" size={20} color="#FFFFFF" />
-                <Text style={styles.exportButtonText}>Export PDF</Text>
-              </>
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.htmlButton}
-            onPress={() => gateExport('html', handleExportHTML)}
-            disabled={exportingHTML}
-          >
-            {exportingHTML ? (
-              <ActivityIndicator color="#0E7490" />
-            ) : (
-              <>
-                {!isReportUnlocked && <Ionicons name="lock-closed" size={16} color="#0E7490" style={{ marginRight: 4 }} />}
-                <Ionicons name="code-slash-outline" size={20} color="#0E7490" />
-                <Text style={styles.htmlButtonText}>Export HTML</Text>
-              </>
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.excelButton}
-            onPress={() => gateExport('excel', handleExportExcel)}
-            disabled={exportingExcel}
-          >
-            {exportingExcel ? (
-              <ActivityIndicator color="#217346" />
-            ) : (
-              <>
-                {!isReportUnlocked && <Ionicons name="lock-closed" size={16} color="#217346" style={{ marginRight: 4 }} />}
-                <Ionicons name="grid-outline" size={20} color="#217346" />
-                <Text style={styles.excelButtonText}>Export Excel</Text>
-              </>
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.previewButton}
-            onPress={handlePreviewReport}
-          >
-            <Ionicons name="eye-outline" size={20} color="#0E7490" />
-            <Text style={styles.previewButtonText}>Preview Report</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.continueButton}
+            style={[styles.hudPill, styles.hudPillOrange, styles.hudPillWide]}
             onPress={handleContinueInspection}
           >
-            <Ionicons name="arrow-forward-circle-outline" size={20} color="#FFFFFF" />
-            <Text style={styles.continueButtonText}>Continue Inspection</Text>
+            <Ionicons name="chevron-back" size={14} color="#FFFFFF" />
+            <Text style={[styles.hudPillText, { fontWeight: '700' }]}>CONTINUE INSPECTION</Text>
           </TouchableOpacity>
+        </View>
+
+        {!isReportUnlocked && (
+          <View style={styles.lockedCard}>
+            <View style={styles.lockedHeaderRow}>
+              <Ionicons name="lock-closed" size={16} color="#B45309" />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.lockedTitle}>Report Locked</Text>
+                <Text style={styles.lockedSubtitle}>
+                  {checkingUnlock ? 'Checking payment status...' : 'Pay once to unlock full export access'}
+                </Text>
+              </View>
+            </View>
+            <TouchableOpacity style={styles.unlockPayButton} onPress={() => gateExport('pdf', handleExportPDF)}>
+              <Ionicons name="lock-closed-outline" size={14} color="#FFFFFF" />
+              <Text style={styles.unlockPayButtonText}>Unlock Report · $1</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.viewDeficiencyButton} onPress={handlePreviewReport}>
+              <Ionicons name="mail-outline" size={14} color="#B45309" />
+              <Text style={styles.viewDeficiencyButtonText}>View Deficiency</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        <View style={styles.hudCard}>
+          <Text style={styles.hudHeading}>INSPECTION DATA</Text>
+          <View style={styles.hudHeadingRule} />
+          {[
+            ['Building', property.totalBuildings || property.buildings || 0],
+            ['Unit', property.totalUnits || property.units || 0],
+            ['Site', 1],
+            ['Common Area', 1],
+          ].map(([label, total]) => (
+            <View key={label as string} style={styles.dataBlock}>
+              <Text style={styles.dataBlockTitle}>{label as string}</Text>
+              <View style={styles.dataBlockRow}>
+                <View style={styles.dataBlockCell}>
+                  <Text style={styles.dataBlockLabel}>Property Total</Text>
+                  <Text style={styles.dataBlockValue}>{String(total)}</Text>
+                </View>
+                <View style={styles.dataBlockCell}>
+                  <Text style={styles.dataBlockLabel}>Sample Size</Text>
+                  <Text style={styles.dataBlockValue}>1</Text>
+                </View>
+                <View style={styles.dataBlockCell}>
+                  <Text style={styles.dataBlockLabel}>Inspected</Text>
+                  <Text style={styles.dataBlockValue}>1</Text>
+                </View>
+              </View>
+            </View>
+          ))}
         </View>
 
         {/* Score Card */}
@@ -877,6 +916,13 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
           <View style={styles.scoreSection}>
             <Text style={styles.scoreLabel}>PRELIMINARY SCORE</Text>
             <Text style={styles.scoreValue}>{preliminaryScore}</Text>
+          </View>
+
+          <View style={styles.scoreDivider} />
+
+          <View style={styles.scoreSection}>
+            <Text style={styles.scoreLabel}>POINTS LOST</Text>
+            <Text style={[styles.scoreValue, styles.pointsLostValue]}>-{deductionPoints}</Text>
           </View>
 
           <View style={styles.scoreDivider} />
@@ -896,6 +942,34 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
               <Text style={styles.passingText}>{isPassing ? 'Passing' : 'Failing'}</Text>
             </View>
           </View>
+        </View>
+
+        <View style={styles.hudCard}>
+          <Text style={styles.hudHeading}>PROPERTY INFORMATION</Text>
+          <View style={styles.hudHeadingRule} />
+          {[
+            ['Property Name', property.name || '-'],
+            ['Address', property.address || '-'],
+            ['Property ID', String(property.id || '-')],
+            ['Inspector', 'Inspector'],
+          ].map(([label, value]) => (
+            <View key={label as string} style={styles.hudInfoRow}>
+              <Text style={styles.hudInfoLabel}>{label as string}</Text>
+              <Text style={styles.hudInfoValue}>{value as string}</Text>
+            </View>
+          ))}
+        </View>
+
+        <View style={styles.hudFooterRow}>
+          <TouchableOpacity style={styles.hudFooterPrimary} onPress={handleContinueInspection}>
+            <Text style={styles.hudFooterPrimaryText}>BACK TO INSPECTION</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.hudFooterSecondary}
+            onPress={() => navigation.navigate('MyInspections' as never)}
+          >
+            <Text style={styles.hudFooterSecondaryText}>MY INSPECTIONS</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Tabs */}
@@ -947,6 +1021,26 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
                 <Text style={styles.deficiencyCount}>{deficiencyCounts.low}</Text>
                 <Text style={styles.deficiencyLabel}>Low</Text>
               </View>
+
+              <View style={styles.deficiencyItem}>
+                <View style={[styles.deficiencyBar, styles.totalBar]} />
+                <Text style={[styles.deficiencyCount, styles.totalCount]}>{totalDeficiencies}</Text>
+                <Text style={[styles.deficiencyLabel, styles.totalLabel]}>Total</Text>
+              </View>
+            </View>
+
+            {/* Repeat vs new (web parity) */}
+            <View style={styles.repeatNewRow}>
+              <View style={[styles.repeatNewTile, styles.repeatTile]}>
+                <Text style={[styles.repeatNewCount, styles.repeatText]}>{deficiencyCounts.repeat}</Text>
+                <Text style={[styles.repeatNewLabel, styles.repeatText]}>Repeat Deficiencies</Text>
+              </View>
+              <View style={[styles.repeatNewTile, styles.newTile]}>
+                <Text style={[styles.repeatNewCount, styles.newText]}>
+                  {totalDeficiencies - deficiencyCounts.repeat}
+                </Text>
+                <Text style={[styles.repeatNewLabel, styles.newText]}>New Deficiencies</Text>
+              </View>
             </View>
 
             {/* Inspection Details */}
@@ -956,6 +1050,18 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
               <View style={styles.detailRow}>
                 <Text style={styles.detailLabel}>Building:</Text>
                 <Text style={styles.detailValue}>{buildingId}</Text>
+              </View>
+
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Property Total:</Text>
+                <Text style={styles.detailValue}>{property?.units ?? '-'}</Text>
+              </View>
+
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Sample Size:</Text>
+                <Text style={styles.detailValue}>
+                  {property?.calculatedUnits ?? selectedUnits.length}
+                </Text>
               </View>
 
               <View style={styles.detailRow}>
@@ -1119,18 +1225,27 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
         visible={paymentModalVisible}
         animationType="slide"
         transparent={true}
-        onRequestClose={() => { if (!purchasing) setPaymentModalVisible(false); }}
+        onRequestClose={() => { if (!paymentBusy) setPaymentModalVisible(false); }}
       >
         <View style={styles.paymentOverlay}>
           <View style={styles.paymentModal}>
             {/* Close */}
             <TouchableOpacity
               style={styles.paymentCloseButton}
-              onPress={() => { if (!purchasing) setPaymentModalVisible(false); }}
-              disabled={purchasing}
+              onPress={() => { if (!paymentBusy) setPaymentModalVisible(false); }}
+              disabled={paymentBusy}
             >
               <Ionicons name="close" size={24} color="#374151" />
             </TouchableOpacity>
+
+            {/* Body scrolls: the card + email-link options overflow a small screen. */}
+            <ScrollView contentContainerStyle={styles.paymentModalContent} showsVerticalScrollIndicator={false}>
+
+            {/* Payment Provider Badge */}
+            <View style={styles.paymentProviderBadge}>
+              <Ionicons name="card" size={22} color="#FFFFFF" />
+              <Text style={styles.paymentProviderBadgeText}>Stripe</Text>
+            </View>
 
             {/* Icon */}
             <View style={styles.paymentIconContainer}>
@@ -1144,9 +1259,8 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
 
             {/* Price */}
             <View style={styles.paymentPriceContainer}>
-              <Text style={styles.paymentPriceLabel}>One-time payment</Text>
-              <Text style={styles.paymentPrice}>$99</Text>
-              <Text style={styles.paymentPriceSub}>per property report</Text>
+              <Text style={styles.paymentPriceLabel}>One-time payment (unlocks ALL reports)</Text>
+              <Text style={styles.paymentPriceSub}>The amount is shown on the secure Stripe checkout page.</Text>
             </View>
 
             {/* Features */}
@@ -1156,6 +1270,7 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
                 'All deficiencies & images included',
                 'Complete scoring breakdown',
                 'Certification & compliance details',
+                'Access ALL future inspection reports',
               ].map((feature, idx) => (
                 <View key={idx} style={styles.paymentFeatureRow}>
                   <Ionicons name="checkmark-circle" size={20} color="#10B981" />
@@ -1164,25 +1279,68 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
               ))}
             </View>
 
-            {/* Buy button */}
-            <TouchableOpacity
-              style={[styles.paymentBuyButton, purchasing && styles.paymentBuyButtonDisabled]}
-              onPress={handlePurchaseReport}
-              disabled={purchasing}
-            >
-              {purchasing ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <>
-                  <Ionicons name="card-outline" size={20} color="#FFFFFF" />
-                  <Text style={styles.paymentBuyButtonText}>Purchase for $99</Text>
-                </>
-              )}
-            </TouchableOpacity>
+            {/* Email-only checkout: the link is mailed, paid anywhere, and the
+                poll below unlocks the report without the user coming back. */}
+            {payment.sentTo ? (
+              <View style={styles.paymentSentBox}>
+                <Ionicons name="mail-open-outline" size={28} color="#0E7490" />
+                <Text style={styles.paymentSentTitle}>Payment link sent</Text>
+                <Text style={styles.paymentSentText}>
+                  We emailed the secure Stripe checkout link to {payment.sentTo}. Pay from that
+                  email — this screen unlocks and your download starts automatically.
+                </Text>
+                <View style={styles.paymentWaitingRow}>
+                  <ActivityIndicator size="small" color="#0E7490" />
+                  <Text style={styles.paymentWaitingText}>Waiting for payment…</Text>
+                </View>
+                <TouchableOpacity onPress={() => { void payment.checkNow(); }} disabled={payment.checking}>
+                  <Text style={styles.paymentSentLink}>
+                    {payment.checking ? 'Checking…' : 'Already paid? Check now'}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={payment.reset} disabled={payment.checking}>
+                  <Text style={styles.paymentSentLinkMuted}>Send to a different email</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <>
+                <Text style={styles.paymentShareLabel}>
+                  Email the payment link to whoever is paying
+                </Text>
+                <TextInput
+                  style={styles.paymentShareInput}
+                  placeholder="name@company.com"
+                  placeholderTextColor="#9CA3AF"
+                  value={payment.email}
+                  onChangeText={payment.setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  editable={!paymentBusy}
+                  accessibilityLabel="Email address for the payment link"
+                />
+                <TouchableOpacity
+                  style={[styles.paymentBuyButton, paymentBusy && styles.paymentBuyButtonDisabled]}
+                  onPress={handleSendPaymentLink}
+                  disabled={paymentBusy}
+                  accessibilityLabel="Send payment link"
+                >
+                  {payment.sending ? (
+                    <ActivityIndicator color="#FFFFFF" />
+                  ) : (
+                    <>
+                      <Ionicons name="mail-outline" size={20} color="#FFFFFF" />
+                      <Text style={styles.paymentBuyButtonText}>Send Payment Link</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+                <Text style={styles.paymentSecureText}>
+                  🔒 Secure payment via Stripe
+                </Text>
+              </>
+            )}
 
-            <Text style={styles.paymentSecureText}>
-              🔒 Secure payment via Google Play
-            </Text>
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -1191,6 +1349,103 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
 };
 
 const styles = StyleSheet.create({
+  // --- Web /dashboard/inspection/summary parity ---
+  hudButtonRow: { flexDirection: 'row', gap: 10, marginTop: 16 },
+  hudPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderRadius: 999,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+  },
+  hudPillWide: { marginTop: 10, alignSelf: 'flex-start' },
+  hudPillTeal: { backgroundColor: '#006795' },
+  hudPillGreen: { backgroundColor: '#0E8A5F' },
+  hudPillOrange: { backgroundColor: '#F59E0B' },
+  hudPillText: { color: '#FFFFFF', fontSize: 14, fontWeight: '500' },
+  lockedCard: {
+    backgroundColor: '#FFFBEB',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+  },
+  lockedHeaderRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 12 },
+  lockedTitle: { fontSize: 14, fontWeight: '700', color: '#92400E' },
+  lockedSubtitle: { fontSize: 12, color: '#B45309' },
+  unlockPayButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#F59E0B',
+    borderRadius: 10,
+    paddingVertical: 12,
+    marginBottom: 10,
+  },
+  unlockPayButtonText: { color: '#FFFFFF', fontSize: 12, fontWeight: '700' },
+  viewDeficiencyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    borderRadius: 10,
+    paddingVertical: 12,
+  },
+  viewDeficiencyButtonText: { color: '#B45309', fontSize: 12, fontWeight: '700' },
+  hudCard: { backgroundColor: '#FFFFFF', borderRadius: 12, padding: 16, marginBottom: 12 },
+  hudHeading: { fontSize: 18, fontWeight: '700', color: '#006795' },
+  hudHeadingRule: { height: 2, backgroundColor: '#006795', marginTop: 8, marginBottom: 14 },
+  dataBlock: { backgroundColor: '#F9FAFB', borderRadius: 10, padding: 12, marginBottom: 10 },
+  dataBlockTitle: { fontSize: 16, fontWeight: '700', color: '#006795', marginBottom: 8 },
+  dataBlockRow: { flexDirection: 'row' },
+  dataBlockCell: { flex: 1 },
+  dataBlockLabel: { fontSize: 11, color: '#6B7280', marginBottom: 2 },
+  dataBlockValue: { fontSize: 15, fontWeight: '700', color: '#111827' },
+  hudInfoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+    paddingVertical: 8,
+  },
+  hudInfoLabel: { fontSize: 15, color: '#4B5563' },
+  hudInfoValue: { fontSize: 15, fontWeight: '600', color: '#111827', flexShrink: 1, textAlign: 'right' },
+  hudFooterRow: { flexDirection: 'row', gap: 10, marginTop: 4, marginBottom: 20 },
+  hudFooterPrimary: {
+    flex: 1,
+    backgroundColor: '#F59E0B',
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  hudFooterPrimaryText: { color: '#FFFFFF', fontSize: 14, fontWeight: '900' },
+  hudFooterSecondary: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  hudFooterSecondaryText: { color: '#4B5563', fontSize: 14, fontWeight: '900' },
+  pointsLostValue: { color: '#FCA5A5' },
+
+  totalBar: { backgroundColor: '#16A34A' },
+  totalCount: { color: '#16A34A' },
+  totalLabel: { color: '#16A34A' },
+  repeatNewRow: { flexDirection: 'row', gap: 12, marginTop: 14 },
+  repeatNewTile: { flex: 1, borderRadius: 10, paddingVertical: 12, alignItems: 'center' },
+  repeatTile: { backgroundColor: '#FFFBEB' },
+  newTile: { backgroundColor: '#EFF6FF' },
+  repeatNewCount: { fontSize: 22, fontWeight: '800' },
+  repeatNewLabel: { fontSize: 11, fontWeight: '700', marginTop: 2 },
+  repeatText: { color: '#B45309' },
+  newText: { color: '#1D4ED8' },
   container: {
     flex: 1,
     backgroundColor: '#E8F4FD',
@@ -1483,7 +1738,7 @@ const styles = StyleSheet.create({
   deficiencyHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: 12,
   },
   deficiencyItemName: {
@@ -1491,11 +1746,15 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#999999',
     textTransform: 'uppercase',
+    flex: 1,
+    flexShrink: 1,
+    marginRight: 8,
   },
   severityBadge: {
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
+    flexShrink: 0,
   },
   lifethreateningBadge: {
     backgroundColor: '#DC2626',
@@ -1719,9 +1978,75 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
+    maxHeight: '90%',
+  },
+  paymentModalContent: {
     padding: 24,
     paddingBottom: 40,
     alignItems: 'center',
+  },
+  paymentShareLabel: {
+    width: '100%',
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#374151',
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  paymentShareInput: {
+    width: '100%',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 14,
+    color: '#1A1A1A',
+    backgroundColor: '#F9FAFB',
+    marginBottom: 12,
+  },
+  paymentSentBox: {
+    width: '100%',
+    alignItems: 'center',
+    backgroundColor: '#F0F9FF',
+    borderRadius: 16,
+    padding: 20,
+    marginTop: 12,
+  },
+  paymentSentTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0E7490',
+    marginTop: 8,
+  },
+  paymentSentText: {
+    fontSize: 13,
+    color: '#374151',
+    textAlign: 'center',
+    lineHeight: 19,
+    marginTop: 6,
+  },
+  paymentWaitingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 14,
+  },
+  paymentWaitingText: {
+    fontSize: 13,
+    color: '#0E7490',
+    fontWeight: '600',
+  },
+  paymentSentLink: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0E7490',
+    marginTop: 14,
+  },
+  paymentSentLinkMuted: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 10,
   },
   paymentCloseButton: {
     position: 'absolute',
@@ -1731,6 +2056,53 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: '#F3F4F6',
     zIndex: 10,
+  },
+  paymentProviderBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1A1A1A',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginBottom: 16,
+    gap: 8,
+  },
+  paymentProviderBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  paymentStatusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginTop: 12,
+    gap: 6,
+  },
+  paymentStatusBadgeUnlocked: {
+    backgroundColor: '#E8F5E9',
+  },
+  paymentStatusBadgeChecking: {
+    backgroundColor: '#F3F4F6',
+  },
+  paymentStatusBadgeLocked: {
+    backgroundColor: '#FFF7ED',
+  },
+  paymentStatusTextUnlocked: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#10B981',
+  },
+  paymentStatusTextChecking: {
+    fontSize: 13,
+    color: '#666666',
+  },
+  paymentStatusTextLocked: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#F97316',
   },
   paymentIconContainer: {
     width: 80,
@@ -1767,11 +2139,6 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 1,
     marginBottom: 4,
-  },
-  paymentPrice: {
-    fontSize: 48,
-    fontWeight: '800',
-    color: '#0E7490',
   },
   paymentPriceSub: {
     fontSize: 13,

@@ -5,7 +5,6 @@ import {
   Text,
   StyleSheet,
   Image,
-  TextInput,
   TouchableOpacity,
   SafeAreaView,
   ScrollView,
@@ -15,53 +14,29 @@ import {
   Platform,
   Modal,
   Pressable,
-  Animated,
+  StatusBar,
 } from "react-native";
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Picker } from "@react-native-picker/picker";
-import { Country, State, City, IState } from 'country-state-city';
 import { DashboardScreenNavigationProp } from "../types/navigation";
 import Sidebar from "../components/Sidebar";
+import AppHeader from "../components/AppHeader";
 import ModalZoomWrapper from "../components/ModalZoomWrapper";
 import {
   propertyService,
   authService,
+  inspectionService,
   generateRandomUnitSample,
   isRandomSelectionAvailable
 } from "../services";
+import { calculatePropertyProgressPercent } from "../utils/inspectionProgressUtils";
 import type { UnitSample } from "../services";
-import { Property as ApiProperty, User } from "../services/api";
+import { Property as ApiProperty } from "../services/api";
 import { UNIT_SELECTION_OPTIONS } from "../utils/iosPickerUtils";
 
 // Coverage options for inspection
-const COVERAGE_OPTIONS = [
-  { label: 'Random Units', value: 'random', description: 'Automatically select a random sample based on NSPIRE guidelines' },
-  { label: '50%', value: '50', description: 'Inspect half of all units (randomly selected)' },
-  { label: '100%', value: '100', description: 'Inspect every unit in the property' },
-];
-
-// Helper to find country ISO code from typed name
-const findCountryIsoCode = (name: string): string => {
-  if (!name) return '';
-  const allCountries = Country.getAllCountries();
-  const lower = name.trim().toLowerCase();
-  const exact = allCountries.find(c => c.name.toLowerCase() === lower);
-  if (exact) return exact.isoCode;
-  const prefix = allCountries.find(c => c.name.toLowerCase().startsWith(lower));
-  return prefix?.isoCode || '';
-};
-
-// Helper to find state ISO code from typed name within a country
-const findStateIsoCode = (stateName: string, countryIso: string): string => {
-  if (!stateName || !countryIso) return '';
-  const allStates = State.getStatesOfCountry(countryIso);
-  const lower = stateName.trim().toLowerCase();
-  const exact = allStates.find(s => s.name.toLowerCase() === lower);
-  if (exact) return exact.isoCode;
-  const prefix = allStates.find(s => s.name.toLowerCase().startsWith(lower));
-  return prefix?.isoCode || '';
-};
+import { COVERAGE_OPTIONS } from '../constants/inspectionCoverage';
 
 interface DashboardScreenProps {
   navigation: DashboardScreenNavigationProp;
@@ -79,6 +54,10 @@ interface Property {
   city: string;
   state: string;
   zipCode: string;
+  status?: string;
+  inspectionCoverage?: string;
+  calculatedUnits?: number;
+  buildingDetails?: { buildingId: string; totalUnits: number; unitsForInspection: number }[];
 }
 
 export default function DashboardScreen({
@@ -117,75 +96,14 @@ export default function DashboardScreen({
     return () => clearTimeout(maxLoadingTimeout);
   }, [loading]);
   const [properties, setProperties] = useState<Property[]>([]);
-  const [user, setUser] = useState<User | null>(null);
 
-  const [propertyName, setPropertyName] = useState("");
-  const [country, setCountry] = useState("");
-  const [state, setState] = useState("");
-  const [city, setCity] = useState("");
-  const [states, setStates] = useState<{ label: string; value: string }[]>([]);
-  const [cities, setCities] = useState<{ label: string; value: string }[]>([]);
-  const [loadingCities, setLoadingCities] = useState(false);
-  const [showSearch, setShowSearch] = useState(true);
-
-  // Refresh icon animation
-  const rotateAnim = useRef(new Animated.Value(0)).current;
-  const [iconAnimating, setIconAnimating] = useState(false);
-  const animationRef = useRef<any>(null);
+  // Web parity: per-property completion percentage
+  const [propertyProgress, setPropertyProgress] = useState<Record<string, number>>({});
 
   // Load user and properties on mount
   useEffect(() => {
     loadInitialData();
   }, []);
-
-  // Load states when country changes
-  useEffect(() => {
-    const isoCode = findCountryIsoCode(country);
-    if (isoCode) {
-      const countryStates = State.getStatesOfCountry(isoCode) || [];
-      const formattedStates = countryStates.map((s: IState) => ({
-        label: s.name,
-        value: s.isoCode
-      })).sort((a, b) => a.label.localeCompare(b.label));
-      console.log(`Dashboard states loaded for ${country}:`, formattedStates.length);
-      setStates(formattedStates);
-    } else {
-      setStates([]);
-    }
-    setState('');
-    setCity('');
-    setCities([]);
-  }, [country]);
-
-  // Load cities when state changes
-  useEffect(() => {
-    if (state) {
-      setLoadingCities(true);
-      setCity('');
-
-      try {
-        const countryIso = findCountryIsoCode(country);
-        const stateIso = findStateIsoCode(state, countryIso);
-        if (countryIso && stateIso) {
-          const stateCities = City.getCitiesOfState(countryIso, stateIso) || [];
-          const formattedCities = stateCities.map(c => ({ label: c.name, value: c.name }))
-            .sort((a, b) => a.label.localeCompare(b.label));
-          console.log('Dashboard cities loaded:', formattedCities.length);
-          setCities(formattedCities);
-        } else {
-          setCities([]);
-        }
-      } catch (error) {
-        console.error('Error loading cities:', error);
-        setCities([]);
-      } finally {
-        setLoadingCities(false);
-      }
-    } else {
-      setCities([]);
-      setCity('');
-    }
-  }, [state, country]);
 
   const loadInitialData = async () => {
     try {
@@ -215,7 +133,6 @@ export default function DashboardScreen({
           return;
         }
 
-        setUser(userData);
         await fetchProperties();
       })();
 
@@ -261,8 +178,13 @@ export default function DashboardScreen({
           city: p.city,
           state: p.state,
           zipCode: p.zipCode,
+          status: p.status,
+          inspectionCoverage: p.inspectionCoverage,
+          calculatedUnits: p.calculatedUnits,
+          buildingDetails: p.buildingDetails,
         }));
         setProperties(mappedProperties);
+        fetchProgress(mappedProperties);
         return mappedProperties;
       }
       return [];
@@ -271,6 +193,24 @@ export default function DashboardScreen({
       return [];
     }
   };
+
+  // Web parity (/dashboard): percentage of inspection tasks completed per property.
+  const fetchProgress = async (propertyList: Property[]) => {
+    try {
+      const response = await inspectionService.getAllProgress();
+      if (!response.success || !Array.isArray(response.progress)) return;
+
+      const progressMap: Record<string, number> = {};
+      propertyList.forEach(prop => {
+        progressMap[prop._id || prop.id] = calculatePropertyProgressPercent(prop, response.progress);
+      });
+      setPropertyProgress(progressMap);
+    } catch (e) {
+      console.error('Error fetching progress:', e);
+    }
+  };
+
+
 
   // Refresh properties when the screen gains focus (so edits/updates reflect immediately)
   useFocusEffect(
@@ -284,47 +224,6 @@ export default function DashboardScreen({
     await fetchProperties();
     setRefreshing(false);
   }, []);
-
-  const startRotate = () => {
-    if (iconAnimating) return;
-    setIconAnimating(true);
-    rotateAnim.setValue(0);
-    animationRef.current = Animated.loop(
-      Animated.timing(rotateAnim, {
-        toValue: 1,
-        duration: 800,
-        useNativeDriver: true,
-      })
-    );
-    animationRef.current.start();
-  };
-
-  const stopRotate = () => {
-    try {
-      animationRef.current?.stop();
-    } catch (e) { }
-    rotateAnim.setValue(0);
-    setIconAnimating(false);
-  };
-
-  const handleRefreshIconPress = async () => {
-    try {
-      startRotate();
-      await fetchProperties();
-    } finally {
-      stopRotate();
-    }
-  };
-
-  const handleSearch = async () => {
-    setLoading(true);
-    await fetchProperties({
-      search: propertyName,
-      state: state,
-      city: city,
-    });
-    setLoading(false);
-  };
 
   const handleMenuPress = () => {
     setSidebarVisible(true);
@@ -344,6 +243,8 @@ export default function DashboardScreen({
       navigation.navigate("Analytics" as never);
     } else if (screen === "Settings") {
       navigation.navigate("Settings" as never);
+    } else {
+      navigation.navigate(screen as never);
     }
   };
 
@@ -360,6 +261,11 @@ export default function DashboardScreen({
       navigation.navigate("Boarding");
     }
   };
+
+  // Web parity: the dashboard ACTIONS column is labelled by progress, not by a
+  // fixed "Inspection Status"/"Initiate" pair.
+  const statusLabel = (progress: number) =>
+    progress >= 100 ? 'Completed' : progress > 0 ? 'In Progress' : 'Not Started';
 
   const handleEditPress = (property: Property) => {
     setSelectedProperty(property);
@@ -383,14 +289,40 @@ export default function DashboardScreen({
 
   const handleReadyForInspection = async () => {
     setActionModalVisible(false);
-    if (selectedProperty) {
-      // Show coverage modal first
-      const totalUnits = selectedProperty.units || 1;
-      setCalculatedUnits(totalUnits);
-      setSelectedCoverage('100');
-      calculateSelectedUnits('100', totalUnits, selectedProperty);
-      setInspectionModalVisible(true);
+    if (!selectedProperty) return;
+
+    // Coverage already chosen for this property -> go straight to the building screen
+    if (selectedProperty.inspectionCoverage && selectedProperty.calculatedUnits) {
+      navigation.navigate('BuildingInspection' as any, {
+        property: selectedProperty,
+        calculatedUnits: selectedProperty.calculatedUnits,
+        selectedUnits: buildUnitList(selectedProperty.calculatedUnits),
+        coverage: selectedProperty.inspectionCoverage,
+      });
+      return;
     }
+
+    const totalUnits = selectedProperty.units || 1;
+    setSelectedCoverage('random');
+    calculateSelectedUnits('random', totalUnits, selectedProperty);
+    setInspectionModalVisible(true);
+  };
+
+  const buildUnitList = (count: number): string[] => {
+    const list: string[] = [];
+    for (let i = 1; i <= count; i++) list.push(`Unit ${String(i).padStart(3, '0')}`);
+    return list;
+  };
+
+  const handleViewSummary = () => {
+    setActionModalVisible(false);
+    if (!selectedProperty) return;
+    navigation.navigate('InspectionSummary' as any, {
+      property: selectedProperty,
+      selectedUnits: buildUnitList(selectedProperty.calculatedUnits || selectedProperty.units || 1),
+      buildingId: 'B1',
+      inspectionData: null,
+    });
   };
 
   const calculateSelectedUnits = (coverage: string, totalUnits: number, property: Property) => {
@@ -451,10 +383,44 @@ export default function DashboardScreen({
     setSelectedUnitOption("");
 
     if (selectedProperty) {
+      const propId = selectedProperty._id || selectedProperty.id;
       try {
-        await propertyService.setReadyForInspection(selectedProperty._id || selectedProperty.id);
+        await propertyService.setReadyForInspection(propId);
       } catch (error) {
         console.error('Error setting ready for inspection:', error);
+      }
+
+      // Persist the coverage choice so it survives a reload (web /dashboard does the same)
+      try {
+        await propertyService.updateProperty(propId, {
+          inspectionCoverage: selectedCoverage,
+          calculatedUnits: calculatedUnits,
+        });
+        setProperties(prev => prev.map(p =>
+          (p._id || p.id) === propId
+            ? { ...p, inspectionCoverage: selectedCoverage, calculatedUnits }
+            : p
+        ));
+      } catch (error: any) {
+        console.error('Failed to save coverage:', error);
+        Alert.alert('Error', 'Failed to save coverage selection');
+        return;
+      }
+
+      // Resume this property if it was on hold so it becomes the active inspection
+      if (selectedProperty.status === 'hold') {
+        try {
+          const response = await propertyService.hold(propId);
+          if (response.success) {
+            const newStatus = response.property?.status ?? 'active';
+            setProperties(prev => prev.map(p =>
+              (p._id || p.id) === propId ? { ...p, status: newStatus } : p
+            ));
+          }
+        } catch (error: any) {
+          Alert.alert('Error', error.message || 'Failed to resume inspection');
+          return;
+        }
       }
       // Navigate to BuildingInspection with selected units divided across buildings
       navigation.navigate('BuildingInspection' as any, {
@@ -472,15 +438,18 @@ export default function DashboardScreen({
     setSelectedUnitOption("");
   };
 
-  const handleRemoveProperty = async () => {
-    if (!selectedProperty?._id) {
+  // Web parity: the dashboard row has its own Remove, so the target is passed
+  // in; the action modal still calls it with no arg and hits selectedProperty.
+  const handleRemoveProperty = async (target?: Property) => {
+    const victim = target || selectedProperty;
+    if (!victim?._id) {
       setActionModalVisible(false);
       return;
     }
 
     Alert.alert(
       'Remove Property',
-      `Are you sure you want to remove "${selectedProperty.name}"?`,
+      `Are you sure you want to remove "${victim.name}"?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -488,7 +457,7 @@ export default function DashboardScreen({
           style: 'destructive',
           onPress: async () => {
             try {
-              const response = await propertyService.deleteProperty(selectedProperty._id!);
+              const response = await propertyService.deleteProperty(victim._id!);
               if (response.success) {
                 Alert.alert('Success', 'Property removed successfully');
                 await fetchProperties();
@@ -501,10 +470,6 @@ export default function DashboardScreen({
         },
       ]
     );
-  };
-
-  const clearPropertyName = () => {
-    setPropertyName("");
   };
 
   return (
@@ -618,30 +583,6 @@ export default function DashboardScreen({
         </ModalZoomWrapper>
       </Modal>
 
-      {/* Sidebar Modal */}
-      <Modal
-        visible={sidebarVisible}
-        animationType="fade"
-        transparent={true}
-        onRequestClose={() => setSidebarVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.sidebarContainer}>
-            <Sidebar
-              onClose={() => setSidebarVisible(false)}
-              onNavigate={handleSidebarNavigate}
-              onLogout={handleLogout}
-              userType="Inspector"
-            />
-          </View>
-          <TouchableOpacity
-            style={styles.modalBackdrop}
-            activeOpacity={1}
-            onPress={() => setSidebarVisible(false)}
-          />
-        </View>
-      </Modal>
-
       {/* Action Modal */}
       <Modal
         visible={actionModalVisible}
@@ -658,12 +599,21 @@ export default function DashboardScreen({
           <Pressable style={styles.actionModalContent} onPress={() => { }}>
             <Text style={styles.actionModalTitle}>Action</Text>
 
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={handleEditProperty}
-            >
-              <Text style={styles.actionButtonText}>Edit Property</Text>
-            </TouchableOpacity>
+            {(propertyProgress[selectedProperty?._id || selectedProperty?.id || ''] || 0) > 0 ? (
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={handleViewSummary}
+              >
+                <Text style={styles.actionButtonText}>View Summary</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={handleEditProperty}
+              >
+                <Text style={styles.actionButtonText}>Edit Property</Text>
+              </TouchableOpacity>
+            )}
 
             <TouchableOpacity
               style={[styles.actionButton, styles.inspectionModalButton]}
@@ -675,13 +625,13 @@ export default function DashboardScreen({
                   styles.inspectionModalButtonText,
                 ]}
               >
-                Ready For Inspection
+                Continue Inspection
               </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={[styles.actionButton, styles.removeButton]}
-              onPress={handleRemoveProperty}
+              onPress={() => handleRemoveProperty()}
             >
               <Text
                 style={[styles.actionButtonText, styles.removeButtonText]}
@@ -695,26 +645,10 @@ export default function DashboardScreen({
       </Modal>
 
       <SafeAreaView style={styles.container}>
-        {/* Header with White Bar */}
-        <View style={styles.headerContainer}>
-          <View style={styles.headerBar}>
-            <TouchableOpacity onPress={onMenuPress || handleMenuPress}>
-              <Ionicons name="menu" size={28} color="#1F2937" />
-            </TouchableOpacity>
-            <Image
-              source={require("../../inspire_logo.png")}
-              style={styles.headerLogo}
-              resizeMode="contain"
-            />
-            <TouchableOpacity onPress={() => navigation.navigate("Notifications")}>
-              <Ionicons
-                name="notifications-outline"
-                size={28}
-                color="#1F2937"
-              />
-            </TouchableOpacity>
-          </View>
-        </View>
+        <AppHeader
+          onMenuPress={onMenuPress || handleMenuPress}
+          onNotificationsPress={() => navigation.navigate("Notifications")}
+        />
 
         <ScrollView
           style={styles.scrollView}
@@ -728,156 +662,102 @@ export default function DashboardScreen({
             />
           }
         >
-          {/* User Greeting */}
-          <View style={styles.greetingContainer}>
-            <View style={styles.greetingContent}>
-              <View style={styles.avatarContainer}>
-                <Ionicons name="person" size={32} color="#FFFFFF" />
-              </View>
-              <Text style={styles.greetingText}>Hi, {user?.fullName?.split(' ')[0] || (user?.email ? user.email.split('@')[0] : 'User')}</Text>
-            </View>
+          {/* Page heading (web /dashboard parity) */}
+          <View style={styles.pageHeader}>
+            <Text style={styles.pageTitle}>Property Dashboard</Text>
+            <Text style={styles.pageSubtitle}>Manage your properties and initiate inspections</Text>
           </View>
 
-          {/* Search Section */}
-          <View style={styles.searchSection}>
-            <View style={styles.searchTitleRow}>
-              <Text style={styles.searchTitle}>
-                Search By Name, City Or State
-              </Text>
-              <TouchableOpacity onPress={handleRefreshIconPress} style={styles.refreshIconButton} disabled={iconAnimating} accessibilityLabel="Refresh properties">
-                <Animated.View style={{ transform: [{ rotate: rotateAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }] }}>
-                  <Animated.View>
-                    <Ionicons name={iconAnimating ? 'refresh' : 'refresh'} size={20} color={iconAnimating ? '#0E7490' : '#1F2937'} />
-                  </Animated.View>
-                </Animated.View>
-              </TouchableOpacity>
-            </View>
+          <TouchableOpacity
+            style={styles.addButton}
+            onPress={() => navigation.navigate("AddProperty")}
+          >
+            <Text style={styles.addButtonText}>Add New Property</Text>
+          </TouchableOpacity>
 
-            {/* Action Button */}
-            <TouchableOpacity
-              style={styles.addButton}
-              onPress={() => navigation.navigate("AddProperty")}
-            >
-              <Text style={styles.addButtonText}>Add New Property</Text>
-            </TouchableOpacity>
-
-            {/* Property Name Input */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Property Name</Text>
-              <View style={styles.inputWithClear}>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Property Name"
-                  placeholderTextColor="#9CA3AF"
-                  value={propertyName}
-                  onChangeText={setPropertyName}
-                />
-                {propertyName !== "" && (
-                  <TouchableOpacity
-                    onPress={clearPropertyName}
-                    style={styles.clearButton}
-                  >
-                    <Ionicons name="close" size={20} color="#6B7280" />
-                  </TouchableOpacity>
-                )}
+          {/* Your Properties card (web parity) */}
+          <View style={styles.propertiesCard}>
+            {/* Mobile web shows no select-all checkbox and no bulk delete. */}
+            <View style={styles.listHeaderRow}>
+              <Text style={styles.selectAllText} numberOfLines={1}>Your Properties</Text>
+              <View style={styles.countPill}>
+                <Text style={styles.countPillText}>
+                  {properties.length} properties
+                </Text>
               </View>
             </View>
 
-            {/* Country */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Country</Text>
-              <TextInput
-                style={styles.textInputField}
-                placeholder="Enter Country"
-                placeholderTextColor="#6B7280"
-                value={country}
-                onChangeText={setCountry}
-                autoCapitalize="words"
-              />
-            </View>
+            {loading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#0E7490" />
+              </View>
+            ) : properties.length === 0 ? (
+              <Text style={styles.emptyText}>No properties found. Add your first property!</Text>
+            ) : (
+              <>
+                  {properties.map((property) => {
+                    const propId = property._id || property.id;
+                    const progress = propertyProgress[propId] || 0;
+                    return (
+                      <View key={property.id} style={styles.propertyCard}>
+                        {/* Mobile web: chips + status button on one row, then
+                            name, then address — no checkbox, no "Property ID:"
+                            or "Address:" labels. */}
+                        <View style={styles.propertyCardHeader}>
+                          <View style={styles.propertyCardHeaderLeft}>
+                            <View style={styles.chipRow}>
+                              <View style={styles.propertyIdChip}>
+                                <Text style={styles.propertyIdChipText}>{property.propertyId}</Text>
+                              </View>
+                              {!!property.state && (
+                                <View style={styles.statePill}>
+                                  <Text style={styles.statePillText}>{property.state}</Text>
+                                </View>
+                              )}
+                            </View>
+                            <Text style={styles.propertyName}>{property.name}</Text>
+                            <Text style={styles.addressText}>{property.address}</Text>
+                          </View>
+                          <TouchableOpacity
+                            style={styles.statusButton}
+                            onPress={() => handleEditPress(property)}
+                          >
+                            <Text style={styles.statusButtonText}>{statusLabel(progress)}</Text>
+                          </TouchableOpacity>
+                        </View>
 
-            {/* State */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>State</Text>
-              <TextInput
-                style={styles.textInputField}
-                placeholder="Enter State"
-                placeholderTextColor="#6B7280"
-                value={state}
-                onChangeText={setState}
-                autoCapitalize="words"
-              />
-            </View>
+                        <View style={styles.propertyMetaGrid}>
+                          {[
+                            ['State/Province', property.state || '-', false],
+                            ['City/Area', property.city || '-', false],
+                            ['Postal Code', property.zipCode || '-', true],
+                            ['Buildings', String(property.buildings), true],
+                            ['Units', String(property.units), true],
+                          ].map(([label, value, large]) => (
+                            <View key={label as string} style={styles.propertyMetaCell}>
+                              <Text style={styles.propertyMetaLabel}>{label as string}</Text>
+                              <Text style={[styles.propertyMetaValue, !!large && styles.propertyMetaValueLarge]}>
+                                {value as string}
+                              </Text>
+                            </View>
+                          ))}
 
-            {/* City */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>City</Text>
-              <TextInput
-                style={styles.textInputField}
-                placeholder="Enter City"
-                placeholderTextColor="#6B7280"
-                value={city}
-                onChangeText={setCity}
-                autoCapitalize="words"
-              />
-            </View>
-
-            {/* Search Button */}
-            <TouchableOpacity
-              style={styles.searchButton}
-              onPress={handleSearch}
-            >
-              <Text style={styles.searchButtonText}>Search</Text>
-            </TouchableOpacity>
+                          <View style={styles.progressBlock}>
+                            <View style={styles.progressLabelRow}>
+                              <Text style={styles.progressLabel}>Progress</Text>
+                              <Text style={styles.progressPercent}>{progress} %</Text>
+                            </View>
+                            <View style={styles.progressTrack}>
+                              <View style={[styles.progressFill, { width: (progress + '%') as any }]} />
+                            </View>
+                          </View>
+                        </View>
+                      </View>
+                    );
+                  })}
+              </>
+            )}
           </View>
-
-          {/* Loading Indicator */}
-          {loading && (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#0E7490" />
-            </View>
-          )}
-
-          {/* Property List */}
-          {!loading && (
-            <View style={styles.propertyList}>
-              {properties.length === 0 ? (
-                <View style={styles.emptyContainer}>
-                  <Ionicons name="home-outline" size={64} color="#9CA3AF" />
-                  <Text style={styles.emptyText}>No properties found</Text>
-                  <Text style={styles.emptySubtext}>Add a property to get started</Text>
-                </View>
-              ) : (
-                properties.map((property) => (
-                  <View key={property.id} style={styles.propertyCard}>
-                    <Text style={styles.propertyName}>{property.name}</Text>
-                    <Text style={styles.propertyDetail}>
-                      Property ID:{" "}
-                      <Text style={styles.propertyId}>{property.propertyId}</Text>
-                    </Text>
-                    <Text style={styles.propertyDetail}>
-                      No. of Buildings: {property.buildings}
-                    </Text>
-                    <Text style={styles.propertyDetail}>
-                      Units: {property.units}
-                    </Text>
-                    <Text style={styles.propertyDetail}>
-                      Address:{" "}
-                      <Text style={styles.addressLink}>
-                        {[property.address, property.city, property.state, property.zipCode].filter(Boolean).join(', ')}
-                      </Text>
-                    </Text>
-                    <TouchableOpacity
-                      style={styles.editButton}
-                      onPress={() => handleEditPress(property)}
-                    >
-                      <Text style={styles.editButtonText}>Edit/Update</Text>
-                    </TouchableOpacity>
-                  </View>
-                ))
-              )}
-            </View>
-          )}
 
           {/* Bottom Spacing */}
           <View style={{ height: 40 }} />
@@ -917,259 +797,215 @@ export default function DashboardScreen({
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#CEF8FF",
-  },
-  headerContainer: {
-    backgroundColor: "#0E7490",
-    paddingHorizontal: 20,
-    paddingTop: 20,
+  pageHeader: {
+    paddingHorizontal: 16,
+    paddingTop: 24,
     paddingBottom: 20,
   },
-  headerBar: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 15,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    marginTop: 15,
+  pageTitle: {
+    fontSize: 26,
+    fontWeight: '700',
+    color: '#0F2942',
+    marginBottom: 6,
   },
-  headerLogo: {
-    width: 240,
-    height: 65,
+  pageSubtitle: {
+    fontSize: 14,
+    color: '#4B5563',
+  },
+  listHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingBottom: 16,
+  },
+  selectAllText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#0F2942',
+    flexShrink: 1,
+  },
+  propertyCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 10,
+    marginBottom: 16,
+  },
+  propertyCardHeaderLeft: {
+    flex: 1,
+  },
+  chipRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 8,
+  },
+  // Mobile web: <div class="grid grid-cols-2 gap-3"> of bg-gray-50 boxes,
+  // Title-Case labels, with Progress spanning both columns.
+  propertyMetaGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  propertyMetaCell: {
+    // 2 columns with a 12px gap: (100% - 12) / 2.
+    width: '47.8%',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 10,
+    padding: 8,
+  },
+  propertyMetaLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginBottom: 4,
+  },
+  propertyMetaValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  propertyMetaValueLarge: {
+    fontSize: 16,
+  },
+  progressBlock: {
+    width: '100%',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 10,
+    padding: 12,
+  },
+  progressLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#6B7280',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  progressLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  progressPercent: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#2563EB',
+  },
+  progressTrack: {
+    height: 10,
+    borderRadius: 999,
+    backgroundColor: '#E5E7EB',
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: 10,
+    borderRadius: 999,
+    backgroundColor: '#2563EB',
+  },
+  container: {
+    flex: 1,
+    backgroundColor: "#E4F0F6",
+  },
+  propertiesCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    marginHorizontal: 16,
+    padding: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  countPill: {
+    backgroundColor: "#EDF2F7",
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    flexShrink: 0,
+  },
+  countPillText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#6B7280",
   },
   scrollView: {
     flex: 1,
   },
-  greetingContainer: {
-    backgroundColor: "#0E7490",
-    paddingHorizontal: 20,
-    paddingTop: 15,
-    paddingBottom: 12,
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
-  },
-  greetingContent: {
-    backgroundColor: "#0E7490",
-    borderRadius: 10,
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 12,
-  },
-  avatarContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#CEF8FF",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 10,
-  },
-  greetingText: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#FFFFFF",
-  },
-  searchSection: {
-    backgroundColor: "#CEF8FF",
-    paddingHorizontal: 20,
-    paddingTop: 15,
-    paddingBottom: 15,
-  },
-  searchTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  searchTitle: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#1F2937",
-    marginBottom: 10,
-  },
-  actionButtons: {
-    flexDirection: "row",
-    gap: 10,
-    marginBottom: 12,
-  },
   addButton: {
-    backgroundColor: "#FF0000",
-    borderRadius: 20,
-    paddingVertical: 12,
-    paddingHorizontal: 15,
-    marginBottom: 12,
+    backgroundColor: "#F94A5C",
+    borderRadius: 8,
+    paddingVertical: 15,
+    marginHorizontal: 16,
+    marginBottom: 20,
   },
   addButtonText: {
     color: "#FFFFFF",
-    fontSize: 13,
-    fontWeight: "600",
+    fontSize: 16,
+    fontWeight: "700",
     textAlign: "center",
-  },
-  inspectionButton: {
-    backgroundColor: "#84CC16",
-    borderRadius: 20,
-    paddingVertical: 10,
-    paddingHorizontal: 15,
-    flex: 1,
-  },
-  inspectionButtonText: {
-    color: "#FFFFFF",
-    fontSize: 13,
-    fontWeight: "600",
-    textAlign: "center",
-  },
-  inputContainer: {
-    marginBottom: 12,
-  },
-  label: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#1F2937",
-    marginBottom: 6,
-  },
-  inputWithClear: {
-    position: "relative",
-  },
-  input: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    paddingRight: 36,
-    fontSize: 14,
-    color: "#374151",
-    borderWidth: 0,
-  },
-  clearButton: {
-    position: "absolute",
-    right: 10,
-    top: 10,
-  },
-  textInputField: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    fontSize: 14,
-    color: "#374151",
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-  },
-  pickerContainer: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 8,
-    borderWidth: 0,
-    position: "relative",
-    minHeight: 55,
-    justifyContent: "center",
-  },
-  picker: {
-    height: 55,
-    color: "#1F2937",
-    backgroundColor: "transparent",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  pickerIcon: {
-    position: "absolute",
-    right: 12,
-    top: 18,
-    pointerEvents: "none",
-  },
-  searchButton: {
-    backgroundColor: "#0E7490",
-    borderRadius: 8,
-    paddingVertical: 10,
-    marginTop: 8,
-    marginBottom: 10,
-    width: 100,
-  },
-  refreshIconButton: {
-    padding: 6,
-    marginLeft: 8,
-  },
-  searchButtonText: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    fontWeight: "600",
-    textAlign: "center",
-  },
-  propertyList: {
-    paddingHorizontal: 20,
   },
   propertyCard: {
+    // White, so the bg-gray-50 meta boxes inside actually read as boxes.
     backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: 15,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    padding: 16,
+    marginBottom: 12,
   },
   propertyName: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "700",
-    color: "#1F2937",
-    marginBottom: 10,
+    color: "#111827",
+    marginBottom: 4,
+    flexShrink: 1,
   },
   propertyDetail: {
     fontSize: 14,
     color: "#4B5563",
     marginBottom: 6,
   },
-  pickerModalOverlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  pickerModalContent: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingBottom: 20,
-  },
-  pickerHeader: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
-  doneButton: {
-    padding: 4,
-  },
-  doneButtonText: {
-    fontSize: 16,
-    color: '#0E7490',
-    fontWeight: '600',
-  },
 
 
-  propertyId: {
-    color: "#0E7490",
+  // Mobile web chips: <span class="text-blue-600 bg-blue-50 px-2 py-1 rounded">
+  propertyIdChip: {
+    backgroundColor: "#EFF6FF",
+    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  propertyIdChipText: {
+    color: "#2563EB",
     fontWeight: "600",
-  },
-  addressLink: {
-    color: "#0E7490",
-    textDecorationLine: "underline",
-  },
-  editButton: {
-    backgroundColor: "#84CC16",
-    borderRadius: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    marginTop: 15,
-    alignSelf: "flex-start",
-  },
-  editButtonText: {
-    color: "#FFFFFF",
     fontSize: 14,
+  },
+  // <span class="bg-green-100 text-green-800 rounded-full px-2 py-1">
+  statePill: {
+    backgroundColor: "#DCFCE7",
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  statePillText: {
+    color: "#166534",
+    fontSize: 12,
+    fontWeight: "500",
+  },
+  addressText: {
+    fontSize: 14,
+    color: "#4B5563",
+  },
+  statusButton: {
+    backgroundColor: "#006795",
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  statusButtonText: {
+    color: "#FFFFFF",
+    fontSize: 12,
     fontWeight: "600",
   },
   modalOverlay: {
@@ -1254,69 +1090,19 @@ const styles = StyleSheet.create({
   removeButtonText: {
     color: "#FFFFFF",
   },
-  unitSelectionLabel: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#1F2937",
-    marginBottom: 15,
-    textAlign: "center",
-  },
-  unitPickerContainer: {
-    backgroundColor: "#F3F4F6",
-    borderRadius: 8,
-    marginBottom: 15,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-  },
-  unitPicker: {
-    height: 50,
-    color: "#1F2937",
-  },
-  backButton: {
-    backgroundColor: "#6B7280",
-    borderColor: "#6B7280",
-    borderWidth: 0,
-  },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     paddingVertical: 60,
   },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingVertical: 60,
-  },
   emptyText: {
-    fontSize: 18,
-    fontWeight: "600",
+    fontSize: 15,
     color: "#6B7280",
-    marginBottom: 8,
-  },
-  emptySubtext: {
-    fontSize: 14,
-    color: "#9CA3AF",
     textAlign: "center",
+    paddingVertical: 40,
   },
   // iOS Picker styles
-  iosPickerButton: {
-    backgroundColor: '#D1F2EB',
-    borderRadius: 8,
-    paddingVertical: 14,
-    paddingHorizontal: 14,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  iosPickerText: {
-    fontSize: 14,
-    color: '#374151',
-  },
-  placeholderText: {
-    color: '#6B7280',
-  },
   iosModalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',

@@ -1,4 +1,4 @@
-package com.inspire.minhal
+package com.minhal.inspire
 
 import android.app.Application
 import android.content.res.Configuration

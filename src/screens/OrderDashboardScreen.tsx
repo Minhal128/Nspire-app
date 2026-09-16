@@ -3,8 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  Image,
-  TextInput,
   TouchableOpacity,
   SafeAreaView,
   ScrollView,
@@ -13,27 +11,22 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Sidebar from '../components/Sidebar';
-import { authService, inspectionService } from '../services';
+import AppHeader from '../components/AppHeader';
+import OtherInspectionCard from '../components/OtherInspectionCard';
+import { authService, inspectionService, userService } from '../services';
 import { Inspection, User } from '../services/api';
+import { getRoleDisplayName } from '../utils/otherPortal';
 
 interface OrderDashboardScreenProps {
   navigation: NativeStackNavigationProp<any, any>;
 }
 
-interface StatCard {
-  label: string;
-  value: string;
-  icon: string;
-}
-
 export default function OrderDashboardScreen({ navigation }: OrderDashboardScreenProps) {
   console.log('OrderDashboardScreen: Component mounted');
-  
+
   const [sidebarVisible, setSidebarVisible] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -48,8 +41,8 @@ export default function OrderDashboardScreen({ navigation }: OrderDashboardScree
 
     return () => clearTimeout(maxLoadingTimeout);
   }, [loading]);
-  const [user, setUser] = useState<User | null>(null);
   const [inspections, setInspections] = useState<Inspection[]>([]);
+  const [otherUsers, setOtherUsers] = useState<User[]>([]);
   const [stats, setStats] = useState({
     totalInspections: 0,
     scheduled: 0,
@@ -60,13 +53,13 @@ export default function OrderDashboardScreen({ navigation }: OrderDashboardScree
   const loadInitialData = useCallback(async () => {
     try {
       // Add timeout to prevent hanging
-      const timeoutPromise = new Promise((_, reject) => 
+      const timeoutPromise = new Promise((_, reject) =>
         setTimeout(() => reject(new Error('Request timeout')), 10000)
       );
-      
+
       const dataPromise = (async () => {
         const storedUser = await authService.getStoredUser();
-        
+
         // Role-based access control
         const allowedRoles = ['other', 'order', 'admin'];
         if (!storedUser || !allowedRoles.includes(storedUser.role)) {
@@ -80,8 +73,7 @@ export default function OrderDashboardScreen({ navigation }: OrderDashboardScree
           );
           return;
         }
-        
-        setUser(storedUser);
+
         await fetchData();
       })();
 
@@ -90,7 +82,7 @@ export default function OrderDashboardScreen({ navigation }: OrderDashboardScree
       console.error('Error loading initial data:', error);
       // If there's an error, still show the UI but with empty data
       setInspections([]);
-      
+
       // Show an alert to inform the user about the issue
       Alert.alert(
         'Connection Issue',
@@ -112,12 +104,12 @@ export default function OrderDashboardScreen({ navigation }: OrderDashboardScree
       if (inspectionsResponse.success && inspectionsResponse.inspections) {
         const inspectionData = inspectionsResponse.inspections || [];
         setInspections(inspectionData);
-        
+
         // Calculate stats
         const scheduled = inspectionData.filter((i: Inspection) => i.status === 'scheduled').length;
         const inProgress = inspectionData.filter((i: Inspection) => i.status === 'in-progress').length;
         const completed = inspectionData.filter((i: Inspection) => i.status === 'completed').length;
-        
+
         setStats({
           totalInspections: inspectionData.length,
           scheduled,
@@ -143,6 +135,15 @@ export default function OrderDashboardScreen({ navigation }: OrderDashboardScree
       // Don't show alert, just use empty data
       setInspections([]);
     }
+
+    // Non-inspector users, shown at the bottom of the web dashboard.
+    try {
+      const usersResponse = await userService.getOtherUsers();
+      setOtherUsers((usersResponse.users || []).filter((u) => u.role !== 'inspector'));
+    } catch (error) {
+      console.error('Error loading other users:', error);
+      setOtherUsers([]);
+    }
   };
 
   const onRefresh = useCallback(async () => {
@@ -151,43 +152,9 @@ export default function OrderDashboardScreen({ navigation }: OrderDashboardScree
     setRefreshing(false);
   }, []);
 
-  const handleSearch = useCallback(async () => {
-    if (!searchQuery.trim()) {
-      await fetchData();
-      return;
-    }
-    
-    setLoading(true);
-    try {
-      const response = await inspectionService.getInspections();
-      if (response.success && response.inspections) {
-        // Filter locally by search query
-        const filtered = response.inspections.filter((i: Inspection) => 
-          i.inspectionId?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          (typeof i.property === 'object' && i.property?.name?.toLowerCase().includes(searchQuery.toLowerCase()))
-        );
-        setInspections(filtered);
-      }
-    } catch (error) {
-      console.error('Search error:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [searchQuery]);
-
   useEffect(() => {
     loadInitialData();
   }, [loadInitialData]);
-
-  useEffect(() => {
-    const delaySearch = setTimeout(() => {
-      if (searchQuery) {
-        handleSearch();
-      }
-    }, 500);
-
-    return () => clearTimeout(delaySearch);
-  }, [searchQuery, handleSearch]);
 
   const handleMenuPress = () => {
     setSidebarVisible(true);
@@ -195,15 +162,11 @@ export default function OrderDashboardScreen({ navigation }: OrderDashboardScree
 
   const handleSidebarNavigate = (screen: string) => {
     setSidebarVisible(false);
-    if (screen === 'Dashboard') {
-      navigation.navigate('OrderDashboard' as never);
-    } else if (screen === 'OrderDashboard') {
-      navigation.navigate('OrderDashboard' as never);
-    } else if (screen === 'Others') {
-      navigation.navigate('Others' as never);
-    } else if (screen === 'Settings') {
-      navigation.navigate('Settings' as never);
+    if (screen === 'Dashboard' || screen === 'OrderDashboard') {
+      // Already here.
+      return;
     }
+    navigation.navigate(screen as never);
   };
 
   const handleLogout = async () => {
@@ -215,34 +178,12 @@ export default function OrderDashboardScreen({ navigation }: OrderDashboardScree
     });
   };
 
-  const statCards: StatCard[] = [
-    { label: 'Total Inspections', value: stats.totalInspections.toString(), icon: 'clipboard-check' },
-    { label: 'Scheduled', value: stats.scheduled.toString(), icon: 'clock-outline' },
-    { label: 'In Progress', value: stats.inProgress.toString(), icon: 'progress-clock' },
-    { label: 'Completed', value: stats.completed.toString(), icon: 'check-circle-outline' },
+  const statCards = [
+    { label: 'Total Inspections', value: stats.totalInspections },
+    { label: 'Scheduled', value: stats.scheduled },
+    { label: 'In Progress', value: stats.inProgress },
+    { label: 'Completed', value: stats.completed },
   ];
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return '#84CC16';
-      case 'scheduled':
-        return '#FF9800';
-      case 'in-progress':
-        return '#0E7490';
-      case 'pending':
-        return '#6B7280';
-      case 'failed':
-        return '#EF4444';
-      default:
-        return '#6B7280';
-    }
-  };
-
-  const formatDate = (dateString: string) => {
-    if (!dateString) return '';
-    return new Date(dateString).toLocaleDateString();
-  };
 
   return (
     <>
@@ -271,28 +212,13 @@ export default function OrderDashboardScreen({ navigation }: OrderDashboardScree
       </Modal>
 
       <SafeAreaView style={styles.container}>
-        {/* Header */}
-        <View style={styles.headerContainer}>
-          <View style={styles.headerBar}>
-            <TouchableOpacity onPress={handleMenuPress}>
-              <Ionicons name="menu" size={28} color="#1F2937" />
-            </TouchableOpacity>
-            <Image
-              source={require('../../inspire_logo.png')}
-              style={styles.headerLogo}
-              resizeMode="contain"
-            />
-            <View style={styles.notificationBadge}>
-              <TouchableOpacity onPress={() => navigation.navigate("Notifications" as any)}>
-                <Ionicons name="notifications-outline" size={28} color="#1F2937" />
-              </TouchableOpacity>
-              <Text style={styles.orText}>OR</Text>
-            </View>
-          </View>
-        </View>
+        <AppHeader
+          onMenuPress={handleMenuPress}
+          onNotificationsPress={() => navigation.navigate('Notifications' as never)}
+        />
 
-        <ScrollView 
-          style={styles.scrollView} 
+        <ScrollView
+          style={styles.scrollView}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -305,8 +231,8 @@ export default function OrderDashboardScreen({ navigation }: OrderDashboardScree
         >
           {/* Title Section */}
           <View style={styles.titleSection}>
-            <Text style={styles.mainTitle}>Other Dashboard</Text>
-            <Text style={styles.subtitle}>Hi, {user?.fullName?.split(' ')[0] || (user?.email ? user.email.split('@')[0] : 'User')}! View and track inspections</Text>
+            <Text style={styles.mainTitle}>Other Portal</Text>
+            <Text style={styles.subtitle}>Manage and track your activities</Text>
           </View>
 
           {loading ? (
@@ -316,62 +242,51 @@ export default function OrderDashboardScreen({ navigation }: OrderDashboardScree
           ) : (
             <>
               {/* Stats Cards */}
-              <View style={styles.statsContainer}>
-                {statCards.map((card, index) => (
-                  <View key={index} style={styles.statCard}>
-                    <Text style={styles.statLabel}>{card.label}</Text>
-                    <Text style={styles.statValue}>{card.value}</Text>
-                  </View>
-                ))}
-              </View>
-
-              {/* Search Section */}
-              <View style={styles.searchSection}>
-                <Text style={styles.searchTitle}>Search Inspections</Text>
-                <View style={styles.searchInputContainer}>
-                  <Ionicons name="search" size={20} color="#9CA3AF" style={styles.searchIcon} />
-                  <TextInput
-                    style={styles.searchInput}
-                    placeholder="Search by inspection ID or property name"
-                    placeholderTextColor="#9CA3AF"
-                    value={searchQuery}
-                    onChangeText={setSearchQuery}
-                  />
+              {statCards.map((card) => (
+                <View key={card.label} style={[styles.card, styles.statCard]}>
+                  <Text style={styles.statLabel}>{card.label}</Text>
+                  <Text style={styles.statValue}>{card.value}</Text>
                 </View>
-              </View>
+              ))}
 
-              {/* Inspections List */}
-              <View style={styles.ordersListContainer}>
-                <Text style={styles.ordersTitle}>Recent Inspections</Text>
-                {inspections.length === 0 ? (
-                  <View style={styles.emptyContainer}>
-                    <Text style={styles.emptyText}>No inspections found</Text>
-                    <Text style={styles.emptySubtext}>Inspections will appear here when scheduled</Text>
+              {/* Recent Inspections */}
+              <View style={styles.card}>
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>Recent Inspections</Text>
+                  <View style={styles.countPill}>
+                    <Text style={styles.countPillText}>{inspections.length} inspections</Text>
                   </View>
+                </View>
+                {inspections.length === 0 ? (
+                  <Text style={styles.emptyText}>No inspections found.</Text>
                 ) : (
                   inspections.map((inspection) => (
-                    <View key={inspection._id} style={styles.orderCard}>
-                      <View style={styles.orderHeader}>
-                        <View>
-                          <Text style={styles.orderNumber}>{inspection.inspectionId || `INS-${inspection._id?.slice(-6).toUpperCase()}`}</Text>
-                          <Text style={styles.customerName}>
-                            {typeof inspection.property === 'object' ? inspection.property?.name : 'Property'}
-                          </Text>
-                        </View>
-                        <View
-                          style={[
-                            styles.statusBadge,
-                            { backgroundColor: getStatusColor(inspection.status || 'pending') },
-                          ]}
-                        >
-                          <Text style={styles.statusText}>
-                            {(inspection.status || 'pending').charAt(0).toUpperCase() + (inspection.status || 'pending').slice(1)}
-                          </Text>
-                        </View>
+                    <OtherInspectionCard key={inspection._id} inspection={inspection} />
+                  ))
+                )}
+              </View>
+
+              {/* Other Users */}
+              <View style={styles.card}>
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>Other Users</Text>
+                  <View style={styles.countPill}>
+                    <Text style={styles.countPillText}>{otherUsers.length} users</Text>
+                  </View>
+                </View>
+                {otherUsers.length === 0 ? (
+                  <Text style={styles.emptyText}>No users found.</Text>
+                ) : (
+                  otherUsers.map((otherUser) => (
+                    <View key={otherUser._id || otherUser.id} style={styles.otherUserRow}>
+                      <View style={styles.otherUserAvatar}>
+                        <Text style={styles.otherUserAvatarText}>
+                          {otherUser.fullName?.charAt(0)?.toUpperCase() || 'U'}
+                        </Text>
                       </View>
-                      <View style={styles.orderFooter}>
-                        <Text style={styles.orderDate}>{formatDate(inspection.scheduledDate || '')}</Text>
-                        <Text style={styles.orderAmount}>{inspection.inspectionType || 'Standard'}</Text>
+                      <View style={styles.otherUserInfo}>
+                        <Text style={styles.otherUserName}>{otherUser.fullName}</Text>
+                        <Text style={styles.otherUserRole}>{getRoleDisplayName(otherUser.role)}</Text>
                       </View>
                     </View>
                   ))
@@ -391,37 +306,7 @@ export default function OrderDashboardScreen({ navigation }: OrderDashboardScree
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#E8F4F8',
-  },
-  headerContainer: {
-    backgroundColor: '#0E7490',
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 20,
-  },
-  headerBar: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 15,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    marginTop: 15,
-  },
-  headerLogo: {
-    width: 240,
-    height: 65,
-  },
-  notificationBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  orText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#1F2937',
+    backgroundColor: '#E4F0F6',
   },
   scrollView: {
     flex: 1,
@@ -441,20 +326,21 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6B7280',
   },
-  statsContainer: {
-    paddingHorizontal: 20,
-    gap: 12,
-    marginBottom: 20,
-  },
-  statCard: {
+  // Every block on this page is the same white card (web parity).
+  card: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
+    marginHorizontal: 16,
+    marginTop: 12,
     padding: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 4,
     elevation: 2,
+  },
+  statCard: {
+    paddingVertical: 20,
   },
   statLabel: {
     fontSize: 13,
@@ -467,100 +353,62 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#1F2937',
   },
-  searchSection: {
-    paddingHorizontal: 20,
-    marginBottom: 20,
-  },
-  searchTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1F2937',
-    marginBottom: 10,
-  },
-  searchInputContainer: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
+  sectionHeader: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  searchIcon: {
-    marginRight: 8,
-  },
-  searchInput: {
-    flex: 1,
-    paddingVertical: 12,
-    fontSize: 14,
-    color: '#374151',
-  },
-  ordersListContainer: {
-    paddingHorizontal: 20,
-    marginBottom: 20,
-  },
-  ordersTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1F2937',
     marginBottom: 12,
   },
-  orderCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  orderHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  orderNumber: {
-    fontSize: 14,
+  sectionTitle: {
+    fontSize: 17,
     fontWeight: '700',
     color: '#1F2937',
-    marginBottom: 4,
   },
-  customerName: {
-    fontSize: 12,
-    color: '#6B7280',
-  },
-  statusBadge: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
+  countPill: {
+    backgroundColor: '#F1F5F9',
     borderRadius: 20,
+    paddingVertical: 5,
+    paddingHorizontal: 12,
   },
-  statusText: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  orderFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-    paddingTop: 10,
-  },
-  orderDate: {
+  countPillText: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: '#64748B',
+    fontWeight: '600',
   },
-  orderAmount: {
-    fontSize: 14,
+  otherUserRow: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  otherUserAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#0E7490',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  otherUserAvatarText: {
+    color: '#FFFFFF',
+    fontSize: 16,
     fontWeight: '700',
+  },
+  otherUserInfo: {
+    flex: 1,
+  },
+  otherUserName: {
+    fontSize: 15,
+    fontWeight: '600',
     color: '#1F2937',
+  },
+  otherUserRole: {
+    fontSize: 13,
+    color: '#6B7280',
+    marginTop: 2,
   },
   modalOverlay: {
     flex: 1,
@@ -588,20 +436,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 60,
   },
-  emptyContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 40,
-  },
   emptyText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#6B7280',
-    marginBottom: 4,
-  },
-  emptySubtext: {
-    fontSize: 13,
-    color: '#9CA3AF',
     textAlign: 'center',
+    paddingVertical: 40,
+    fontSize: 15,
+    color: '#6B7280',
   },
 });

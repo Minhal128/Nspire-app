@@ -9,10 +9,10 @@ import * as SecureStore from 'expo-secure-store';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { Ionicons } from '@expo/vector-icons';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
 import { ZoomProvider } from './src/contexts/ZoomContext';
 import { ReportPreviewProvider } from './src/contexts/ReportPreviewContext';
 import ZoomWrapper from './src/components/ZoomWrapper';
-
 // Import screens
 import BoardingScreen from "./src/screens/BoardingScreen";
 import SignInScreen from "./src/screens/SignInScreen";
@@ -36,6 +36,7 @@ import ManagementReportsScreen from "./src/screens/ManagementReportsScreen";
 import ReportDetailScreen from "./src/screens/ReportDetailScreen";
 import OrderDashboardScreen from "./src/screens/OrderDashboardScreen";
 import OthersScreen from "./src/screens/OthersScreen";
+import OtherInspectionsScreen from "./src/screens/OtherInspectionsScreen";
 import LocationStatsScreen from "./src/screens/LocationStatsScreen";
 import AIInspectionScreen from "./src/screens/AIInspectionScreen";
 import InspectionCategoryScreen from "./src/screens/InspectionCategoryScreen";
@@ -72,7 +73,7 @@ export type RootStackParamList = {
   RequestInspection: undefined;
   EditProperty: { property: any };
   PropertyDetails: { property: any };
-  BuildingInspection: { property: any; calculatedUnits: number; selectedUnits: string[]; coverage: string };
+  BuildingInspection: { property: any; calculatedUnits?: number; selectedUnits?: string[]; coverage?: string };
   Analytics: undefined;
   UnitInspection: { property: any };
   InspectionChecklist: { property: any; unit: any };
@@ -80,6 +81,7 @@ export type RootStackParamList = {
   ReportDetail: { report: any };
   OrderDashboard: undefined;
   Others: undefined;
+  OtherInspections: undefined;
   LocationStats: undefined;
   AIInspection: { property: any; selectedUnits?: string[]; coverage?: string; totalUnits?: number; samplingInfo?: any };
   ModuleSelection: { property: any; selectedUnits?: string[]; coverage?: string; totalUnits?: number; samplingInfo?: any; category: 'inside' | 'outside' };
@@ -102,8 +104,8 @@ export type RootStackParamList = {
   InspectionSummary: {
     property: any;
     selectedUnits: string[];
-    buildingId: string;
-    inspectionData: any;
+    buildingId?: string;
+    inspectionData?: any;
     currentUnit?: string;
     allUnits?: string[];
   };
@@ -168,6 +170,7 @@ const linking: LinkingOptions<RootStackParamList> = {
       ReportDetail: "report",
       OrderDashboard: "orders",
       Others: "others",
+      OtherInspections: "other-inspections",
       LocationStats: "location-stats",
       AIInspection: "ai-inspection",
       InspectionReport: "inspection-report",
@@ -187,7 +190,7 @@ function LoadingScreen() {
 
 // Biometric authentication screen
 function BiometricAuthScreen({ onAuthenticate }: { onAuthenticate: () => void }) {
-  const handleAuthenticate = async () => {
+  const handleAuthenticate = useCallback(async () => {
     try {
       const result = await LocalAuthentication.authenticateAsync({
         promptMessage: 'Authenticate to access NSPIRE',
@@ -201,7 +204,14 @@ function BiometricAuthScreen({ onAuthenticate }: { onAuthenticate: () => void })
     } catch (error) {
       console.error('Biometric auth error:', error);
     }
-  };
+  }, [onAuthenticate]);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      handleAuthenticate();
+    }, 500);
+    return () => clearTimeout(timeout);
+  }, [handleAuthenticate]);
 
   return (
     <View style={styles.biometricContainer}>
@@ -220,68 +230,106 @@ function BiometricAuthScreen({ onAuthenticate }: { onAuthenticate: () => void })
   );
 }
 
-export default function App() {
+// Error Boundary to catch crashes and prevent blank screen
+class ErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; error: Error | null }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('App ErrorBoundary caught:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorTitle}>Something went wrong</Text>
+          <Text style={styles.errorMessage}>
+            {this.state.error?.message || 'An unexpected error occurred'}
+          </Text>
+          <TouchableOpacity
+            style={styles.errorButton}
+            onPress={() => this.setState({ hasError: false, error: null })}
+          >
+            <Text style={styles.errorButtonText}>Try Again</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+function AppContent() {
   const [isReady, setIsReady] = useState(false);
   const [biometricRequired, setBiometricRequired] = useState(false);
   const [biometricVerified, setBiometricVerified] = useState(false);
   const [initialRoute, setInitialRoute] = useState<keyof RootStackParamList>("Boarding");
 
-  // Check authentication state on app start
+  // Check authentication state on app start with safety timeout
   useEffect(() => {
+    let didFinish = false;
+
     const checkAuthState = async () => {
       try {
         const authState = await authService.checkSession();
 
         if (authState.isAuthenticated && authState.user) {
-          // User is logged in, check if biometric 2FA is enabled
           const biometricEnabled = await SecureStore.getItemAsync(BIOMETRIC_2FA_KEY);
           if (biometricEnabled === 'true') {
             setBiometricRequired(true);
-            // Auto-prompt for biometric authentication
-            const result = await LocalAuthentication.authenticateAsync({
-              promptMessage: 'Authenticate to access NSPIRE',
-              cancelLabel: 'Cancel',
-              disableDeviceFallback: false,
-            });
-            if (result.success) {
-              setBiometricVerified(true);
-            }
           } else {
             setBiometricVerified(true);
           }
 
-          // Determine the correct dashboard
           const dashboardRoute = authService.getDashboardRoute(authState.user.role);
           setInitialRoute(dashboardRoute as keyof RootStackParamList);
         } else {
-          // User is not logged in, go to boarding
           setInitialRoute("Boarding");
-          setBiometricVerified(true); // No biometric needed for unauthenticated users
+          setBiometricVerified(true);
         }
       } catch (error) {
         console.error("Error checking auth state:", error);
         setInitialRoute("Boarding");
         setBiometricVerified(true);
       } finally {
+        didFinish = true;
         setIsReady(true);
       }
     };
 
     checkAuthState();
+
+    // Safety timeout: if auth check hangs for 10s, force proceed to Boarding
+    const safetyTimer = setTimeout(() => {
+      if (!didFinish) {
+        console.warn("Auth check timed out after 10s, forcing app to load");
+        setInitialRoute("Boarding");
+        setBiometricVerified(true);
+        setIsReady(true);
+      }
+    }, 10000);
+
+    return () => clearTimeout(safetyTimer);
   }, []);
 
-  // Handle biometric authentication success
   const handleBiometricSuccess = () => {
     setBiometricVerified(true);
   };
 
-  // Handle deep links when app is already open
   const onReady = useCallback(() => {
-    // App navigation container is ready
     console.log("Navigation ready");
   }, []);
 
-  // Show loading screen while checking auth
   if (!isReady) {
     return (
       <GestureHandlerRootView style={{ flex: 1 }}>
@@ -314,7 +362,7 @@ export default function App() {
       <ZoomProvider>
         <ZoomWrapper>
           <ClerkProvider
-            publishableKey={process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!}
+            publishableKey={"pk_test_bGlnaHQtbXV0dC03Mi5jbGVyay5hY2NvdW50cy5kZXYk"}
             tokenCache={tokenCache}
           >
             <ReportPreviewProvider>
@@ -368,6 +416,7 @@ export default function App() {
                     component={OrderDashboardScreen}
                   />
                   <Stack.Screen name="Others" component={OthersScreen} />
+                  <Stack.Screen name="OtherInspections" component={OtherInspectionsScreen} />
                   <Stack.Screen name="LocationStats" component={LocationStatsScreen} />
                   <Stack.Screen name="AIInspection" component={InspectionCategoryScreen} />
                   <Stack.Screen name="ModuleSelection" component={ModuleSelectionScreen} />
@@ -393,12 +442,54 @@ export default function App() {
   );
 }
 
+// Main App export wraps everything in ErrorBoundary
+export default function App() {
+  return (
+    <ErrorBoundary>
+      <SafeAreaProvider initialMetrics={initialWindowMetrics}>
+        <AppContent />
+      </SafeAreaProvider>
+    </ErrorBoundary>
+  );
+}
+
 const styles = StyleSheet.create({
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "#97F0FF",
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#FEF2F2",
+    padding: 32,
+  },
+  errorTitle: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#DC2626",
+    marginBottom: 12,
+  },
+  errorMessage: {
+    fontSize: 14,
+    color: "#6B7280",
+    textAlign: "center",
+    marginBottom: 24,
+    lineHeight: 20,
+  },
+  errorButton: {
+    backgroundColor: "#0E7490",
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 12,
+  },
+  errorButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#fff",
   },
   biometricContainer: {
     flex: 1,
