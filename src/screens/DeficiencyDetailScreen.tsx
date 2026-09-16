@@ -1058,7 +1058,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                 style={{ marginRight: 8 }}
               />
               <Text style={[styles.codeRefButtonText, !selectedDeficiency && styles.codeRefButtonTextDisabled]}>
-                How to Inspect (IRC, IBU, Local)
+                How To Inspect ? ✅
               </Text>
             </TouchableOpacity>
             {!selectedDeficiency && (
@@ -1602,7 +1602,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               <View style={styles.modalHeader}>
                 <View style={styles.modalTitleRow}>
                   <Ionicons name="document-text-outline" size={24} color="#0E7490" style={{ marginRight: 8 }} />
-                  <Text style={styles.modalTitle}>How to Inspect (IRC, IBU, Local)</Text>
+                  <Text style={styles.modalTitle}>How To Inspect ? ✅</Text>
                 </View>
                 <View style={styles.codeRefHeaderRight}>
                   {/* Font size controls */}
@@ -1856,7 +1856,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   placeholderText: {
-    color: '#4B5563',
+    color: '#EF4444',
     fontWeight: '700',
   },
   textAreaContainer: {
