@@ -298,7 +298,6 @@ function generateEnhancedStyles(): string {
 body{font-family:Arial,Helvetica,sans-serif;font-size:8pt;line-height:1.3;color:#000;padding:12mm 10mm;background:#fff}
 .report-header{text-align:center;margin-bottom:15px}
 .inspire-logo{width:120px;height:auto;margin:0 auto 6px;display:block}
-.logo-sub{font-size:7pt;color:#666;margin-bottom:10px}
 .header-title{font-size:12pt;font-weight:bold;text-align:center;margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px}
 .meta-table{width:100%;border:none;margin-bottom:12px;font-size:7pt}
 .meta-table td{border:none;padding:1px 4px;vertical-align:top;text-align:left}
@@ -345,8 +344,7 @@ function generateEnhancedHeader(metadata: InspectionMetadata, logoBase64: string
   return `
 <div class="report-header">
   ${logoHtml}
-  <div class="logo-sub">NATIONAL STANDARDS FOR THE PHYSICAL INSPECTION OF REAL ESTATE</div>
-  <h1 class="header-title">INSPIRE INSPECTION REPORT</h1>
+  <h1 class="header-title">NSPIRE - NATIONAL STANDARDS FOR THE PHYSICAL INSPECTION OF REAL ESTATE</h1>
   <table class="meta-table"><tr>
     <td>
       <table class="meta-table">
@@ -358,9 +356,9 @@ function generateEnhancedHeader(metadata: InspectionMetadata, logoBase64: string
     </td>
     <td>
       <table class="meta-table">
-        <tr><td class="meta-label">Start Date:</td><td>${esc(metadata.startDate)}</td></tr>
-        <tr><td class="meta-label">End Date:</td><td>${esc(metadata.endDate)}</td></tr>
-        <tr><td class="meta-label">Report Created:</td><td>${esc(metadata.reportCreatedDate)}</td></tr>
+        <tr><td class="meta-label">Inspection Start Date:</td><td>${esc(metadata.startDate)}</td></tr>
+        <tr><td class="meta-label">Inspection End Date:</td><td>${esc(metadata.endDate)}</td></tr>
+        <tr><td class="meta-label">Report Created Date:</td><td>${esc(metadata.reportCreatedDate)}</td></tr>
         ${metadata.inspectedUnits && metadata.inspectedUnits.length > 0 ? `<tr><td class="meta-label">Inspected Units:</td><td>${esc(metadata.inspectedUnits.join(', '))}</td></tr>` : ''}
       </table>
     </td>
@@ -419,7 +417,7 @@ function generateEnhancedSummaryPage(
 </div>
 
 <div class="avoid-break">
-  <h3 class="section-title">Unit Inspection Data</h3>
+  <h3 class="section-title">Building/Unit Inspection Data</h3>
   <table>
     <thead>
       <tr>

@@ -297,11 +297,34 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
     });
   };
 
-  const handlePreviewReport = () => {
-    // Generate preview HTML — restricted to 2 pages when locked
-    const html = generatePreviewHtml();
-    setPreviewHtml(html);
+  /**
+   * "View Deficiency" shows the real NSPIRE report, exactly as web does:
+   * its button calls setShowPdfPreview(true), and that modal renders
+   * getEnhancedReportHTML(report) over the WHOLE report — the lock gates
+   * exporting, not looking. The short hand-built card this used to show left
+   * the app's preview nothing like the web one.
+   */
+  const handlePreviewReport = async () => {
     setPreviewModalVisible(true);
+    try {
+      const reportData = await buildReportData();
+      setPreviewHtml(
+        enhancedNspirePDFService.generateEnhancedHTMLPreview(reportData, {
+          includeImages: true,
+          imageQuality: 'high',
+          colorCodingSeverity: true,
+          includeSummaryPage: true,
+          includeDetailedDeficiencies: true,
+          includeCertification: true,
+          pageSize: 'letter',
+          orientation: 'portrait',
+        }),
+      );
+    } catch (error) {
+      console.error('Could not build the report preview:', error);
+      // Fall back to the simple card rather than an empty modal.
+      setPreviewHtml(generatePreviewHtml());
+    }
   };
 
   const generatePreviewHtml = (): string => {
