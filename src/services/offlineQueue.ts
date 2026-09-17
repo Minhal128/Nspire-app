@@ -15,9 +15,8 @@ import networkService from './networkService';
 import inspectionService from './inspectionService';
 import propertyService from './propertyService';
 import { cloudinaryService } from './cloudinaryService';
+import type { QueuedJob, QueuedJobKind } from '../utils/offlineQueueCore';
 import {
-  QueuedJob,
-  QueuedJobKind,
   inSendOrder,
   makeJob,
   markFailure,
@@ -171,9 +170,15 @@ class OfflineQueue {
     let sent = 0;
 
     try {
-      for (const job of inSendOrder(jobs)) {
+      // Iterate by id, not over a snapshot: a createProperty or uploadImage
+      // earlier in the run rewrites the jobs still waiting, and sending the
+      // stale copy would post that work against an id the server never issued.
+      for (const jobId of inSendOrder(jobs).map((j) => j.id)) {
         // The connection can drop mid-flush; stop and keep the rest queued.
         if (!networkService.isOnline()) break;
+
+        const job = jobs.find((j) => j.id === jobId);
+        if (!job) continue;
 
         try {
           const mapping = await this.run(job);

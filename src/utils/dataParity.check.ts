@@ -97,8 +97,10 @@ for (const section of ['outside', 'inside', 'unit']) {
     assert.ok(field in first, `inspectionDeficiencies.json ${section}[0] is missing ${field}`);
   }
 }
-const webJson = readFileSync(fileURLToPath(new URL('inspectionDeficiencies.json', webLib)), 'utf8');
-const appJson = readFileSync(fileURLToPath(new URL('src/data/inspectionDeficiencies.json', root)), 'utf8');
+// Compared through read(), which strips \r: git's autocrlf decides the line
+// endings on checkout, so a byte comparison here fails on content that matches.
+const webJson = read(new URL('inspectionDeficiencies.json', webLib));
+const appJson = read(new URL('src/data/inspectionDeficiencies.json', root));
 assert.strictEqual(appJson, webJson, 'inspectionDeficiencies.json has drifted from the web copy');
 checked++;
 
