@@ -21,6 +21,7 @@ import {
   setReportLogo,
 } from './web/enhancedNspirePDFService';
 import { API_CONFIG } from './api';
+import { getReportPreviewHTML } from './reportPreview';
 import {
   NSPIREInspectionReport,
   DeficiencyEntry,
@@ -1648,6 +1649,27 @@ class EnhancedNSPIREPDFReportService {
   /**
    * Generate enhanced HTML preview
    */
+  async generateWebHTMLPreviewAsync(
+    report: NSPIREInspectionReport,
+    options: PDFGenerationOptions = DEFAULT_PDF_OPTIONS
+  ): Promise<string> {
+    const localDeficiencies = (report.deficiencies || []).filter(def =>
+      !!def.imageUri && !/^(https?:|data:)/i.test(def.imageUri)
+    );
+    const [logo, images] = await Promise.all([
+      getLogoBase64(),
+      options.includeImages ? preloadDeficiencyImages(localDeficiencies) : Promise.resolve(new Map<string, string>()),
+    ]);
+    const previewReport = {
+      ...report,
+      deficiencies: report.deficiencies.map(def => ({
+        ...def,
+        imageUri: images.get(def.imageUri || '') || def.imageUri,
+      })),
+    };
+    return getReportPreviewHTML(previewReport, logo, options);
+  }
+
   generateEnhancedHTMLPreview(
     report: NSPIREInspectionReport,
     options: PDFGenerationOptions = DEFAULT_PDF_OPTIONS

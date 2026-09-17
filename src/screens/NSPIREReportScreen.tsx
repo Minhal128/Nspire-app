@@ -36,6 +36,7 @@ import {
   DEFAULT_PDF_OPTIONS,
   DeficiencySeverity,
 } from '../types/nspireReport';
+import { enhancedNspirePDFService } from '../services/enhancedNspirePDFService';
 import { inspectionService } from '../services/inspectionService';
 import { sanitizeAIDescription } from '../utils/nspireReportUtils';
 
@@ -47,7 +48,7 @@ interface NSPIREReportScreenProps {
 }
 
 export default function NSPIREReportScreen({ navigation, route }: NSPIREReportScreenProps) {
-  const { report: initialReport, inspectionData: passedInspectionData, property, preGeneratedHtml, buildingName: passedBuildingName, selectedUnits: passedSelectedUnits } = route.params || {};
+  const { report: initialReport, inspectionData: passedInspectionData, property, buildingName: passedBuildingName, selectedUnits: passedSelectedUnits } = route.params || {};
 
   // Extract or initialize inspection data with building and units info
   const inspectionData = passedInspectionData ? {
@@ -61,12 +62,12 @@ export default function NSPIREReportScreen({ navigation, route }: NSPIREReportSc
   const [exporting, setExporting] = useState(false);
   const [pdfOptions, setPdfOptions] = useState<PDFGenerationOptions>(DEFAULT_PDF_OPTIONS);
   const [showOptionsModal, setShowOptionsModal] = useState(false);
-  const [previewHtml, setPreviewHtml] = useState<string>(preGeneratedHtml || '');
+  const [previewHtml, setPreviewHtml] = useState<string>('');
   const [preparingPreview, setPreparingPreview] = useState(false);
   // Web landing page: report stays locked until paid; "View Deficiency" opens
   // the PDF preview, and the email box mails the full report link.
   const [showPreviewModal, setShowPreviewModal] = useState(false);
-  const [showEmailBox, setShowEmailBox] = useState(true);
+  const [showEmailBox, setShowEmailBox] = useState(false);
   const [unlocked, setUnlocked] = useState(false);
   // Same email-link Stripe unlock the Inspection Status screen uses: the
   // backend mails a checkout link, so there is no card entry here either.
@@ -523,30 +524,8 @@ export default function NSPIREReportScreen({ navigation, route }: NSPIREReportSc
 
     setPreparingPreview(true);
     try {
-      // Check if we have pre-generated HTML from backend
-      if (preGeneratedHtml && preGeneratedHtml.length > 1000) {
-        console.log('Using pre-generated HTML from backend');
-        setPreviewHtml(preGeneratedHtml);
-        return;
-      }
-
-      console.log('Generating HTML preview locally...');
-
-      // Generate HTML with memory optimization
-      const html = await nspirePDFService.generateHTMLPreviewAsync(report, {
-        ...pdfOptions,
-        includeImages: true, // Enable images for preview
-        imageQuality: 'low'
-      });
-
-      // Limit HTML size to prevent crashes
-      const maxSize = 50000; // 50KB limit
-      const finalHtml = html.length > maxSize ?
-        html.substring(0, maxSize) + '\n<!-- Content truncated for performance -->\n</body></html>' :
-        html;
-
-      setPreviewHtml(finalHtml);
-      console.log(`Preview HTML prepared: ${finalHtml.length} bytes`);
+      const html = await enhancedNspirePDFService.generateWebHTMLPreviewAsync(report);
+      setPreviewHtml(html);
     } catch (error) {
       console.error('Error preparing preview:', error);
       // Fallback to simple HTML
