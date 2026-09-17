@@ -713,6 +713,14 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           });
         } catch (error) {
           console.error(`Error processing image ${i + 1}:`, error);
+          // The deficiency below keeps the local imageUri; queue the upload so the
+          // Cloudinary URL replaces it everywhere once the connection is back.
+          offlineQueue
+            .enqueue('uploadImage', `uploadImage:${imageUri}`, {
+              imageUri,
+              folder: 'nspire-inspections',
+            })
+            .catch((e) => console.warn('Could not queue image upload:', e));
           // Still add the deficiency without AI analysis
           analyzedDeficiencies.push({
             deficiency: {

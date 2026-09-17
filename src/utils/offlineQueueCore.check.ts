@@ -12,7 +12,17 @@
 
 import assert from 'node:assert';
 import type { QueuedJob } from './offlineQueueCore.ts';
-import { inSendOrder, makeJob, markFailure, removeJob, upsertJob } from './offlineQueueCore.ts';
+import {
+  inSendOrder,
+  isLocalId,
+  makeJob,
+  makeLocalId,
+  markFailure,
+  remapJobs,
+  remapValue,
+  removeJob,
+  upsertJob,
+} from './offlineQueueCore.ts';
 
 const job = (key: string, payload: any, at: number) =>
   makeJob('saveProgress', key, payload, at, key.replace(/\W/g, ''));
@@ -119,4 +129,64 @@ const job = (key: string, payload: any, at: number) =>
   );
 }
 
-console.log('offlineQueueCore.check.ts OK — jobs survive failure, one job per building, send order held');
+/* ---- local ids are swapped for real ones once the server assigns them ---- */
+
+{
+  const localId = makeLocalId(1000, 'abc');
+  assert.ok(isLocalId(localId), 'a locally-minted id is recognisable');
+  assert.ok(!isLocalId('65f0c1a2b3'), 'a real mongo id is not mistaken for a local one');
+
+  // A property created offline, then two deficiency saves against it.
+  let q: QueuedJob[] = [];
+  q = upsertJob(
+    q,
+    makeJob('createProperty', `createProperty:${localId}`, { localId, data: { name: 'X' } }, 1000, 'cp'),
+  );
+  q = upsertJob(q, makeJob('saveProgress', `saveProgress:${localId}:B1`, {
+    property_id: localId,
+    inspectionData: { property: { _id: localId }, deficiencies: [{ propertyId: localId }] },
+  }, 2000, 'b1'));
+
+  const mapped = remapJobs(q, { [localId]: '65f0REAL' });
+  const save = mapped.find((j) => j.kind === 'saveProgress')!;
+
+  assert.strictEqual(save.payload.property_id, '65f0REAL', 'top-level id is swapped');
+  assert.strictEqual(save.payload.inspectionData.property._id, '65f0REAL', 'nested id is swapped');
+  assert.strictEqual(
+    save.payload.inspectionData.deficiencies[0].propertyId,
+    '65f0REAL',
+    'ids inside arrays are swapped'
+  );
+  assert.strictEqual(save.dedupeKey, 'saveProgress:65f0REAL:B1', 'the dedupe key follows the id');
+  assert.ok(
+    !JSON.stringify(mapped).includes(localId),
+    'no trace of the local id may survive the remap'
+  );
+}
+
+{
+  // An image queued offline: the local file URI becomes the Cloudinary URL.
+  const uri = 'file:///data/user/0/img-1.jpg';
+  const q = upsertJob([], makeJob('saveProgress', 'p:B1', {
+    inspectionData: { deficiencies: [{ imageUri: uri, imageUrl: null }] },
+  }, 1000, 'x'));
+  const mapped = remapJobs(q, { [uri]: 'https://res.cloudinary.com/x/img-1.jpg' });
+  assert.strictEqual(
+    mapped[0].payload.inspectionData.deficiencies[0].imageUri,
+    'https://res.cloudinary.com/x/img-1.jpg',
+    'the local image URI is replaced'
+  );
+}
+
+{
+  // Remapping must leave everything else exactly as it was.
+  const payload = { a: 1, b: true, c: null, d: 'keep', e: [1, 'keep', { f: 'keep' }] };
+  assert.deepStrictEqual(
+    remapValue(payload, { 'not-present': 'x' }),
+    payload,
+    'a mapping that matches nothing changes nothing'
+  );
+  assert.deepStrictEqual(remapJobs([], { a: 'b' }), [], 'an empty queue stays empty');
+}
+
+console.log('offlineQueueCore.check.ts OK — jobs survive failure, one job per building, send order held, local ids remapped');

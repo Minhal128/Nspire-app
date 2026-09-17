@@ -13,12 +13,15 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import networkService from './networkService';
 import inspectionService from './inspectionService';
+import propertyService from './propertyService';
+import { cloudinaryService } from './cloudinaryService';
 import {
   QueuedJob,
   QueuedJobKind,
   inSendOrder,
   makeJob,
   markFailure,
+  remapJobs,
   removeJob,
   upsertJob,
 } from '../utils/offlineQueueCore';
@@ -111,19 +114,42 @@ class OfflineQueue {
     });
   }
 
-  /** Run one queued job. Throws if the server did not accept it. */
-  private async run(job: QueuedJob): Promise<void> {
+  /**
+   * Run one queued job. Throws if the server did not accept it.
+   *
+   * Returns any id/URL substitutions the rest of the queue needs — a property
+   * created here gets its real _id, an image gets its Cloudinary URL, and every
+   * still-queued write referring to the local stand-in has to follow.
+   */
+  private async run(job: QueuedJob): Promise<Record<string, string>> {
     switch (job.kind) {
       case 'saveProgress': {
         const res = await inspectionService.saveProgress(job.payload);
         if (res && res.success === false) {
           throw new Error(res.msg || 'server rejected saveProgress');
         }
-        return;
+        return {};
       }
+
+      case 'createProperty': {
+        const { localId, data } = job.payload;
+        const res = await propertyService.createProperty(data);
+        if (!res?.success) throw new Error(res?.message || 'server rejected createProperty');
+        const realId = (res.property as any)?._id;
+        return localId && realId ? { [localId]: String(realId) } : {};
+      }
+
+      case 'uploadImage': {
+        const { imageUri, folder } = job.payload;
+        const res = await cloudinaryService.uploadImage(imageUri, folder || 'nspire-inspections');
+        if (!res?.success || !res.url) throw new Error(res?.error || 'image upload failed');
+        return { [imageUri]: String(res.url) };
+      }
+
       default:
         // Unknown kind: drop it rather than blocking the queue forever.
         console.warn(`offlineQueue: dropping unknown job kind "${job.kind}"`);
+        return {};
     }
   }
 
@@ -150,8 +176,13 @@ class OfflineQueue {
         if (!networkService.isOnline()) break;
 
         try {
-          await this.run(job);
+          const mapping = await this.run(job);
           jobs = removeJob(jobs, job.id);
+          // Everything still queued must point at the real id / URL.
+          if (Object.keys(mapping).length > 0) {
+            jobs = remapJobs(jobs, mapping);
+            await this.applyMapping(mapping);
+          }
           sent++;
           await this.write(jobs);
         } catch (error: any) {
@@ -166,6 +197,53 @@ class OfflineQueue {
 
     if (sent > 0) console.log(`offlineQueue: sent ${sent}, ${jobs.length} still pending`);
     return { sent, remaining: jobs.length };
+  }
+
+  /**
+   * Push a mapping through the caches the screens read, so the UI stops showing
+   * a local stand-in once the server has given us the real value.
+   */
+  private async applyMapping(mapping: Record<string, string>): Promise<void> {
+    const keys = ['cached_properties_v1'];
+    try {
+      const draftKeys = (await AsyncStorage.getAllKeys()).filter((k) =>
+        k.startsWith('saved_inspection_'),
+      );
+      keys.push(...draftKeys);
+    } catch (error) {
+      console.warn('offlineQueue: could not list drafts for remapping', error);
+    }
+
+    for (const key of keys) {
+      try {
+        const raw = await AsyncStorage.getItem(key);
+        if (!raw) continue;
+        let next = raw;
+        for (const [from, to] of Object.entries(mapping)) {
+          next = next.split(from).join(to);
+        }
+        if (next !== raw) await AsyncStorage.setItem(key, next);
+      } catch (error) {
+        console.warn(`offlineQueue: could not remap ${key}`, error);
+      }
+    }
+
+    // Some keys embed the id (buildingNames_<propertyId>), so rename those too.
+    try {
+      const allKeys = await AsyncStorage.getAllKeys();
+      for (const key of allKeys) {
+        const renamed = Object.entries(mapping).reduce(
+          (k, [from, to]) => k.split(from).join(to),
+          key,
+        );
+        if (renamed === key) continue;
+        const value = await AsyncStorage.getItem(key);
+        if (value !== null) await AsyncStorage.setItem(renamed, value);
+        await AsyncStorage.removeItem(key);
+      }
+    } catch (error) {
+      console.warn('offlineQueue: could not rename keys during remap', error);
+    }
   }
 
   /**

@@ -15,6 +15,9 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { propertyService } from '../services';
+import offlineQueue from '../services/offlineQueue';
+import { makeLocalId } from '../utils/offlineQueueCore';
+import { addPropertyToCache } from '../utils/propertyCache';
 import {
   BuildingData,
   divideUnitsEvenly,
@@ -91,17 +94,19 @@ const BuildingDivisionScreen: React.FC<BuildingDivisionScreenProps> = ({ navigat
     }
 
     setIsLoading(true);
+    const createPayload = {
+      ...propertyData,
+      buildings: buildings.length,
+      units: buildings.reduce((sum, b) => sum + b.units, 0),
+      buildingDetails: buildings.map((b, i) => ({
+        buildingId: `B${i + 1}`,
+        totalUnits: b.units,
+        unitsForInspection: 0,
+      })),
+    };
+
     try {
-      const response = await propertyService.createProperty({
-        ...propertyData,
-        buildings: buildings.length,
-        units: buildings.reduce((sum, b) => sum + b.units, 0),
-        buildingDetails: buildings.map((b, i) => ({
-          buildingId: `B${i + 1}`,
-          totalUnits: b.units,
-          unitsForInspection: 0,
-        })),
-      });
+      const response = await propertyService.createProperty(createPayload);
 
       if (response.success) {
         // Save custom building names, keyed the same way the web build does.
@@ -125,7 +130,36 @@ const BuildingDivisionScreen: React.FC<BuildingDivisionScreenProps> = ({ navigat
         Alert.alert('Error', response.message || 'Failed to add property');
       }
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to add property');
+      // Offline: hand the property a local id so the inspector can start work on
+      // it straight away, and queue the create. offlineQueue swaps the local id
+      // for the real one — in the queue and in the caches — once it lands.
+      const localId = makeLocalId();
+      const localProperty = { ...createPayload, _id: localId, id: localId, _pendingSync: true };
+
+      try {
+        await offlineQueue.enqueue('createProperty', `createProperty:${localId}`, {
+          localId,
+          data: createPayload,
+        });
+        await addPropertyToCache(localProperty);
+
+        const namesMap: Record<string, string> = {};
+        buildings.forEach((b, i) => {
+          namesMap[`B${i + 1}`] = b.name;
+        });
+        await AsyncStorage.setItem(`buildingNames_${localId}`, JSON.stringify(namesMap));
+      } catch (queueError) {
+        console.warn('Could not queue property creation:', queueError);
+        Alert.alert('Error', error.message || 'Failed to add property');
+        setIsLoading(false);
+        return;
+      }
+
+      Alert.alert(
+        'Saved offline',
+        'No connection right now. The property is saved on this device and will be sent automatically when you are back online.',
+        [{ text: 'OK', onPress: () => navigation.navigate('Dashboard', { newProperty: localProperty }) }],
+      );
     } finally {
       setIsLoading(false);
     }

@@ -36,7 +36,6 @@ yarn-error.*
 *.pem
 
 # IDE
-.vscode/
 .idea/
 *.swp
 *.swo

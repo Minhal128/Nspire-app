@@ -17,7 +17,7 @@ import {
   StatusBar,
 } from "react-native";
 import { useFocusEffect } from '@react-navigation/native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { cacheProperties, readCachedProperties } from '../utils/propertyCache';
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Picker } from "@react-native-picker/picker";
 import { DashboardScreenNavigationProp } from "../types/navigation";
@@ -61,34 +61,6 @@ interface Property {
   calculatedUnits?: number;
   buildingDetails?: { buildingId: string; totalUnits: number; unitsForInspection: number }[];
 }
-
-const PROPERTY_CACHE_KEY = 'cached_properties_v1';
-
-/**
- * The property list is the gate into every inspection, so it is cached on each
- * successful fetch: with no signal the inspector still sees their properties and
- * can keep working, and offlineQueue carries the writes back when the
- * connection returns.
- */
-const cacheProperties = async (properties: Property[]): Promise<void> => {
-  try {
-    await AsyncStorage.setItem(PROPERTY_CACHE_KEY, JSON.stringify(properties));
-  } catch (error) {
-    console.warn('Could not cache properties:', error);
-  }
-};
-
-const readCachedProperties = async (): Promise<Property[]> => {
-  try {
-    const raw = await AsyncStorage.getItem(PROPERTY_CACHE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch (error) {
-    console.warn('Could not read cached properties:', error);
-    return [];
-  }
-};
 
 export default function DashboardScreen({
   navigation,

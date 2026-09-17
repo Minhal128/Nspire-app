@@ -7,7 +7,7 @@
  * bound.
  */
 
-export type QueuedJobKind = 'saveProgress';
+export type QueuedJobKind = 'saveProgress' | 'createProperty' | 'uploadImage';
 
 export interface QueuedJob {
   id: string;
@@ -58,3 +58,52 @@ export const makeJob = (
   queuedAt: new Date(now).toISOString(),
   attempts: 0,
 });
+
+/** Prefix for ids handed out locally while offline, before the server assigns one. */
+export const LOCAL_ID_PREFIX = 'local-';
+
+export const isLocalId = (id: unknown): boolean =>
+  typeof id === 'string' && id.startsWith(LOCAL_ID_PREFIX);
+
+export const makeLocalId = (
+  now: number = Date.now(),
+  rand: string = Math.random().toString(36).slice(2, 8),
+): string => `${LOCAL_ID_PREFIX}${now}-${rand}`;
+
+/**
+ * Replace locally-minted ids (and local image URIs) throughout a value once the
+ * server has told us the real ones.
+ *
+ * A property created offline is referenced by every deficiency saved against it,
+ * so the id it was given locally has to be swapped everywhere still queued —
+ * otherwise those writes land against a property the server has never heard of.
+ */
+export const remapValue = <T,>(value: T, mapping: Record<string, string>): T => {
+  if (typeof value === 'string') {
+    return (mapping[value] ?? value) as unknown as T;
+  }
+  if (Array.isArray(value)) {
+    return value.map((v) => remapValue(v, mapping)) as unknown as T;
+  }
+  if (value && typeof value === 'object') {
+    const out: Record<string, any> = {};
+    for (const [k, v] of Object.entries(value as Record<string, any>)) {
+      out[k] = remapValue(v, mapping);
+    }
+    return out as unknown as T;
+  }
+  return value;
+};
+
+/** Apply a mapping to every queued job's payload and dedupe key. */
+export const remapJobs = (jobs: QueuedJob[], mapping: Record<string, string>): QueuedJob[] => {
+  if (Object.keys(mapping).length === 0) return jobs;
+  return jobs.map((j) => ({
+    ...j,
+    dedupeKey: Object.entries(mapping).reduce(
+      (key, [from, to]) => key.split(from).join(to),
+      j.dedupeKey,
+    ),
+    payload: remapValue(j.payload, mapping),
+  }));
+};
