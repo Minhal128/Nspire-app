@@ -56,6 +56,7 @@ import BuildingInspectionScreen from "./src/screens/BuildingInspectionScreen";
 
 // Import auth service
 import authService from "./src/services/authService";
+import offlineQueue from "./src/services/offlineQueue";
 
 export type RootStackParamList = {
   Boarding: undefined;
@@ -277,6 +278,12 @@ function AppContent() {
   const [biometricRequired, setBiometricRequired] = useState(false);
   const [biometricVerified, setBiometricVerified] = useState(false);
   const [initialRoute, setInitialRoute] = useState<keyof RootStackParamList>("Boarding");
+
+  // Watch connectivity and replay anything the app could not send while offline.
+  useEffect(() => {
+    offlineQueue.start().catch((e) => console.warn('offlineQueue failed to start', e));
+    return () => offlineQueue.stop();
+  }, []);
 
   // Check authentication state on app start with safety timeout
   useEffect(() => {

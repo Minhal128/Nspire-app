@@ -17,6 +17,7 @@ import {
   StatusBar,
 } from "react-native";
 import { useFocusEffect } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Picker } from "@react-native-picker/picker";
 import { DashboardScreenNavigationProp } from "../types/navigation";
@@ -60,6 +61,34 @@ interface Property {
   calculatedUnits?: number;
   buildingDetails?: { buildingId: string; totalUnits: number; unitsForInspection: number }[];
 }
+
+const PROPERTY_CACHE_KEY = 'cached_properties_v1';
+
+/**
+ * The property list is the gate into every inspection, so it is cached on each
+ * successful fetch: with no signal the inspector still sees their properties and
+ * can keep working, and offlineQueue carries the writes back when the
+ * connection returns.
+ */
+const cacheProperties = async (properties: Property[]): Promise<void> => {
+  try {
+    await AsyncStorage.setItem(PROPERTY_CACHE_KEY, JSON.stringify(properties));
+  } catch (error) {
+    console.warn('Could not cache properties:', error);
+  }
+};
+
+const readCachedProperties = async (): Promise<Property[]> => {
+  try {
+    const raw = await AsyncStorage.getItem(PROPERTY_CACHE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    console.warn('Could not read cached properties:', error);
+    return [];
+  }
+};
 
 export default function DashboardScreen({
   navigation,
@@ -141,18 +170,23 @@ export default function DashboardScreen({
       await Promise.race([dataPromise, timeoutPromise]);
     } catch (error) {
       console.error('Failed to load initial data:', error);
-      // If there's an error, still show the UI but with empty data
-      setProperties([]);
 
-      // Show an alert to inform the user about the issue
-      Alert.alert(
-        'Connection Issue',
-        'Unable to load data. Please check your internet connection and try again.',
-        [
-          { text: 'Retry', onPress: () => loadInitialData() },
-          { text: 'Continue Offline', style: 'cancel' }
-        ]
-      );
+      // Fall back to the last known property list rather than an empty screen.
+      const cached = await readCachedProperties();
+      setProperties(cached);
+
+      if (cached.length > 0) {
+        console.log(`Dashboard: offline, showing ${cached.length} cached properties`);
+      } else {
+        Alert.alert(
+          'Connection Issue',
+          'Unable to load data. Please check your internet connection and try again.',
+          [
+            { text: 'Retry', onPress: () => loadInitialData() },
+            { text: 'Continue Offline', style: 'cancel' }
+          ]
+        );
+      }
     } finally {
       setLoading(false);
     }
@@ -186,12 +220,22 @@ export default function DashboardScreen({
           buildingDetails: p.buildingDetails,
         }));
         setProperties(mappedProperties);
+        // Keep a copy so an inspector with no signal can still open a property
+        // and carry on working; the writes they make are queued by offlineQueue.
+        cacheProperties(mappedProperties);
         fetchProgress(mappedProperties);
         return mappedProperties;
       }
       return [];
     } catch (error: any) {
       console.error('Failed to fetch properties:', error);
+      const cached = await readCachedProperties();
+      if (cached.length > 0) {
+        console.log(`Dashboard: offline, showing ${cached.length} cached properties`);
+        setProperties(cached);
+        fetchProgress(cached);
+        return cached;
+      }
       return [];
     }
   };

@@ -33,6 +33,7 @@ import { cloudinaryService } from '../services/cloudinaryService';
 import ModalZoomWrapper from '../components/ModalZoomWrapper';
 import { geminiService } from '../services/openaiService';
 import { inspectionService } from '../services/inspectionService';
+import offlineQueue from '../services/offlineQueue';
 import { autoSaveInspectionDeficiency } from '../utils/storage';
 import { ScoringResult, calculateUnitScore, POSSIBLE_SCORE } from '../utils/scoringCalculations';
 import {
@@ -889,32 +890,43 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         console.warn('Could not persist local draft snapshot from detail screen:', localDraftError);
       }
 
-      try {
-        await inspectionService.saveProgress({
-          property_id: propertyIdentifier,
-          unit_id: 'ALL_UNITS',
-          inspection_type: 'REPORT_DRAFT_PROPERTY',
-          inspectionData: {
-            // Save ALL deficiencies (existing + new) for complete report
-            deficiencies: mergedDeficiencies,
-            property: {
-              _id: propertyIdentifier,
-              name: property?.name || 'Property',
-            },
-            buildingId: normalizedBuildingLabel,
-            unit: normalizedUnit,
-            inspectionType: 'Draft Inspection',
-            savedAt: draftSavedAt,
-            // Include unit/area context for proper display
-            selectedUnits: selectedUnits,
-            currentUnit: currentUnit,
-            isOutsideInspection: isOutsideLocation,
-            location: isOutsideLocation ? selectedOutsideLocation : location,
+      const progressPayload = {
+        property_id: propertyIdentifier,
+        unit_id: 'ALL_UNITS',
+        inspection_type: 'REPORT_DRAFT_PROPERTY',
+        inspectionData: {
+          // Save ALL deficiencies (existing + new) for complete report
+          deficiencies: mergedDeficiencies,
+          property: {
+            _id: propertyIdentifier,
+            name: property?.name || 'Property',
           },
-        });
+          buildingId: normalizedBuildingLabel,
+          unit: normalizedUnit,
+          inspectionType: 'Draft Inspection',
+          savedAt: draftSavedAt,
+          // Include unit/area context for proper display
+          selectedUnits: selectedUnits,
+          currentUnit: currentUnit,
+          isOutsideInspection: isOutsideLocation,
+          location: isOutsideLocation ? selectedOutsideLocation : location,
+        },
+      };
+
+      try {
+        await inspectionService.saveProgress(progressPayload);
         console.log('Backend sync: Saved', mergedDeficiencies.length, 'deficiencies for property', propertyIdentifier);
       } catch (draftSaveError) {
-        console.warn('Could not persist draft from detail screen:', draftSaveError);
+        // Offline (or the server is unreachable): hold the write and let
+        // offlineQueue replay it when the connection returns. The payload
+        // carries the full deficiency set, so one job per property/building
+        // is enough however long the outage lasts.
+        console.warn('Draft save failed, queueing for retry:', draftSaveError);
+        await offlineQueue.enqueue(
+          'saveProgress',
+          `saveProgress:${propertyIdentifier}:${normalizedBuildingLabel}`,
+          progressPayload,
+        );
       }
 
       // Hide processing modal before navigation
