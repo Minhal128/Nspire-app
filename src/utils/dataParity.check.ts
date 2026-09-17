@@ -104,4 +104,69 @@ const appJson = read(new URL('src/data/inspectionDeficiencies.json', root));
 assert.strictEqual(appJson, webJson, 'inspectionDeficiencies.json has drifted from the web copy');
 checked++;
 
+/* ---- the report generator is the web build's too ---- */
+
+{
+  // src/services/web/* back the PDF/preview report, so the app and web produce
+  // the same document. Verified once by rendering both on the same input and
+  // comparing the HTML byte for byte; this keeps the copies honest.
+  assert.strictEqual(
+    read(new URL('src/services/web/nspireReport.ts', root)),
+    read(new URL('nspireReport.ts', webLib)),
+    'src/services/web/nspireReport.ts has drifted from inspire-web/lib/nspireReport.ts'
+  );
+  checked++;
+
+  // The one deviation from the original: RN has no window, so the logo is injected.
+  const LOGO_FROM = [
+    `} from './nspireReport';
+`,
+    `  let logoSrc = '/logo.png';
+  if (typeof window !== 'undefined') {
+    logoSrc = window.location.origin + '/logo.png';
+  }
+`,
+  ];
+  const LOGO_TO = [
+    `} from './nspireReport';
+
+/** Set by the app so the report header can embed the logo without a network fetch. */
+let injectedLogo = '';
+export function setReportLogo(dataUri: string): void {
+  injectedLogo = dataUri || '';
+}
+`,
+    `  // Only deviation from the web original: React Native has no window and cannot
+  // resolve /logo.png, so the app injects a base64 logo through setReportLogo().
+  let logoSrc = injectedLogo || '/logo.png';
+  if (!injectedLogo && typeof window !== 'undefined') {
+    logoSrc = window.location.origin + '/logo.png';
+  }
+`,
+  ];
+
+  let expected = read(new URL('enhancedNspirePDFService.ts', webLib));
+  LOGO_FROM.forEach((from, i) => {
+    assert.ok(
+      expected.includes(from),
+      'inspire-web/lib/enhancedNspirePDFService.ts no longer contains the patched region ' + i
+    );
+    expected = expected.replace(from, LOGO_TO[i]);
+  });
+  assert.strictEqual(
+    read(new URL('src/services/web/enhancedNspirePDFService.ts', root)),
+    expected,
+    'src/services/web/enhancedNspirePDFService.ts has drifted from the web original — re-copy it and re-apply the logo patch'
+  );
+  checked++;
+
+  // And the app must render the report through that copy, not its own template.
+  const svc = read(new URL('src/services/enhancedNspirePDFService.ts', root));
+  assert.ok(
+    svc.includes("from './web/enhancedNspirePDFService'"),
+    'the app report service should generate its HTML through src/services/web/'
+  );
+  assert.ok(svc.includes('getWebReportHTML('), 'the finished report must come from the web generator');
+}
+
 console.log(`dataParity.check.ts OK — ${checked} data files match the web build`);
