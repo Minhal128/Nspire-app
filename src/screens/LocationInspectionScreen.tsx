@@ -28,6 +28,7 @@ import { OUTSIDE_ITEMS, INSIDE_ITEMS, UNIT_ITEMS, UNIT_LOCATIONS, InspectionResp
 import api from '../services/api';
 import { canonicalizeInspectionType } from '../utils/inspectionProgressUtils';
 import { markUnitCompleted } from '../utils/unitInspectionStorage';
+import { savedFindingScope, draftStorageKeys, findingsForItem } from '../utils/savedDeficiencies';
 
 type LocationInspectionScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -51,6 +52,9 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
   const [showDeficiencyModal, setShowDeficiencyModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState<{ id: string; name: string } | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [savedFindings, setSavedFindings] = useState<any[]>([]);
+  const [loadingSavedFindings, setLoadingSavedFindings] = useState(false);
+  const [selectedFinding, setSelectedFinding] = useState<any | null>(null);
 
   const safeLocationName = location === 'Unit' ? `Unit_${currentUnit || selectedUnits?.[0] || 'Unknown'}` : location;
   const canonicalInspectionType = canonicalizeInspectionType(safeLocationName, { currentUnit });
@@ -155,9 +159,54 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
     ? OUTSIDE_ITEMS
     : (isUnitLocation ? UNIT_ITEMS : INSIDE_ITEMS);
 
+  // What the OD modal shows. The answers in `responses` only say OD/No OD/N/A;
+  // the deficiency itself — the picture, the name, the severity — lives in the
+  // draft snapshots DeficiencyDetailScreen writes, so read those.
+  useEffect(() => {
+    if (!showDeficiencyModal || !selectedItem) return;
+    let cancelled = false;
+
+    const loadSavedFindings = async () => {
+      // Drop the previous item's records first, or they flash under this item's name.
+      setSavedFindings([]);
+      setSelectedFinding(null);
+      setLoadingSavedFindings(true);
+      const scope = savedFindingScope({
+        property,
+        buildingId,
+        isOutside: location?.toLowerCase() === 'outside',
+        isUnit: isUnitLocation,
+        currentUnit,
+        selectedUnits,
+      });
+      const payloads = await Promise.all(
+        draftStorageKeys(scope).map((key) =>
+          AsyncStorage.getItem(key).catch((error) => {
+            console.warn('Could not read saved deficiencies for item:', key, error);
+            return null;
+          }),
+        ),
+      );
+
+      if (cancelled) return;
+      setSavedFindings(findingsForItem(payloads, scope, selectedItem.name));
+      setLoadingSavedFindings(false);
+    };
+
+    loadSavedFindings();
+    return () => { cancelled = true; };
+  }, [showDeficiencyModal, selectedItem]);
+
   const handleResponse = (itemId: string, itemName: string, response: ResponseType) => {
     // If clicking the same response again, unselect it
     if (responses[itemId] === response) {
+      // Tapping OD again reopens what was recorded rather than wiping it; the
+      // answer still clears from No OD / N/A, or from the other way round.
+      if (response === 'OD') {
+        setSelectedItem({ id: itemId, name: itemName });
+        setShowDeficiencyModal(true);
+        return;
+      }
       setResponses((prev) => {
         const newResponses = { ...prev };
         delete newResponses[itemId];
@@ -537,35 +586,156 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
-                {!!INSPIRE_LOGO_BASE64 && (
+                {selectedFinding ? (
+                  <TouchableOpacity onPress={() => setSelectedFinding(null)} style={styles.modalBackButton}>
+                    <Ionicons name="chevron-back" size={24} color="#0E7490" />
+                  </TouchableOpacity>
+                ) : !!INSPIRE_LOGO_BASE64 && (
                   <Image source={{ uri: INSPIRE_LOGO_BASE64 }} style={styles.modalBadge} resizeMode="contain" />
                 )}
                 <View style={styles.modalHeaderText}>
-                  <Text style={styles.modalTitle} numberOfLines={1}>{selectedItem?.name}</Text>
-                  <Text style={styles.modalSubtitle}>NSPIRE Deficiency Inspection</Text>
+                  <Text style={styles.modalTitle} numberOfLines={2}>
+                    {selectedFinding
+                      ? (selectedFinding?.deficiency?.name || selectedFinding?.deficiencyName || 'Deficiency')
+                      : selectedItem?.name}
+                  </Text>
+                  <Text style={styles.modalSubtitle}>
+                    {selectedFinding ? selectedItem?.name : 'NSPIRE Deficiency Inspection'}
+                  </Text>
                 </View>
-                <TouchableOpacity onPress={() => setShowDeficiencyModal(false)}>
+                <TouchableOpacity onPress={() => { setSelectedFinding(null); setShowDeficiencyModal(false); }}>
                   <Ionicons name="close" size={24} color="#666666" />
                 </TouchableOpacity>
               </View>
 
-              <View style={styles.emptyState}>
-                {INSPIRE_LOGO_BASE64 ? (
-                  <Image source={{ uri: INSPIRE_LOGO_BASE64 }} style={styles.emptyStateLogo} resizeMode="contain" />
-                ) : (
-                  <Ionicons name="add-circle-outline" size={80} color="#E5E5E5" />
-                )}
-                <Text style={styles.emptyStateText}>
-                  No existing deficiency record for this item.
-                </Text>
-              </View>
+              {selectedFinding ? (
+                <>
+                  <ScrollView showsVerticalScrollIndicator={false} style={styles.findingScroll}>
+                    {(() => {
+                      const uri = selectedFinding?.imageUri
+                        || selectedFinding?.imageUrl
+                        || selectedFinding?.photos?.[0]?.url;
+                      return uri ? (
+                        <Image source={{ uri }} style={styles.findingImage} resizeMode="cover" />
+                      ) : (
+                        <View style={[styles.findingImage, styles.savedThumbEmpty]}>
+                          <Ionicons name="image-outline" size={40} color="#D1D5DB" />
+                          <Text style={styles.findingNoImage}>No photo recorded</Text>
+                        </View>
+                      );
+                    })()}
 
-              <TouchableOpacity
-                style={styles.addNewButton}
-                onPress={handleAddNewDeficiency}
-              >
-                <Text style={styles.addNewButtonText}>ADD NEW</Text>
-              </TouchableOpacity>
+                    <Text style={styles.findingLabel}>SEVERITY</Text>
+                    <Text style={styles.savedSeverity}>
+                      {selectedFinding?.deficiency?.severity || selectedFinding?.severity || 'Moderate'}
+                    </Text>
+
+                    {!!(selectedFinding?.deficiency?.detail || selectedFinding?.deficiencyDetails) && (
+                      <>
+                        <Text style={styles.findingLabel}>DEFICIENCY DETAIL</Text>
+                        <Text style={styles.findingValue}>
+                          {selectedFinding?.deficiency?.detail || selectedFinding?.deficiencyDetails}
+                        </Text>
+                      </>
+                    )}
+
+                    {!!selectedFinding?.location && (
+                      <>
+                        <Text style={styles.findingLabel}>LOCATION</Text>
+                        <Text style={styles.findingValue}>{selectedFinding.location}</Text>
+                      </>
+                    )}
+
+                    {!!selectedFinding?.note && (
+                      <>
+                        <Text style={styles.findingLabel}>COMMENT</Text>
+                        <Text style={styles.findingValue}>{selectedFinding.note}</Text>
+                      </>
+                    )}
+
+                    {!!selectedFinding?.deficiency?.aiAnalysis && (
+                      <>
+                        <Text style={styles.findingLabel}>AI ANALYSIS</Text>
+                        <Text style={styles.findingValue}>{selectedFinding.deficiency.aiAnalysis}</Text>
+                      </>
+                    )}
+
+                    {!!selectedFinding?.deficiencyQRId && (
+                      <>
+                        <Text style={styles.findingLabel}>REFERENCE</Text>
+                        <Text style={styles.findingValue}>{selectedFinding.deficiencyQRId}</Text>
+                      </>
+                    )}
+                  </ScrollView>
+
+                  <TouchableOpacity style={styles.addNewButton} onPress={() => setSelectedFinding(null)}>
+                    <Text style={styles.addNewButtonText}>BACK</Text>
+                  </TouchableOpacity>
+                </>
+              ) : loadingSavedFindings ? (
+                <View style={styles.emptyState}>
+                  <ActivityIndicator size="large" color="#0E7490" />
+                </View>
+              ) : savedFindings.length === 0 ? (
+                <View style={styles.emptyState}>
+                  {INSPIRE_LOGO_BASE64 ? (
+                    <Image source={{ uri: INSPIRE_LOGO_BASE64 }} style={styles.emptyStateLogo} resizeMode="contain" />
+                  ) : (
+                    <Ionicons name="add-circle-outline" size={80} color="#E5E5E5" />
+                  )}
+                  <Text style={styles.emptyStateText}>
+                    No existing deficiency record for this item.
+                  </Text>
+                </View>
+              ) : (
+                <>
+                  <Text style={styles.savedCount}>
+                    {savedFindings.length} {savedFindings.length === 1 ? 'deficiency' : 'deficiencies'} recorded on this item
+                  </Text>
+                  <ScrollView style={styles.savedList} showsVerticalScrollIndicator={false}>
+                    {savedFindings.map((finding: any, idx: number) => {
+                      const imageUri = finding?.imageUri || finding?.imageUrl || finding?.photos?.[0]?.url;
+                      return (
+                        <TouchableOpacity
+                          key={finding?.deficiencyQRId ?? finding?.id ?? String(idx)}
+                          style={styles.savedRow}
+                          activeOpacity={0.7}
+                          onPress={() => setSelectedFinding(finding)}
+                        >
+                          {imageUri ? (
+                            <Image source={{ uri: imageUri }} style={styles.savedThumb} />
+                          ) : (
+                            <View style={[styles.savedThumb, styles.savedThumbEmpty]}>
+                              <Ionicons name="image-outline" size={22} color="#D1D5DB" />
+                            </View>
+                          )}
+                          <View style={styles.savedBody}>
+                            <Text style={styles.savedTitle} numberOfLines={1}>
+                              {finding?.deficiency?.name || finding?.deficiencyName || finding?.title || 'Deficiency'}
+                            </Text>
+                            <Text style={styles.savedDetail} numberOfLines={2}>
+                              {finding?.deficiency?.detail || finding?.deficiencyDetails || finding?.note || ''}
+                            </Text>
+                            <Text style={styles.savedSeverity}>
+                              {finding?.deficiency?.severity || finding?.severity || 'Moderate'}
+                            </Text>
+                          </View>
+                          <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                </>
+              )}
+
+              {!selectedFinding && (
+                <TouchableOpacity
+                  style={styles.addNewButton}
+                  onPress={handleAddNewDeficiency}
+                >
+                  <Text style={styles.addNewButtonText}>ADD NEW</Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         </ModalZoomWrapper>
@@ -885,6 +1055,85 @@ const styles = StyleSheet.create({
     color: '#999999',
     textAlign: 'center',
     marginTop: 16,
+  },
+  savedCount: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#6B7280',
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  savedList: {
+    maxHeight: 280,
+  },
+  savedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 10,
+    marginBottom: 8,
+  },
+  savedThumb: {
+    width: 56,
+    height: 56,
+    borderRadius: 8,
+    backgroundColor: '#F3F4F6',
+  },
+  savedThumbEmpty: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalBackButton: {
+    marginRight: 8,
+  },
+  findingScroll: {
+    maxHeight: 420,
+  },
+  findingImage: {
+    width: '100%',
+    height: 200,
+    borderRadius: 12,
+    backgroundColor: '#F3F4F6',
+    marginTop: 12,
+  },
+  findingNoImage: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    marginTop: 6,
+  },
+  findingLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#6B7280',
+    letterSpacing: 0.5,
+    marginTop: 14,
+  },
+  findingValue: {
+    fontSize: 14,
+    color: '#111827',
+    marginTop: 4,
+    lineHeight: 20,
+  },
+  savedBody: {
+    flex: 1,
+    marginLeft: 10,
+  },
+  savedTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1A1A1A',
+  },
+  savedDetail: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  savedSeverity: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#B45309',
+    marginTop: 4,
   },
   addNewButton: {
     backgroundColor: '#0E7490',

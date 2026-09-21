@@ -370,9 +370,9 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
         // Use per-deficiency saved area (_area) if available (set when continuing inspection),
         // otherwise fall back to the current session's area from inspectionData.
         const inspectionArea: string = defItem._area
-          || (inspectionData.isOutsideInspection
+          || (inspectionData?.isOutsideInspection
             ? 'Outside'
-            : (inspectionData.location === 'Inside' ? 'Inside' : 'Units'));
+            : (inspectionData?.location === 'Inside' ? 'Inside' : 'Units'));
         const isGC = !!(defItem as any).isGeneralComment;
         // Use per-deficiency saved unit (_unit) if available, otherwise compute for current session
         const defUnit: string = defItem._unit !== undefined
@@ -413,7 +413,7 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
       moderate: deficienciesArray.filter(d => d.severity === 'Moderate').length,
       low: deficienciesArray.filter(d => d.severity === 'Low').length,
     };
-    const areaKey = inspectionData.isOutsideInspection ? 'Outside' : (inspectionData.location === 'Inside' ? 'Inside' : 'Units');
+    const areaKey = inspectionData?.isOutsideInspection ? 'Outside' : (inspectionData?.location === 'Inside' ? 'Inside' : 'Units');
 
     return {
       reportId: inspectionId,
@@ -983,7 +983,7 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
                     return (
                       <>
                         <View style={styles.deficiencyHeader}>
-                          <Text style={styles.deficiencyItemName}>{defItem.itemName || inspectionData.itemName}</Text>
+                          <Text style={styles.deficiencyItemName}>{defItem.itemName || inspectionData?.itemName}</Text>
                           <View style={[
                             styles.severityBadge,
                             severity === 'Life-Threatening' && styles.lifethreateningBadge,
