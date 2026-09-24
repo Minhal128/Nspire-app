@@ -2,8 +2,8 @@
  * Unit distribution for the building-division step of Add Property.
  *
  * Mirrors the web BuildingDivisionModal (inspire-web components/PropertyModals.tsx).
- * The total entered on Add Property is fixed: editing one building's units moves
- * the difference to the other buildings instead of changing the total.
+ * The even split is only the starting point: each building's unit count is then
+ * edited by hand and nothing else moves. The running total is validated on save.
  */
 
 export interface BuildingData {
@@ -34,47 +34,6 @@ export const redivideKeepingNames = (
 ): BuildingData[] => {
   const split = divideUnitsEvenly(totalUnits, buildings.length);
   return buildings.map((b, i) => ({ ...b, units: split[i].units }));
-};
-
-/**
- * Set building `index` to `newUnits` and take the difference out of (or add it
- * back to) the other buildings, so the overall total is unchanged.
- *
- * The total can still fall short when the other buildings have no units left to
- * give — the screen shows that as a red banner and blocks saving.
- */
-export const redistributeUnits = (
-  buildings: BuildingData[],
-  index: number,
-  newUnits: number,
-): BuildingData[] => {
-  const updated = buildings.map((b) => ({ ...b }));
-  const oldUnits = updated[index].units;
-  const diff = newUnits - oldUnits;
-
-  updated[index].units = newUnits;
-  if (diff === 0) return updated;
-
-  let remainingDiff = -diff;
-
-  for (let i = 0; i < updated.length; i++) {
-    if (i === index) continue;
-
-    if (remainingDiff > 0) {
-      updated[i].units += remainingDiff;
-      remainingDiff = 0;
-      break;
-    } else if (remainingDiff < 0) {
-      const available = updated[i].units;
-      if (available > 0) {
-        const toSubtract = Math.min(available, Math.abs(remainingDiff));
-        updated[i].units -= toSubtract;
-        remainingDiff += toSubtract;
-        if (remainingDiff === 0) break;
-      }
-    }
-  }
-  return updated;
 };
 
 export const totalUnitsOf = (buildings: BuildingData[]): number =>

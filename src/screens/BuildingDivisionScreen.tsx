@@ -22,7 +22,6 @@ import {
   BuildingData,
   divideUnitsEvenly,
   redivideKeepingNames,
-  redistributeUnits,
   totalUnitsOf,
 } from '../utils/buildingDivision';
 
@@ -35,9 +34,9 @@ interface BuildingDivisionScreenProps {
  * Second step of Add Property, mirroring the web BuildingDivisionModal
  * (components/PropertyModals.tsx).
  *
- * The total unit count entered on Add Property is fixed here: editing one
- * building's units moves the difference to the other buildings rather than
- * changing the total, and Update refuses to save until the total matches.
+ * The total unit count entered on Add Property is split evenly as a starting
+ * point. Each building's count is then edited manually and independently, and
+ * Update refuses to save until the buildings add back up to that total.
  */
 const BuildingDivisionScreen: React.FC<BuildingDivisionScreenProps> = ({ navigation, route }) => {
   const propertyData = route?.params?.propertyData;
@@ -66,10 +65,10 @@ const BuildingDivisionScreen: React.FC<BuildingDivisionScreenProps> = ({ navigat
     });
   };
 
-  // Keeps the overall total fixed: whatever is added to one building is taken
-  // from the others, and vice versa.
-  const updateBuildingUnits = (index: number, newUnits: number) => {
-    setBuildings((prev) => redistributeUnits(prev, index, newUnits));
+  // Each building's count is edited on its own; the other buildings never move.
+  // The running total is what Update validates against the property total.
+  const updateBuildingUnits = (index: number, units: number) => {
+    setBuildings((prev) => prev.map((b, i) => (i === index ? { ...b, units } : b)));
   };
 
   const totalCalculatedUnits = totalUnitsOf(buildings);
