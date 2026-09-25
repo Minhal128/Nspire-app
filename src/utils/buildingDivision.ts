@@ -2,8 +2,9 @@
  * Unit distribution for the building-division step of Add Property.
  *
  * Mirrors the web BuildingDivisionModal (inspire-web components/PropertyModals.tsx).
- * The even split is only the starting point: each building's unit count is then
- * edited by hand and nothing else moves. The running total is validated on save.
+ * The even split is only the starting point: editing one building's count
+ * re-spreads the leftover over the buildings AFTER it and never touches the
+ * ones before. The running total is validated on save.
  */
 
 export interface BuildingData {
@@ -34,6 +35,36 @@ export const redivideKeepingNames = (
 ): BuildingData[] => {
   const split = divideUnitsEvenly(totalUnits, buildings.length);
   return buildings.map((b, i) => ({ ...b, units: split[i].units }));
+};
+
+/**
+ * Set one building's unit count and absorb the difference in the buildings
+ * AFTER it. Everything before `index` stays exactly as the user left it, so
+ * editing B8 can only move B9 onwards.
+ */
+export const setUnitsRebalancingAfter = (
+  buildings: BuildingData[],
+  index: number,
+  units: number,
+  totalUnits: number,
+): BuildingData[] => {
+  const edited = buildings.map((b, i) =>
+    i === index ? { ...b, units: Math.max(0, units) } : b,
+  );
+
+  const tailStart = index + 1;
+  // Nothing after the edited building: the running total is off and the screen's
+  // mismatch warning is what tells the user.
+  if (tailStart >= edited.length) return edited;
+
+  const usedBefore = totalUnitsOf(edited.slice(0, tailStart));
+  const split = divideUnitsEvenly(
+    Math.max(0, totalUnits - usedBefore),
+    edited.length - tailStart,
+  );
+  return edited.map((b, i) =>
+    i < tailStart ? b : { ...b, units: split[i - tailStart].units },
+  );
 };
 
 export const totalUnitsOf = (buildings: BuildingData[]): number =>

@@ -12,6 +12,19 @@ const GEMINI_API_URL =
 // API key must be configured by user - no hardcoded keys for security
 const DEFAULT_API_KEY = "AIzaSyDgcUtepC_UU-SRJnrb96hYO3JyZiuTiUM";
 
+// A Gemini call on a dead connection (e.g. going offline mid-request) never
+// settles, which leaves whatever screen is awaiting it stuck forever. Bound it.
+const GEMINI_TIMEOUT_MS = 30000;
+const geminiFetch = async (url: string, init: RequestInit): Promise<Response> => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+};
+
 // Helper function to convert technical API errors to user-friendly messages
 const getUserFriendlyError = (errorMessage: string, statusCode?: number): string => {
   if (statusCode === 429 || errorMessage.toLowerCase().includes('quota') || errorMessage.toLowerCase().includes('rate')) {
@@ -194,7 +207,7 @@ class GeminiService {
    */
   async testConnection(): Promise<{ success: boolean; error?: string }> {
     try {
-      const response = await fetch(`${GEMINI_API_URL}?key=${this.apiKey}`, {
+      const response = await geminiFetch(`${GEMINI_API_URL}?key=${this.apiKey}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -551,7 +564,7 @@ NSPIRE Codes Examples:
 
 Return raw JSON only, no markdown, no explanations.`;
 
-      const response = await fetch(`${GEMINI_API_URL}?key=${this.apiKey}`, {
+      const response = await geminiFetch(`${GEMINI_API_URL}?key=${this.apiKey}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -869,7 +882,7 @@ Confidence: 0-100 (percentage indicating certainty of analysis)
 
 Return raw JSON only, no markdown, no explanations.`;
 
-      const response = await fetch(`${GEMINI_API_URL}?key=${this.apiKey}`, {
+      const response = await geminiFetch(`${GEMINI_API_URL}?key=${this.apiKey}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -1089,7 +1102,7 @@ Valid severity levels: Life-Threatening, Severe, Moderate, Low
 
 Return raw JSON only.`;
 
-      const response = await fetch(`${GEMINI_API_URL}?key=${this.apiKey}`, {
+      const response = await geminiFetch(`${GEMINI_API_URL}?key=${this.apiKey}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

@@ -57,6 +57,7 @@ import BuildingInspectionScreen from "./src/screens/BuildingInspectionScreen";
 // Import auth service
 import authService from "./src/services/authService";
 import offlineQueue from "./src/services/offlineQueue";
+import OfflineBanner from "./src/components/OfflineBanner";
 
 export type RootStackParamList = {
   Boarding: undefined;
@@ -445,6 +446,7 @@ function AppContent() {
                   <Stack.Screen name="BuildingInspection" component={BuildingInspectionScreen} />
                 </Stack.Navigator>
               </NavigationContainer>
+              <OfflineBanner />
             </ReportPreviewProvider>
           </ClerkProvider>
         </ZoomWrapper>

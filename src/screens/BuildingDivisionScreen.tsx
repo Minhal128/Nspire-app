@@ -22,6 +22,7 @@ import {
   BuildingData,
   divideUnitsEvenly,
   redivideKeepingNames,
+  setUnitsRebalancingAfter,
   totalUnitsOf,
 } from '../utils/buildingDivision';
 
@@ -65,14 +66,15 @@ const BuildingDivisionScreen: React.FC<BuildingDivisionScreenProps> = ({ navigat
     });
   };
 
-  // Each building's count is edited on its own; the other buildings never move.
-  // The running total is what Update validates against the property total.
+  const originalTotalUnits = parseInt(String(propertyData?.units)) || 0;
+
+  // Editing a building re-spreads the leftover across the buildings BELOW it;
+  // the ones above keep whatever the user already set.
   const updateBuildingUnits = (index: number, units: number) => {
-    setBuildings((prev) => prev.map((b, i) => (i === index ? { ...b, units } : b)));
+    setBuildings((prev) => setUnitsRebalancingAfter(prev, index, units, originalTotalUnits));
   };
 
   const totalCalculatedUnits = totalUnitsOf(buildings);
-  const originalTotalUnits = parseInt(String(propertyData?.units)) || 0;
   const unitsMatch = totalCalculatedUnits === originalTotalUnits;
 
   const handleUpdate = async () => {

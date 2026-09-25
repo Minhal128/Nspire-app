@@ -34,6 +34,7 @@ import ModalZoomWrapper from '../components/ModalZoomWrapper';
 import { geminiService } from '../services/openaiService';
 import { inspectionService } from '../services/inspectionService';
 import offlineQueue from '../services/offlineQueue';
+import networkService from '../services/networkService';
 import { autoSaveInspectionDeficiency } from '../utils/storage';
 import { ScoringResult, calculateUnitScore, POSSIBLE_SCORE } from '../utils/scoringCalculations';
 import {
@@ -640,9 +641,18 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       : (isUnit ? selectedUnitLocation : selectedInsideLocation);
     const deficiencyDedupeKey = `${String(normalizedArea).trim().toLowerCase()}|${String(normalizedUnit).trim().toLowerCase()}|${String(itemId || itemName || 'unknown-item').trim().toLowerCase()}|${String(currentDeficiency.name || 'unknown-deficiency').trim().toLowerCase()}`;
 
+    // Offline: skip the upload/AI round trips entirely instead of waiting on
+    // calls that cannot succeed. The per-image catch below already saves the
+    // deficiency locally and queues the upload for replay.
+    const isOffline = !networkService.isOnline();
+
     try {
       // Show processing modal - will be dismissed when processing completes
-      setProcessingMessage(`Analyzing ${images.length} image(s) with AI...`);
+      setProcessingMessage(
+        isOffline
+          ? 'Offline — saving on this device...'
+          : `Analyzing ${images.length} image(s) with AI...`
+      );
       setShowProcessingModal(true);
 
       // Clear any existing timer
@@ -657,6 +667,8 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         const imageUri = images[i];
 
         try {
+          if (isOffline) throw new Error('offline');
+
           // Upload to Cloudinary
           const uploadResult = await cloudinaryService.uploadImage(imageUri, 'nspire-inspections');
 
@@ -922,6 +934,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       };
 
       try {
+        if (isOffline) throw new Error('offline');
         await inspectionService.saveProgress(progressPayload);
         console.log('Backend sync: Saved', mergedDeficiencies.length, 'deficiencies for property', propertyIdentifier);
       } catch (draftSaveError) {
@@ -951,6 +964,13 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         return itemMatch === itemName;
       });
       const panelFindings = savedForItem.length > 0 ? savedForItem : analyzedDeficiencies;
+
+      if (isOffline) {
+        Alert.alert(
+          'Offline Mode',
+          'No internet connection. This deficiency is saved on your device and will sync automatically when you are back online.'
+        );
+      }
 
       setSavedItemFindings(panelFindings);
       const newest: any = analyzedDeficiencies[analyzedDeficiencies.length - 1];

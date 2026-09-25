@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { Modal } from 'react-native';
 import {
   View,
@@ -7,7 +7,6 @@ import {
   SafeAreaView,
   ScrollView,
   TouchableOpacity,
-  TextInput,
   Alert,
   KeyboardAvoidingView,
   Platform,
@@ -144,9 +143,7 @@ export default function BuildingInspectionScreen() {
 
   // Web parity: per-building completed tasks + renamable ID column
   const [completedUnitsMap, setCompletedUnitsMap] = useState<Record<string, string[]>>({});
-  const [columnHeaderName, setColumnHeaderName] = useState('Building Unique ID');
-  const [editColumnHeaderOpen, setEditColumnHeaderOpen] = useState(false);
-  const [tempColumnHeaderName, setTempColumnHeaderName] = useState('Building Unique ID');
+  const columnHeaderName = 'Building Unique ID';
   const [coverageModalVisible, setCoverageModalVisible] = useState(false);
   // Seeded the same way as the live values, so opening the coverage modal on a
   // resumed inspection preselects the real coverage instead of blank/NaN.
@@ -162,144 +159,6 @@ export default function BuildingInspectionScreen() {
   const [reportFindings, setReportFindings] = useState<Finding[]>([]);
   const [inspectorName, setInspectorName] = useState('Inspector');
   const { openReportPreview } = useReportPreview();
-
-  // Track which field is actively being edited so we skip auto-save mid-typing
-  const editTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // -------- Building ID editing --------
-
-  const handleBuildingIdChange = useCallback((index: number, newId: string) => {
-    setBuildings(prev => {
-      const copy = [...prev];
-      copy[index] = { ...copy[index], buildingId: newId };
-      return copy;
-    });
-  }, []);
-
-  // -------- Unit for Inspection editing with auto-redistribution --------
-
-  /**
-   * When the user changes "Unit for Inspection" for one building:
-   * 1. Cap the value at `calculatedUnits` (total inspection units from coverage).
-   * 2. Distribute the remaining inspection units proportionally across the OTHER buildings,
-   *    ensuring every building gets at least 0 and the grand total equals `calculatedUnits`.
-   */
-  const handleInspectionUnitsChange = useCallback(
-    (editedIndex: number, rawValue: string) => {
-      const parsed = parseInt(rawValue) || 0;
-      // Clamp between 0 and the total inspection units available
-      const clamped = Math.max(0, Math.min(parsed, calculatedUnits));
-
-      setBuildings(prev => {
-        const copy = [...prev];
-        const remaining = calculatedUnits - clamped;
-        const otherIndices = copy
-          .map((_, i) => i)
-          .filter(i => i !== editedIndex);
-
-        if (otherIndices.length === 0) {
-          // Only one building
-          copy[editedIndex] = { ...copy[editedIndex], unitsForInspection: calculatedUnits };
-          return copy;
-        }
-
-        // Distribute remaining proportionally to existing ratios among others
-        const otherCurrentTotal = otherIndices.reduce(
-          (sum, i) => sum + copy[i].unitsForInspection,
-          0,
-        );
-
-        let distributed = 0;
-        otherIndices.forEach((i, idx) => {
-          if (idx === otherIndices.length - 1) {
-            // Last one gets whatever is left to avoid rounding errors
-            copy[i] = { ...copy[i], unitsForInspection: remaining - distributed };
-          } else {
-            const ratio =
-              otherCurrentTotal > 0
-                ? copy[i].unitsForInspection / otherCurrentTotal
-                : 1 / otherIndices.length;
-            const share = Math.round(remaining * ratio);
-            copy[i] = { ...copy[i], unitsForInspection: share };
-            distributed += share;
-          }
-        });
-
-        copy[editedIndex] = { ...copy[editedIndex], unitsForInspection: clamped };
-        return copy;
-      });
-    },
-    [calculatedUnits],
-  );
-
-  // Debounced wrapper so redistribution happens after a brief pause while typing
-  const handleInspectionUnitsText = useCallback(
-    (index: number, text: string) => {
-      // Immediately update the edited cell's display value
-      setBuildings(prev => {
-        const copy = [...prev];
-        copy[index] = { ...copy[index], unitsForInspection: parseInt(text) || 0 };
-        return copy;
-      });
-
-      if (editTimeoutRef.current) clearTimeout(editTimeoutRef.current);
-      editTimeoutRef.current = setTimeout(() => {
-        handleInspectionUnitsChange(index, text);
-      }, 600);
-    },
-    [handleInspectionUnitsChange],
-  );
-
-  // On blur, force redistribution immediately
-  const handleInspectionUnitsBlur = useCallback(
-    (index: number) => {
-      if (editTimeoutRef.current) {
-        clearTimeout(editTimeoutRef.current);
-        editTimeoutRef.current = null;
-      }
-      setBuildings(prev => {
-        const current = prev[index].unitsForInspection;
-        // Trigger redistribution through the change handler
-        return prev; // will be overridden below
-      });
-      // Re-run change with current value to redistribute
-      setBuildings(prev => {
-        const clamped = Math.max(0, Math.min(prev[index].unitsForInspection, calculatedUnits));
-        const remaining = calculatedUnits - clamped;
-        const copy = [...prev];
-        const otherIndices = copy.map((_, i) => i).filter(i => i !== index);
-
-        if (otherIndices.length === 0) {
-          copy[index] = { ...copy[index], unitsForInspection: calculatedUnits };
-          return copy;
-        }
-
-        const otherCurrentTotal = otherIndices.reduce(
-          (sum, i) => sum + copy[i].unitsForInspection,
-          0,
-        );
-
-        let distributed = 0;
-        otherIndices.forEach((i, idx) => {
-          if (idx === otherIndices.length - 1) {
-            copy[i] = { ...copy[i], unitsForInspection: remaining - distributed };
-          } else {
-            const ratio =
-              otherCurrentTotal > 0
-                ? copy[i].unitsForInspection / otherCurrentTotal
-                : 1 / otherIndices.length;
-            const share = Math.round(remaining * ratio);
-            copy[i] = { ...copy[i], unitsForInspection: share };
-            distributed += share;
-          }
-        });
-
-        copy[index] = { ...copy[index], unitsForInspection: clamped };
-        return copy;
-      });
-    },
-    [calculatedUnits],
-  );
 
   // -------- helpers --------
 
@@ -348,11 +207,6 @@ export default function BuildingInspectionScreen() {
   const overallProgress = totalTasks > 0
     ? Math.min(100, Math.round((tasksDone / totalTasks) * 100))
     : 0;
-
-  const handleSaveColumnHeader = () => {
-    setColumnHeaderName(tempColumnHeaderName.trim() || 'Building Unique ID');
-    setEditColumnHeaderOpen(false);
-  };
 
   const openCoverageModal = () => {
     setPendingCoverage(coverage);
@@ -1643,15 +1497,7 @@ export default function BuildingInspectionScreen() {
 
           {/* Table Header */}
           <View style={styles.tableHeader}>
-            <View style={[styles.colBuildingId, styles.headerCellRow]}>
-              <Text style={styles.tableHeaderText}>{columnHeaderName}</Text>
-              <TouchableOpacity
-                onPress={() => { setTempColumnHeaderName(columnHeaderName); setEditColumnHeaderOpen(true); }}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <Ionicons name="create-outline" size={14} color="#006795" />
-              </TouchableOpacity>
-            </View>
+            <Text style={[styles.tableHeaderText, styles.colBuildingId]}>{columnHeaderName}</Text>
             <Text style={[styles.tableHeaderText, styles.colTotalUnits]}>Total Units</Text>
             <Text style={[styles.tableHeaderText, styles.colInspectionUnits]}>Unit for Inspection</Text>
             <Text style={[styles.tableHeaderText, styles.colProgress]}>Progress</Text>
@@ -1664,37 +1510,14 @@ export default function BuildingInspectionScreen() {
               key={index}
               style={[styles.tableRow, index % 2 === 0 ? styles.tableRowEven : styles.tableRowOdd]}
             >
-              {/* Editable Building ID */}
-              <View style={styles.colBuildingId}>
-                <TextInput
-                  style={styles.editableCell}
-                  value={building.buildingId}
-                  onChangeText={(text) => handleBuildingIdChange(index, text)}
-                  placeholder="ID"
-                  placeholderTextColor="#9CA3AF"
-                  selectTextOnFocus
-                />
-              </View>
+              {/* Building ID (read-only) */}
+              <Text style={[styles.tableCell, styles.colBuildingId]}>{building.buildingId}</Text>
 
               {/* Total Units (read-only) */}
               <Text style={[styles.tableCell, styles.colTotalUnits]}>{building.totalUnits}</Text>
 
-              {/* Editable Units for Inspection */}
-              <View style={styles.colInspectionUnits}>
-                <TextInput
-                  style={[
-                    styles.editableCell,
-                    styles.editableCellNumber,
-                    building.unitsForInspection < 0 && styles.editableCellError,
-                  ]}
-                  value={String(building.unitsForInspection)}
-                  onChangeText={(text) => handleInspectionUnitsText(index, text)}
-                  onBlur={() => handleInspectionUnitsBlur(index)}
-                  keyboardType="number-pad"
-                  maxLength={5}
-                  selectTextOnFocus
-                />
-              </View>
+              {/* Units for Inspection (read-only) */}
+              <Text style={[styles.tableCell, styles.colInspectionUnits]}>{building.unitsForInspection}</Text>
 
               {/* Progress (web parity: Outside / Inside / Units breakdown) */}
               <View style={styles.colProgress}>
@@ -1764,41 +1587,6 @@ export default function BuildingInspectionScreen() {
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
-
-      {/* Edit Column Name (web parity) */}
-      <Modal
-        visible={editColumnHeaderOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setEditColumnHeaderOpen(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <View style={styles.modalHeaderRow}>
-              <Text style={styles.editModalTitle}>Edit Column Name</Text>
-              <TouchableOpacity onPress={() => setEditColumnHeaderOpen(false)}>
-                <Ionicons name="close" size={22} color="#6B7280" />
-              </TouchableOpacity>
-            </View>
-            <Text style={styles.modalLabel}>Column Name</Text>
-            <TextInput
-              style={styles.modalInput}
-              value={tempColumnHeaderName}
-              onChangeText={setTempColumnHeaderName}
-              placeholder="Building Unique ID"
-              placeholderTextColor="#9CA3AF"
-            />
-            <View style={styles.modalActions}>
-              <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setEditColumnHeaderOpen(false)}>
-                <Text style={styles.modalCancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.modalSaveBtn} onPress={handleSaveColumnHeader}>
-                <Text style={styles.modalSaveText}>Save</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
 
       {/* Coverage re-selection (web parity) */}
       <Modal
@@ -1889,7 +1677,6 @@ const styles = StyleSheet.create({
   summaryStat: { alignItems: 'center' },
   summaryStatValue: { fontSize: 22, fontWeight: '800', color: '#111827' },
   summaryStatLabel: { fontSize: 10, fontWeight: '800', color: '#9CA3AF', textTransform: 'uppercase' },
-  headerCellRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   colProgress: { flex: 1.1, paddingHorizontal: 2 },
   notStartedText: { fontSize: 10, fontWeight: '700', color: '#9CA3AF', textAlign: 'center' },
   progressLine: { fontSize: 10, fontWeight: '700', textAlign: 'center' },
@@ -2145,27 +1932,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   // Editable cells
-  editableCell: {
-    backgroundColor: '#F0F9FF',
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#D1E9FF',
-    paddingVertical: 6,
-    paddingHorizontal: 8,
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#1F2937',
-    textAlign: 'center',
-    minHeight: 36,
-  },
-  editableCellNumber: {
-    color: '#0E7490',
-    fontWeight: '700',
-  },
-  editableCellError: {
-    borderColor: '#FCA5A5',
-    backgroundColor: '#FEF2F2',
-  },
   // Export Button
   exportButton: {
     backgroundColor: '#10B981',
