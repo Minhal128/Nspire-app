@@ -6,6 +6,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api, { Inspection, API_CONFIG } from './api';
 import { StorageKeys } from '../utils/storage';
+import networkService from './networkService';
 
 export interface CreateInspectionData {
   property: string;
@@ -157,6 +158,15 @@ class InspectionService {
     inspectionTypePrefix?: string;
     includeProperty?: boolean;
   }): Promise<{ success: boolean; progress: any[] }> {
+    // Callers chain up to three of these and each one burns its timeout twice
+    // (primary + the 45s retry below), so offline this single function could
+    // block a screen for ~3 minutes. Every caller already falls back to the
+    // local drafts on `success: false`, which is the same answer it would get
+    // after waiting.
+    if (networkService.hasNoConnection()) {
+      return { success: false, progress: [] };
+    }
+
     try {
       const storedToken = await AsyncStorage.getItem(StorageKeys.USER_TOKEN);
       let token: string | null = null;
@@ -235,6 +245,12 @@ class InspectionService {
       try {
         return await fetchProgressWithTimeout(timeoutMs);
       } catch (primaryError: any) {
+        // A timeout because the connection dropped during the request has
+        // nothing to gain from a longer one — retrying just doubles the freeze.
+        if (networkService.hasNoConnection()) {
+          return { success: false, progress: [] };
+        }
+
         if (isAbortLikeError(primaryError) && timeoutMs < 45000) {
           console.warn(`Progress fetch timed out at ${timeoutMs}ms, retrying once with a longer timeout...`);
           return await fetchProgressWithTimeout(45000);

@@ -114,6 +114,20 @@ class NetworkService {
   }
 
   /**
+   * True only when the OS reports no usable network interface at all.
+   *
+   * Deliberately stricter than `!isOnline()`: NetInfo flips isInternetReachable
+   * to false on captive portals and slow links, and skipping requests on that
+   * signal would break a connection that actually works. This is the
+   * unambiguous "there is no network" case, so a request skipped here could not
+   * have succeeded anyway. Before initialize() runs it reports false (i.e.
+   * "assume we have a connection"), so nothing is skipped on a guess.
+   */
+  hasNoConnection(): boolean {
+    return this.currentState.isConnected === false;
+  }
+
+  /**
    * Add listener for connection changes
    */
   addListener(listener: NetworkListener): () => void {

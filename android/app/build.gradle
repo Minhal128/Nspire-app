@@ -88,12 +88,15 @@ android {
     compileSdk rootProject.ext.compileSdkVersion
 
     namespace 'com.minhal.inspire'
+    // Computed into a def first: Groovy parses `versionCode (a ?: b).toString()`
+    // as a call to versionCode() and then runs .toString() on its void return.
+    def appVersionCodeValue = Integer.parseInt((findProperty('appVersionCode') ?: '46').toString())
     defaultConfig {
         applicationId 'com.minhal.inspire'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 36
-        versionName "1.0.1"
+        versionCode appVersionCodeValue
+        versionName "2.9.8"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
     }
@@ -104,15 +107,21 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        // Upload key for Play. Credentials come from ~/.gradle/gradle.properties
+        // and release.jks is gitignored, so neither is ever committed.
+        release {
+            storeFile file('release.jks')
+            storePassword findProperty('RELEASE_KEYSTORE_PASSWORD')
+            keyAlias findProperty('RELEASE_KEY_ALIAS')
+            keyPassword findProperty('RELEASE_KEY_PASSWORD')
+        }
     }
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
         }
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            signingConfig signingConfigs.release
             def enableShrinkResources = findProperty('android.enableShrinkResourcesInReleaseBuilds') ?: 'false'
             shrinkResources enableShrinkResources.toBoolean()
             minifyEnabled enableMinifyInReleaseBuilds

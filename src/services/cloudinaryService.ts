@@ -81,7 +81,16 @@ class CloudinaryService {
 
       // For web blob URLs or HTTP/HTTPS
       if (uri.startsWith('blob:') || uri.startsWith('http://') || uri.startsWith('https://')) {
-        const response = await fetch(uri);
+        // Bounded like the upload below: an unbounded fetch on a dead
+        // connection never settles, and this runs inside the save path.
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000);
+        let response: Response;
+        try {
+          response = await fetch(uri, { signal: controller.signal });
+        } finally {
+          clearTimeout(timeoutId);
+        }
         const blob = await response.blob();
         return new Promise((resolve, reject) => {
           const reader = new FileReader();

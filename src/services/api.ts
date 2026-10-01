@@ -5,6 +5,7 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StorageKeys } from '../utils/storage';
+import networkService from './networkService';
 
 // API Base URL - use deployed DigitalOcean backend only
 const API_BASE_URL = 'https://sea-lion-app-2u676.ondigitalocean.app/api';
@@ -123,11 +124,49 @@ export interface PaginatedResponse<T> {
   };
 }
 
+/**
+ * Thrown instead of waiting out the timeout when the device has no connection.
+ *
+ * Callers must be able to tell "the server said no" from "we never reached the
+ * server" — see isUnreachableError below.
+ */
+export class OfflineError extends Error {
+  constructor() {
+    super('No internet connection. Your work is saved on this device and syncs when you reconnect.');
+    this.name = 'OfflineError';
+  }
+}
+
+/**
+ * True when a request failed without the server ever answering.
+ *
+ * A caller that ends a session or discards local work on failure must only do
+ * so on a real answer from the server; this separates the two.
+ */
+export const isUnreachableError = (error: any): boolean => {
+  const name = String(error?.name || '');
+  const message = String(error?.message || '').toLowerCase();
+  return (
+    name === 'OfflineError' ||
+    name === 'AbortError' ||
+    message.includes('network request failed') ||
+    message.includes('request timeout')
+  );
+};
+
 // Generic API request function
 export const apiRequest = async <T = any>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> => {
+  // With no network interface the request can only burn its full 30s timeout,
+  // and screens that gate their whole UI on it render a spinner with nothing
+  // touchable for that entire window. Fail now so they can fall back to the
+  // local copy immediately.
+  if (networkService.hasNoConnection()) {
+    throw new OfflineError();
+  }
+
   // Get token from storage - it's stored with JSON.stringify, so we need to parse it
   const storedToken = await AsyncStorage.getItem(StorageKeys.USER_TOKEN);
   let token = null;

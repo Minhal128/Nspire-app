@@ -3,7 +3,9 @@
  * Handles user authentication, registration, and session management
  */
 
-import api, { AuthResponse, User } from "./api";
+import api, { isUnreachableError } from "./api";
+// Type-only, so the self-checks can load this module under --experimental-strip-types.
+import type { AuthResponse, User } from "./api";
 import { storeData, getData, removeData, StorageKeys } from "../utils/storage";
 
 export interface LoginCredentials {
@@ -153,6 +155,16 @@ class AuthService {
   /**
    * Verify stored token
    */
+  /**
+   * Returns a verdict only when the server actually answered; rethrows when it
+   * could not be reached.
+   *
+   * checkSession() logs the user out on `false`, so an unreachable server must
+   * never look like a rejected token: logging an inspector out mid-inspection
+   * because they walked into a basement would also cut them off from the work
+   * still queued on the device. A real rejection (401, success:false) still
+   * returns false and still ends the session.
+   */
   async verifyToken(): Promise<boolean> {
     try {
       const response = await api.post<{ success: boolean }>(
@@ -160,6 +172,7 @@ class AuthService {
       );
       return response.success;
     } catch (error) {
+      if (isUnreachableError(error)) throw error;
       return false;
     }
   }

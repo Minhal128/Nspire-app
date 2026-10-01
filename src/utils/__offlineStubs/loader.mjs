@@ -27,6 +27,9 @@ const SYNTHETIC = {
     const st = globalThis.__offlineStub;
     const networkService = {
       isOnline: () => st.online,
+      // Defaults to "assume we have a connection", like the real one before
+      // initialize() runs, so a check that never sets it takes the online path.
+      hasNoConnection: () => st.noConnection === true,
       initialize: async () => {},
       addListener: (fn) => { st.listeners.push(fn); return () => {}; },
     };
@@ -65,6 +68,11 @@ export async function resolve(specifier, context, next) {
 
   if (specifier === '@react-native-async-storage/async-storage') {
     return { url: `${STUB}asyncStorage`, format: 'module', shortCircuit: true };
+  }
+  // networkService wraps NetInfo, which does not exist outside a device, so it
+  // is stubbed for every importer rather than only the queue.
+  if (specifier === './networkService') {
+    return { url: `${STUB}networkService`, format: 'module', shortCircuit: true };
   }
   if (fromQueue) {
     const name = specifier.replace('./', '');

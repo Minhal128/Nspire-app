@@ -402,7 +402,9 @@ class GeminiService {
       // For remote URLs (Cloudinary) or Web blob URLs, fetch and convert
       if (imageUri.startsWith('http://') || imageUri.startsWith('https://') || imageUri.startsWith('blob:')) {
         console.log('Fetching remote or blob image from:', imageUri);
-        const response = await fetch(imageUri);
+        // Reuses geminiFetch for the same reason it exists: an unbounded fetch
+        // on a dead connection never settles and hangs every caller awaiting it.
+        const response = await geminiFetch(imageUri, {});
         if (!response.ok) {
           throw new Error(`Failed to fetch image: ${response.status}`);
         }
