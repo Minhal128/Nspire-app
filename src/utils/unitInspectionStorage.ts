@@ -126,6 +126,35 @@ export async function markUnitCompleted(
 }
 
 /**
+ * Mark several units completed in one read/write. Calling markUnitCompleted
+ * once per unit in parallel is a read-modify-write race on a single key: every
+ * call reads the same stale state, so all but one unit's completion is lost.
+ */
+export async function markUnitsCompleted(
+  propertyId: string,
+  buildingId: string,
+  unitNames: string[]
+): Promise<void> {
+  try {
+    const state = await getPropertyInspectionState(propertyId, buildingId);
+    if (!state) return;
+
+    const names = new Set(unitNames);
+    const now = new Date().toISOString();
+    const units = state.units.map(u =>
+      names.has(u.unitName) && !u.completed ? { ...u, completed: true, completedAt: now } : u
+    );
+
+    await AsyncStorage.setItem(
+      getStorageKey(propertyId, buildingId),
+      JSON.stringify({ ...state, units, lastUpdated: now })
+    );
+  } catch (error) {
+    console.error('Error marking units completed:', error);
+  }
+}
+
+/**
  * Get list of completed unit names
  */
 export async function getCompletedUnits(

@@ -218,4 +218,50 @@ const ok = () => ({ success: true });
   offlineQueue.stop();
 }
 
+/* ---- screens enqueue one job per photo without awaiting: none may be lost ---- */
+
+{
+  reset(false);
+  await Promise.all(
+    Array.from({ length: 25 }, (_, i) =>
+      offlineQueue.enqueue('uploadImage', `uploadImage:file:///img-${i}.jpg`, { imageUri: `file:///img-${i}.jpg` }),
+    ),
+  );
+  assert.strictEqual(queued().length, 25, 'concurrent enqueues must all survive');
+}
+
+/* ---- work enqueued while a flush is running is not overwritten by it ---- */
+
+{
+  reset(true);
+  await offlineQueue.enqueue('saveProgress', 'p1:B1', { n: 1 });
+  stub.responders.saveProgress = async () => {
+    // the inspector keeps working while the first save is in flight
+    await offlineQueue.enqueue('saveProgress', 'p1:B2', { n: 2 });
+    return { success: true };
+  };
+  await offlineQueue.flush();
+  assert.deepStrictEqual(
+    queued().map((j: any) => j.dedupeKey),
+    ['p1:B2'],
+    'the job queued mid-flush stays queued after the flush writes',
+  );
+}
+
+/* ---- many photos replayed: the drafts are scanned once, not once per photo ---- */
+
+{
+  reset(true);
+  let scans = 0;
+  stub.storage = new Proxy({}, { ownKeys(t) { scans++; return Reflect.ownKeys(t); } });
+  for (let i = 0; i < 12; i++) {
+    await offlineQueue.enqueue('uploadImage', `uploadImage:file:///img-${i}.jpg`, { imageUri: `file:///img-${i}.jpg` });
+  }
+  stub.responders.uploadImage = (p: any) => ({ success: true, url: `https://cdn/${p.uri.split('/').pop()}` });
+  scans = 0;
+  const res = await offlineQueue.flush();
+  assert.strictEqual(res.sent, 12, 'every photo is uploaded');
+  assert.ok(scans <= 2, `storage keys scanned ${scans}x for 12 photos; must not grow with photo count`);
+}
+
 console.log('offlineQueue.integration.check.ts OK — offline work is held, replayed in order, and local ids/URIs are swapped everywhere');

@@ -41,6 +41,7 @@ class OfflineQueue {
   private started = false;
   private listeners = new Set<QueueListener>();
   private unsubscribeNetwork: (() => void) | null = null;
+  private chain: Promise<unknown> = Promise.resolve();
 
   /* ------------------------------------------------------------------ */
   /* storage                                                             */
@@ -67,6 +68,22 @@ class OfflineQueue {
     }
   }
 
+  /**
+   * Read-modify-write the queue one caller at a time. Screens fire enqueue()
+   * without awaiting it (one per photo), and flush() writes while screens keep
+   * enqueueing; unserialised, each write clobbers the others' jobs and the work
+   * they carried is never sent.
+   */
+  private mutate(fn: (jobs: QueuedJob[]) => QueuedJob[]): Promise<QueuedJob[]> {
+    const run = this.chain.then(async () => {
+      const next = fn(await this.read());
+      await this.write(next);
+      return next;
+    });
+    this.chain = run.catch(() => undefined);
+    return run;
+  }
+
   /* ------------------------------------------------------------------ */
   /* public API                                                          */
   /* ------------------------------------------------------------------ */
@@ -79,8 +96,7 @@ class OfflineQueue {
    * this, one long offline session would queue a job per keystroke-save.
    */
   async enqueue(kind: QueuedJobKind, dedupeKey: string, payload: any): Promise<void> {
-    const jobs = upsertJob(await this.read(), makeJob(kind, dedupeKey, payload));
-    await this.write(jobs);
+    const jobs = await this.mutate((current) => upsertJob(current, makeJob(kind, dedupeKey, payload)));
     console.log(`offlineQueue: queued ${kind} (${jobs.length} pending)`);
   }
 
@@ -168,6 +184,7 @@ class OfflineQueue {
 
     this.flushing = true;
     let sent = 0;
+    const allMapping: Record<string, string> = {};
 
     try {
       // Iterate by id, not over a snapshot: a createProperty or uploadImage
@@ -182,21 +199,22 @@ class OfflineQueue {
 
         try {
           const mapping = await this.run(job);
-          jobs = removeJob(jobs, job.id);
+          const remapped = Object.keys(mapping).length > 0;
           // Everything still queued must point at the real id / URL.
-          if (Object.keys(mapping).length > 0) {
-            jobs = remapJobs(jobs, mapping);
-            await this.applyMapping(mapping);
-          }
+          jobs = await this.mutate((current) =>
+            remapped ? remapJobs(removeJob(current, job.id), mapping) : removeJob(current, job.id),
+          );
+          Object.assign(allMapping, mapping);
           sent++;
-          await this.write(jobs);
         } catch (error: any) {
-          jobs = markFailure(jobs, job.id, String(error?.message || error));
-          await this.write(jobs);
+          jobs = await this.mutate((current) => markFailure(current, job.id, String(error?.message || error)));
           // Keep going: one bad job must not hold up the others.
         }
       }
     } finally {
+      // Once per flush: it scans every draft, so doing it per photo froze the
+      // app for as long as the offline session had been long.
+      if (Object.keys(allMapping).length > 0) await this.applyMapping(allMapping);
       this.flushing = false;
     }
 

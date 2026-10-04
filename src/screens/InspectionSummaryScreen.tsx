@@ -243,42 +243,16 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
 
     try {
 
-      // Convert local image URIs to base64 so images survive navigation,
-      // and stamp _area / _unit on each deficiency so they survive future merges
-      const deficienciesWithImages = await Promise.all(
-        mergedDeficiencies.map(async (defItem: any) => {
-          // Keep existing _area if already stamped (from a previous session)
-          const area = defItem._area || nextArea;
-          const unit = defItem._unit !== undefined ? defItem._unit : nextUnit;
-
-          // If already base64 or a remote URL, keep as-is
-          if (
-            !defItem.imageUri ||
-            defItem.imageUri.startsWith('data:') ||
-            defItem.imageUri.startsWith('http')
-          ) {
-            return { ...defItem, _area: area, _unit: unit, imageUri: defItem.imageUri || defItem.imageUrl || null };
-          }
-          // Try to convert local file to base64
-          if (Platform.OS !== 'web') {
-            try {
-              const fileInfo = await FileSystem.getInfoAsync(defItem.imageUri);
-              if (fileInfo.exists) {
-                const base64 = await FileSystem.readAsStringAsync(defItem.imageUri, {
-                  encoding: FileSystem.EncodingType.Base64,
-                });
-                if (base64 && base64.length > 100) {
-                  return { ...defItem, _area: area, _unit: unit, imageUri: `data:image/jpeg;base64,${base64}` };
-                }
-              }
-            } catch (imgErr) {
-              console.warn('Could not encode image to base64:', imgErr);
-            }
-          }
-          // Fall back to Cloudinary URL if local conversion fails
-          return { ...defItem, _area: area, _unit: unit, imageUri: defItem.imageUri || defItem.imageUrl || null };
-        })
-      );
+      // Stamp _area / _unit on each deficiency so they survive future merges.
+      // Photos stay as file URIs: inlining them as base64 read every photo in
+      // full, all at once, and wrote them into one AsyncStorage row that grew
+      // with each unit until the app froze and was killed.
+      const deficienciesWithImages = mergedDeficiencies.map((defItem: any) => ({
+        ...defItem,
+        _area: defItem._area || nextArea,
+        _unit: defItem._unit !== undefined ? defItem._unit : nextUnit,
+        imageUri: defItem.imageUri || defItem.imageUrl || null,
+      }));
       await storeData(saveKey, {
         deficiencies: deficienciesWithImages,
         savedAt: new Date().toISOString(),

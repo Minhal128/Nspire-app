@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -19,7 +19,7 @@ import { Colors } from '../constants';
 import { Ionicons } from '@expo/vector-icons';
 import {
   initializePropertyInspectionState,
-  markUnitCompleted,
+  markUnitsCompleted,
   getCompletedUnits,
   resetPropertyInspectionState,
 } from '../utils/unitInspectionStorage';
@@ -190,7 +190,15 @@ const PropertyInfoScreen: React.FC<Props> = ({ navigation, route }) => {
   }, [unitNames, buildingId]);
 
   // Load completed units from storage on mount and when returning from inspection
+  // Mount and the focus event both call this, and each pulls every progress
+  // record for the property. Overlapping calls coalesce into one rerun.
+  const loadState = useRef({ running: false, rerun: false });
   const loadCompletedUnits = useCallback(async () => {
+    if (loadState.current.running) {
+      loadState.current.rerun = true;
+      return;
+    }
+    loadState.current.running = true;
     try {
       await initializePropertyInspectionState(propertyId, buildingId, unitNames);
       const completed = await getCompletedUnits(propertyId, buildingId);
@@ -231,11 +239,11 @@ const PropertyInfoScreen: React.FC<Props> = ({ navigation, route }) => {
 
       // Persist any newly passed completed units
       if (passedCompletedUnits && passedCompletedUnits.length > 0) {
-        for (const unit of passedCompletedUnits) {
-          if (!completed.includes(unit)) {
-            await markUnitCompleted(propertyId, buildingId, unit);
-          }
-        }
+        await markUnitsCompleted(
+          propertyId,
+          buildingId,
+          passedCompletedUnits.filter((unit) => !completed.includes(unit))
+        );
       }
 
       // Sync progress from API to global memory so it reflects checkmarks properly
@@ -269,12 +277,10 @@ const PropertyInfoScreen: React.FC<Props> = ({ navigation, route }) => {
 
           setCompletedUnits(mergedCompletedUnits);
 
-          await Promise.all(
-            mergedCompletedUnits.map(async (unitName) => {
-              if (!completed.includes(unitName)) {
-                await markUnitCompleted(propertyId, buildingId, unitName);
-              }
-            })
+          await markUnitsCompleted(
+            propertyId,
+            buildingId,
+            mergedCompletedUnits.filter((unitName) => !completed.includes(unitName))
           );
 
           setRefreshTick(tick => tick + 1); // trigger re-render of checkmarks
@@ -285,6 +291,12 @@ const PropertyInfoScreen: React.FC<Props> = ({ navigation, route }) => {
 
     } catch (error) {
       console.error('Error loading completed units:', error);
+    } finally {
+      loadState.current.running = false;
+      if (loadState.current.rerun) {
+        loadState.current.rerun = false;
+        loadCompletedUnits();
+      }
     }
   }, [propertyId, buildingId, unitNames, passedCompletedUnits, resolveCompletedUnitsFromProgress, resolveCompletedUnitsFromDeficiencies, property]);
 
