@@ -22,6 +22,7 @@ import {
 } from './web/enhancedNspirePDFService';
 import { API_CONFIG } from './api';
 import { getReportPreviewHTML } from './reportPreview';
+import { labelUnit } from '../utils/unitNA';
 import {
   NSPIREInspectionReport,
   DeficiencyEntry,
@@ -1370,13 +1371,14 @@ function generateInProgressBuildingSummary(report: any): string {
     const inCount = Number(entry?.in || 0);
     const unitCount = Number(entry?.un || 0);
     const inspectedUnits = Array.isArray(entry?.inspectedUnits) ? entry.inspectedUnits : [];
+    const naUnits: string[] = Array.isArray(entry?.naUnits) ? entry.naUnits : [];
 
     return `
       <tr>
         <td class="la">${esc(buildingName)}</td>
         <td>${Number(entry?.totalUnits || 0)}</td>
         <td>${Number(entry?.unitsForInspection || 0)}</td>
-        <td class="la">${inspectedUnits.length ? esc(inspectedUnits.join(', ')) : '-'}</td>
+        <td class="la">${inspectedUnits.length ? esc(inspectedUnits.map((u: string) => labelUnit(u, naUnits)).join(', ')) : '-'}</td>
         <td class="la">
           Outside (${outCount})<br/>
           Inside (${inCount})<br/>

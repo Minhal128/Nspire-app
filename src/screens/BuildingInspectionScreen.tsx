@@ -24,6 +24,7 @@ import { globalInspectionProgress } from '../utils/globalState';
 import { generateNSPIREReport } from '../utils/nspireReportUtils';
 import { resolveCoverageUnits } from '../utils/coverageUnits';
 import { buildInProgressReportHtml } from '../utils/reportPreviewUtils';
+import { markUnitNA } from '../utils/unitNA';
 import { enhancedNspirePDFService } from '../services/enhancedNspirePDFService';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -78,6 +79,7 @@ interface BuildingProgressEntry {
   totalUnits: number;
   unitsForInspection: number;
   inspectedUnits: string[];
+  naUnits: string[];
   modules: {
     Outside: { submodules: string[] };
     Inside: { submodules: string[] };
@@ -689,6 +691,7 @@ export default function BuildingInspectionScreen() {
             totalUnits: matchingRow?.totalUnits || 0,
             unitsForInspection: matchingRow?.unitsForInspection || 0,
             inspectedUnits: [],
+            naUnits: [],
             modules: {
               Outside: { submodules: [] },
               Inside: { submodules: [] },
@@ -826,7 +829,10 @@ export default function BuildingInspectionScreen() {
             } else if (inspectionTypeLower.startsWith('unit')) {
               answeredKeys.forEach((k) => pushUnique(progressEntry.modules.Units.submodules, unitLookup[k] || k));
 
-              if (parsedUnitFromInspectionType) pushUnique(progressEntry.inspectedUnits, parsedUnitFromInspectionType);
+              if (parsedUnitFromInspectionType) {
+                pushUnique(progressEntry.inspectedUnits, parsedUnitFromInspectionType);
+                markUnitNA(progressEntry, parsedUnitFromInspectionType, responses);
+              }
             }
 
             progressEntry.out = progressEntry.modules.Outside.submodules.length;
@@ -1098,6 +1104,7 @@ export default function BuildingInspectionScreen() {
             const parsedUnit = tailParts.length > 2 ? tailParts.slice(2).join('_').trim() : '';
             if (parsedUnit) {
               pushUnique(progressEntry.inspectedUnits, parsedUnit);
+              markUnitNA(progressEntry, parsedUnit, responsesObj);
             }
           }
 
@@ -1166,6 +1173,7 @@ export default function BuildingInspectionScreen() {
             const parsedUnit = tailParts.length > 2 ? tailParts.slice(2).join('_').trim() : '';
             if (parsedUnit) {
               pushUnique(progressEntry.inspectedUnits, parsedUnit);
+              markUnitNA(progressEntry, parsedUnit, storedResponses);
             }
           }
 
