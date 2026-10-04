@@ -22,7 +22,7 @@ import {
 } from './web/enhancedNspirePDFService';
 import { API_CONFIG } from './api';
 import { getReportPreviewHTML } from './reportPreview';
-import { labelUnit } from '../utils/unitNA';
+import { labelUnit, isNAInAll } from '../utils/unitNA';
 import {
   NSPIREInspectionReport,
   DeficiencyEntry,
@@ -1268,7 +1268,8 @@ function generateInProgressDeficiencyTable(
         displayGroupKey = `${groupOrderDef.key} - ${esc(building)}${propertySuffix}`;
       } else if (groupOrderDef.key === 'Units') {
         const fallbackUnitLabel = combinedUnits.length > 0
-          ? formatUnitSectionHeading(combinedUnits[0])
+          ? formatUnitSectionHeading(combinedUnits[0]) +
+            (isNAInAll(matchingProgressEntries, combinedUnits[0], sanitizeUnitLabel) ? ' (N/A)' : '')
           : 'Unit 001';
         displayGroupKey = `${fallbackUnitLabel} - ${esc(building)}${propertySuffix}`;
       } else if (groupOrderDef.key === 'GeneralComment') {

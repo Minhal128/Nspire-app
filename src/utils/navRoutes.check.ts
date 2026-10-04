@@ -13,8 +13,9 @@
 import assert from 'node:assert';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const root = new URL('../..', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1');
+const root = fileURLToPath(new URL('../..', import.meta.url));
 const app = readFileSync(join(root, 'App.tsx'), 'utf8');
 
 /** Slice out the object/`undefined` after `Route:` and return its required keys. */

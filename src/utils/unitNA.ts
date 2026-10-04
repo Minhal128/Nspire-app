@@ -23,3 +23,17 @@ export const markUnitNA = (
 /** "Unit 003" -> "Unit 003 (N/A)" for units marked N/A. */
 export const labelUnit = (unit: string, naUnits: string[] | undefined): string =>
   (naUnits || []).includes(unit) ? `${unit} (N/A)` : unit;
+
+/**
+ * One building can have several progress entries (backend and local). A unit
+ * is N/A only if every entry that lists it also marks it N/A, so the entry with
+ * real answers wins.
+ */
+export const isNAInAll = (
+  entries: { inspectedUnits?: unknown[]; naUnits?: unknown[] }[],
+  unit: string,
+  norm: (u: unknown) => string = String,
+): boolean => {
+  const listing = entries.filter((e) => (e?.inspectedUnits || []).some((u) => norm(u) === unit));
+  return listing.length > 0 && listing.every((e) => (e?.naUnits || []).some((u) => norm(u) === unit));
+};

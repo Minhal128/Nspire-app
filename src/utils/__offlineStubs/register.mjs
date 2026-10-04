@@ -1,5 +1,4 @@
 import { register } from 'node:module';
-import { pathToFileURL } from 'node:url';
 
 // The in-memory world the stubs read; the check drives it.
 globalThis.__offlineStub = {
@@ -16,4 +15,4 @@ globalThis.__offlineStub = {
   },
 };
 
-register('./loader.mjs', pathToFileURL(new URL('.', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')));
+register('./loader.mjs', import.meta.url);
