@@ -23,6 +23,16 @@ const SYNTHETIC = {
       getAllKeys: async () => Object.keys(s()),
     };
   `,
+  // For networkService.check.ts, which runs the real networkService.
+  netinfo: `
+    const st = globalThis.__offlineStub;
+    export default {
+      fetch: async () => st.netState,
+      addEventListener: (fn) => { st.netInfoListener = fn; return () => {}; },
+    };
+    // Type-only names networkService imports without 'type'.
+    export const NetInfoState = undefined, NetInfoSubscription = undefined;
+  `,
   networkService: `
     const st = globalThis.__offlineStub;
     const networkService = {
@@ -66,6 +76,9 @@ export async function resolve(specifier, context, next) {
   const parent = context.parentURL || '';
   const fromQueue = parent.includes('/services/offlineQueue.ts');
 
+  if (specifier === '@react-native-community/netinfo') {
+    return { url: `${STUB}netinfo`, format: 'module', shortCircuit: true };
+  }
   if (specifier === '@react-native-async-storage/async-storage') {
     return { url: `${STUB}asyncStorage`, format: 'module', shortCircuit: true };
   }

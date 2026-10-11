@@ -42,16 +42,19 @@ class NetworkService {
    * Update internal state and notify listeners
    */
   private updateState(state: NetInfoState): void {
-    const wasConnected = this.currentState.isConnected;
-    
+    // Compare like with like. Android reports {connected, not yet reachable}
+    // before {connected, reachable}; comparing the raw isConnected from the
+    // first event with "online" from the second saw no change, so the
+    // reconnect was never announced and offline work never synced.
+    const wasConnected = this.isOnline();
+
     this.currentState = {
       isConnected: state.isConnected ?? false,
       isInternetReachable: state.isInternetReachable,
       connectionType: state.type,
     };
 
-    const isNowConnected = this.currentState.isConnected && 
-      (this.currentState.isInternetReachable === true || this.currentState.isInternetReachable === null);
+    const isNowConnected = this.isOnline();
 
     // Notify listeners if connection status changed
     if (wasConnected !== isNowConnected) {
