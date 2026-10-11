@@ -325,6 +325,9 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
           buildingId,
           location,
           currentUnit: currentUnit || null,
+          // The server only marks Outside / Inside done (green) when told the
+          // whole checklist is answered; without this they stayed at 0%.
+          isComplete: inspectionItems.every((item) => !!responses[item.id]),
         },
       };
 
