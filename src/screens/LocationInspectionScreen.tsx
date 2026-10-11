@@ -28,6 +28,8 @@ import { OUTSIDE_ITEMS, INSIDE_ITEMS, UNIT_ITEMS, UNIT_LOCATIONS, InspectionResp
 import api from '../services/api';
 import { canonicalizeInspectionType } from '../utils/inspectionProgressUtils';
 import { markUnitCompleted } from '../utils/unitInspectionStorage';
+import offlineQueue from '../services/offlineQueue';
+import { serverAnswersWin } from '../utils/offlineQueueCore';
 import { savedFindingScope, draftStorageKeys, findingsForItem } from '../utils/savedDeficiencies';
 
 type LocationInspectionScreenNavigationProp = NativeStackNavigationProp<
@@ -59,6 +61,8 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
   const safeLocationName = location === 'Unit' ? `Unit_${currentUnit || selectedUnits?.[0] || 'Unknown'}` : location;
   const canonicalInspectionType = canonicalizeInspectionType(safeLocationName, { currentUnit });
   const saveKey = `inspection_responses_${property?._id || property?.id || property?.propertyId || 'unknown'}_${buildingId}_${canonicalInspectionType}`;
+  // One queued save per checklist; a newer offline save replaces the older one.
+  const queueKey = `saveProgress:${property?._id || property?.id || property?.propertyId || 'unknown'}:${buildingId}:${canonicalInspectionType}`;
 
   const persistResponsesToDevice = async (nextResponses: { [key: string]: ResponseType }) => {
     try {
@@ -81,7 +85,10 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
         const result = response as any;
 
         // Handle payload shape mismatch (e.g. response.data.inspection_items vs saved key-value pairs)
-        if (result?.items) {
+        // The server's copy only replaces the device's if it has answers and
+        // nothing saved offline is still waiting to reach it — otherwise its
+        // empty `items` erased a unit inspected offline (0/32 on reconnect).
+        if (serverAnswersWin(await offlineQueue.list(), queueKey, result?.items)) {
           setResponses(result.items);
           globalInspectionProgress[saveKey] = result.items;
           await persistResponsesToDevice(result.items);
@@ -102,23 +109,19 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
             await persistResponsesToDevice(result.data.inspection_items);
           }
         } else {
-          // Fallback to global state if API fails or during dev
-          const saved = globalInspectionProgress[saveKey];
+          // Device copy first: this screen writes it on every tap, while global
+          // state can hold an older server copy other screens loaded.
+          let parsed: any = null;
+          try {
+            const locallySaved = await AsyncStorage.getItem(saveKey);
+            parsed = locallySaved ? JSON.parse(locallySaved) : null;
+          } catch (parseError) {
+            console.warn('Failed to parse locally saved progress:', parseError);
+          }
+          const saved = parsed && typeof parsed === 'object' ? parsed : globalInspectionProgress[saveKey];
           if (saved) {
             setResponses(saved);
-          } else {
-            const locallySaved = await AsyncStorage.getItem(saveKey);
-            if (locallySaved) {
-              try {
-                const parsed = JSON.parse(locallySaved);
-                if (parsed && typeof parsed === 'object') {
-                  setResponses(parsed);
-                  globalInspectionProgress[saveKey] = parsed;
-                }
-              } catch (parseError) {
-                console.warn('Failed to parse locally saved progress:', parseError);
-              }
-            }
+            globalInspectionProgress[saveKey] = saved;
           }
         }
       } catch (error) {
@@ -288,6 +291,7 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const handleSaveProgress = async () => {
     let remoteSaved = false;
+    let progressPayload: any = null;
 
     try {
       const propertyId = property?._id || property?.id || property?.propertyId || 'unknown';
@@ -310,8 +314,7 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
         });
       }
 
-      // Save to remote backend
-      await api.put('/inspections/progress', {
+      progressPayload = {
         property_id: propertyId,
         unit_id: buildingId,
         building_id: buildingId,
@@ -323,13 +326,20 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
           location,
           currentUnit: currentUnit || null,
         },
-      });
+      };
+
+      // Save to remote backend
+      await api.put('/inspections/progress', progressPayload);
 
       remoteSaved = true;
 
     } catch (e) {
       console.error('Error saving responses to backend:', e);
-      // Keep local save; remote sync can recover later.
+      // Keep local save, and queue the write so the server gets it on reconnect —
+      // the server is what marks the unit / Outside / Inside complete.
+      if (progressPayload) {
+        await offlineQueue.enqueue('saveProgress', queueKey, progressPayload);
+      }
     }
 
     const successTitle = remoteSaved ? 'Progress Saved' : 'Saved Locally';

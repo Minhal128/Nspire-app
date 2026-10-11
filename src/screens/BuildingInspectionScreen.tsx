@@ -35,6 +35,7 @@ import propertyService from '../services/propertyService';
 import { COVERAGE_OPTIONS } from '../constants/inspectionCoverage';
 import authService from '../services/authService';
 import { inspectionService } from '../services/inspectionService';
+import offlineQueue from '../services/offlineQueue';
 import { useReportPreview } from '../contexts/ReportPreviewContext';
 
 type BuildingInspectionRouteProp = RouteProp<RootStackParamList, 'BuildingInspection'>;
@@ -201,6 +202,11 @@ export default function BuildingInspectionScreen() {
   useFocusEffect(
     useCallback(() => {
       refreshCompletedUnits();
+      // Offline saves only mark tasks done once they reach the server, which can
+      // be after this screen loaded — re-read when the queue has drained.
+      return offlineQueue.addListener((pending) => {
+        if (pending === 0) refreshCompletedUnits();
+      });
     }, [refreshCompletedUnits])
   );
 

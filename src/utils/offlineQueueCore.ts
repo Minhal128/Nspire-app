@@ -59,6 +59,23 @@ export const makeJob = (
   attempts: 0,
 });
 
+/**
+ * Should the answers the server holds replace the ones on the device?
+ *
+ * Only when the server has some and this device has no unsent save for the same
+ * checklist. Otherwise the server copy is older than the device's (or was never
+ * written), and taking it erases an inspection done offline.
+ */
+export const serverAnswersWin = (
+  jobs: QueuedJob[],
+  dedupeKey: string,
+  serverItems: unknown,
+): boolean =>
+  !jobs.some((j) => j.dedupeKey === dedupeKey) &&
+  !!serverItems &&
+  typeof serverItems === 'object' &&
+  Object.keys(serverItems as object).length > 0;
+
 /** Prefix for ids handed out locally while offline, before the server assigns one. */
 export const LOCAL_ID_PREFIX = 'local-';
 

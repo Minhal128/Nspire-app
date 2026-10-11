@@ -21,6 +21,7 @@ import {
   remapJobs,
   remapValue,
   removeJob,
+  serverAnswersWin,
   upsertJob,
 } from './offlineQueueCore.ts';
 
@@ -187,6 +188,18 @@ const job = (key: string, payload: any, at: number) =>
     'a mapping that matches nothing changes nothing'
   );
   assert.deepStrictEqual(remapJobs([], { a: 'b' }), [], 'an empty queue stays empty');
+}
+
+{
+  // Unit 001 answered offline, then reopened online before the queue drained:
+  // the server's empty / older copy must not wipe the device's answers.
+  const key = 'saveProgress:p1:B2:Unit_001';
+  const queuedSave = [makeJob('saveProgress', key, { responses: { a: 'No OD' } }, 1, 'a')];
+  assert.strictEqual(serverAnswersWin([], key, {}), false, 'an empty server copy never wins');
+  assert.strictEqual(serverAnswersWin([], key, undefined), false, 'a missing server copy never wins');
+  assert.strictEqual(serverAnswersWin(queuedSave, key, { a: 'OD' }), false, 'an unsent device save beats the server');
+  assert.strictEqual(serverAnswersWin(queuedSave, 'saveProgress:p1:B2:Unit_002', { a: 'OD' }), true, 'another unit\'s queued save is irrelevant');
+  assert.strictEqual(serverAnswersWin([], key, { a: 'OD' }), true, 'with nothing queued the server copy wins');
 }
 
 console.log('offlineQueueCore.check.ts OK — jobs survive failure, one job per building, send order held, local ids remapped');
