@@ -62,15 +62,18 @@ export const makeJob = (
 /**
  * Should the answers the server holds replace the ones on the device?
  *
- * Only when the server has some and this device has no unsent save for the same
- * checklist. Otherwise the server copy is older than the device's (or was never
- * written), and taking it erases an inspection done offline.
+ * Only when the server has some and this device holds nothing the server has
+ * not been sent: no queued save for the same checklist, and no answers tapped
+ * since the last Save Progress. Otherwise the server copy is older than the
+ * device's (or was never written), and taking it erases the inspector's work.
  */
 export const serverAnswersWin = (
   jobs: QueuedJob[],
   dedupeKey: string,
   serverItems: unknown,
+  unsentTaps = false,
 ): boolean =>
+  !unsentTaps &&
   !jobs.some((j) => j.dedupeKey === dedupeKey) &&
   !!serverItems &&
   typeof serverItems === 'object' &&

@@ -11,6 +11,7 @@ import {
   savedFindingScope,
   draftStorageKeys,
   findingsForItem,
+  findingIdentity,
 } from './savedDeficiencies.ts';
 
 const property = { _id: 'P1', name: 'ofjog' };
@@ -73,6 +74,17 @@ assert.deepStrictEqual(findingsForItem([legacy], outside, 'Chimney'), [chimney],
 assert.strictEqual(
   findingsForItem([snapshot, legacy], outside, 'Chimney').length, 1,
   'the same deficiency in two keys is listed once',
+);
+
+// --- a second deficiency of the same type on the same item is its own record -
+const sameKey = 'outside|b1|chimney|damaged chimney';
+const first = { ...chimney, dedupeKey: sameKey };
+const second = { ...chimney, dedupeKey: sameKey, deficiencyQRId: 'QR-2', imageUri: 'file:///chimney2.jpg' };
+assert.notStrictEqual(findingIdentity(first), findingIdentity(second), 'two recordings must not merge into one');
+assert.strictEqual(findingIdentity(first), findingIdentity({ ...first }), 'the same recording re-saved stays one');
+assert.strictEqual(
+  findingsForItem([JSON.stringify({ deficiencies: [first, second] })], outside, 'Chimney').length, 2,
+  'both deficiencies on the item are listed',
 );
 
 // --- junk on disk must not take the screen down ----------------------------

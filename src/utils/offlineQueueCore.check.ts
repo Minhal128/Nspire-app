@@ -200,6 +200,7 @@ const job = (key: string, payload: any, at: number) =>
   assert.strictEqual(serverAnswersWin(queuedSave, key, { a: 'OD' }), false, 'an unsent device save beats the server');
   assert.strictEqual(serverAnswersWin(queuedSave, 'saveProgress:p1:B2:Unit_002', { a: 'OD' }), true, 'another unit\'s queued save is irrelevant');
   assert.strictEqual(serverAnswersWin([], key, { a: 'OD' }), true, 'with nothing queued the server copy wins');
+  assert.strictEqual(serverAnswersWin([], key, { a: 'OD' }, true), false, 'answers tapped but never saved beat the server');
 }
 
 console.log('offlineQueueCore.check.ts OK — jobs survive failure, one job per building, send order held, local ids remapped');

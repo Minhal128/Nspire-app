@@ -36,6 +36,7 @@ import { inspectionService } from '../services/inspectionService';
 import offlineQueue from '../services/offlineQueue';
 import networkService from '../services/networkService';
 import { autoSaveInspectionDeficiency } from '../utils/storage';
+import { findingIdentity } from '../utils/savedDeficiencies';
 import { ScoringResult, calculateUnitScore, POSSIBLE_SCORE } from '../utils/scoringCalculations';
 import {
   calculateOutsideScore,
@@ -782,13 +783,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         const normalizeKeyToken = (value: unknown): string => String(value ?? '').trim().toLowerCase();
 
         const buildMergeKey = (entry: any, index: number): string => {
-          const stableId = normalizeKeyToken(
-            entry?.dedupeKey ||
-            entry?.deficiencyQRId ||
-            entry?.id ||
-            entry?._id ||
-            ''
-          );
+          const stableId = findingIdentity(entry);
 
           if (stableId && !['unknown', 'null', 'undefined'].includes(stableId)) {
             return `id|${stableId}`;

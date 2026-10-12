@@ -64,96 +64,10 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
   // One queued save per checklist; a newer offline save replaces the older one.
   const queueKey = `saveProgress:${property?._id || property?.id || property?.propertyId || 'unknown'}:${buildingId}:${canonicalInspectionType}`;
 
-  const persistResponsesToDevice = async (nextResponses: { [key: string]: ResponseType }) => {
-    try {
-      if (nextResponses && Object.keys(nextResponses).length > 0) {
-        await AsyncStorage.setItem(saveKey, JSON.stringify(nextResponses));
-      } else {
-        await AsyncStorage.removeItem(saveKey);
-      }
-    } catch (storageError) {
-      console.warn('Failed to persist inspection responses locally:', storageError);
-    }
-  };
-
-  // Load responses from backend on mount
-  useEffect(() => {
-    const fetchProgress = async () => {
-      try {
-        const propertyId = property?._id || property?.id || property?.propertyId || 'unknown';
-        const response = await api.get(`/inspections/progress?property_id=${propertyId}&unit_id=${buildingId}&inspection_type=${encodeURIComponent(canonicalInspectionType)}`);
-        const result = response as any;
-
-        // Handle payload shape mismatch (e.g. response.data.inspection_items vs saved key-value pairs)
-        // The server's copy only replaces the device's if it has answers and
-        // nothing saved offline is still waiting to reach it — otherwise its
-        // empty `items` erased a unit inspected offline (0/32 on reconnect).
-        if (serverAnswersWin(await offlineQueue.list(), queueKey, result?.items)) {
-          setResponses(result.items);
-          globalInspectionProgress[saveKey] = result.items;
-          await persistResponsesToDevice(result.items);
-        } else if (result?.data?.inspection_items) {
-          // If the backend returns an array structure, convert it to the expected dictionary format
-          if (Array.isArray(result.data.inspection_items)) {
-            const mappedResponses: { [key: string]: ResponseType } = {};
-            result.data.inspection_items.forEach((item: any) => {
-              mappedResponses[item.id || item.itemId || item.name] = item.response || item.value || item.status;
-            });
-            setResponses(mappedResponses);
-            globalInspectionProgress[saveKey] = mappedResponses;
-            await persistResponsesToDevice(mappedResponses);
-          } else {
-            // Already a dictionary
-            setResponses(result.data.inspection_items);
-            globalInspectionProgress[saveKey] = result.data.inspection_items;
-            await persistResponsesToDevice(result.data.inspection_items);
-          }
-        } else {
-          // Device copy first: this screen writes it on every tap, while global
-          // state can hold an older server copy other screens loaded.
-          let parsed: any = null;
-          try {
-            const locallySaved = await AsyncStorage.getItem(saveKey);
-            parsed = locallySaved ? JSON.parse(locallySaved) : null;
-          } catch (parseError) {
-            console.warn('Failed to parse locally saved progress:', parseError);
-          }
-          const saved = parsed && typeof parsed === 'object' ? parsed : globalInspectionProgress[saveKey];
-          if (saved) {
-            setResponses(saved);
-            globalInspectionProgress[saveKey] = saved;
-          }
-        }
-      } catch (error) {
-        // Suppress the console.error if the backend API isn't deployed yet 
-        // to avoid disruptive red screens in the simulator.
-        // console.warn('Backend progress sync failed, falling back to local memory.', error);
-
-        // Fallback to global state
-        const saved = globalInspectionProgress[saveKey];
-        if (saved) {
-          setResponses(saved);
-        } else {
-          const locallySaved = await AsyncStorage.getItem(saveKey);
-          if (locallySaved) {
-            try {
-              const parsed = JSON.parse(locallySaved);
-              if (parsed && typeof parsed === 'object') {
-                setResponses(parsed);
-                globalInspectionProgress[saveKey] = parsed;
-              }
-            } catch (parseError) {
-              console.warn('Failed to parse locally saved progress:', parseError);
-            }
-          }
-        }
-      } finally {
-        setIsLoaded(true);
-      }
-    };
-
-    fetchProgress();
-  }, [saveKey, property, buildingId, location]);
+  // Set while the device copy holds answers Save Progress has not sent yet. Kept
+  // off the inspection_responses_ prefix: other screens read every such key as
+  // a set of answers.
+  const unsentKey = `unsent_${saveKey}`;
 
   // Use appropriate inspection items based on location
   // Outside = OUTSIDE_ITEMS (26), Inside = INSIDE_ITEMS (35), Unit = UNIT_ITEMS (32)
@@ -161,6 +75,86 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
   const inspectionItems = location === 'Outside'
     ? OUTSIDE_ITEMS
     : (isUnitLocation ? UNIT_ITEMS : INSIDE_ITEMS);
+  const findingScope = savedFindingScope({
+    property,
+    buildingId,
+    isOutside: location?.toLowerCase() === 'outside',
+    isUnit: isUnitLocation,
+    currentUnit,
+    selectedUnits,
+  });
+
+  const persistResponsesToDevice = async (nextResponses: { [key: string]: ResponseType }, unsent = true) => {
+    try {
+      if (nextResponses && Object.keys(nextResponses).length > 0) {
+        await AsyncStorage.setItem(saveKey, JSON.stringify(nextResponses));
+      } else {
+        await AsyncStorage.removeItem(saveKey);
+      }
+      await (unsent ? AsyncStorage.setItem(unsentKey, '1') : AsyncStorage.removeItem(unsentKey));
+    } catch (storageError) {
+      console.warn('Failed to persist inspection responses locally:', storageError);
+    }
+  };
+
+  // Load responses on mount
+  useEffect(() => {
+    const fetchProgress = async () => {
+      try {
+        const [deviceRaw, unsent, ...draftPayloads] = await Promise.all(
+          [saveKey, unsentKey, ...draftStorageKeys(findingScope)].map((key) =>
+            AsyncStorage.getItem(key).catch(() => null),
+          ),
+        );
+        // Written on every tap, so the one copy that can hold answers nobody
+        // has sent yet.
+        let device: any = null;
+        try {
+          device = deviceRaw ? JSON.parse(deviceRaw) : null;
+        } catch (parseError) {
+          console.warn('Failed to parse locally saved progress:', parseError);
+        }
+
+        // Offline this fails at once and the device copy is all there is.
+        let serverItems: any = null;
+        try {
+          const propertyId = property?._id || property?.id || property?.propertyId || 'unknown';
+          const result: any = await api.get(`/inspections/progress?property_id=${propertyId}&unit_id=${buildingId}&inspection_type=${encodeURIComponent(canonicalInspectionType)}`);
+          serverItems = result?.items;
+        } catch (error) {
+          // Unreachable or not deployed: carry on with what the device has.
+        }
+
+        // The server's copy only replaces the device's if it has answers and
+        // the device holds nothing it has not been sent — its empty or older
+        // copy erased answers tapped offline, or tapped without Save Progress.
+        const useServer = serverAnswersWin(await offlineQueue.list(), queueKey, serverItems, !!unsent);
+        // Memory comes last: other screens overwrite it with the server's copy.
+        const answers = useServer
+          ? serverItems
+          : (device && typeof device === 'object' ? device : (!unsent && globalInspectionProgress[saveKey]) || {});
+
+        // A recorded deficiency reaches the server on its own, the item's answer
+        // only with Save Progress — so an item can have one without the other.
+        // It is OD either way; show it as answered.
+        // ponytail: re-parses the drafts once per item; parse once if the list grows.
+        const next = { ...answers };
+        inspectionItems.forEach((item) => {
+          if (!next[item.id] && findingsForItem(draftPayloads, findingScope, item.name).length > 0) {
+            next[item.id] = 'OD';
+          }
+        });
+
+        setResponses(next);
+        globalInspectionProgress[saveKey] = next;
+        if (useServer) await persistResponsesToDevice(next, false);
+      } finally {
+        setIsLoaded(true);
+      }
+    };
+
+    fetchProgress();
+  }, [saveKey, property, buildingId, location]);
 
   // What the OD modal shows. The answers in `responses` only say OD/No OD/N/A;
   // the deficiency itself — the picture, the name, the severity — lives in the
@@ -174,16 +168,8 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
       setSavedFindings([]);
       setSelectedFinding(null);
       setLoadingSavedFindings(true);
-      const scope = savedFindingScope({
-        property,
-        buildingId,
-        isOutside: location?.toLowerCase() === 'outside',
-        isUnit: isUnitLocation,
-        currentUnit,
-        selectedUnits,
-      });
       const payloads = await Promise.all(
-        draftStorageKeys(scope).map((key) =>
+        draftStorageKeys(findingScope).map((key) =>
           AsyncStorage.getItem(key).catch((error) => {
             console.warn('Could not read saved deficiencies for item:', key, error);
             return null;
@@ -192,7 +178,7 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
       );
 
       if (cancelled) return;
-      setSavedFindings(findingsForItem(payloads, scope, selectedItem.name));
+      setSavedFindings(findingsForItem(payloads, findingScope, selectedItem.name));
       setLoadingSavedFindings(false);
     };
 
@@ -344,6 +330,8 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
         await offlineQueue.enqueue('saveProgress', queueKey, progressPayload);
       }
     }
+    // Sent or queued either way, so the server's copy can be trusted again.
+    if (progressPayload) AsyncStorage.removeItem(unsentKey).catch(() => undefined);
 
     const successTitle = remoteSaved ? 'Progress Saved' : 'Saved Locally';
     const successMessage = remoteSaved

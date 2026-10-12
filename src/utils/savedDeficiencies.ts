@@ -60,6 +60,15 @@ export function draftStorageKeys(scope: SavedFindingScope): string[] {
 }
 
 /**
+ * What makes two saved entries the same deficiency: the QR id it was given when
+ * recorded. dedupeKey is area|unit|item|deficiency name, which a second
+ * deficiency of the same type on the same item (or a second photo) shares — keyed
+ * on that first, the second one overwrote the first on every save.
+ */
+export const findingIdentity = (entry: any): string =>
+  token(entry?.deficiencyQRId || entry?.dedupeKey || entry?.id || entry?._id);
+
+/**
  * The deficiencies recorded against one item, newest snapshot wins.
  * Item ids repeat across Outside/Inside/Unit, so match on name + area + unit.
  */
@@ -89,7 +98,7 @@ export function findingsForItem(
       if (token(entry.itemName ?? entry.item) !== token(itemName)) return;
       if (areaToken(entry._area ?? entry.area) !== areaToken(scope.area)) return;
       if (token(entry._unit ?? entry.unit) !== token(scope.unit)) return;
-      found.set(token(entry.deficiencyQRId || entry.dedupeKey || `${payloadIndex}:${index}`), entry);
+      found.set(findingIdentity(entry) || `${payloadIndex}:${index}`, entry);
     });
   });
 
