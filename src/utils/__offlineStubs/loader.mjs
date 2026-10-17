@@ -70,6 +70,39 @@ const SYNTHETIC = {
     export default cloudinaryService;
     export { cloudinaryService };
   `,
+  // For nspireExcelExport.check.ts: the device folder picker, file writes and
+  // share sheet, recorded on __offlineStub so the check can assert on them.
+  reactNative: `
+    export const Platform = { get OS() { return globalThis.__offlineStub.os || 'android'; } };
+  `,
+  fileSystem: `
+    const st = () => globalThis.__offlineStub;
+    export const documentDirectory = 'file:///data/app/files/';
+    export const EncodingType = { Base64: 'base64', UTF8: 'utf8' };
+    export const writeAsStringAsync = async (uri, contents) => { st().files[uri] = contents; };
+    export const StorageAccessFramework = {
+      getUriForDirectoryInRoot: (name) => 'content://com.android.externalstorage.documents/tree/primary%3A' + name,
+      requestDirectoryPermissionsAsync: async (initialUri) => {
+        st().calls.push({ kind: 'picker', payload: initialUri });
+        return st().pickerResult;
+      },
+      createFileAsync: async (dirUri, fileName) => {
+        if ((st().deadDirs || []).includes(dirUri)) throw new Error('permission revoked');
+        return dirUri + '/document/' + encodeURIComponent(fileName);
+      },
+    };
+  `,
+  sharing: `
+    const st = () => globalThis.__offlineStub;
+    export const isAvailableAsync = async () => st().shareAvailable !== false;
+    export const shareAsync = async (uri) => { st().calls.push({ kind: 'share', payload: uri }); };
+  `,
+};
+
+const EXCEL_STUBS = {
+  'react-native': 'reactNative',
+  'expo-file-system/legacy': 'fileSystem',
+  'expo-sharing': 'sharing',
 };
 
 export async function resolve(specifier, context, next) {
@@ -86,6 +119,9 @@ export async function resolve(specifier, context, next) {
   // is stubbed for every importer rather than only the queue.
   if (specifier === './networkService') {
     return { url: `${STUB}networkService`, format: 'module', shortCircuit: true };
+  }
+  if (parent.includes('/utils/nspireExcelExport.ts') && specifier in EXCEL_STUBS) {
+    return { url: `${STUB}${EXCEL_STUBS[specifier]}`, format: 'module', shortCircuit: true };
   }
   if (fromQueue) {
     const name = specifier.replace('./', '');

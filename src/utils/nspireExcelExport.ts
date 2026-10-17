@@ -5,21 +5,53 @@
  * the shape produced by generateNSPIREReport() (metadata / summary / deficiencies)
  * and writes the same two-sheet workbook the web portal produces.
  *
- * ponytail: InspectionSummaryScreen still carries its own inline copy of this
- * workbook builder. Fold it into this util the next time that screen is touched.
  */
 
 import { Platform } from 'react-native';
 import * as XLSX from 'xlsx';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+const EXCEL_DIR_KEY = 'nspireExcelExportDir';
 
 export interface ExcelExportResult {
   success: boolean;
   error?: string;
+  /** Android only: the device folder the file was saved into. */
+  savedTo?: string;
 }
+
+/**
+ * Write the file into a device folder the user picks once (the grant is persisted
+ * and remembered). Returns that folder's name, or null if the picker was cancelled.
+ */
+const saveToAndroidFolder = async (fileName: string, base64: string): Promise<string | null> => {
+  const SAF = FileSystem.StorageAccessFramework;
+  const write = async (dirUri: string) => {
+    const uri = await SAF.createFileAsync(dirUri, fileName, XLSX_MIME);
+    await FileSystem.writeAsStringAsync(uri, base64, { encoding: FileSystem.EncodingType.Base64 });
+    return decodeURIComponent(dirUri).split(':').pop() || 'the chosen folder';
+  };
+
+  const remembered = await AsyncStorage.getItem(EXCEL_DIR_KEY);
+  if (remembered) {
+    try {
+      return await write(remembered);
+    } catch {
+      await AsyncStorage.removeItem(EXCEL_DIR_KEY); // grant revoked or folder deleted: ask again
+    }
+  }
+
+  // Android 11+ won't grant the Download root itself, only a folder inside it,
+  // so open the picker there and let the user pick/create one.
+  const perm = await SAF.requestDirectoryPermissionsAsync(SAF.getUriForDirectoryInRoot('Download'));
+  if (!perm.granted) return null;
+  await AsyncStorage.setItem(EXCEL_DIR_KEY, perm.directoryUri);
+  return write(perm.directoryUri);
+};
 
 export const buildNspireWorkbook = (report: any): XLSX.WorkBook => {
   const workbook = XLSX.utils.book_new();
@@ -79,7 +111,8 @@ export const buildNspireWorkbook = (report: any): XLSX.WorkBook => {
 };
 
 /**
- * Build the workbook and hand it to the OS share sheet (native) or download it (web).
+ * Build the workbook and save it to a device folder (Android), hand it to the
+ * share sheet (iOS, or Android if the folder picker is cancelled), or download it (web).
  */
 export const exportNspireExcel = async (report: any, fileName: string): Promise<ExcelExportResult> => {
   try {
@@ -99,16 +132,26 @@ export const exportNspireExcel = async (report: any, fileName: string): Promise<
     }
 
     const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'base64' });
+
+    // Android: the share sheet alone never put the file anywhere the inspector could
+    // find (or print) it, so save it into a device folder first.
+    if (Platform.OS === 'android') {
+      const savedTo = await saveToAndroidFolder(safeName, wbout);
+      if (savedTo) return { success: true, savedTo };
+      // Picker cancelled: fall through to the share sheet.
+    }
+
     const filePath = `${FileSystem.documentDirectory}${safeName}`;
     await FileSystem.writeAsStringAsync(filePath, wbout, { encoding: FileSystem.EncodingType.Base64 });
 
-    if (await Sharing.isAvailableAsync()) {
-      await Sharing.shareAsync(filePath, {
-        mimeType: XLSX_MIME,
-        dialogTitle: 'NSPIRE Inspection Report (Excel)',
-        UTI: 'org.openxmlformats.spreadsheetml.sheet',
-      });
+    if (!(await Sharing.isAvailableAsync())) {
+      return { success: false, error: 'Sharing is not available on this device.' };
     }
+    await Sharing.shareAsync(filePath, {
+      mimeType: XLSX_MIME,
+      dialogTitle: 'NSPIRE Inspection Report (Excel)',
+      UTI: 'org.openxmlformats.spreadsheetml.sheet',
+    });
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error?.message || 'Unknown error' };

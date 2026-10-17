@@ -232,6 +232,8 @@ export default function InspectionStatusScreen({ navigation }: InspectionStatusS
       const result = await exportNspireExcel(nspireReport, safeFileName(property.name));
       if (!result.success) {
         Alert.alert('Download Failed', result.error || 'Could not generate the Excel file.');
+      } else if (result.savedTo) {
+        Alert.alert('Excel Saved', `Saved to the "${result.savedTo}" folder on this device.`);
       }
     } catch (error: any) {
       console.error('Excel download error:', error);

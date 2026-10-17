@@ -19,7 +19,7 @@ import { RootStackParamList } from '../types/navigation';
 import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
-import * as XLSX from 'xlsx';
+import { exportNspireExcel } from '../utils/nspireExcelExport';
 import { enhancedNspirePDFService } from '../services/enhancedNspirePDFService';
 import { storeData, getData } from '../utils/storage';
 import { stripeService } from '../utils/stripeService';
@@ -555,89 +555,16 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
     setExportingExcel(true);
     try {
       const reportData = await buildReportData();
-
-      // Create workbook with multiple sheets
-      const workbook = XLSX.utils.book_new();
-
-      // Sheet 1: Summary
-      const summaryData = [
-        ['NSPIRE INSPECTION REPORT'],
-        [],
-        ['Property Name', reportData.metadata.propertyName || ''],
-        ['Property Address', reportData.metadata.propertyAddress || ''],
-        ['Inspection Number', reportData.metadata.inspectionNo || ''],
-        ['Inspection Date', reportData.metadata.startDate || ''],
-        ['Inspector', reportData.metadata.inspectorName || ''],
-        [],
-        ['SCORES'],
-        ['Preliminary Score', reportData.metadata.preliminaryScore || 'N/A'],
-        ['Calculated Score', reportData.metadata.calculatedScore || 'N/A'],
-        ['Final Score', reportData.metadata.finalScore || 'N/A'],
-        [],
-        ['DEFICIENCY SUMMARY'],
-        ['Life Threatening', reportData.summary?.lifeThreatening || 0],
-        ['Severe', reportData.summary?.severe || 0],
-        ['Moderate', reportData.summary?.moderate || 0],
-        ['Low', reportData.summary?.low || 0],
-        ['Total Deficiencies', reportData.summary?.total || 0],
-      ];
-      const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
-      summarySheet['!cols'] = [{ wch: 25 }, { wch: 40 }];
-      XLSX.utils.book_append_sheet(workbook, summarySheet, 'Summary');
-
-      // Sheet 2: Deficiencies
-      const deficiencyHeaders = [
-        'Room', 'Building', 'Unit', 'Area', 'Deficiency',
-        'NSPIRE Code', 'Severity', 'Deduction', 'Status', 'Details', 'Date'
-      ];
-      const deficiencyRows = (reportData.deficiencies || []).map((def: any) => [
-        def.room || '',
-        def.building || '',
-        def.unit || '',
-        def.area || '',
-        def.deficiencyName || '',
-        def.nspireCode || '',
-        def.severity || '',
-        def.deductionPts || '',
-        def.status || '',
-        def.deficiencyDetails || '',
-        def.inspectedDate || '',
-      ]);
-      const deficiencyData = [deficiencyHeaders, ...deficiencyRows];
-      const deficiencySheet = XLSX.utils.aoa_to_sheet(deficiencyData);
-      deficiencySheet['!cols'] = [
-        { wch: 15 }, { wch: 12 }, { wch: 10 }, { wch: 12 }, { wch: 25 },
-        { wch: 15 }, { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 30 }, { wch: 12 }
-      ];
-      XLSX.utils.book_append_sheet(workbook, deficiencySheet, 'Deficiencies');
-
-      const fileName = `NSPIRE-Report-${inspectionId}.xlsx`;
+      const result = await exportNspireExcel(reportData, `NSPIRE-Report-${inspectionId}.xlsx`);
+      if (!result.success) throw new Error(result.error);
 
       if (Platform.OS === 'web') {
-        // Web: download the file
-        const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-        const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = fileName;
-        a.click();
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
         Alert.alert('Excel Report Ready', 'Report downloaded successfully.');
       } else {
-        // Native: write to file system and share
-        const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'base64' });
-        const filePath = `${FileSystem.documentDirectory}${fileName}`;
-        await FileSystem.writeAsStringAsync(filePath, wbout, { encoding: FileSystem.EncodingType.Base64 });
-
-        if (await Sharing.isAvailableAsync()) {
-          await Sharing.shareAsync(filePath, {
-            mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            dialogTitle: 'NSPIRE Inspection Report (Excel)',
-            UTI: 'org.openxmlformats.spreadsheetml.sheet',
-          });
-        }
-        Alert.alert('Excel Exported', 'Excel report shared successfully!', [
+        const message = result.savedTo
+          ? `Saved to the "${result.savedTo}" folder on this device.`
+          : 'Excel report shared successfully!';
+        Alert.alert('Excel Exported', message, [
           { text: 'Close', style: 'cancel' },
           { text: 'Go to Dashboard', onPress: () => navigation.reset({ index: 0, routes: [{ name: 'Dashboard' as never }] }) },
         ], { cancelable: true });
