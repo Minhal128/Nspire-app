@@ -174,7 +174,8 @@ export const nspireWorkbookHtml = (report: any): string => {
     @page { size: landscape; margin: 12mm; }
     body { font-family: -apple-system, Roboto, Arial, sans-serif; font-size: 10px; }
     h2 { font-size: 14px; margin: 16px 0 6px; }
-    table { border-collapse: collapse; width: 100%; page-break-after: always; }
+    h2:not(:first-child) { page-break-before: always; }
+    table { border-collapse: collapse; width: 100%; }
     td { border: 1px solid #999; padding: 3px 5px; vertical-align: top; }
   </style></head><body>${tables}</body></html>`;
 };
