@@ -97,12 +97,17 @@ const SYNTHETIC = {
     export const isAvailableAsync = async () => st().shareAvailable !== false;
     export const shareAsync = async (uri) => { st().calls.push({ kind: 'share', payload: uri }); };
   `,
+  print: `
+    export const Orientation = { portrait: 'portrait', landscape: 'landscape' };
+    export const printAsync = async (opts) => { globalThis.__offlineStub.calls.push({ kind: 'print', payload: opts }); };
+  `,
 };
 
 const EXCEL_STUBS = {
   'react-native': 'reactNative',
   'expo-file-system/legacy': 'fileSystem',
   'expo-sharing': 'sharing',
+  'expo-print': 'print',
 };
 
 export async function resolve(specifier, context, next) {

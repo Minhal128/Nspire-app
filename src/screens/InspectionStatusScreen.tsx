@@ -26,7 +26,7 @@ import {
   calculatePropertyProgressPercent,
   countUniqueDeficiencies,
 } from '../utils/inspectionProgressUtils';
-import { exportNspireExcel } from '../utils/nspireExcelExport';
+import { exportNspireExcel, printNspireExcel } from '../utils/nspireExcelExport';
 import { enhancedNspirePDFService } from '../services/enhancedNspirePDFService';
 import { stripeService } from '../utils/stripeService';
 import { usePaymentLink } from '../hooks/usePaymentLink';
@@ -219,6 +219,15 @@ export default function InspectionStatusScreen({ navigation }: InspectionStatusS
     } finally {
       setDownloadingId(null);
     }
+  };
+
+  const handlePrintExcel = async (property: PropertyWithInspection) => {
+    if (!property.inspection) {
+      Alert.alert('No Report', 'No inspection completed for this property');
+      return;
+    }
+    const result = await printNspireExcel(buildReport(property));
+    if (!result.success) Alert.alert('Print Failed', result.error || 'Could not print the report.');
   };
 
   const handleDownloadExcel = async (property: PropertyWithInspection) => {
@@ -560,6 +569,14 @@ export default function InspectionStatusScreen({ navigation }: InspectionStatusS
                                   {downloadingId === property._id + '_excel' ? 'Generating...' : 'Download Excel'}
                                 </Text>
                               </TouchableOpacity>
+                              <TouchableOpacity
+                                style={[styles.actionButton, styles.printButton, isDownloading && styles.buttonDisabled]}
+                                disabled={isDownloading}
+                                onPress={() => handlePrintExcel(property)}
+                              >
+                                <Ionicons name="print-outline" size={16} color="#FFFFFF" />
+                                <Text style={styles.actionButtonText}>Print Excel</Text>
+                              </TouchableOpacity>
                             </>
                           ) : (
                             <>
@@ -742,6 +759,7 @@ const styles = StyleSheet.create({
   buttonDisabled: { opacity: 0.6 },
   pdfButton: { backgroundColor: '#16A34A' },
   excelButton: { backgroundColor: '#059669' },
+  printButton: { backgroundColor: '#0E7490' },
   unlockButton: { backgroundColor: '#D97706' },
   startButton: { backgroundColor: '#006795' },
 });

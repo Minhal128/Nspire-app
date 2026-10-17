@@ -13,7 +13,7 @@
 
 import assert from 'node:assert';
 import * as XLSX from 'xlsx';
-import { exportNspireExcel } from './nspireExcelExport.ts';
+import { exportNspireExcel, printNspireExcel } from './nspireExcelExport.ts';
 
 const stub = (globalThis as any).__offlineStub;
 
@@ -101,4 +101,23 @@ const kinds = () => stub.calls.map((c: any) => c.kind);
   assert.deepStrictEqual(kinds(), ['share']);
 }
 
-console.log('nspireExcelExport.check.ts OK — saved to a picked device folder, remembered, re-asked when revoked, share sheet on cancel');
+/* ---- Print Excel: iOS can't print an .xlsx from the share sheet, so print the sheets as HTML ---- */
+for (const os of ['ios', 'android']) {
+  reset();
+  stub.os = os;
+  const report = {
+    ...REPORT,
+    deficiencies: [{ room: 'Kitchen', deficiencyName: 'Leak', deficiencyDetails: 'Tag "A" <under sink> & wall', deductionPts: 0 }],
+  };
+  const result = await printNspireExcel(report);
+  assert.deepStrictEqual(result, { success: true });
+  assert.deepStrictEqual(kinds(), ['print'], 'no file or share sheet needed to print');
+  const html: string = stub.calls[0].payload.html;
+  for (const text of ['Summary', 'Deficiencies', 'Oak Court', 'Kitchen', 'Leak', 'NSPIRE Code']) {
+    assert.ok(html.includes(text), `printed report includes ${text}`);
+  }
+  assert.ok(html.includes('Tag &#34;A&#34; &#60;under sink&#62; &#38; wall'), 'inspector text is escaped');
+  assert.ok(html.includes('<td>0</td>'), 'a score/deduction of 0 prints as 0');
+}
+
+console.log('nspireExcelExport.check.ts OK — saved to a picked device folder, remembered, re-asked when revoked, share sheet on cancel, prints on iOS/Android');

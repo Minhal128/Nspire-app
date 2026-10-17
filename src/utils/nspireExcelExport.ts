@@ -11,6 +11,7 @@ import { Platform } from 'react-native';
 import * as XLSX from 'xlsx';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
+import * as Print from 'expo-print';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
@@ -152,6 +153,50 @@ export const exportNspireExcel = async (report: any, fileName: string): Promise<
       dialogTitle: 'NSPIRE Inspection Report (Excel)',
       UTI: 'org.openxmlformats.spreadsheetml.sheet',
     });
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error?.message || 'Unknown error' };
+  }
+};
+
+const escapeHtml = (v: unknown) =>
+  String(v ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+
+/** The same two sheets as the .xlsx, as printable HTML tables. */
+export const nspireWorkbookHtml = (report: any): string => {
+  const workbook = buildNspireWorkbook(report);
+  const tables = workbook.SheetNames.map((name) => {
+    const rows = XLSX.utils.sheet_to_json<any[]>(workbook.Sheets[name], { header: 1, defval: '' });
+    const body = rows.map((r) => `<tr>${r.map((c) => `<td>${escapeHtml(c)}</td>`).join('')}</tr>`).join('');
+    return `<h2>${escapeHtml(name)}</h2><table>${body}</table>`;
+  }).join('');
+  return `<html><head><meta charset="utf-8"><style>
+    @page { size: landscape; margin: 12mm; }
+    body { font-family: -apple-system, Roboto, Arial, sans-serif; font-size: 10px; }
+    h2 { font-size: 14px; margin: 16px 0 6px; }
+    table { border-collapse: collapse; width: 100%; page-break-after: always; }
+    td { border: 1px solid #999; padding: 3px 5px; vertical-align: top; }
+  </style></head><body>${tables}</body></html>`;
+};
+
+/**
+ * Open the OS print dialog for the Excel report. iOS can't print an .xlsx from the
+ * share sheet and many phones have no spreadsheet app, so this prints the same
+ * sheets as HTML instead of relying on the file.
+ */
+export const printNspireExcel = async (report: any): Promise<ExcelExportResult> => {
+  try {
+    const html = nspireWorkbookHtml(report);
+    if (Platform.OS === 'web') {
+      // expo-print on web prints the app page, not the html.
+      const win = window.open('', '_blank');
+      if (!win) return { success: false, error: 'Allow pop-ups to print the report.' };
+      win.document.write(html);
+      win.document.close();
+      setTimeout(() => win.print(), 600);
+      return { success: true };
+    }
+    await Print.printAsync({ html, orientation: Print.Orientation.landscape });
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error?.message || 'Unknown error' };
