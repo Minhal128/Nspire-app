@@ -3,7 +3,7 @@
     "name": "Inspire",
     "owner": "minhal786",
     "slug": "inspire-app",
-    "version": "2.9.11",
+    "version": "2.9.12",
     "orientation": "default",
     "icon": "./public/logo.png",
     "splash": {
