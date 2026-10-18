@@ -23,6 +23,7 @@ import { exportNspireExcel } from '../utils/nspireExcelExport';
 import { enhancedNspirePDFService } from '../services/enhancedNspirePDFService';
 import { storeData, getData } from '../utils/storage';
 import { stripeService } from '../utils/stripeService';
+import { resolveUnlockReference } from '../utils/stripeUnlock';
 import { usePaymentLink } from '../hooks/usePaymentLink';
 
 type InspectionSummaryScreenNavigationProp = NativeStackNavigationProp<
@@ -52,6 +53,9 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
   // Never use a hardcoded ID — that causes all inspections to share the same unlock record.
   const propertyId = property?._id || property?.id || property?.propertyId || 'unknown';
   const inspectionId = routeInspectionId || `${propertyId}_${buildingId || 'default'}`;
+  // `inspectionId` above is a label for the header and the report filename; no
+  // such record exists on the server, so payment must not go through it.
+  const unlockReference = resolveUnlockReference(routeInspectionId, property);
   // One key for both the load and the save. The two sites used to build it
   // differently (one dropped the propertyId fallback, both dropped the
   // buildingId one), so resumed progress could be written where it is never read.
@@ -134,14 +138,16 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
     let mounted = true;
 
     (async () => {
-      const unlocked = await stripeService.checkUnlockStatus(inspectionId);
+      const unlocked = unlockReference
+        ? await stripeService.checkUnlockStatus(unlockReference)
+        : false;
       if (!mounted) return;
       if (unlocked) setIsReportUnlocked(true);
       setCheckingUnlock(false);
     })();
 
     return () => { mounted = false; };
-  }, []);
+  }, [unlockReference]);
 
   // ── Auto-show payment modal on mount if coming from inspection flow ──
   useEffect(() => {
@@ -169,7 +175,7 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
   // ── Stripe: the payer gets a checkout link by email ───────────────
   // No card is entered in the app. Once the link is paid, the hook's poll
   // flips the unlock and the export the user was blocked on runs itself.
-  const payment = usePaymentLink(inspectionId, () => {
+  const payment = usePaymentLink(unlockReference, () => {
     setIsReportUnlocked(true);
     setPaymentModalVisible(false);
     Alert.alert('Payment Successful', 'Report unlocked. Your download will start now.');

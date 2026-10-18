@@ -28,6 +28,8 @@ export const usePaymentLink = (
 
   /** Ask the backend once. Returns true when the report is now unlocked. */
   const checkNow = async (): Promise<boolean> => {
+    if (!inspectionId) return false;
+
     setChecking(true);
     try {
       const unlocked = await stripeService.checkUnlockStatus(inspectionId);
@@ -43,6 +45,14 @@ export const usePaymentLink = (
 
   /** Mail the checkout link. Returns false (with `error` set) if it failed. */
   const send = async (): Promise<boolean> => {
+    // Without a server id the backend cannot tie the payment to a report, so
+    // the link would take the payer's money and unlock nothing. Refuse early
+    // rather than letting them pay for a report that can never open.
+    if (!inspectionId) {
+      setError('This report is not saved on the server yet, so it cannot be paid for. Finalize the inspection first.');
+      return false;
+    }
+
     const address = email.trim();
     if (!isValidEmail(address)) {
       setError('Enter a valid email address to send the payment link to.');

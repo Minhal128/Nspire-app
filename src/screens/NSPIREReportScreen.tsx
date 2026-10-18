@@ -23,6 +23,7 @@ import { WebView } from 'react-native-webview';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Colors } from '../constants/Colors';
 import { usePaymentLink } from '../hooks/usePaymentLink';
+import { resolveUnlockReference } from '../utils/stripeUnlock';
 import {
   nspirePDFService,
   generateNSPIREReportHTML,
@@ -72,7 +73,9 @@ export default function NSPIREReportScreen({ navigation, route }: NSPIREReportSc
   // Same email-link Stripe unlock the Inspection Status screen uses: the
   // backend mails a checkout link, so there is no card entry here either.
   const payment = usePaymentLink(
-    (inspectionData as any)?._id || '',
+    // Falls back to the property when the report was opened from data that has
+    // no server id of its own, so the unlock still lands somewhere real.
+    resolveUnlockReference((inspectionData as any)?._id, property),
     () => setUnlocked(true),
     showEmailBox,
   );
