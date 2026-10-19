@@ -2,9 +2,18 @@
  * NSPIRE Excel export
  *
  * Shared by the screens that offer a "Download Excel" action. Takes a report in
- * the shape produced by generateNSPIREReport() (metadata / summary / deficiencies)
- * and writes the same two-sheet workbook the web portal produces.
+ * the shape produced by generateNSPIREReport() (metadata / summary / deficiencies).
  *
+ * The workbook itself is built by the server, by the same endpoint and the same
+ * exceljs generator the web portal posts to, so the file an inspector gets here
+ * is byte for byte the file web gives. It used to be built on the phone with
+ * SheetJS instead: a second implementation of the same report that could never
+ * match, because SheetJS cannot write the fonts, fills and column styling
+ * exceljs does. Only the delivery below — Android folder, share sheet, print —
+ * is the app's own.
+ *
+ * Capturing an inspection still works offline; exporting it does not, which is
+ * also true of the unlock check that gates these buttons.
  */
 
 import { Platform } from 'react-native';
@@ -13,6 +22,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import * as Print from 'expo-print';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { apiRequestBase64, isUnreachableError } from '../services/api';
 
 const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
@@ -54,75 +64,59 @@ const saveToAndroidFolder = async (fileName: string, base64: string): Promise<st
   return write(perm.directoryUri);
 };
 
-export const buildNspireWorkbook = (report: any): XLSX.WorkBook => {
-  const workbook = XLSX.utils.book_new();
-  const metadata = report?.metadata || {};
-  const summary = report?.summary || {};
+/**
+ * Ask the server for the workbook, base64-encoded.
+ *
+ * This is the one place the file comes from. Web posts the same report to the
+ * same endpoint, so whatever changes there changes here too, and the two can
+ * never drift apart again.
+ */
+export const fetchNspireWorkbookBase64 = (report: any): Promise<string> =>
+  apiRequestBase64('/inspections/generate-excel', {
+    method: 'POST',
+    body: JSON.stringify({ data: report }),
+  });
 
-  const summaryData = [
-    ['NSPIRE INSPECTION REPORT'],
-    [],
-    ['Property Name', metadata.propertyName || ''],
-    ['Property Address', metadata.propertyAddress || ''],
-    ['Inspection Number', metadata.inspectionNo || ''],
-    ['Inspection Date', metadata.startDate || ''],
-    ['Inspector', metadata.inspectorName || ''],
-    [],
-    ['SCORES'],
-    ['Preliminary Score', metadata.preliminaryScore ?? 'N/A'],
-    ['Calculated Score', metadata.calculatedScore ?? 'N/A'],
-    ['Final Score', metadata.finalScore ?? 'N/A'],
-    [],
-    ['DEFICIENCY SUMMARY'],
-    ['Life Threatening', summary.lifeThreatening || 0],
-    ['Severe', summary.severe || 0],
-    ['Moderate', summary.moderate || 0],
-    ['Low', summary.low || 0],
-    ['Total Deficiencies', summary.total || 0],
-  ];
-  const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
-  summarySheet['!cols'] = [{ wch: 25 }, { wch: 40 }];
-  XLSX.utils.book_append_sheet(workbook, summarySheet, 'Summary');
+/**
+ * OfflineError says the work is saved and will sync, which is true of an
+ * inspection but not of an export — nothing is queued here, so say what the
+ * inspector actually has to do.
+ */
+const exportError = (error: any): string =>
+  isUnreachableError(error)
+    ? 'The Excel report is built on the server, so this needs a connection. Your inspection is safe on this device.'
+    : error?.message || 'Unknown error';
 
-  const deficiencyHeaders = [
-    'Room', 'Building', 'Unit', 'Area', 'Deficiency',
-    'NSPIRE Code', 'Severity', 'Deduction', 'Status', 'Details', 'Date',
-  ];
-  const deficiencyRows = (report?.deficiencies || []).map((def: any) => [
-    def.room || '',
-    def.building || '',
-    def.unit || '',
-    def.area || '',
-    def.deficiencyName || '',
-    def.nspireCode || '',
-    def.severity || '',
-    def.deductionPts ?? '',
-    def.status || '',
-    def.deficiencyDetails || '',
-    def.inspectedDate || '',
-  ]);
-  const deficiencySheet = XLSX.utils.aoa_to_sheet([deficiencyHeaders, ...deficiencyRows]);
-  deficiencySheet['!cols'] = [
-    { wch: 15 }, { wch: 12 }, { wch: 10 }, { wch: 12 }, { wch: 25 },
-    { wch: 15 }, { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 30 }, { wch: 12 },
-  ];
-  XLSX.utils.book_append_sheet(workbook, deficiencySheet, 'Deficiencies');
+const BASE64_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
 
-  return workbook;
+/** Only the web branch needs raw bytes; React Native writes the base64 directly. */
+const decodeBase64 = (base64: string): number[] => {
+  const clean = base64.replace(/[^A-Za-z0-9+/]/g, '');
+  const bytes: number[] = [];
+  for (let i = 0; i < clean.length; i += 4) {
+    const n =
+      (BASE64_ALPHABET.indexOf(clean[i]) << 18) |
+      (BASE64_ALPHABET.indexOf(clean[i + 1]) << 12) |
+      ((i + 2 < clean.length ? BASE64_ALPHABET.indexOf(clean[i + 2]) : 0) << 6) |
+      (i + 3 < clean.length ? BASE64_ALPHABET.indexOf(clean[i + 3]) : 0);
+    bytes.push((n >> 16) & 0xff);
+    if (i + 2 < clean.length) bytes.push((n >> 8) & 0xff);
+    if (i + 3 < clean.length) bytes.push(n & 0xff);
+  }
+  return bytes;
 };
 
 /**
- * Build the workbook and save it to a device folder (Android), hand it to the
+ * Fetch the workbook and save it to a device folder (Android), hand it to the
  * share sheet (iOS, or Android if the folder picker is cancelled), or download it (web).
  */
 export const exportNspireExcel = async (report: any, fileName: string): Promise<ExcelExportResult> => {
   try {
-    const workbook = buildNspireWorkbook(report);
+    const wbout = await fetchNspireWorkbookBase64(report);
     const safeName = fileName.endsWith('.xlsx') ? fileName : `${fileName}.xlsx`;
 
     if (Platform.OS === 'web') {
-      const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-      const blob = new Blob([wbout], { type: XLSX_MIME });
+      const blob = new Blob([new Uint8Array(decodeBase64(wbout))], { type: XLSX_MIME });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -131,8 +125,6 @@ export const exportNspireExcel = async (report: any, fileName: string): Promise<
       setTimeout(() => URL.revokeObjectURL(url), 1000);
       return { success: true };
     }
-
-    const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'base64' });
 
     // Android: the share sheet alone never put the file anywhere the inspector could
     // find (or print) it, so save it into a device folder first.
@@ -155,16 +147,21 @@ export const exportNspireExcel = async (report: any, fileName: string): Promise<
     });
     return { success: true };
   } catch (error: any) {
-    return { success: false, error: error?.message || 'Unknown error' };
+    return { success: false, error: exportError(error) };
   }
 };
 
 const escapeHtml = (v: unknown) =>
   String(v ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
-/** The same two sheets as the .xlsx, as printable HTML tables. */
-export const nspireWorkbookHtml = (report: any): string => {
-  const workbook = buildNspireWorkbook(report);
+/**
+ * The same sheets as the .xlsx, as printable HTML tables.
+ *
+ * Reads back the server's workbook rather than laying the rows out again, so
+ * print cannot drift from the file the inspector downloads.
+ */
+export const nspireWorkbookHtml = async (report: any): Promise<string> => {
+  const workbook = XLSX.read(await fetchNspireWorkbookBase64(report), { type: 'base64' });
   const tables = workbook.SheetNames.map((name) => {
     const rows = XLSX.utils.sheet_to_json<any[]>(workbook.Sheets[name], { header: 1, defval: '' });
     const body = rows.map((r) => `<tr>${r.map((c) => `<td>${escapeHtml(c)}</td>`).join('')}</tr>`).join('');
@@ -187,7 +184,7 @@ export const nspireWorkbookHtml = (report: any): string => {
  */
 export const printNspireExcel = async (report: any): Promise<ExcelExportResult> => {
   try {
-    const html = nspireWorkbookHtml(report);
+    const html = await nspireWorkbookHtml(report);
     if (Platform.OS === 'web') {
       // expo-print on web prints the app page, not the html.
       const win = window.open('', '_blank');
@@ -200,7 +197,7 @@ export const printNspireExcel = async (report: any): Promise<ExcelExportResult> 
     await Print.printAsync({ html, orientation: Print.Orientation.landscape });
     return { success: true };
   } catch (error: any) {
-    return { success: false, error: error?.message || 'Unknown error' };
+    return { success: false, error: exportError(error) };
   }
 };
 

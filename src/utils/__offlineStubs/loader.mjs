@@ -101,6 +101,20 @@ const SYNTHETIC = {
     export const Orientation = { portrait: 'portrait', landscape: 'landscape' };
     export const printAsync = async (opts) => { globalThis.__offlineStub.calls.push({ kind: 'print', payload: opts }); };
   `,
+  // The workbook now comes from the server, so the check plays the server: its
+  // 'excel' responder returns the base64 workbook, or throws to stand in for a
+  // device with no connection.
+  excelApi: `
+    const st = () => globalThis.__offlineStub;
+    export const apiRequestBase64 = async (endpoint, options) =>
+      st().call('excel', { endpoint, body: options && options.body });
+    export const isUnreachableError = (error) => {
+      const name = String((error && error.name) || '');
+      const message = String((error && error.message) || '').toLowerCase();
+      return name === 'OfflineError' || name === 'AbortError' ||
+        message.includes('network request failed') || message.includes('request timeout');
+    };
+  `,
 };
 
 const EXCEL_STUBS = {
@@ -108,6 +122,7 @@ const EXCEL_STUBS = {
   'expo-file-system/legacy': 'fileSystem',
   'expo-sharing': 'sharing',
   'expo-print': 'print',
+  '../services/api': 'excelApi',
 };
 
 export async function resolve(specifier, context, next) {

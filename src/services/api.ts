@@ -154,6 +154,89 @@ export const isUnreachableError = (error: any): boolean => {
   );
 };
 
+/** The stored token, unwrapped. Saved with JSON.stringify, but not always. */
+const readAuthToken = async (): Promise<string | null> => {
+  const storedToken = await AsyncStorage.getItem(StorageKeys.USER_TOKEN);
+  if (!storedToken) return null;
+  try {
+    return JSON.parse(storedToken);
+  } catch (e) {
+    // Token might not be JSON wrapped
+    return storedToken;
+  }
+};
+
+const BASE64_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+
+/**
+ * Encode bytes without assuming a btoa or Buffer polyfill is loaded — React
+ * Native ships neither reliably, and expo-file-system writes base64.
+ */
+export const bytesToBase64 = (bytes: Uint8Array): string => {
+  let out = '';
+  for (let i = 0; i < bytes.length; i += 3) {
+    const b0 = bytes[i];
+    const b1 = i + 1 < bytes.length ? bytes[i + 1] : undefined;
+    const b2 = i + 2 < bytes.length ? bytes[i + 2] : undefined;
+    out += BASE64_ALPHABET[b0 >> 2];
+    out += BASE64_ALPHABET[((b0 & 3) << 4) | ((b1 ?? 0) >> 4)];
+    out += b1 === undefined ? '=' : BASE64_ALPHABET[((b1 & 15) << 2) | ((b2 ?? 0) >> 6)];
+    out += b2 === undefined ? '=' : BASE64_ALPHABET[b2 & 63];
+  }
+  return out;
+};
+
+/**
+ * apiRequest for an endpoint that answers with a file instead of JSON, returned
+ * base64-encoded. Same auth, offline guard and timeout; an error response is
+ * still JSON, so its message is unwrapped the same way.
+ */
+export const apiRequestBase64 = async (
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<string> => {
+  if (networkService.hasNoConnection()) {
+    throw new OfflineError();
+  }
+
+  const token = await readAuthToken();
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (options.headers) Object.assign(headers, options.headers as Record<string, string>);
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.TIMEOUT);
+
+  try {
+    const response = await fetch(`${API_CONFIG.BASE_URL}${endpoint}`, {
+      ...options,
+      headers,
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      let message = `HTTP error! status: ${response.status}`;
+      try {
+        const body = await response.json();
+        if (body?.message) message = body.message;
+      } catch (e) {
+        // Body was not JSON; the status line is all we have.
+      }
+      throw new Error(message);
+    }
+
+    const buffer = await response.arrayBuffer();
+    return bytesToBase64(new Uint8Array(buffer));
+  } catch (error: any) {
+    clearTimeout(timeoutId);
+    if (error?.name === 'AbortError') {
+      throw new Error('Request timeout. Please check your connection.');
+    }
+    throw error;
+  }
+};
+
 // Generic API request function
 export const apiRequest = async <T = any>(
   endpoint: string,
@@ -167,18 +250,7 @@ export const apiRequest = async <T = any>(
     throw new OfflineError();
   }
 
-  // Get token from storage - it's stored with JSON.stringify, so we need to parse it
-  const storedToken = await AsyncStorage.getItem(StorageKeys.USER_TOKEN);
-  let token = null;
-
-  if (storedToken) {
-    try {
-      token = JSON.parse(storedToken);
-    } catch (e) {
-      // Token might not be JSON wrapped
-      token = storedToken;
-    }
-  }
+  const token = await readAuthToken();
 
   console.log('API Request to:', endpoint, 'Token present:', !!token);
 
