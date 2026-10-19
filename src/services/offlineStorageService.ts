@@ -107,6 +107,11 @@ class OfflineStorageService {
    */
   async saveImageLocally(imageUri: string, inspectionId: string): Promise<string> {
     try {
+      // Callers reach this straight from the camera, before anything has
+      // necessarily called initialize(), and copyAsync fails on a missing
+      // directory — which would cost the photo it was meant to protect.
+      await this.initialize();
+
       const filename = `${inspectionId}_${Date.now()}.jpg`;
       const localPath = `${this.imageDirectory}${filename}`;
 

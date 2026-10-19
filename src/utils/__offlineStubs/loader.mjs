@@ -104,6 +104,30 @@ const SYNTHETIC = {
   // The workbook now comes from the server, so the check plays the server: its
   // 'excel' responder returns the base64 workbook, or throws to stand in for a
   // device with no connection.
+  // For capturedImage.check.ts: the document directory and the copy, recorded
+  // so the check can assert the photo left the cache.
+  captureFileSystem: `
+    const st = () => globalThis.__offlineStub;
+    export const documentDirectory = 'file:///data/app/files/';
+    export const EncodingType = { Base64: 'base64', UTF8: 'utf8' };
+    export const getInfoAsync = async (uri) => ({
+      exists: !(st().missingDirs || []).includes(uri),
+      uri,
+    });
+    export const makeDirectoryAsync = async (uri) => {
+      st().missingDirs = (st().missingDirs || []).filter((d) => d !== uri);
+      st().calls.push({ kind: 'mkdir', payload: uri });
+    };
+    export const copyAsync = async ({ from, to }) => {
+      if (st().copyFails) throw new Error('no space left on device');
+      st().files[to] = from;
+    };
+    export const writeAsStringAsync = async (uri, contents) => { st().files[uri] = contents; };
+    export const readAsStringAsync = async (uri) => st().files[uri];
+    export const deleteAsync = async (uri) => { delete st().files[uri]; };
+    export const StorageAccessFramework = {};
+  `,
+  openaiService: `export const InspectionFinding = {};`,
   excelApi: `
     const st = () => globalThis.__offlineStub;
     export const apiRequestBase64 = async (endpoint, options) =>
@@ -142,6 +166,15 @@ export async function resolve(specifier, context, next) {
   }
   if (parent.includes('/utils/nspireExcelExport.ts') && specifier in EXCEL_STUBS) {
     return { url: `${STUB}${EXCEL_STUBS[specifier]}`, format: 'module', shortCircuit: true };
+  }
+  // capturedImage.check.ts reaches expo-file-system through offlineStorageService.
+  if (parent.includes('/services/offlineStorageService.ts')) {
+    if (specifier === 'expo-file-system/legacy') {
+      return { url: `${STUB}captureFileSystem`, format: 'module', shortCircuit: true };
+    }
+    if (specifier === './openaiService') {
+      return { url: `${STUB}openaiService`, format: 'module', shortCircuit: true };
+    }
   }
   if (fromQueue) {
     const name = specifier.replace('./', '');

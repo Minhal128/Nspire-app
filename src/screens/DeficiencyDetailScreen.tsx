@@ -34,6 +34,7 @@ import ModalZoomWrapper from '../components/ModalZoomWrapper';
 import { geminiService } from '../services/openaiService';
 import { inspectionService } from '../services/inspectionService';
 import offlineQueue from '../services/offlineQueue';
+import { persistCapturedImage } from '../utils/capturedImage';
 import networkService from '../services/networkService';
 import { autoSaveInspectionDeficiency } from '../utils/storage';
 import { findingIdentity } from '../utils/savedDeficiencies';
@@ -662,16 +663,37 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       }
 
       // Upload all images to Cloudinary and analyze with AI
+      const propertyIdentifier = String(property?._id || property?.id || property?.propertyId || 'unknown');
       const analyzedDeficiencies = [];
+      // True once a photo is left waiting on the queue. The progress save below
+      // has to be replayed in that case, or the server keeps the local file://
+      // URI forever and the photo never reaches web.
+      let hasPendingImageUpload = false;
 
       for (let i = 0; i < images.length; i++) {
-        const imageUri = images[i];
+        // The camera returns a URI in the app's cache, which the OS clears
+        // under storage pressure. Offline that file is the only copy of the
+        // photo until the queue can upload it, so keep it somewhere permanent
+        // first — otherwise the deficiency outlives its picture.
+        const imageUri = await persistCapturedImage(images[i], propertyIdentifier);
 
         try {
           if (isOffline) throw new Error('offline');
 
           // Upload to Cloudinary
           const uploadResult = await cloudinaryService.uploadImage(imageUri, 'nspire-inspections');
+
+          // A refused upload used to leave imageUrl null with nothing queued,
+          // so that photo was never uploaded at all. Treat it like a failure.
+          if (!uploadResult.success) {
+            hasPendingImageUpload = true;
+            offlineQueue
+              .enqueue('uploadImage', `uploadImage:${imageUri}`, {
+                imageUri,
+                folder: 'nspire-inspections',
+              })
+              .catch((e) => console.warn('Could not queue image upload:', e));
+          }
 
           // Call AI analysis (Gemini service) - use LOCAL imageUri, not Cloudinary URL
           let aiAnalysis;
@@ -728,6 +750,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           console.error(`Error processing image ${i + 1}:`, error);
           // The deficiency below keeps the local imageUri; queue the upload so the
           // Cloudinary URL replaces it everywhere once the connection is back.
+          hasPendingImageUpload = true;
           offlineQueue
             .enqueue('uploadImage', `uploadImage:${imageUri}`, {
               imageUri,
@@ -774,7 +797,6 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         await autoSaveInspectionDeficiency(propertyId, buildingIdStr, def);
       }
 
-      const propertyIdentifier = String(property?._id || property?.id || property?.propertyId || 'unknown');
       const draftSavedAt = new Date().toISOString();
 
       const mergeDraftDeficiencies = (existingEntries: any[] = [], incomingEntries: any[] = []) => {
@@ -932,6 +954,19 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         if (isOffline) throw new Error('offline');
         await inspectionService.saveProgress(progressPayload);
         console.log('Backend sync: Saved', mergedDeficiencies.length, 'deficiencies for property', propertyIdentifier);
+
+        // The save just told the server about a photo that has not been
+        // uploaded yet, so what it stored points at a file:// path on this
+        // phone — useless to web. Queue the same payload again: the upload
+        // job runs first, the queue rewrites the URI to the uploaded one, and
+        // this replay carries the real URL to the server.
+        if (hasPendingImageUpload) {
+          await offlineQueue.enqueue(
+            'saveProgress',
+            `saveProgress:${propertyIdentifier}:${normalizedBuildingLabel}`,
+            progressPayload,
+          );
+        }
       } catch (draftSaveError) {
         // Offline (or the server is unreachable): hold the write and let
         // offlineQueue replay it when the connection returns. The payload
