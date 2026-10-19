@@ -90,13 +90,13 @@ android {
     namespace 'com.minhal.inspire'
     // Computed into a def first: Groovy parses `versionCode (a ?: b).toString()`
     // as a call to versionCode() and then runs .toString() on its void return.
-    def appVersionCodeValue = Integer.parseInt((findProperty('appVersionCode') ?: '51').toString())
+    def appVersionCodeValue = Integer.parseInt((findProperty('appVersionCode') ?: '52').toString())
     defaultConfig {
         applicationId 'com.minhal.inspire'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode appVersionCodeValue
-        versionName "2.9.13"
+        versionName "2.9.14"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
     }
