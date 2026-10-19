@@ -24,6 +24,7 @@ const reset = () => {
   stub.calls = [];
   stub.files = {};
   stub.copyFails = false;
+  stub.missingPaths = [];
 };
 
 /* ---- the happy path: the photo leaves the cache ---- */
@@ -41,7 +42,7 @@ const reset = () => {
 /* ---- the directory does not exist yet: make it, do not lose the photo ---- */
 {
   reset();
-  stub.missingDirs = ['file:///data/app/files/inspection_images/'];
+  stub.missingPaths = ['file:///data/app/files/inspection_images/'];
   const kept = await persistCapturedImage(CACHE_URI, 'prop-1');
   assert.ok(kept.includes('inspection_images/'), 'a missing directory is created, not a reason to fail');
 }

@@ -22,10 +22,55 @@ const reset = (online = false) => {
   stub.listeners = [];
   stub.calls = [];
   stub.responders = {};
+  stub.files = {};
+  stub.missingPaths = [];
 };
 
 const queued = () => JSON.parse(stub.storage['offline_request_queue_v1'] || '[]');
 const ok = () => ({ success: true });
+
+/* ---- an upload whose file the OS deleted is let go, not retried forever ---- */
+
+{
+  reset(true);
+  const gone = 'file:///data/cache/ImagePicker/deleted.jpg';
+  stub.missingPaths = [gone];
+  stub.responders.uploadImage = () => {
+    throw new Error('the upload must not even be attempted');
+  };
+  stub.responders.saveProgress = ok;
+
+  await offlineQueue.enqueue('uploadImage', `uploadImage:${gone}`, { imageUri: gone });
+  await offlineQueue.enqueue('saveProgress', 'p1:B1', { property_id: 'p1' });
+  await offlineQueue.flush();
+
+  assert.deepStrictEqual(queued(), [], 'a file that no longer exists cannot be uploaded, so stop carrying it');
+  assert.ok(
+    !stub.calls.some((c: any) => c.kind === 'uploadImage'),
+    'no upload is attempted for a missing file',
+  );
+  assert.ok(
+    stub.calls.some((c: any) => c.kind === 'saveProgress'),
+    'the rest of the queue still goes out',
+  );
+}
+
+/* ---- a real write is still never dropped, however often it fails ---- */
+
+{
+  reset(true);
+  const present = 'file:///data/app/files/inspection_images/p1_1.jpg';
+  stub.files[present] = 'bytes';
+  stub.responders.uploadImage = () => {
+    throw new Error('cloudinary down');
+  };
+
+  await offlineQueue.enqueue('uploadImage', `uploadImage:${present}`, { imageUri: present });
+  await offlineQueue.flush();
+
+  assert.strictEqual(queued().length, 1, 'a file that exists is kept for the next reconnect');
+  assert.strictEqual(queued()[0].attempts, 1, 'the failed attempt is recorded');
+}
 
 /* ---- offline: nothing is sent, everything is kept ---- */
 

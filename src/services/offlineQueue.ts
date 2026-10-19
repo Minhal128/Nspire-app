@@ -15,6 +15,7 @@ import networkService from './networkService';
 import inspectionService from './inspectionService';
 import propertyService from './propertyService';
 import { cloudinaryService } from './cloudinaryService';
+import * as FileSystem from 'expo-file-system/legacy';
 import type { QueuedJob, QueuedJobKind } from '../utils/offlineQueueCore';
 import {
   inSendOrder,
@@ -26,6 +27,16 @@ import {
 } from '../utils/offlineQueueCore';
 
 const QUEUE_KEY = 'offline_request_queue_v1';
+
+/** A missing local file is unrecoverable; anything else is treated as present. */
+const fileStillExists = async (uri: string): Promise<boolean> => {
+  if (!uri || !uri.startsWith('file:')) return true;
+  try {
+    return (await FileSystem.getInfoAsync(uri)).exists;
+  } catch {
+    return true; // Can't tell — let the upload decide rather than dropping work.
+  }
+};
 
 export type { QueuedJob, QueuedJobKind };
 
@@ -156,6 +167,16 @@ class OfflineQueue {
 
       case 'uploadImage': {
         const { imageUri, folder } = job.payload;
+
+        // Jobs queued before captured photos were copied out of the cache
+        // point at files the OS has since deleted. Retrying one of those on
+        // every reconnect, forever, is the only outcome available to it, so
+        // let it go instead — unlike a write, there is nothing left to save.
+        if (!(await fileStillExists(imageUri))) {
+          console.warn(`offlineQueue: dropping upload, file is gone: ${imageUri}`);
+          return {};
+        }
+
         const res = await cloudinaryService.uploadImage(imageUri, folder || 'nspire-inspections');
         if (!res?.success || !res.url) throw new Error(res?.error || 'image upload failed');
         return { [imageUri]: String(res.url) };

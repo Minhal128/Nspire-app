@@ -111,11 +111,11 @@ const SYNTHETIC = {
     export const documentDirectory = 'file:///data/app/files/';
     export const EncodingType = { Base64: 'base64', UTF8: 'utf8' };
     export const getInfoAsync = async (uri) => ({
-      exists: !(st().missingDirs || []).includes(uri),
+      exists: !(st().missingPaths || []).includes(uri),
       uri,
     });
     export const makeDirectoryAsync = async (uri) => {
-      st().missingDirs = (st().missingDirs || []).filter((d) => d !== uri);
+      st().missingPaths = (st().missingPaths || []).filter((d) => d !== uri);
       st().calls.push({ kind: 'mkdir', payload: uri });
     };
     export const copyAsync = async ({ from, to }) => {
@@ -175,6 +175,9 @@ export async function resolve(specifier, context, next) {
     if (specifier === './openaiService') {
       return { url: `${STUB}openaiService`, format: 'module', shortCircuit: true };
     }
+  }
+  if (fromQueue && specifier === 'expo-file-system/legacy') {
+    return { url: `${STUB}captureFileSystem`, format: 'module', shortCircuit: true };
   }
   if (fromQueue) {
     const name = specifier.replace('./', '');
