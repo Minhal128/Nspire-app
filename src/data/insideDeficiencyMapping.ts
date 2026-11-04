@@ -76,9 +76,9 @@ export const BATHROOM_DEFICIENCIES: UnitCategory = {
             deficiencies: [
                 {
                     id: 'bath_tub_1',
-                    name: 'Bathtusb or howershowe r is inoperable or does not drain, and at least one bathtub or shower is present elsewhere that is operational.',
-                    detail: 'Bathtusb or howershowe r is inoperable or does not drain, and at least one bathtub or shower is present elsewhere that is operational.',
-                    criteria: 'Bathtusb or howershowe r is inoperable or does not drain, and at least one bathtub or shower is present elsewhere that is operational.',
+                    name: 'Bathtub or shower is inoperable or does not drain, and at least one bathtub or shower is present elsewhere that is operational.',
+                    detail: 'Bathtub or shower is inoperable or does not drain, and at least one bathtub or shower is present elsewhere that is operational.',
+                    criteria: 'Bathtub or shower is inoperable or does not drain, and at least one bathtub or shower is present elsewhere that is operational.',
                     severity: 'Moderate',
                     repairBy: '30 Day',
                     points: '5.5/n',

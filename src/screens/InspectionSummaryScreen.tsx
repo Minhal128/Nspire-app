@@ -25,6 +25,7 @@ import { storeData, getData } from '../utils/storage';
 import { stripeService } from '../utils/stripeService';
 import { resolveUnlockReference } from '../utils/stripeUnlock';
 import { usePaymentLink } from '../hooks/usePaymentLink';
+import authService from '../services/authService';
 
 type InspectionSummaryScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -311,6 +312,12 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
   const buildReportData = async () => {
     const deficienciesArray: any[] = [];
     const buildingName = property.name || buildingId || 'B1';
+    const user: any = await authService.getCurrentUser().catch(() => null);
+    const inspectorName: string =
+      user?.fullName
+      || [user?.firstName, user?.lastName].filter(Boolean).join(' ')
+      || user?.email?.split('@')[0]
+      || 'Inspector';
 
     if (mergedDeficiencies.length > 0) {
       for (let i = 0; i < mergedDeficiencies.length; i++) {
@@ -368,6 +375,7 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
           unit: defUnit,
           room: defItem.location || 'Multiple',
           area: inspectionArea,
+          itemName: defItem.itemName || inspectionData?.itemName || '',
           isGeneralComment: isGC,
           deficiencyName: isGC ? 'General Comment' : (deficiency.name || 'Deficiency'),
           nspireCode: isGC ? '-' : (deficiency.code || 'U-1'),
@@ -416,7 +424,7 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
         calculatedScore: calculatedScore,
         healthSafetyThreshold: 60,
         physicalConditionThreshold: 60,
-        inspectorName: 'Current User',
+        inspectorName,
         inspectorId: 'INS-001',
         buildingName: buildingName,
         inspectedUnits: selectedUnits.length > 0 ? selectedUnits : undefined,
@@ -455,7 +463,7 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
       deficiencies: deficienciesArray,
       generalComments: `${deficienciesArray.length} deficiencies analyzed with AI.`,
       certification: {
-        certifiedBy: 'Current User',
+        certifiedBy: inspectorName,
         certificationDate: inspectionDate,
         certificationStatement: 'I certify this inspection was conducted per INSPIRE standards.',
       },
