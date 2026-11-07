@@ -549,12 +549,16 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
     const mediaTypes: any = ['images'];
 
-    const result = await ImagePicker.launchCameraAsync({
-      mediaTypes,
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 0.8,
-    });
+    const options = { mediaTypes, allowsEditing: true, aspect: [4, 3] as [number, number], quality: 0.8 };
+    let result: ImagePicker.ImagePickerResult;
+    try {
+      result = await ImagePicker.launchCameraAsync(options);
+    } catch (error) {
+      // The iOS simulator has no camera. Dev builds fall back to the photo
+      // library so the flow can still be tested there; release stays camera-only.
+      if (!__DEV__) throw error;
+      result = await ImagePicker.launchImageLibraryAsync(options);
+    }
 
     if (!result.canceled && result.assets[0]) {
       setImages([...images, result.assets[0].uri]);
