@@ -581,13 +581,6 @@ export default function InspectionStatusScreen({ navigation }: InspectionStatusS
                           ) : (
                             <>
                               <TouchableOpacity
-                                style={[styles.actionButton, styles.unlockButton]}
-                                onPress={() => handlePayToUnlock(property)}
-                              >
-                                <Ionicons name="lock-closed-outline" size={16} color="#FFFFFF" />
-                                <Text style={styles.actionButtonText}>Pay to Unlock Report</Text>
-                              </TouchableOpacity>
-                              <TouchableOpacity
                                 style={[styles.actionButton, styles.startButton]}
                                 onPress={() => handleViewReport(property)}
                               >

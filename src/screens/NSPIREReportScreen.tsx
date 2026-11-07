@@ -598,7 +598,7 @@ export default function NSPIREReportScreen({ navigation, route }: NSPIREReportSc
     return (
       <ScrollView style={styles.tabContent} contentContainerStyle={styles.progressContent} showsVerticalScrollIndicator={false}>
         <View style={styles.webCard}>
-          <Text style={styles.progressTitle}>HUD INSPIRE INSPECTION PROGRESS</Text>
+          <Text style={styles.progressTitle}>NSPIRE.Ai REPORT PROGRESS</Text>
           <Text style={styles.progressProperty}>{m.propertyName}</Text>
           <Text style={styles.progressMeta}>{m.propertyAddress}</Text>
           <Text style={styles.progressMeta}>Inspection #{m.inspectionNo} | {started}</Text>

@@ -220,8 +220,11 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   // Get total samples from selectedUnits (default to 20 if not available)
   const totalSamples = selectedUnits?.length || 20;
 
-  // Auto-count deficiencies: count is based on images uploaded (0 until image is uploaded)
-  const deficiencyCount = images.length > 0 ? images.length : 0;
+  // Auto-count deficiencies: one per image, or a single one once a deficiency is
+  // chosen without a photo (the photo is optional, matching web).
+  const deficiencyCount = images.length > 0
+    ? images.length
+    : ((selectedDeficiency || isCustomEntry) ? 1 : 0);
 
   // Generate a unique QR-XXXXX ID for each deficiency image
   const generateDeficiencyQRId = (): string => {
@@ -587,11 +590,6 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       }
     }
 
-    if (images.length === 0) {
-      Alert.alert('Error', 'Please add at least one photo');
-      return;
-    }
-
   };
 
   const handleProceed = async () => {
@@ -630,11 +628,6 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       return;
     }
 
-    if (images.length === 0) {
-      Alert.alert('Error', 'Please add at least one photo');
-      return;
-    }
-
     const normalizedArea = isOutsideLocation ? 'Outside' : (isUnit ? 'Unit' : 'Inside');
     const normalizedBuildingLabel = String(
       buildingId || property?.building || property?.buildingName || ''
@@ -657,7 +650,9 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       setProcessingMessage(
         isOffline
           ? 'Offline — saving on this device...'
-          : `Analyzing ${images.length} image(s) with AI...`
+          : images.length === 0
+            ? 'Saving deficiency...'
+            : `Analyzing ${images.length} image(s) with AI...`
       );
       setShowProcessingModal(true);
 
@@ -792,6 +787,39 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             analyzedAt: new Date().toISOString(),
           });
         }
+      }
+
+      // The photo is optional. With no picture there is nothing to upload or
+      // analyse, so the loop above never runs — record the deficiency on its own
+      // or it would be silently dropped.
+      if (images.length === 0) {
+        analyzedDeficiencies.push({
+          deficiency: {
+            ...currentDeficiency,
+            severity: isOutsideLocation && outsideScoringResult
+              ? outsideScoringResult.severity as 'Life-Threatening' | 'Severe' | 'Moderate' | 'Low'
+              : currentDeficiency.severity,
+            ...(isOutsideLocation && outsideScoringResult && {
+              categoryNumber: outsideScoringResult.categoryNumber,
+              pointsLostFormula: outsideScoringResult.formulaNumerator,
+              pointsLostRaw: outsideScoringResult.pointsLostRaw,
+              isDeficiencyOverride: outsideScoringResult.isDeficiencyOverride,
+            }),
+          },
+          deficiencyQRId: generateDeficiencyQRId(),
+          imageUrl: null,
+          imageUri: null,
+          note: note || '',
+          location: selectedInspectionLocation,
+          itemName,
+          itemId,
+          building: normalizedBuildingLabel || undefined,
+          buildingInspectionId: normalizedBuildingLabel || undefined,
+          dedupeKey: deficiencyDedupeKey,
+          _area: normalizedArea,
+          _unit: normalizedUnit,
+          analyzedAt: new Date().toISOString(),
+        });
       }
 
       // Auto-save each new deficiency to local storage immediately
@@ -1180,18 +1208,11 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                 How To Inspect ? ✅
               </Text>
             </TouchableOpacity>
-            {!selectedDeficiency && (
-              <Text style={styles.codeRefHintText}>
-                Select a deficiency above to view inspection guidelines
-              </Text>
-            )}
           </View>
         )}
 
         {/* PIC Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>PIC (ONE PHOTO FOR THIS DEFICIENCY)</Text>
-
           {/* Image Grid */}
           {images.length > 0 && (
             <View style={styles.imageGrid}>

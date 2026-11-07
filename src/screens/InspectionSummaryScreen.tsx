@@ -619,7 +619,7 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
       >
         {/* Web /dashboard/inspection/summary parity */}
         <View style={styles.reportCard}>
-          <Text style={styles.reportTitle}>HUD INSPIRE INSPECTION PROGRESS</Text>
+          <Text style={styles.reportTitle}>NSPIRE.Ai REPORT PROGRESS</Text>
           <Text style={styles.propertyName}>{property.name || 'Golden Town'}</Text>
           <Text style={styles.propertyAddress}>{property.address}</Text>
           <Text style={styles.inspectionInfo}>
