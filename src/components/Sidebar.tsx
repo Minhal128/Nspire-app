@@ -116,7 +116,7 @@ const styles = StyleSheet.create({
   },
   logo: {
     height: 44,
-    width: 77, // 1200/683 logo ratio; any other box letterboxes it
+    width: 80, // 1200/683 logo ratio; any other box letterboxes it
   },
   menuSection: {
     paddingVertical: 12,

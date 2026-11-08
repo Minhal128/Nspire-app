@@ -449,7 +449,7 @@ const styles = StyleSheet.create({
     marginTop: 15,
   },
   headerLogo: {
-    width: 114,
+    width: 118,
     height: 65,
   },
   scrollView: {

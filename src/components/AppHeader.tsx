@@ -80,7 +80,7 @@ const styles = StyleSheet.create({
     // under-specified box falls back to the asset's own size, which for a
     // 1200x683 logo means it swallows the screen. Keep the 1200/683 ratio,
     // or `contain` letterboxes and the logo drifts off the hamburger.
-    width: 81,
+    width: 84,
     height: 46,
     marginLeft: 14,
   },
