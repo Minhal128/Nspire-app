@@ -39,6 +39,7 @@ import {
 } from '../types/nspireReport';
 import { enhancedNspirePDFService } from '../services/enhancedNspirePDFService';
 import { inspectionService } from '../services/inspectionService';
+import { api } from '../services/api';
 import { sanitizeAIDescription } from '../utils/nspireReportUtils';
 
 const { width, height } = Dimensions.get('window');
@@ -70,15 +71,55 @@ export default function NSPIREReportScreen({ navigation, route }: NSPIREReportSc
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [showEmailBox, setShowEmailBox] = useState(false);
   const [unlocked, setUnlocked] = useState(false);
+  // The free route, alongside the paid one: an address to mail the finished
+  // PDF and spreadsheet to. No payment and no limit.
+  const [showFreeEmailBox, setShowFreeEmailBox] = useState(false);
+  const [freeEmail, setFreeEmail] = useState('');
+  const [sendingFreeReport, setSendingFreeReport] = useState(false);
+
+  // Falls back to the property when the report was opened from data that has
+  // no server id of its own, so both routes still land somewhere real.
+  const unlockReference = resolveUnlockReference((inspectionData as any)?._id, property);
+
   // Same email-link Stripe unlock the Inspection Status screen uses: the
   // backend mails a checkout link, so there is no card entry here either.
   const payment = usePaymentLink(
-    // Falls back to the property when the report was opened from data that has
-    // no server id of its own, so the unlock still lands somewhere real.
-    resolveUnlockReference((inspectionData as any)?._id, property),
+    unlockReference,
     () => setUnlocked(true),
     showEmailBox,
   );
+
+  const handleSendFreeReport = async () => {
+    const address = freeEmail.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address)) {
+      Alert.alert('Check the address', 'Please enter a valid email address.');
+      return;
+    }
+    if (!unlockReference) {
+      Alert.alert('Not saved yet', 'This inspection has not been saved to the server yet.');
+      return;
+    }
+
+    setSendingFreeReport(true);
+    try {
+      const data: any = await api.post(`/api/inspections/${unlockReference}/email-report`, {
+        email: address,
+      });
+      Alert.alert(
+        'Sent',
+        data?.pdfIncluded === false
+          ? `Sent to ${address}. The PDF could not be built this time, so the spreadsheet went on its own.`
+          : `The report has been sent to ${address}.`
+      );
+      setShowFreeEmailBox(false);
+      setFreeEmail('');
+    } catch (error: any) {
+      console.error('Free report email error:', error);
+      Alert.alert('Could not send', error?.message || 'Please try again.');
+    } finally {
+      setSendingFreeReport(false);
+    }
+  };
 
   const webViewRef = useRef<WebView>(null);
 
@@ -603,16 +644,6 @@ export default function NSPIREReportScreen({ navigation, route }: NSPIREReportSc
           <Text style={styles.progressMeta}>{m.propertyAddress}</Text>
           <Text style={styles.progressMeta}>Inspection #{m.inspectionNo} | {started}</Text>
 
-          <View style={styles.progressButtonRow}>
-            <TouchableOpacity style={[styles.webButton, styles.webButtonNavy]} onPress={() => setShowEmailBox(true)}>
-              <Ionicons name="lock-closed-outline" size={14} color="#FFFFFF" />
-              <Text style={styles.webButtonText}>Unlock to Export</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.webButton, styles.webButtonGreen]} onPress={() => setShowOptionsModal(true)}>
-              <Ionicons name="clipboard-outline" size={14} color="#FFFFFF" />
-              <Text style={styles.webButtonText}>Work Order</Text>
-            </TouchableOpacity>
-          </View>
           <TouchableOpacity style={[styles.webButton, styles.webButtonOrange, styles.webButtonWide]} onPress={() => navigation.goBack()}>
             <Ionicons name="chevron-back" size={14} color="#FFFFFF" />
             <Text style={styles.webButtonText}>CONTINUE INSPECTION</Text>
@@ -630,13 +661,49 @@ export default function NSPIREReportScreen({ navigation, route }: NSPIREReportSc
           </View>
           <TouchableOpacity style={styles.unlockButton} onPress={() => setShowEmailBox(true)}>
             <Ionicons name="lock-closed-outline" size={14} color="#FFFFFF" />
-            <Text style={styles.unlockButtonText}>Unlock Report - $1</Text>
+            <Text style={styles.unlockButtonText}>Unlock Report - $10</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.viewDeficiencyButton} onPress={handleOpenPreview}>
             <Ionicons name="mail-outline" size={14} color="#374151" />
             <Text style={styles.viewDeficiencyText}>View Deficiency</Text>
           </TouchableOpacity>
+          <TouchableOpacity style={styles.viewDeficiencyButton} onPress={() => setShowFreeEmailBox(true)}>
+            <Ionicons name="mail-open-outline" size={14} color="#374151" />
+            <Text style={styles.viewDeficiencyText}>View Free Report</Text>
+          </TouchableOpacity>
         </View>
+        )}
+
+        {showFreeEmailBox && (
+          <View style={styles.emailCard}>
+            <View style={styles.lockedHeaderRow}>
+              <Ionicons name="mail-open-outline" size={16} color="#B45309" />
+              <Text style={styles.emailCardTitle}>Get the Report Free by Email</Text>
+            </View>
+            <Text style={styles.emailCardBody}>
+              Enter an email address and the full report is sent there as a PDF and a spreadsheet. No payment needed.
+            </Text>
+            <TextInput
+              style={styles.emailInput}
+              placeholder="Enter your email address"
+              placeholderTextColor="#9CA3AF"
+              value={freeEmail}
+              onChangeText={setFreeEmail}
+              editable={!sendingFreeReport}
+              autoCapitalize="none"
+              keyboardType="email-address"
+            />
+            <View style={styles.emailButtonRow}>
+              <TouchableOpacity style={styles.sendReportButton} onPress={handleSendFreeReport} disabled={sendingFreeReport}>
+                <Text style={styles.sendReportButtonText}>
+                  {sendingFreeReport ? 'Sending...' : 'Send PDF + Excel'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.emailCancelButton} onPress={() => setShowFreeEmailBox(false)}>
+                <Text style={styles.emailCancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         )}
 
         <View style={styles.webCard}>

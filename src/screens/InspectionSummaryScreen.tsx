@@ -25,6 +25,7 @@ import { storeData, getData } from '../utils/storage';
 import { stripeService } from '../utils/stripeService';
 import { resolveUnlockReference } from '../utils/stripeUnlock';
 import { usePaymentLink } from '../hooks/usePaymentLink';
+import { api } from '../services/api';
 import authService from '../services/authService';
 
 type InspectionSummaryScreenNavigationProp = NativeStackNavigationProp<
@@ -57,6 +58,44 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
   // `inspectionId` above is a label for the header and the report filename; no
   // such record exists on the server, so payment must not go through it.
   const unlockReference = resolveUnlockReference(routeInspectionId, property);
+
+  // The free route alongside the paid one: an address to mail the finished
+  // PDF and spreadsheet to. No payment and no limit.
+  const [showFreeEmailBox, setShowFreeEmailBox] = useState(false);
+  const [freeEmail, setFreeEmail] = useState('');
+  const [sendingFreeReport, setSendingFreeReport] = useState(false);
+
+  const handleSendFreeReport = async () => {
+    const address = freeEmail.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address)) {
+      Alert.alert('Check the address', 'Please enter a valid email address.');
+      return;
+    }
+    if (!unlockReference) {
+      Alert.alert('Not saved yet', 'This inspection has not been saved to the server yet.');
+      return;
+    }
+
+    setSendingFreeReport(true);
+    try {
+      const data: any = await api.post(`/api/inspections/${unlockReference}/email-report`, {
+        email: address,
+      });
+      Alert.alert(
+        'Sent',
+        data?.pdfIncluded === false
+          ? `Sent to ${address}. The PDF could not be built this time, so the spreadsheet went on its own.`
+          : `The report has been sent to ${address}.`
+      );
+      setShowFreeEmailBox(false);
+      setFreeEmail('');
+    } catch (error: any) {
+      console.error('Free report email error:', error);
+      Alert.alert('Could not send', error?.message || 'Please try again.');
+    } finally {
+      setSendingFreeReport(false);
+    }
+  };
   // One key for both the load and the save. The two sites used to build it
   // differently (one dropped the propertyId fallback, both dropped the
   // buildingId one), so resumed progress could be written where it is never read.
@@ -626,36 +665,6 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
             Inspection #{inspectionId} | {inspectionDate}
           </Text>
 
-          <View style={styles.hudButtonRow}>
-            <TouchableOpacity
-              style={[styles.hudPill, styles.hudPillTeal]}
-              onPress={() => gateExport('pdf', handleExportPDF)}
-              disabled={exportingPDF}
-            >
-              {exportingPDF ? (
-                <ActivityIndicator color="#FFFFFF" size="small" />
-              ) : (
-                <>
-                  <Ionicons name="lock-closed-outline" size={14} color="#FFFFFF" />
-                  <Text style={styles.hudPillText}>Unlock to Export</Text>
-                </>
-              )}
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.hudPill, styles.hudPillGreen]}
-              onPress={() => gateExport('excel', handleExportExcel)}
-              disabled={exportingExcel}
-            >
-              {exportingExcel ? (
-                <ActivityIndicator color="#FFFFFF" size="small" />
-              ) : (
-                <>
-                  <Ionicons name="clipboard-outline" size={14} color="#FFFFFF" />
-                  <Text style={styles.hudPillText}>Work Order</Text>
-                </>
-              )}
-            </TouchableOpacity>
-          </View>
           <TouchableOpacity
             style={[styles.hudPill, styles.hudPillOrange, styles.hudPillWide]}
             onPress={handleContinueInspection}
@@ -678,12 +687,50 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
             </View>
             <TouchableOpacity style={styles.unlockPayButton} onPress={() => gateExport('pdf', handleExportPDF)}>
               <Ionicons name="lock-closed-outline" size={14} color="#FFFFFF" />
-              <Text style={styles.unlockPayButtonText}>Unlock Report · $1</Text>
+              <Text style={styles.unlockPayButtonText}>Unlock Report · $10</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.viewDeficiencyButton} onPress={handlePreviewReport}>
               <Ionicons name="mail-outline" size={14} color="#B45309" />
               <Text style={styles.viewDeficiencyButtonText}>View Deficiency</Text>
             </TouchableOpacity>
+
+            {/* Free route: the report is emailed instead of unlocked. */}
+            {showFreeEmailBox ? (
+              <>
+                <TextInput
+                  style={styles.freeEmailInput}
+                  placeholder="you@example.com"
+                  placeholderTextColor="#9CA3AF"
+                  value={freeEmail}
+                  onChangeText={setFreeEmail}
+                  editable={!sendingFreeReport}
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                />
+                <View style={styles.freeEmailRow}>
+                  <TouchableOpacity
+                    style={styles.freeEmailSend}
+                    onPress={handleSendFreeReport}
+                    disabled={sendingFreeReport}
+                  >
+                    <Text style={styles.freeEmailSendText}>
+                      {sendingFreeReport ? 'Sending...' : 'Send PDF + Excel'}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.freeEmailCancel} onPress={() => setShowFreeEmailBox(false)}>
+                    <Text style={styles.freeEmailCancelText}>Cancel</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            ) : (
+              <TouchableOpacity
+                style={[styles.viewDeficiencyButton, { marginTop: 8 }]}
+                onPress={() => setShowFreeEmailBox(true)}
+              >
+                <Ionicons name="mail-open-outline" size={14} color="#B45309" />
+                <Text style={styles.viewDeficiencyButtonText}>View Free Report</Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
 
@@ -1209,6 +1256,36 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   viewDeficiencyButtonText: { color: '#B45309', fontSize: 12, fontWeight: '700' },
+  freeEmailInput: {
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 13,
+    color: '#111827',
+    marginTop: 8,
+  },
+  freeEmailRow: { flexDirection: 'row', gap: 8, marginTop: 8 },
+  freeEmailSend: {
+    flex: 1,
+    alignItems: 'center',
+    backgroundColor: '#006795',
+    borderRadius: 10,
+    paddingVertical: 12,
+  },
+  freeEmailSendText: { color: '#FFFFFF', fontSize: 12, fontWeight: '700' },
+  freeEmailCancel: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  freeEmailCancelText: { color: '#B45309', fontSize: 12, fontWeight: '700' },
   hudCard: { backgroundColor: '#FFFFFF', borderRadius: 12, padding: 16, marginBottom: 12 },
   hudHeading: { fontSize: 18, fontWeight: '700', color: '#006795' },
   hudHeadingRule: { height: 2, backgroundColor: '#006795', marginTop: 8, marginBottom: 14 },
