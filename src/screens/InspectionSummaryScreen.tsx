@@ -78,8 +78,14 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
 
     setSendingFreeReport(true);
     try {
+      // The same report the exports on this screen build. It is often
+      // assembled from progress data with no saved inspection behind it, and
+      // an id alone then finds nothing to send.
+      const reportData = await buildReportData();
+
       const data: any = await api.post(`/api/inspections/${unlockReference}/email-report`, {
         email: address,
+        report: reportData,
       });
       Alert.alert(
         'Sent',

@@ -104,6 +104,10 @@ export default function NSPIREReportScreen({ navigation, route }: NSPIREReportSc
     try {
       const data: any = await api.post(`/api/inspections/${unlockReference}/email-report`, {
         email: address,
+        // The report on screen goes with it, the way the downloads send it. A
+        // report is often assembled from progress data with no saved
+        // inspection behind it, and an id alone then finds nothing to send.
+        report,
       });
       Alert.alert(
         'Sent',
