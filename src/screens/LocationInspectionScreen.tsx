@@ -475,17 +475,13 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
             />
             <Text style={styles.selectAllItemText}>All No OD</Text>
           </TouchableOpacity>
+          {/* No checkbox on this one: it is an action, not a state the row
+              reports back. The other two keep theirs. */}
           <TouchableOpacity
             style={styles.selectAllItemCenter}
             onPress={() => handleSelectAll('OD')}
           >
-            <Ionicons
-              name={isSelectAllChecked('OD') ? 'checkbox' : 'square-outline'}
-              size={18}
-              color="#DC2626"
-              style={{ marginRight: 3 }}
-            />
-            <Text style={styles.observeDeficiencyText}>Observe Deficiency</Text>
+            <Text style={styles.observeDeficiencyText}>OBSERVE DEFICIENCY</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.selectAllItem}

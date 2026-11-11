@@ -114,6 +114,11 @@ interface Props {
   route: DeficiencyDetailScreenRouteProp;
 }
 
+// How long the "Processing" overlay may stay up before it gives way on its
+// own. Long enough for a slow upload on site, short enough that a stalled call
+// never looks like a frozen app.
+const PROCESSING_TIMEOUT_MS = 45000;
+
 const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const { property, selectedUnits, currentUnit, buildingId, location, itemId, itemName } = route.params;
 
@@ -183,6 +188,10 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const [showProcessingModal, setShowProcessingModal] = useState(false);
   const [processingMessage, setProcessingMessage] = useState('');
   const processingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  // A save in flight. The ref is what actually guards the second press: state
+  // lands a render later, and two taps can land inside the same frame.
+  const submittingRef = useRef(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Code reference ("How To Inspect") modal state
   const [showCodeReference, setShowCodeReference] = useState(false);
@@ -560,11 +569,20 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       // The iOS simulator has no camera. Dev builds fall back to the photo
       // library so the flow can still be tested there; release stays camera-only.
       if (!__DEV__) throw error;
-      result = await ImagePicker.launchImageLibraryAsync(options);
+      // The library can hand back several pictures at once. Cropping is not
+      // offered for a multiple selection, so allowsEditing comes off here.
+      result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes,
+        allowsMultipleSelection: true,
+        quality: 0.8,
+      });
     }
 
-    if (!result.canceled && result.assets[0]) {
-      setImages([...images, result.assets[0].uri]);
+    // More than one picture per deficiency is allowed, so every asset the
+    // picker returns is added to the ones already taken.
+    if (!result.canceled && result.assets?.length) {
+      const picked = result.assets.map((asset) => asset.uri);
+      setImages((previous) => [...previous, ...picked]);
     }
   };
 
@@ -645,6 +663,13 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     // deficiency locally and queues the upload for replay.
     const isOffline = !networkService.isOnline();
 
+    // One press, one deficiency. Without this a second tap while the first
+    // save is still running starts the whole thing over and the item gets
+    // recorded twice (or more).
+    if (submittingRef.current) return;
+    submittingRef.current = true;
+    setIsSubmitting(true);
+
     try {
       // Show processing modal - will be dismissed when processing completes
       setProcessingMessage(
@@ -656,10 +681,20 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       );
       setShowProcessingModal(true);
 
-      // Clear any existing timer
+      // Clear any existing timer, then arm a watchdog. Without one, an upload
+      // or AI call that never settles leaves this modal up for good and the
+      // screen looks frozen with no way forward. The work itself is safe
+      // either way: every write has already landed or gone on the queue.
       if (processingTimerRef.current) {
         clearTimeout(processingTimerRef.current);
       }
+      processingTimerRef.current = setTimeout(() => {
+        setShowProcessingModal(false);
+        Alert.alert(
+          'Still saving',
+          'This is taking longer than usual. Your work is saved on this device and syncs once the connection is back.'
+        );
+      }, PROCESSING_TIMEOUT_MS);
 
       // Upload all images to Cloudinary and analyze with AI
       const propertyIdentifier = String(property?._id || property?.id || property?.propertyId || 'unknown');
@@ -1047,6 +1082,15 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
       console.error('Error in handleProceed:', error);
       Alert.alert('Error', 'Failed to process images. Please try again.');
+    } finally {
+      // However this ended — saved, failed, or thrown out of the middle — the
+      // watchdog goes away and the button becomes pressable again.
+      if (processingTimerRef.current) {
+        clearTimeout(processingTimerRef.current);
+        processingTimerRef.current = null;
+      }
+      submittingRef.current = false;
+      setIsSubmitting(false);
     }
   };
 
@@ -1236,7 +1280,9 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               <View style={styles.photoIconContainer}>
                 <Ionicons name="camera" size={32} color="#0E7490" />
               </View>
-              <Text style={styles.photoButtonText}>Take Photo</Text>
+              <Text style={styles.photoButtonText}>
+                {images.length > 0 ? `Add Photo (${images.length})` : 'Take Photo'}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -1879,8 +1925,12 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         >
           <Text style={styles.cancelButtonText}>CANCEL</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.proceedButton} onPress={handleProceed}>
-          <Text style={styles.proceedButtonText}>PROCEED</Text>
+        <TouchableOpacity
+          style={[styles.proceedButton, isSubmitting && styles.proceedButtonDisabled]}
+          onPress={handleProceed}
+          disabled={isSubmitting}
+        >
+          <Text style={styles.proceedButtonText}>{isSubmitting ? 'SAVING...' : 'PROCEED'}</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView >
@@ -2350,6 +2400,9 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '900',
     letterSpacing: 0.5,
+  },
+  proceedButtonDisabled: {
+    opacity: 0.6,
   },
   proceedButton: {
     flex: 1,
