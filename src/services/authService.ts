@@ -274,19 +274,19 @@ class AuthService {
   /**
    * Get dashboard route based on user role
    */
-  getDashboardRoute(role: string): string {
-    switch (role) {
-      case "management":
-      case "supervisor":
-      case "property-manager":
-        return "ManagementDashboard";
-      case "other":
-      case "order":
-        return "OrderDashboard";
-      case "inspector":
-      default:
-        return "Dashboard";
-    }
+  getDashboardRoute(_role: string): string {
+    // One dashboard for every portal. Management landed on a 399-line screen
+    // and "other" on a 531-line one while an inspector got the full 1333-line
+    // dashboard -- three different products behind one login.
+    //
+    // Web does not work that way: /dashboard, /management/dashboard,
+    // /other/dashboard and /asset-manager/dashboard are the same 691-line page
+    // and differ by fourteen lines, all of them the layout import and route
+    // prefixes. The app has no prefixes, so the same page means the same route.
+    //
+    // ManagementDashboard and OrderDashboard stay registered in App.tsx; they
+    // are simply no longer where a login lands.
+    return "Dashboard";
   }
 
   /**

@@ -18,7 +18,11 @@ export type MenuItem = {
     | 'people-outline';
 };
 
-/** Backend role -> menu group. Mirrors authService.getDashboardRoute. */
+/**
+ * Backend role -> portal name. Every portal now gets the same menu and the
+ * same dashboard, so this is left for labelling and for the check below to
+ * pin the role mapping; it no longer decides what anyone can reach.
+ */
 export const userTypeForRole = (role?: string): string => {
   switch (role) {
     case 'other':
@@ -35,12 +39,12 @@ export const userTypeForRole = (role?: string): string => {
   }
 };
 
-export function menuItemsFor(userType: string): MenuItem[] {
-  if (userType === 'AssetsManager') {
-    return [{ id: 'Dashboard', label: 'Dashboard', icon: 'home' }];
-  }
-
-  // Every other portal — Inspector, Management, Other — shares one menu.
+export function menuItemsFor(_userType: string): MenuItem[] {
+  // One menu for every portal. The asset manager used to get Dashboard alone,
+  // which left that portal a dead end: no way to reach an inspection, its
+  // status, or settings. Web gives asset-manager the same pages as the rest
+  // (my-inspection, inspection-status, settings and the inspection flow), so
+  // the app stops being the odd one out.
   return [
     { id: 'Dashboard', label: 'Dashboard', icon: 'home' },
     { id: 'MyInspections', label: 'My Inspection', icon: 'clipboard-outline' },
