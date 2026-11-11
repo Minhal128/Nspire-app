@@ -693,7 +693,7 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
             </View>
             <TouchableOpacity style={styles.unlockPayButton} onPress={() => gateExport('pdf', handleExportPDF)}>
               <Ionicons name="lock-closed-outline" size={14} color="#FFFFFF" />
-              <Text style={styles.unlockPayButtonText}>Unlock Report · $10</Text>
+              <Text style={styles.unlockPayButtonText}>Unlock Report · $1</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.viewDeficiencyButton} onPress={handlePreviewReport}>
               <Ionicons name="mail-outline" size={14} color="#B45309" />

@@ -665,7 +665,7 @@ export default function NSPIREReportScreen({ navigation, route }: NSPIREReportSc
           </View>
           <TouchableOpacity style={styles.unlockButton} onPress={() => setShowEmailBox(true)}>
             <Ionicons name="lock-closed-outline" size={14} color="#FFFFFF" />
-            <Text style={styles.unlockButtonText}>Unlock Report - $10</Text>
+            <Text style={styles.unlockButtonText}>Unlock Report - $1</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.viewDeficiencyButton} onPress={handleOpenPreview}>
             <Ionicons name="mail-outline" size={14} color="#374151" />
