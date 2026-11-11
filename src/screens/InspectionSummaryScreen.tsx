@@ -693,46 +693,50 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
               <Ionicons name="mail-outline" size={14} color="#B45309" />
               <Text style={styles.viewDeficiencyButtonText}>View Deficiency</Text>
             </TouchableOpacity>
-
-            {/* Free route: the report is emailed instead of unlocked. */}
-            {showFreeEmailBox ? (
-              <>
-                <TextInput
-                  style={styles.freeEmailInput}
-                  placeholder="you@example.com"
-                  placeholderTextColor="#9CA3AF"
-                  value={freeEmail}
-                  onChangeText={setFreeEmail}
-                  editable={!sendingFreeReport}
-                  autoCapitalize="none"
-                  keyboardType="email-address"
-                />
-                <View style={styles.freeEmailRow}>
-                  <TouchableOpacity
-                    style={styles.freeEmailSend}
-                    onPress={handleSendFreeReport}
-                    disabled={sendingFreeReport}
-                  >
-                    <Text style={styles.freeEmailSendText}>
-                      {sendingFreeReport ? 'Sending...' : 'Send PDF + Excel'}
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.freeEmailCancel} onPress={() => setShowFreeEmailBox(false)}>
-                    <Text style={styles.freeEmailCancelText}>Cancel</Text>
-                  </TouchableOpacity>
-                </View>
-              </>
-            ) : (
-              <TouchableOpacity
-                style={[styles.viewDeficiencyButton, { marginTop: 8 }]}
-                onPress={() => setShowFreeEmailBox(true)}
-              >
-                <Ionicons name="mail-open-outline" size={14} color="#B45309" />
-                <Text style={styles.viewDeficiencyButtonText}>View Free Report</Text>
-              </TouchableOpacity>
-            )}
           </View>
         )}
+
+        {/* Emailing the report sits outside the locked card on purpose. Locked,
+            it is the free way to get the report; unlocked, it is the only way
+            left on this screen, since the two export buttons at the top were
+            removed. Inside the card it disappeared for whoever had paid. */}
+        <View style={styles.lockedCard}>
+          {showFreeEmailBox ? (
+            <>
+              <TextInput
+                style={styles.freeEmailInput}
+                placeholder="you@example.com"
+                placeholderTextColor="#9CA3AF"
+                value={freeEmail}
+                onChangeText={setFreeEmail}
+                editable={!sendingFreeReport}
+                autoCapitalize="none"
+                keyboardType="email-address"
+              />
+              <View style={styles.freeEmailRow}>
+                <TouchableOpacity
+                  style={styles.freeEmailSend}
+                  onPress={handleSendFreeReport}
+                  disabled={sendingFreeReport}
+                >
+                  <Text style={styles.freeEmailSendText}>
+                    {sendingFreeReport ? 'Sending...' : 'Send PDF + Excel'}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.freeEmailCancel} onPress={() => setShowFreeEmailBox(false)}>
+                  <Text style={styles.freeEmailCancelText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          ) : (
+            <TouchableOpacity style={styles.viewDeficiencyButton} onPress={() => setShowFreeEmailBox(true)}>
+              <Ionicons name="mail-open-outline" size={14} color="#B45309" />
+              <Text style={styles.viewDeficiencyButtonText}>
+                {isReportUnlocked ? 'Email this report — PDF + Excel' : 'View Free Report'}
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
 
         <View style={styles.hudCard}>
           <Text style={styles.hudHeading}>INSPECTION DATA</Text>

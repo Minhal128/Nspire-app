@@ -667,11 +667,21 @@ export default function NSPIREReportScreen({ navigation, route }: NSPIREReportSc
             <Ionicons name="mail-outline" size={14} color="#374151" />
             <Text style={styles.viewDeficiencyText}>View Deficiency</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.viewDeficiencyButton} onPress={() => setShowFreeEmailBox(true)}>
-            <Ionicons name="mail-open-outline" size={14} color="#374151" />
-            <Text style={styles.viewDeficiencyText}>View Free Report</Text>
-          </TouchableOpacity>
         </View>
+        )}
+
+        {/* Outside the locked card on purpose: once the report is paid for
+            that card is gone, and inside it this was disappearing for exactly
+            the people who had paid. */}
+        {!showFreeEmailBox && (
+          <View style={styles.lockedCard}>
+            <TouchableOpacity style={styles.viewDeficiencyButton} onPress={() => setShowFreeEmailBox(true)}>
+              <Ionicons name="mail-open-outline" size={14} color="#374151" />
+              <Text style={styles.viewDeficiencyText}>
+                {unlocked ? 'Email this report — PDF + Excel' : 'View Free Report'}
+              </Text>
+            </TouchableOpacity>
+          </View>
         )}
 
         {showFreeEmailBox && (
