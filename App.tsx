@@ -32,12 +32,7 @@ import AnalyticsScreen from "./src/screens/AnalyticsScreen";
 import UnitInspectionScreen from "./src/screens/UnitInspectionScreen";
 import InspectionChecklistScreen from "./src/screens/InspectionChecklistScreen";
 import SettingsScreen from "./src/screens/SettingsScreen";
-import ManagementDashboardScreen from "./src/screens/ManagementDashboardScreen";
-import ManagementReportsScreen from "./src/screens/ManagementReportsScreen";
 import ReportDetailScreen from "./src/screens/ReportDetailScreen";
-import OrderDashboardScreen from "./src/screens/OrderDashboardScreen";
-import OthersScreen from "./src/screens/OthersScreen";
-import OtherInspectionsScreen from "./src/screens/OtherInspectionsScreen";
 import LocationStatsScreen from "./src/screens/LocationStatsScreen";
 import AIInspectionScreen from "./src/screens/AIInspectionScreen";
 import InspectionCategoryScreen from "./src/screens/InspectionCategoryScreen";
@@ -70,7 +65,6 @@ export type RootStackParamList = {
   MyInspections: undefined;
   Reports: undefined;
   InspectionStatus: undefined;
-  ManagementReports: undefined;
   Settings: undefined;
   AddProperty: undefined;
   BuildingDivision: { propertyData: any };
@@ -81,11 +75,7 @@ export type RootStackParamList = {
   Analytics: undefined;
   UnitInspection: { property: any };
   InspectionChecklist: { property: any; unit: any };
-  ManagementDashboard: undefined;
   ReportDetail: { report: any };
-  OrderDashboard: undefined;
-  Others: undefined;
-  OtherInspections: undefined;
   LocationStats: undefined;
   AIInspection: { property: any; selectedUnits?: string[]; coverage?: string; totalUnits?: number; samplingInfo?: any };
   ModuleSelection: { property: any; selectedUnits?: string[]; coverage?: string; totalUnits?: number; samplingInfo?: any; category: 'inside' | 'outside' };
@@ -162,7 +152,6 @@ const linking: LinkingOptions<RootStackParamList> = {
       MyInspections: "inspections",
       Reports: "reports",
       InspectionStatus: "inspection-status",
-      ManagementReports: "management-reports",
       Settings: "settings",
       AddProperty: "add-property",
       BuildingDivision: "building-division",
@@ -171,11 +160,7 @@ const linking: LinkingOptions<RootStackParamList> = {
       Analytics: "analytics",
       UnitInspection: "unit-inspection",
       InspectionChecklist: "checklist",
-      ManagementDashboard: "management",
       ReportDetail: "report",
-      OrderDashboard: "orders",
-      Others: "others",
-      OtherInspections: "other-inspections",
       LocationStats: "location-stats",
       AIInspection: "ai-inspection",
       InspectionReport: "inspection-report",
@@ -400,7 +385,6 @@ function AppContent() {
                   <Stack.Screen name="MyInspections" component={MyInspectionsScreen} />
                   <Stack.Screen name="Reports" component={ReportsScreen} />
                   <Stack.Screen name="InspectionStatus" component={InspectionStatusScreen} />
-                  <Stack.Screen name="ManagementReports" component={ManagementReportsScreen} />
                   <Stack.Screen name="AddProperty" component={AddPropertyScreen} />
                   <Stack.Screen name="BuildingDivision" component={BuildingDivisionScreen} />
                   <Stack.Screen
@@ -418,17 +402,7 @@ function AppContent() {
                     component={InspectionChecklistScreen}
                   />
                   <Stack.Screen name="Settings" component={SettingsScreen} />
-                  <Stack.Screen
-                    name="ManagementDashboard"
-                    component={ManagementDashboardScreen}
-                  />
                   <Stack.Screen name="ReportDetail" component={ReportDetailScreen} />
-                  <Stack.Screen
-                    name="OrderDashboard"
-                    component={OrderDashboardScreen}
-                  />
-                  <Stack.Screen name="Others" component={OthersScreen} />
-                  <Stack.Screen name="OtherInspections" component={OtherInspectionsScreen} />
                   <Stack.Screen name="LocationStats" component={LocationStatsScreen} />
                   <Stack.Screen name="AIInspection" component={InspectionCategoryScreen} />
                   <Stack.Screen name="ModuleSelection" component={ModuleSelectionScreen} />

@@ -65,5 +65,7 @@ for (const file of files) {
   }
 }
 
-assert.ok(checked >= 12, `expected the whole app's logos, only found ${checked}`);
+// Guards against the sweep finding nothing and passing quietly. It was 12
+// until the six unreachable portal screens went; 11 remain.
+assert.ok(checked >= 10, `expected the whole app's logos, only found ${checked}`);
 console.log(`logoBox.check.ts OK — ${checked} logo boxes at ${ratio.toFixed(3)}:1`);
