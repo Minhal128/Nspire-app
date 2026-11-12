@@ -193,6 +193,20 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const submittingRef = useRef(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Closing the processing overlay has to let the save guard go with it.
+  // Hiding it on its own left the screen looking idle while isSubmitting was
+  // still true, so PROCEED stayed disabled on "SAVING..." and every press was
+  // swallowed by submittingRef -- which reads exactly like a frozen screen.
+  const dismissProcessing = () => {
+    if (processingTimerRef.current) {
+      clearTimeout(processingTimerRef.current);
+      processingTimerRef.current = null;
+    }
+    setShowProcessingModal(false);
+    submittingRef.current = false;
+    setIsSubmitting(false);
+  };
+
   // Code reference ("How To Inspect") modal state
   const [showCodeReference, setShowCodeReference] = useState(false);
   const [codeReferenceContent, setCodeReferenceContent] = useState('');
@@ -690,6 +704,14 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       }
       processingTimerRef.current = setTimeout(() => {
         setShowProcessingModal(false);
+        // Release the button too. Hiding the overlay alone took the screen from
+        // visibly busy to silently dead: isSubmitting stayed true, so PROCEED
+        // stayed disabled on "SAVING...", and submittingRef stayed true, so a
+        // press returned at the guard. The finally below only runs once the
+        // upload settles, and the whole point of this watchdog is that it may
+        // never. The work is already saved or queued, so letting go is safe.
+        submittingRef.current = false;
+        setIsSubmitting(false);
         Alert.alert(
           'Still saving',
           'This is taking longer than usual. Your work is saved on this device and syncs once the connection is back.'
@@ -1839,7 +1861,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         visible={showProcessingModal}
         animationType="fade"
         transparent={true}
-        onRequestClose={() => setShowProcessingModal(false)}
+        onRequestClose={dismissProcessing}
       >
         <View style={styles.processingModalOverlay}>
           <View style={styles.processingModalContent}>
@@ -1848,9 +1870,11 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             <ActivityIndicator size="large" color="#0E7490" style={{ marginTop: 16 }} />
             <TouchableOpacity
               style={styles.processingModalButton}
-              onPress={() => setShowProcessingModal(false)}
+              onPress={dismissProcessing}
             >
-              <Text style={styles.processingModalButtonText}>Please wait</Text>
+              {/* It said "Please wait" while being the one thing that closed
+                  the overlay, which is the opposite of waiting. */}
+              <Text style={styles.processingModalButtonText}>Dismiss</Text>
             </TouchableOpacity>
           </View>
         </View>
