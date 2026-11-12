@@ -5,6 +5,7 @@
 
 import * as FileSystem from "expo-file-system/legacy";
 import * as ImageManipulator from "expo-image-manipulator";
+import { readBlobAsBase64 } from "../utils/readBlob";
 
 // Gemini API configuration
 const GEMINI_API_URL =
@@ -409,15 +410,9 @@ class GeminiService {
           throw new Error(`Failed to fetch image: ${response.status}`);
         }
         const blob = await response.blob();
-        return new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            const base64 = (reader.result as string).split(',')[1];
-            resolve(base64);
-          };
-          reader.onerror = reject;
-          reader.readAsDataURL(blob);
-        });
+        // Bounded: a FileReader that reports neither load nor error used to
+        // leave this promise unsettled, and the save awaiting it with it.
+        return await readBlobAsBase64(blob);
       }
 
       // For local files, strip metadata first

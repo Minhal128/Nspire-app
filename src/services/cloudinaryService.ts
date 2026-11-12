@@ -6,6 +6,7 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { Platform } from 'react-native';
+import { readBlobAsDataUrl } from '../utils/readBlob';
 import { API_CONFIG } from './api';
 
 const API_BASE_URL = API_CONFIG.BASE_URL;
@@ -92,14 +93,9 @@ class CloudinaryService {
           clearTimeout(timeoutId);
         }
         const blob = await response.blob();
-        return new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            resolve(reader.result as string); // Includes data: prefix
-          };
-          reader.onerror = reject;
-          reader.readAsDataURL(blob);
-        });
+        // Bounded: a FileReader that reports neither load nor error used to
+        // leave this promise unsettled, and the upload awaiting it with it.
+        return await readBlobAsDataUrl(blob); // Includes data: prefix
       }
 
       const base64 = await FileSystem.readAsStringAsync(uri, {
