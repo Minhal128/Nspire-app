@@ -119,6 +119,11 @@ interface Props {
 // never looks like a frozen app.
 const PROCESSING_TIMEOUT_MS = 45000;
 
+// What one photo may honestly cost before the watchdog should doubt it: the
+// upload's own 60s, plus 30s to read the image for the AI and 30s for its
+// answer, and a little room.
+const PER_IMAGE_BUDGET_MS = 130000;
+
 const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const { property, selectedUnits, currentUnit, buildingId, location, itemId, itemName } = route.params;
 
@@ -699,9 +704,17 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       // or AI call that never settles leaves this modal up for good and the
       // screen looks frozen with no way forward. The work itself is safe
       // either way: every write has already landed or gone on the queue.
+      //
+      // The budget has to follow the number of photos. Each one is bounded by
+      // its own calls -- the Cloudinary upload gives up at 60s, and the AI side
+      // at 30s to read the image plus 30s to answer -- so a photo can honestly
+      // take two minutes. A flat 45s fired on work that was still running as
+      // soon as there was more than one, which is just the freeze again wearing
+      // a different hat.
       if (processingTimerRef.current) {
         clearTimeout(processingTimerRef.current);
       }
+      const processingBudgetMs = PROCESSING_TIMEOUT_MS + images.length * PER_IMAGE_BUDGET_MS;
       processingTimerRef.current = setTimeout(() => {
         setShowProcessingModal(false);
         // Release the button too. Hiding the overlay alone took the screen from
@@ -716,7 +729,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           'Still saving',
           'This is taking longer than usual. Your work is saved on this device and syncs once the connection is back.'
         );
-      }, PROCESSING_TIMEOUT_MS);
+      }, processingBudgetMs);
 
       // Upload all images to Cloudinary and analyze with AI
       const propertyIdentifier = String(property?._id || property?.id || property?.propertyId || 'unknown');
@@ -731,12 +744,20 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         // under storage pressure. Offline that file is the only copy of the
         // photo until the queue can upload it, so keep it somewhere permanent
         // first — otherwise the deficiency outlives its picture.
+        // Say which photo, and which stage of it. The message used to be set
+        // once before this loop, so several photos sat behind one unchanging
+        // line for minutes -- indistinguishable from a hang even when every
+        // upload was landing.
+        const ofN = images.length > 1 ? ` ${i + 1} of ${images.length}` : '';
+        setProcessingMessage(`Saving photo${ofN}...`);
+
         const imageUri = await persistCapturedImage(images[i], propertyIdentifier);
 
         try {
           if (isOffline) throw new Error('offline');
 
           // Upload to Cloudinary
+          setProcessingMessage(`Uploading photo${ofN}...`);
           const uploadResult = await cloudinaryService.uploadImage(imageUri, 'nspire-inspections');
 
           // A refused upload used to leave imageUrl null with nothing queued,
@@ -754,6 +775,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           // Call AI analysis (Gemini service) - use LOCAL imageUri, not Cloudinary URL
           let aiAnalysis;
           try {
+            setProcessingMessage(`Analyzing photo${ofN}...`);
             aiAnalysis = await geminiService.analyzeDeficiency(
               imageUri, // Use local URI for AI analysis
               currentDeficiency.name,
