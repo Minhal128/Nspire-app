@@ -124,6 +124,10 @@ const PROCESSING_TIMEOUT_MS = 45000;
 // answer, and a little room.
 const PER_IMAGE_BUDGET_MS = 130000;
 
+// Long enough for a modal's fade to finish before the next one is presented.
+// Swapping them in the same tick is a race the platform can lose.
+const MODAL_SWAP_MS = 350;
+
 const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const { property, selectedUnits, currentUnit, buildingId, location, itemId, itemName } = route.params;
 
@@ -193,6 +197,9 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const [showProcessingModal, setShowProcessingModal] = useState(false);
   const [processingMessage, setProcessingMessage] = useState('');
   const processingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  // Holds the gap between closing the processing overlay and opening the
+  // saved panel, so leaving the screen mid-save cannot fire it into nothing.
+  const panelTimerRef = useRef<NodeJS.Timeout | null>(null);
   // A save in flight. The ref is what actually guards the second press: state
   // lands a render later, and two taps can land inside the same frame.
   const submittingRef = useRef(false);
@@ -217,11 +224,16 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const [codeReferenceContent, setCodeReferenceContent] = useState('');
   const [codeRefFontSize, setCodeRefFontSize] = useState(15);
 
-  // Cleanup timer on unmount
+  // Cleanup timers on unmount. Both outlive a save that is still running, so
+  // leaving the screen mid-proceed would otherwise fire them into a component
+  // that is no longer there.
   useEffect(() => {
     return () => {
       if (processingTimerRef.current) {
         clearTimeout(processingTimerRef.current);
+      }
+      if (panelTimerRef.current) {
+        clearTimeout(panelTimerRef.current);
       }
     };
   }, []);
@@ -1106,17 +1118,30 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       });
       const panelFindings = savedForItem.length > 0 ? savedForItem : analyzedDeficiencies;
 
-      if (isOffline) {
-        Alert.alert(
-          'Offline Mode',
-          'No internet connection. This deficiency is saved on your device and will sync automatically when you are back online.'
-        );
-      }
-
       setSavedItemFindings(panelFindings);
       const newest: any = analyzedDeficiencies[analyzedDeficiencies.length - 1];
       setLastSavedFindingId(newest?.deficiencyQRId ?? newest?.id ?? null);
-      setSavedPanelVisible(true);
+
+      // One modal at a time. Hiding the processing overlay and presenting the
+      // saved panel in the same tick is a race the platform does not have to
+      // win: the dismissal can swallow the presentation, leaving the overlay
+      // on screen with nothing behind it. That is the save that "sticks"
+      // after a successful proceed and only clears by cancelling out -- and
+      // being a race, it is why it happens some times and not others.
+      //
+      // The offline notice waits with it, for the same reason: an Alert
+      // thrown into the middle of a modal swap is one more thing to collide.
+      if (panelTimerRef.current) clearTimeout(panelTimerRef.current);
+      panelTimerRef.current = setTimeout(() => {
+        panelTimerRef.current = null;
+        setSavedPanelVisible(true);
+        if (isOffline) {
+          Alert.alert(
+            'Offline Mode',
+            'No internet connection. This deficiency is saved on your device and will sync automatically when you are back online.'
+          );
+        }
+      }, MODAL_SWAP_MS);
     } catch (error) {
       // Hide processing modal on error
       if (processingTimerRef.current) {
