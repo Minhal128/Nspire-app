@@ -87,6 +87,36 @@ assert.strictEqual(
   'both deficiencies on the item are listed',
 );
 
+// --- two buildings can each have a "Unit 001" -------------------------------
+// The property-wide snapshot holds every building's entries. An OD recorded in
+// B1's unit used to come back, already answered, in B2's unit of the same name.
+const bathB1 = {
+  itemName: 'Bathroom', _area: 'Unit', _unit: 'Unit 001',
+  building: 'B1', buildingInspectionId: 'B1',
+  deficiency: { name: 'Leak', severity: 'Moderate' }, deficiencyQRId: 'QR-B1',
+};
+const propertyWide = JSON.stringify({ deficiencies: [bathB1] });
+const unitB2 = savedFindingScope({
+  property, buildingId: 'B2', isOutside: false, isUnit: true,
+  currentUnit: 'Unit 001', selectedUnits: ['Unit 001'],
+});
+assert.deepStrictEqual(findingsForItem([propertyWide], unit, 'Bathroom'), [bathB1], 'B1 still finds its own');
+assert.deepStrictEqual(
+  findingsForItem([propertyWide], unitB2, 'Bathroom'), [],
+  "a deficiency recorded in B1 must not answer the same-named unit in B2",
+);
+assert.strictEqual(
+  findingsForItem([propertyWide], { ...unitB2, buildingLabel: 'b1' }, 'Bathroom').length, 1,
+  'building labels compare without case',
+);
+const unstamped = JSON.stringify({
+  deficiencies: [{ ...bathB1, building: undefined, buildingInspectionId: undefined }],
+});
+assert.strictEqual(
+  findingsForItem([unstamped], unitB2, 'Bathroom').length, 1,
+  'an entry from before the building was stamped has nothing to gate on',
+);
+
 // --- junk on disk must not take the screen down ----------------------------
 assert.deepStrictEqual(findingsForItem([null, undefined, '', 'not json', '{}'], outside, 'Chimney'), []);
 

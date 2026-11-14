@@ -29,6 +29,7 @@ import api from '../services/api';
 import { canonicalizeInspectionType } from '../utils/inspectionProgressUtils';
 import { markUnitCompleted } from '../utils/unitInspectionStorage';
 import offlineQueue from '../services/offlineQueue';
+import inspectionService from '../services/inspectionService';
 import { serverAnswersWin } from '../utils/offlineQueueCore';
 import { savedFindingScope, draftStorageKeys, findingsForItem } from '../utils/savedDeficiencies';
 
@@ -328,6 +329,19 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
       // the server is what marks the unit / Outside / Inside complete.
       if (progressPayload) {
         await offlineQueue.enqueue('saveProgress', queueKey, progressPayload);
+        // The property screen learns what is done from the server, which will
+        // not hear of this until the queue drains. Note a finished area on the
+        // device too, or it reads "Not started" for the whole outage.
+        if (progressPayload.inspectionData?.isComplete) {
+          const doneLabel = location === 'Outside' || location === 'Inside'
+            ? location
+            : String(currentUnit || selectedUnits?.[0] || '').trim();
+          await inspectionService.rememberInspectedOffline(
+            String(progressPayload.property_id),
+            String(buildingId || ''),
+            doneLabel,
+          );
+        }
       }
     }
     // Sent or queued either way, so the server's copy can be trusted again.

@@ -7,6 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import api, { Inspection, API_CONFIG } from './api';
 import { StorageKeys } from '../utils/storage';
 import networkService from './networkService';
+import { unitStatusCacheKey, parseCachedUnitStatus, withInspectedLabel } from '../utils/unitStatusCache';
 
 export interface CreateInspectionData {
   property: string;
@@ -105,6 +106,8 @@ export interface UnitInspectionStatusResponse {
     sourceInspectionType?: string;
   }>;
   unitStatusMap: Record<string, boolean>;
+  /** Set when this is the device's copy of the last answer, not a fresh one. */
+  fromCache?: boolean;
 }
 
 class InspectionService {
@@ -270,6 +273,7 @@ class InspectionService {
   async getUnitInspectionStatus(
     params: GetUnitInspectionStatusPayload
   ): Promise<UnitInspectionStatusResponse> {
+    const cacheKey = unitStatusCacheKey(params.property_id, params.building_id);
     try {
       const query = new URLSearchParams({
         property_id: params.property_id,
@@ -277,14 +281,39 @@ class InspectionService {
       }).toString();
 
       const response = await api.get<UnitInspectionStatusResponse>(`/inspections/unit-status?${query}`);
+      // Kept for the next time there is no signal: the screens that show what
+      // has been inspected draw it from this answer alone.
+      if (response?.success && Array.isArray(response.statuses)) {
+        AsyncStorage.setItem(cacheKey, JSON.stringify(response)).catch(() => undefined);
+      }
       return response;
     } catch (error: any) {
       console.error('Error fetching unit inspection status:', error.message);
+      // No signal, or the server out of reach: say what it said last time,
+      // plus anything finished offline since. Answering "nothing inspected"
+      // here is what made a property's whole progress vanish offline.
+      const cached = parseCachedUnitStatus(await AsyncStorage.getItem(cacheKey).catch(() => null));
+      if (cached) return { ...cached, fromCache: true };
       return {
         success: false,
         statuses: [],
         unitStatusMap: {},
       };
+    }
+  }
+
+  /**
+   * Note on the device that an area was finished while its save is still
+   * queued, so it shows as done before the server has heard of it. The next
+   * answer from the server replaces this.
+   */
+  async rememberInspectedOffline(propertyId: string, buildingId: string, unitLabel: string): Promise<void> {
+    const cacheKey = unitStatusCacheKey(propertyId, buildingId);
+    try {
+      const cached = parseCachedUnitStatus(await AsyncStorage.getItem(cacheKey));
+      await AsyncStorage.setItem(cacheKey, JSON.stringify(withInspectedLabel(cached, unitLabel)));
+    } catch (error) {
+      console.warn('Could not note the offline completion:', error);
     }
   }
 

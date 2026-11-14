@@ -68,9 +68,14 @@ export function draftStorageKeys(scope: SavedFindingScope): string[] {
 export const findingIdentity = (entry: any): string =>
   token(entry?.deficiencyQRId || entry?.dedupeKey || entry?.id || entry?._id);
 
+/** The building an entry was recorded in, under whichever name it was stamped. */
+const entryBuilding = (entry: any): string =>
+  token(entry?.buildingInspectionId || entry?.building || entry?.buildingId || entry?.buildingName);
+
 /**
  * The deficiencies recorded against one item, newest snapshot wins.
- * Item ids repeat across Outside/Inside/Unit, so match on name + area + unit.
+ * Item ids repeat across Outside/Inside/Unit, so match on name + area + unit;
+ * unit names repeat across buildings, so the building gates the match too.
  */
 export function findingsForItem(
   rawPayloads: (string | null | undefined)[],
@@ -98,6 +103,12 @@ export function findingsForItem(
       if (token(entry.itemName ?? entry.item) !== token(itemName)) return;
       if (areaToken(entry._area ?? entry.area) !== areaToken(scope.area)) return;
       if (token(entry._unit ?? entry.unit) !== token(scope.unit)) return;
+      // The property-wide snapshot holds every building's entries, and two
+      // buildings can each have a "Unit 001". Without this, an OD recorded in
+      // one building came back, already answered, in the same-named unit of
+      // the next. An entry from before the building was stamped still matches.
+      const building = entryBuilding(entry);
+      if (building && token(scope.buildingLabel) && building !== token(scope.buildingLabel)) return;
       found.set(findingIdentity(entry) || `${payloadIndex}:${index}`, entry);
     });
   });

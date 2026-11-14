@@ -159,6 +159,8 @@ export default function BuildingInspectionScreen() {
 
   // Export state
   const [isExporting, setIsExporting] = useState(false);
+  // Which of the two report buttons is busy, so only that one shows the spinner.
+  const [exportTarget, setExportTarget] = useState<'summary' | 'reports'>('summary');
   const [reportFindings, setReportFindings] = useState<Finding[]>([]);
   const [inspectorName, setInspectorName] = useState('Inspector');
   const { openReportPreview } = useReportPreview();
@@ -287,8 +289,13 @@ export default function BuildingInspectionScreen() {
   };
 
   // Gather all inspection findings and show in modal
-  const handleExportInProgress = async () => {
+  // Both buttons under the building table gather the same in-progress report.
+  // View Summary shows it here; Export Reports carries it on to the report
+  // page, the last screen of the flow, which is where the web's Export In
+  // Progress goes.
+  const handleExportInProgress = async (destination: 'summary' | 'reports' = 'summary') => {
     try {
+      setExportTarget(destination);
       setIsExporting(true);
 
       // Get current user
@@ -1324,6 +1331,13 @@ export default function BuildingInspectionScreen() {
         }
       };
 
+      if (destination === 'reports') {
+        const nspireReport = generateNSPIREReport(reportData as any);
+        nspireReport.metadata.inspectorName = inspector;
+        navigation.navigate('NSPIREReport' as any, { report: nspireReport, property });
+        return;
+      }
+
       const html = buildInProgressReportHtml(reportData);
 
       openReportPreview({
@@ -1584,18 +1598,34 @@ export default function BuildingInspectionScreen() {
             </View>
           ))}
 
-          {/* Export In Progress Button */}
+          {/* View Summary: the in-progress report, shown here. */}
           <TouchableOpacity
-            style={styles.exportButton}
-            onPress={handleExportInProgress}
+            style={[styles.exportButton, styles.exportSummaryButton]}
+            onPress={() => handleExportInProgress('summary')}
             disabled={isExporting}
           >
-            {isExporting ? (
+            {isExporting && exportTarget === 'summary' ? (
               <ActivityIndicator color="#FFFFFF" size="small" />
             ) : (
               <>
                 <Ionicons name="document-text-outline" size={20} color="#FFFFFF" />
-                <Text style={styles.exportButtonText}>Export In Progress</Text>
+                <Text style={styles.exportButtonText}>View Summary</Text>
+              </>
+            )}
+          </TouchableOpacity>
+
+          {/* Export Reports: on to the report page, the last screen of the flow. */}
+          <TouchableOpacity
+            style={[styles.exportButton, styles.exportReportsButton]}
+            onPress={() => handleExportInProgress('reports')}
+            disabled={isExporting}
+          >
+            {isExporting && exportTarget === 'reports' ? (
+              <ActivityIndicator color="#FFFFFF" size="small" />
+            ) : (
+              <>
+                <Ionicons name="share-outline" size={20} color="#FFFFFF" />
+                <Text style={styles.exportButtonText}>Export Reports</Text>
               </>
             )}
           </TouchableOpacity>
@@ -1968,6 +1998,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginLeft: 8,
   },
+  exportSummaryButton: { marginBottom: 12 },
+  exportReportsButton: { backgroundColor: '#006795', marginTop: 0 },
   // Modal Styles
   modalContainer: {
     flex: 1,

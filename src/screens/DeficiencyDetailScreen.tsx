@@ -191,6 +191,8 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   // "Saved for Summary Report" panel shown after Proceed (web parity: OD modal step 4)
   const [savedPanelVisible, setSavedPanelVisible] = useState(false);
   const [savedItemFindings, setSavedItemFindings] = useState<any[]>([]);
+  // The save behind the panel went to the device's queue, not to the server.
+  const [savedOffline, setSavedOffline] = useState(false);
   const [lastSavedFindingId, setLastSavedFindingId] = useState<string | null>(null);
 
   // Processing modal state
@@ -1129,18 +1131,15 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       // after a successful proceed and only clears by cancelling out -- and
       // being a race, it is why it happens some times and not others.
       //
-      // The offline notice waits with it, for the same reason: an Alert
-      // thrown into the middle of a modal swap is one more thing to collide.
+      // The offline notice is a line inside the panel, not an Alert. It used to
+      // be an Alert raised in the same tick as the panel, which is that same
+      // collision again: offline, the alert won, the panel never appeared, and
+      // after OK the screen had nothing left to continue from but Cancel.
+      setSavedOffline(isOffline);
       if (panelTimerRef.current) clearTimeout(panelTimerRef.current);
       panelTimerRef.current = setTimeout(() => {
         panelTimerRef.current = null;
         setSavedPanelVisible(true);
-        if (isOffline) {
-          Alert.alert(
-            'Offline Mode',
-            'No internet connection. This deficiency is saved on your device and will sync automatically when you are back online.'
-          );
-        }
       }, MODAL_SWAP_MS);
     } catch (error) {
       // Hide processing modal on error
@@ -1854,6 +1853,11 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               <Text style={styles.savedPanelSubtitle}>
                 {savedItemFindings.length} {savedItemFindings.length === 1 ? 'deficiency' : 'deficiencies'} on this item
               </Text>
+              {savedOffline && (
+                <Text style={styles.savedPanelOffline}>
+                  Offline: saved on this device. It will sync automatically when you are back online.
+                </Text>
+              )}
             </View>
 
             <ScrollView style={styles.savedPanelList} showsVerticalScrollIndicator={false}>
@@ -2075,6 +2079,19 @@ const styles = StyleSheet.create({
   savedPanelHeader: { alignItems: 'center', marginBottom: 14 },
   savedPanelTitle: { fontSize: 18, fontWeight: '800', color: '#111827' },
   savedPanelSubtitle: { fontSize: 12, color: '#6B7280', marginTop: 4 },
+  savedPanelOffline: {
+    marginTop: 10,
+    fontSize: 12,
+    lineHeight: 17,
+    color: '#92400E',
+    backgroundColor: '#FFFBEB',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    textAlign: 'center',
+  },
   savedPanelList: { flexGrow: 0, marginBottom: 12 },
   savedFindingRow: {
     flexDirection: 'row',

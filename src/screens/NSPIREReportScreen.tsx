@@ -23,6 +23,7 @@ import { WebView } from 'react-native-webview';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Colors } from '../constants/Colors';
 import { usePaymentLink } from '../hooks/usePaymentLink';
+import { stripeService } from '../utils/stripeService';
 import { resolveUnlockReference } from '../utils/stripeUnlock';
 import {
   nspirePDFService,
@@ -88,6 +89,19 @@ export default function NSPIREReportScreen({ navigation, route }: NSPIREReportSc
     () => setUnlocked(true),
     showEmailBox,
   );
+
+  // Is this report already paid for? Asked once when the screen opens. The
+  // poll above only runs while the payment box is up and a link has just been
+  // sent, so a report paid for earlier, or from another device, opened here as
+  // locked and stayed locked.
+  useEffect(() => {
+    if (!unlockReference) return;
+    let mounted = true;
+    stripeService.checkUnlockStatus(unlockReference).then((isUnlocked) => {
+      if (mounted && isUnlocked) setUnlocked(true);
+    });
+    return () => { mounted = false; };
+  }, [unlockReference]);
 
   const handleSendFreeReport = async () => {
     const address = freeEmail.trim();

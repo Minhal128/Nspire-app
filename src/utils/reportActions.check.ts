@@ -42,6 +42,17 @@ for (const name of ['InspectionSummaryScreen.tsx', 'NSPIREReportScreen.tsx']) {
   }
 }
 
+// --- a report paid for earlier must open unlocked ----------------------------
+// The payment-link poll only runs while the payment box is up, so each screen
+// has to ask the server once when it opens.
+for (const name of ['InspectionSummaryScreen.tsx', 'NSPIREReportScreen.tsx']) {
+  const src = read(new URL(`src/screens/${name}`, root));
+  assert.ok(
+    src.includes('stripeService.checkUnlockStatus(unlockReference)'),
+    `${name}: must ask check-unlock when it opens, or a paid report shows as locked`
+  );
+}
+
 // --- the same names the web shows, when it is checked out beside the app -----
 const webPage = new URL('../inspire-web/app/dashboard/inspection/summary/page.tsx', root);
 if (existsSync(fileURLToPath(webPage))) {
