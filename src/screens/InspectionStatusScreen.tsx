@@ -275,7 +275,7 @@ export default function InspectionStatusScreen({ navigation }: InspectionStatusS
   };
 
   /** Web lands a locked report on the HUD progress page, which carries the
-   *  unlock + View Deficiency actions. Nothing reached NSPIREReport before. */
+   *  unlock + View Report actions. Nothing reached NSPIREReport before. */
   const handleViewReport = (property: PropertyWithInspection) => {
     navigation.navigate('NSPIREReport' as never, {
       report: buildReport(property),

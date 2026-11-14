@@ -21,6 +21,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { exportNspireExcel } from '../utils/nspireExcelExport';
 import { enhancedNspirePDFService } from '../services/enhancedNspirePDFService';
+import { calculateDeductionPoints } from '../services/web/nspireReport';
 import { storeData, getData } from '../utils/storage';
 import { stripeService } from '../utils/stripeService';
 import { resolveUnlockReference } from '../utils/stripeUnlock';
@@ -33,6 +34,17 @@ type InspectionSummaryScreenNavigationProp = NativeStackNavigationProp<
   'InspectionSummary'
 >;
 type InspectionSummaryScreenRouteProp = RouteProp<RootStackParamList, 'InspectionSummary'>;
+
+/**
+ * A saved deficiency as its report row prints it: the severity, and the points
+ * that severity costs under the web's own table. The score card and the report
+ * rows both read these, so the screen cannot disagree with the report it makes.
+ * A general comment is not a deficiency and costs nothing.
+ */
+const reportRowSeverity = (defItem: any): string =>
+  defItem?.deficiency?.severity || defItem?.deficiency?.aiSeverity || 'Moderate';
+const reportRowPoints = (defItem: any): number =>
+  defItem?.isGeneralComment ? 0 : calculateDeductionPoints(reportRowSeverity(defItem));
 
 interface Props {
   navigation: InspectionSummaryScreenNavigationProp;
@@ -83,7 +95,9 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
       // an id alone then finds nothing to send.
       const reportData = await buildReportData();
 
-      const data: any = await api.post(`/api/inspections/${unlockReference}/email-report`, {
+      // No /api here: the client's base URL already ends in it. With the prefix
+      // this was requested as /api/api/... and came back "Route not found".
+      const data: any = await api.post(`/inspections/${unlockReference}/email-report`, {
         email: address,
         report: reportData,
       });
@@ -273,16 +287,20 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
     ).length,
   };
 
-  // Calculate scores based on actual deficiencies
+  // Scores, worked out the way the web summary does (buildReport in
+  // inspection/summary/page.tsx): the preliminary score is 100 less the points
+  // on the report rows, and the calculated and final scores are both 5 under
+  // that. The card used to weigh severities itself while every report row
+  // carried a flat 3, so the screen and the report it produced never added up.
   const totalDeficiencies = mergedDeficiencies.length;
-  const deductionPoints = (deficiencyCounts.lifeThreadening * 10) +
-    (deficiencyCounts.severe * 6) +
-    (deficiencyCounts.moderate * 3) +
-    (deficiencyCounts.low * 1);
+  const deductionPoints = mergedDeficiencies.reduce(
+    (sum: number, d: any) => sum + reportRowPoints(d),
+    0,
+  );
 
   const preliminaryScore = Math.max(0, 100 - deductionPoints);
-  const calculatedScore = preliminaryScore;
-  const finalScore = Math.max(0, preliminaryScore - 5); // Slight adjustment for final
+  const finalScore = Math.max(0, preliminaryScore - 5);
+  const calculatedScore = finalScore;
   const isPassing = finalScore >= 60;
 
   const handleContinueInspection = async () => {
@@ -313,18 +331,19 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
       console.warn('Could not save inspection data:', e);
     }
 
-    // Go back to the specific location inspection screen to continue answering items
-    navigation.navigate('LocationInspection', {
+    // Back to the building's categories (Outside / Inside / Units), which is
+    // where the web's CONTINUE INSPECTION goes. This used to reopen the location
+    // screen for the area just inspected instead.
+    navigation.navigate('InspectionCategories', {
       property,
+      propertyId: String(property?._id || property?.id || property?.propertyId || ''),
       selectedUnits,
       buildingId: buildingId || 'default',
-      location: nextArea,
-      currentUnit: nextUnit,
     });
   };
 
   /**
-   * "View Deficiency" shows the real NSPIRE report, exactly as web does:
+   * "View Report" shows the real NSPIRE report, exactly as web does:
    * its button calls setShowPdfPreview(true), and that modal renders
    * getEnhancedReportHTML(report) over the WHOLE report — the lock gates
    * exporting, not looking. The short hand-built card this used to show left
@@ -428,9 +447,9 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
           deficiencyDetails: isGC ? '-' : (deficiency.detail || 'Damaged or vandalized'),
           comments: defItem.note || (isGC ? '' : (deficiency.aiAnalysis || 'AI analyzed')),
           note: defItem.note || '',
-          deductionPts: isGC ? 0 : 3,
+          deductionPts: reportRowPoints(defItem),
           repeatIndicator: false,
-          severity: isGC ? '-' : (deficiency.severity || deficiency.aiSeverity || 'Moderate'),
+          severity: isGC ? '-' : reportRowSeverity(defItem),
           inspectedDate: inspectionDate,
           inspectedTime: new Date().toLocaleTimeString(),
           inspectorId: 'INS-001',
@@ -499,7 +518,7 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
         category: areaKey,
         nspireSection: 'U-1',
         deficiencyCount: deficienciesArray.length,
-        totalDeductions: deficienciesArray.length * 3,
+        totalDeductions: deficienciesArray.reduce((sum: number, d: any) => sum + d.deductionPts, 0),
         lifeThreatening: defCountsCalc.lifeThreadening,
         severe: defCountsCalc.severe,
         moderate: defCountsCalc.moderate,
@@ -671,43 +690,49 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
             Inspection #{inspectionId} | {inspectionDate}
           </Text>
 
-          <TouchableOpacity
-            style={[styles.hudPill, styles.hudPillOrange, styles.hudPillWide]}
-            onPress={handleContinueInspection}
-          >
-            <Ionicons name="chevron-back" size={14} color="#FFFFFF" />
-            <Text style={[styles.hudPillText, { fontWeight: '700' }]}>CONTINUE INSPECTION</Text>
-          </TouchableOpacity>
-        </View>
-
-        {!isReportUnlocked && (
-          <View style={styles.lockedCard}>
-            <View style={styles.lockedHeaderRow}>
-              <Ionicons name="lock-closed" size={16} color="#B45309" />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.lockedTitle}>Report Locked</Text>
-                <Text style={styles.lockedSubtitle}>
-                  {checkingUnlock ? 'Checking payment status...' : 'Pay once to unlock full export access'}
-                </Text>
+          {/* Web summary header parity: the access pill, then View Report,
+              Share Report and, while the report is locked, Unlock Report $1 --
+              the names and order the client asked for. Viewing and sharing
+              never depended on the lock, so they stay up while it is checked. */}
+          <View style={styles.reportActions}>
+            {checkingUnlock ? (
+              <View style={[styles.accessPill, styles.accessPillChecking]}>
+                <Text style={[styles.accessPillText, { color: '#4B5563' }]}>Checking report access...</Text>
               </View>
-            </View>
-            <TouchableOpacity style={styles.unlockPayButton} onPress={() => gateExport('pdf', handleExportPDF)}>
-              <Ionicons name="lock-closed-outline" size={14} color="#FFFFFF" />
-              <Text style={styles.unlockPayButtonText}>Unlock Report · $1</Text>
+            ) : isReportUnlocked ? (
+              <View style={[styles.accessPill, styles.accessPillUnlocked]}>
+                <Ionicons name="lock-open" size={12} color="#166534" />
+                <Text style={[styles.accessPillText, { color: '#166534' }]}>Full Report Unlocked</Text>
+              </View>
+            ) : (
+              <View style={[styles.accessPill, styles.accessPillLocked]}>
+                <Ionicons name="lock-closed" size={12} color="#92400E" />
+                <Text style={[styles.accessPillText, { color: '#92400E' }]}>Full Report Locked</Text>
+              </View>
+            )}
+            <TouchableOpacity style={[styles.reportAction, styles.reportActionView]} onPress={handlePreviewReport}>
+              <Ionicons name="document-text-outline" size={14} color="#FFFFFF" />
+              <Text style={styles.reportActionText}>View Report</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.viewDeficiencyButton} onPress={handlePreviewReport}>
-              <Ionicons name="mail-outline" size={14} color="#B45309" />
-              <Text style={styles.viewDeficiencyButtonText}>View Deficiency</Text>
+            <TouchableOpacity
+              style={[styles.reportAction, styles.reportActionShare]}
+              onPress={() => setShowFreeEmailBox(open => !open)}
+            >
+              <Ionicons name="mail-outline" size={14} color="#FFFFFF" />
+              <Text style={styles.reportActionText}>Share Report</Text>
             </TouchableOpacity>
+            {!isReportUnlocked && (
+              <TouchableOpacity
+                style={[styles.reportAction, styles.reportActionUnlock]}
+                onPress={() => gateExport('pdf', handleExportPDF)}
+              >
+                <Ionicons name="lock-closed-outline" size={14} color="#FFFFFF" />
+                <Text style={styles.reportActionText}>Unlock Report $1</Text>
+              </TouchableOpacity>
+            )}
           </View>
-        )}
 
-        {/* Emailing the report sits outside the locked card on purpose. Locked,
-            it is the free way to get the report; unlocked, it is the only way
-            left on this screen, since the two export buttons at the top were
-            removed. Inside the card it disappeared for whoever had paid. */}
-        <View style={styles.lockedCard}>
-          {showFreeEmailBox ? (
+          {showFreeEmailBox && (
             <>
               <TextInput
                 style={styles.freeEmailInput}
@@ -734,14 +759,15 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
                 </TouchableOpacity>
               </View>
             </>
-          ) : (
-            <TouchableOpacity style={styles.viewDeficiencyButton} onPress={() => setShowFreeEmailBox(true)}>
-              <Ionicons name="mail-open-outline" size={14} color="#B45309" />
-              <Text style={styles.viewDeficiencyButtonText}>
-                {isReportUnlocked ? 'Email this report — PDF + Excel' : 'View Free Report'}
-              </Text>
-            </TouchableOpacity>
           )}
+
+          <TouchableOpacity
+            style={[styles.hudPill, styles.hudPillOrange, styles.hudPillWide]}
+            onPress={handleContinueInspection}
+          >
+            <Ionicons name="chevron-back" size={14} color="#FFFFFF" />
+            <Text style={[styles.hudPillText, { fontWeight: '700' }]}>CONTINUE INSPECTION</Text>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.hudCard}>
@@ -1232,40 +1258,40 @@ const styles = StyleSheet.create({
   hudPillGreen: { backgroundColor: '#0E8A5F' },
   hudPillOrange: { backgroundColor: '#F59E0B' },
   hudPillText: { color: '#FFFFFF', fontSize: 14, fontWeight: '500' },
-  lockedCard: {
-    backgroundColor: '#FFFBEB',
+  // Web summary header parity: an access pill, then the report actions.
+  reportActions: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginTop: 12 },
+  accessPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     borderWidth: 1,
-    borderColor: '#FDE68A',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+    borderRadius: 999,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
   },
-  lockedHeaderRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 12 },
-  lockedTitle: { fontSize: 14, fontWeight: '700', color: '#92400E' },
-  lockedSubtitle: { fontSize: 12, color: '#B45309' },
-  unlockPayButton: {
+  accessPillLocked: { backgroundColor: '#FFFBEB', borderColor: '#FCD34D' },
+  accessPillUnlocked: { backgroundColor: '#F0FDF4', borderColor: '#86EFAC' },
+  accessPillChecking: { backgroundColor: '#F9FAFB', borderColor: '#E5E7EB' },
+  accessPillText: { fontSize: 12, fontWeight: '700' },
+  reportAction: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    backgroundColor: '#F59E0B',
-    borderRadius: 10,
-    paddingVertical: 12,
-    marginBottom: 10,
+    borderRadius: 8,
+    paddingVertical: 9,
+    paddingHorizontal: 14,
   },
-  unlockPayButtonText: { color: '#FFFFFF', fontSize: 12, fontWeight: '700' },
-  viewDeficiencyButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#FDE68A',
-    borderRadius: 10,
-    paddingVertical: 12,
+  reportActionView: { backgroundColor: '#059669' },
+  reportActionShare: { backgroundColor: '#F84B5F' },
+  reportActionUnlock: { backgroundColor: '#006795' },
+  reportActionText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
   },
-  viewDeficiencyButtonText: { color: '#B45309', fontSize: 12, fontWeight: '700' },
   freeEmailInput: {
     borderWidth: 1,
     borderColor: '#FDE68A',

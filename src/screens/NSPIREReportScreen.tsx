@@ -66,7 +66,7 @@ export default function NSPIREReportScreen({ navigation, route }: NSPIREReportSc
   const [showOptionsModal, setShowOptionsModal] = useState(false);
   const [previewHtml, setPreviewHtml] = useState<string>('');
   const [preparingPreview, setPreparingPreview] = useState(false);
-  // Web landing page: report stays locked until paid; "View Deficiency" opens
+  // Web landing page: report stays locked until paid; "View Report" opens
   // the PDF preview, and the email box mails the full report link.
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [showEmailBox, setShowEmailBox] = useState(false);
@@ -102,7 +102,9 @@ export default function NSPIREReportScreen({ navigation, route }: NSPIREReportSc
 
     setSendingFreeReport(true);
     try {
-      const data: any = await api.post(`/api/inspections/${unlockReference}/email-report`, {
+      // No /api here: the client's base URL already ends in it. With the prefix
+      // this was requested as /api/api/... and came back "Route not found".
+      const data: any = await api.post(`/inspections/${unlockReference}/email-report`, {
         email: address,
         // The report on screen goes with it, the way the downloads send it. A
         // report is often assembled from progress data with no saved
@@ -605,7 +607,7 @@ export default function NSPIREReportScreen({ navigation, route }: NSPIREReportSc
 
 
 
-  /** "View Deficiency" on the web opens the PDF preview; reuse the WebView. */
+  /** "View Report" on the web opens the PDF preview; reuse the WebView. */
   const handleOpenPreview = async () => {
     setShowPreviewModal(true);
     if (!previewHtml) await preparePreview();
@@ -648,45 +650,48 @@ export default function NSPIREReportScreen({ navigation, route }: NSPIREReportSc
           <Text style={styles.progressMeta}>{m.propertyAddress}</Text>
           <Text style={styles.progressMeta}>Inspection #{m.inspectionNo} | {started}</Text>
 
+          {/* Web summary header parity: the access pill, then View Report,
+              Share Report and, while the report is locked, Unlock Report $1 --
+              the names and order the client asked for. */}
+          <View style={styles.reportActions}>
+            {unlocked ? (
+              <View style={[styles.accessPill, styles.accessPillUnlocked]}>
+                <Ionicons name="lock-open" size={12} color="#166534" />
+                <Text style={[styles.accessPillText, { color: '#166534' }]}>Full Report Unlocked</Text>
+              </View>
+            ) : (
+              <View style={[styles.accessPill, styles.accessPillLocked]}>
+                <Ionicons name="lock-closed" size={12} color="#92400E" />
+                <Text style={[styles.accessPillText, { color: '#92400E' }]}>Full Report Locked</Text>
+              </View>
+            )}
+            <TouchableOpacity style={[styles.reportAction, styles.reportActionView]} onPress={handleOpenPreview}>
+              <Ionicons name="document-text-outline" size={14} color="#FFFFFF" />
+              <Text style={styles.reportActionText}>View Report</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.reportAction, styles.reportActionShare]}
+              onPress={() => setShowFreeEmailBox(open => !open)}
+            >
+              <Ionicons name="mail-outline" size={14} color="#FFFFFF" />
+              <Text style={styles.reportActionText}>Share Report</Text>
+            </TouchableOpacity>
+            {!unlocked && (
+              <TouchableOpacity
+                style={[styles.reportAction, styles.reportActionUnlock]}
+                onPress={() => setShowEmailBox(true)}
+              >
+                <Ionicons name="lock-closed-outline" size={14} color="#FFFFFF" />
+                <Text style={styles.reportActionText}>Unlock Report $1</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
           <TouchableOpacity style={[styles.webButton, styles.webButtonOrange, styles.webButtonWide]} onPress={() => navigation.goBack()}>
             <Ionicons name="chevron-back" size={14} color="#FFFFFF" />
             <Text style={styles.webButtonText}>CONTINUE INSPECTION</Text>
           </TouchableOpacity>
         </View>
-
-        {!unlocked && (
-        <View style={styles.lockedCard}>
-          <View style={styles.lockedHeaderRow}>
-            <Ionicons name="lock-closed" size={16} color="#B45309" />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.lockedTitle}>REPORT LOCKED</Text>
-              <Text style={styles.lockedSubtitle}>Pay once to unlock full export access</Text>
-            </View>
-          </View>
-          <TouchableOpacity style={styles.unlockButton} onPress={() => setShowEmailBox(true)}>
-            <Ionicons name="lock-closed-outline" size={14} color="#FFFFFF" />
-            <Text style={styles.unlockButtonText}>Unlock Report - $1</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.viewDeficiencyButton} onPress={handleOpenPreview}>
-            <Ionicons name="mail-outline" size={14} color="#374151" />
-            <Text style={styles.viewDeficiencyText}>View Deficiency</Text>
-          </TouchableOpacity>
-        </View>
-        )}
-
-        {/* Outside the locked card on purpose: once the report is paid for
-            that card is gone, and inside it this was disappearing for exactly
-            the people who had paid. */}
-        {!showFreeEmailBox && (
-          <View style={styles.lockedCard}>
-            <TouchableOpacity style={styles.viewDeficiencyButton} onPress={() => setShowFreeEmailBox(true)}>
-              <Ionicons name="mail-open-outline" size={14} color="#374151" />
-              <Text style={styles.viewDeficiencyText}>
-                {unlocked ? 'Email this report — PDF + Excel' : 'View Free Report'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        )}
 
         {showFreeEmailBox && (
           <View style={styles.emailCard}>
@@ -1080,59 +1085,53 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
   },
-  lockedCard: {
-    backgroundColor: '#FFFBEB',
-    borderWidth: 1,
-    borderColor: '#FDE68A',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-  },
   lockedHeaderRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 8,
     marginBottom: 12,
   },
-  lockedTitle: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#B45309',
+  // Web summary header parity: an access pill, then the report actions.
+  reportActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 12,
   },
-  lockedSubtitle: {
-    fontSize: 11,
-    color: '#B45309',
-  },
-  unlockButton: {
+  accessPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
     gap: 6,
-    backgroundColor: '#F59E0B',
-    borderRadius: 8,
-    paddingVertical: 12,
-    marginBottom: 10,
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
   },
-  unlockButtonText: {
-    color: '#FFFFFF',
-    fontSize: 13,
+  accessPillLocked: { backgroundColor: '#FFFBEB', borderColor: '#FCD34D' },
+  accessPillUnlocked: { backgroundColor: '#F0FDF4', borderColor: '#86EFAC' },
+  accessPillText: {
+    fontSize: 12,
     fontWeight: '700',
   },
-  viewDeficiencyButton: {
+  reportAction: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
     borderRadius: 8,
-    paddingVertical: 12,
+    paddingVertical: 9,
+    paddingHorizontal: 14,
   },
-  viewDeficiencyText: {
-    color: '#374151',
-    fontSize: 13,
-    fontWeight: '600',
+  reportActionView: { backgroundColor: '#059669' },
+  reportActionShare: { backgroundColor: '#F84B5F' },
+  reportActionUnlock: { backgroundColor: '#006795' },
+  reportActionText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
   },
   webCardHeading: {
     fontSize: 14,
