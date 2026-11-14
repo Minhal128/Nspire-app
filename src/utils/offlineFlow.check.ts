@@ -107,5 +107,13 @@ assert.ok(
   /if \(destination === 'reports'\) \{[\s\S]*?navigation\.navigate\('NSPIREReport'/.test(exportFn),
   'Export Reports must go on to the report page',
 );
+// The report can come from a draft on the device, a draft on the server or the
+// full sweep. Each used to open the preview itself, so with a draft present
+// Export Reports showed the summary instead of moving on.
+assert.strictEqual(
+  (exportFn.match(/openReportPreview\(/g) || []).length, 1,
+  'every source of the report must go through present(), which alone decides between preview and report page',
+);
+assert.strictEqual((exportFn.match(/\bpresent\(/g) || []).length, 3, 'three sources, three calls to present()');
 
 console.log('offlineFlow.check OK');

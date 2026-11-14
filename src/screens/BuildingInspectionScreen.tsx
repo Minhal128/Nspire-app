@@ -311,6 +311,24 @@ export default function BuildingInspectionScreen() {
       setInspectorName(inspector);
       const propertyIdStr = String(property._id || property.propertyId || property.id);
 
+      // Where the gathered report goes. Three different sources below can each
+      // supply it (a draft on the device, a draft on the server, or the full
+      // sweep), and every one of them has to honour the button that was pressed.
+      const present = (reportData: any, title: string) => {
+        if (destination === 'reports') {
+          const nspireReport = generateNSPIREReport(reportData as any);
+          nspireReport.metadata.inspectorName = inspector;
+          navigation.navigate('NSPIREReport' as any, { report: nspireReport, property });
+          return;
+        }
+        openReportPreview({
+          title,
+          html: buildInProgressReportHtml(reportData),
+          actionLabel: 'PDF',
+          onAction: handleGeneratePDF,
+        });
+      };
+
       let remoteProgressCache: { success: boolean; progress: any[] } | null = null;
       let remoteProgressFetched = false;
 
@@ -493,14 +511,7 @@ export default function BuildingInspectionScreen() {
             selectedUnits: selectedUnits || bestDraftPayload?.selectedUnits || [],
             progressData: bestDraftPayload?.progressData || bestDraftPayload?.inspectionData?.progressData || {},
           };
-          const quickHtml = buildInProgressReportHtml(quickReportData);
-
-          openReportPreview({
-            title: `${property?.name || 'Property'} Report`,
-            html: quickHtml,
-            actionLabel: 'PDF',
-            onAction: handleGeneratePDF,
-          });
+          present(quickReportData, `${property?.name || 'Property'} Report`);
 
           return;
         }
@@ -560,14 +571,7 @@ export default function BuildingInspectionScreen() {
               progressData: latestBackendDraft?.inspectionData?.progressData || {},
             };
 
-            const backendHtml = buildInProgressReportHtml(backendReportData);
-
-            openReportPreview({
-              title: `${property?.name || 'Property'} Report`,
-              html: backendHtml,
-              actionLabel: 'PDF',
-              onAction: handleGeneratePDF,
-            });
+            present(backendReportData, `${property?.name || 'Property'} Report`);
 
             return;
           }
@@ -1331,21 +1335,7 @@ export default function BuildingInspectionScreen() {
         }
       };
 
-      if (destination === 'reports') {
-        const nspireReport = generateNSPIREReport(reportData as any);
-        nspireReport.metadata.inspectorName = inspector;
-        navigation.navigate('NSPIREReport' as any, { report: nspireReport, property });
-        return;
-      }
-
-      const html = buildInProgressReportHtml(reportData);
-
-      openReportPreview({
-        title: 'NSPIRE Report',
-        html,
-        actionLabel: 'PDF',
-        onAction: handleGeneratePDF,
-      });
+      present(reportData, 'NSPIRE Report');
     } catch (err: any) {
       console.error('Failed to load inspection data:', err);
       Alert.alert('Error', `Failed to load inspection data: ${err.message}`);
