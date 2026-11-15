@@ -29,6 +29,7 @@ import type { UnitSample } from '../services';
 import { Inspection, Property as PropertyType, User } from '../services/api';
 import { US_STATES } from '../constants/usStates';
 import { US_STATE_OPTIONS } from '../utils/iosPickerUtils';
+import { unitCount } from '../utils/propertyForm';
 
 // State options with "All States" as first option
 const STATE_OPTIONS = [
@@ -271,7 +272,8 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
       setEditState(selectedProperty.state || '');
       setEditZipCode(selectedProperty.zipCode || '');
       setEditBuildings(String(selectedProperty.buildings || ''));
-      setEditUnits(String(selectedProperty.units || ''));
+      // `??`: a property with no units shows 0 here, not an empty box.
+      setEditUnits(String(selectedProperty.units ?? ''));
       setEditModalVisible(true);
     }
   };
@@ -293,7 +295,9 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
         state: editState.trim(),
         zipCode: editZipCode.trim(),
         buildings: parseInt(editBuildings) || 1,
-        units: parseInt(editUnits) || 1,
+        // A typed 0 stays 0. `|| 1` handed a property with no units one unit
+        // every time it was edited, whatever was changed.
+        units: unitCount(editUnits),
       };
 
       const response = await propertyService.updateProperty(selectedProperty._id, updatedData);
@@ -319,7 +323,7 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
     setActionModalVisible(false);
     if (selectedProperty) {
       // Show coverage modal first
-      const totalUnits = selectedProperty.units || 1;
+      const totalUnits = selectedProperty.units ?? 1;
       setCalculatedUnits(totalUnits);
       setSelectedCoverage('random');
       calculateSelectedUnits('random', totalUnits, selectedProperty);
@@ -386,7 +390,7 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
   const handleCoverageChange = (coverage: string) => {
     setSelectedCoverage(coverage);
     if (selectedProperty) {
-      const totalUnits = selectedProperty.units || 1;
+      const totalUnits = selectedProperty.units ?? 1;
       calculateSelectedUnits(coverage, totalUnits, selectedProperty);
     }
   };
@@ -412,7 +416,7 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
   const handlePropertyCardPress = (property: PropertyType) => {
     // Open the Ready for Inspection modal when clicking on property card
     setSelectedProperty(property);
-    const totalUnits = property.units || 1;
+    const totalUnits = property.units ?? 1;
     setCalculatedUnits(totalUnits);
     setSelectedCoverage('100');
     calculateSelectedUnits('100', totalUnits, property);
@@ -823,7 +827,7 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
 
               <Text style={styles.inspectionPropertyName}>{selectedProperty?.name}</Text>
               <Text style={styles.totalUnitsText}>
-                Total Units: <Text style={styles.totalUnitsValue}>{selectedProperty?.units || 1}</Text>
+                Total Units: <Text style={styles.totalUnitsValue}>{selectedProperty?.units ?? 1}</Text>
               </Text>
 
               <Text style={styles.coverageLabel}>Select Inspection Coverage</Text>

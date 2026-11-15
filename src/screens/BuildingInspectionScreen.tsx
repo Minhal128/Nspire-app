@@ -105,7 +105,7 @@ export default function BuildingInspectionScreen() {
     () =>
       resolveCoverageUnits(
         routeCoverage || property.inspectionCoverage || 'random',
-        property.units || 1,
+        property.units ?? 1,
         String(property._id || property.propertyId || 'property')
       ),
     [routeCoverage, property]
@@ -121,7 +121,8 @@ export default function BuildingInspectionScreen() {
   );
 
   const totalBuildings = property.buildings || 1;
-  const totalUnits = property.units || 1;
+  // `??`, not `||`: a property with no units has 0, not "unknown".
+  const totalUnits = property.units ?? 1;
 
   // Initialise editable building rows
   const initBuildings = useCallback((): BuildingRow[] => {

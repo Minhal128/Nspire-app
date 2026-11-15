@@ -43,7 +43,14 @@ for (const coverage of ['100', '50', 'random']) {
   }
 }
 
-// --- 0 units is clamped to 1 rather than producing an empty inspection ----
-assert.strictEqual(resolveCoverageUnits('100', 0, 'p').calculatedUnits, 1);
+// --- a property with no units has none to inspect, whatever the coverage ---
+// It used to be clamped to 1, which handed a unitless property a unit.
+for (const coverage of ['100', '50', 'random']) {
+  assert.deepStrictEqual(
+    resolveCoverageUnits(coverage, 0, 'p'),
+    { calculatedUnits: 0, selectedUnits: [] },
+    `${coverage} @ 0: nothing to inspect`
+  );
+}
 
 console.log('coverageUnits.check.ts OK');

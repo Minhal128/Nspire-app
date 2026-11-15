@@ -358,13 +358,14 @@ export default function NSPIREReportScreen({ navigation, route }: NSPIREReportSc
       },
       inspectionData: [
         { type: 'Building', propertyTotal: property?.buildings || 1, sampleSize: 1, totalUnitsInspected: 1 },
-        { type: 'Unit', propertyTotal: property?.units || 1, sampleSize: 1, totalUnitsInspected: 1 },
+        // A property with no units has none sampled and none inspected.
+        { type: 'Unit', propertyTotal: property?.units ?? 1, sampleSize: property?.units === 0 ? 0 : 1, totalUnitsInspected: property?.units === 0 ? 0 : 1 },
         { type: 'Site', propertyTotal: 1, sampleSize: 1, totalUnitsInspected: 1 },
         { type: 'Common Area', propertyTotal: 1, sampleSize: 1, totalUnitsInspected: 1 },
       ],
       occupancyInfo: {
-        totalUnits: property?.units || 1,
-        occupiedUnits: property?.occupiedUnits || property?.units || 1,
+        totalUnits: property?.units ?? 1,
+        occupiedUnits: property?.occupiedUnits || (property?.units ?? 1),
         vacantUnits: property?.vacantUnits || 0,
         occupancyRate: property?.occupancyRate || 100,
       },

@@ -521,8 +521,9 @@ export const generateNSPIREReport = (
     },
     {
       type: 'Unit',
-      propertyTotal: property?.units || 1,
-      sampleSize: sampledUnitsFromBuildings || selectedUnits?.length || 1,
+      // `??`: a property with no units reads 0 here, with none sampled.
+      propertyTotal: property?.units ?? 1,
+      sampleSize: property?.units === 0 ? 0 : (sampledUnitsFromBuildings || selectedUnits?.length || 1),
       totalUnitsInspected: inspectedUnitCount
     },
     {
@@ -541,8 +542,8 @@ export const generateNSPIREReport = (
 
   // Build occupancy info
   const occupancyInfo: OccupancyInfo = {
-    totalUnits: property?.units || 1,
-    occupiedUnits: property?.occupiedUnits || property?.units || 1,
+    totalUnits: property?.units ?? 1,
+    occupiedUnits: property?.occupiedUnits || (property?.units ?? 1),
     vacantUnits: property?.vacantUnits || 0,
     occupancyRate: property?.occupancyRate || 100,
     assistedUnits: property?.assistedUnits,

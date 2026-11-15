@@ -42,6 +42,17 @@ export const validatePropertyForm = (
   return null;
 };
 
+/**
+ * The unit count typed into the form. Zero is a real answer: a property can
+ * have no units, and its buildings are still inspected Outside and Inside.
+ * Only a blank or unreadable entry falls back to 1 -- `|| 1` used to turn a
+ * typed 0 into 1 as well, so a unitless property could not be entered.
+ */
+export const unitCount = (text: string): number => {
+  const typed = parseInt(text);
+  return Number.isNaN(typed) || typed < 0 ? 1 : typed;
+};
+
 /** The body POSTed to /properties (and /properties/bulk) for one form. */
 export const buildPropertyPayload = (
   form: PropertyFormValues,
@@ -67,6 +78,6 @@ export const buildPropertyPayload = (
     stateName: stateData?.name || form.stateText.trim(),
     zipCode: form.postalCode.trim(),
     buildings: parseInt(form.numberOfBuildings) || 1,
-    units: parseInt(form.numberOfUnits) || 1,
+    units: unitCount(form.numberOfUnits),
   };
 };

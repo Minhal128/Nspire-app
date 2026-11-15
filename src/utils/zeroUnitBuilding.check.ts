@@ -64,4 +64,34 @@ if (existsSync(fileURLToPath(webPage))) {
   console.log('zeroUnitBuilding.check.ts: web comparison SKIPPED — inspire-web is not checked out beside the app');
 }
 
+// --- a property with no units at all ----------------------------------------
+// The client: "unit can be zero". The app turned a typed 0 into 1 on Add and
+// again on every Edit, and each screen read 0 back as "unknown, call it 1".
+const myInspections = read(new URL('src/screens/MyInspectionsScreen.tsx', root));
+assert.ok(
+  myInspections.includes('units: unitCount(editUnits),'),
+  'MyInspectionsScreen: Edit Property must save a typed 0 as 0',
+);
+assert.ok(
+  myInspections.includes("setEditUnits(String(selectedProperty.units ?? ''));"),
+  'MyInspectionsScreen: Edit Property must show 0 units as 0, not as an empty box',
+);
+for (const screen of ['DashboardScreen', 'MyInspectionsScreen', 'BuildingInspectionScreen', 'NSPIREReportScreen']) {
+  const source = read(new URL(`src/screens/${screen}.tsx`, root));
+  assert.ok(
+    !/\.units \|\| 1\b/.test(source),
+    `${screen}: \`units || 1\` reads a property with no units as having one`,
+  );
+}
+
+// The web's form lets it through as well, when it is checked out beside the app.
+const webModals = new URL('../inspire-web/components/PropertyModals.tsx', root);
+if (existsSync(fileURLToPath(webModals))) {
+  const modals = read(webModals);
+  assert.ok(
+    modals.includes('parseInt(prop.units) < 0') && !modals.includes('parseInt(prop.units) <= 0'),
+    'inspire-web: Add Property must accept 0 units, as the app does',
+  );
+}
+
 console.log('zeroUnitBuilding.check OK');

@@ -851,12 +851,13 @@ export function convertToEnhancedNSPIREFormat(data: any): NSPIREInspectionReport
 
     inspectionData: [
       { type: 'Building', propertyTotal: data.property?.buildings || 1, sampleSize: 1, totalUnitsInspected: 1 },
-      { type: 'Unit', propertyTotal: data.property?.units || 1, sampleSize: 1, totalUnitsInspected: 1 }
+      // `??`: a property with no units reads 0 here, with none sampled or inspected.
+      { type: 'Unit', propertyTotal: data.property?.units ?? 1, sampleSize: data.property?.units === 0 ? 0 : 1, totalUnitsInspected: data.property?.units === 0 ? 0 : 1 }
     ],
 
     occupancyInfo: {
-      totalUnits: data.property?.units || 1,
-      occupiedUnits: data.property?.occupiedUnits || data.property?.units || 1,
+      totalUnits: data.property?.units ?? 1,
+      occupiedUnits: data.property?.occupiedUnits || (data.property?.units ?? 1),
       vacantUnits: data.property?.vacantUnits || 0,
       occupancyRate: data.property?.occupancyRate || 100
     },

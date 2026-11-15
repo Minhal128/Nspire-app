@@ -6,7 +6,7 @@
 
 import assert from 'node:assert';
 import type { PropertyFormValues } from './propertyForm.ts';
-import { validatePropertyForm, buildPropertyPayload } from './propertyForm.ts';
+import { validatePropertyForm, buildPropertyPayload, unitCount } from './propertyForm.ts';
 
 const base = (over: Partial<PropertyFormValues> = {}): PropertyFormValues => ({
   propertyId: '',
@@ -99,5 +99,17 @@ assert.strictEqual(imported.units, 40);
 const blankCounts = buildPropertyPayload(reported, 0, 1);
 assert.strictEqual(buildPropertyPayload({ ...reported, numberOfUnits: 'abc' }, 0, 1).units, 1);
 assert.strictEqual(blankCounts.buildings, 1);
+
+// --- zero units is kept; only blank or unreadable falls back ---------------
+// The client: "unit can be zero". A typed 0 used to come out as 1.
+assert.strictEqual(buildPropertyPayload({ ...reported, numberOfUnits: '0' }, 0, 1).units, 0, 'a typed 0 stays 0');
+assert.strictEqual(buildPropertyPayload({ ...reported, numberOfUnits: '' }, 0, 1).units, 1, 'blank still falls back to 1');
+assert.strictEqual(buildPropertyPayload({ ...reported, numberOfUnits: '-3' }, 0, 1).units, 1, 'a negative count is not a count');
+assert.strictEqual(validatePropertyForm({ ...reported, numberOfUnits: '0' }, 0), null, 'zero units must not block the form');
+
+// --- Edit Property saves through the same rule ------------------------------
+assert.strictEqual(unitCount('0'), 0, 'editing a property with no units keeps it at 0');
+assert.strictEqual(unitCount(' 7 '), 7);
+assert.strictEqual(unitCount(''), 1);
 
 console.log('propertyForm.check.ts OK');

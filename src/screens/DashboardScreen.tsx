@@ -320,7 +320,9 @@ export default function DashboardScreen({
     if (!selectedProperty) return;
 
     // Coverage already chosen for this property -> go straight to the building screen
-    if (selectedProperty.inspectionCoverage && selectedProperty.calculatedUnits) {
+    // `!= null`, not truthiness: a property with no units has 0 calculated
+    // units, and that is still a coverage that was chosen.
+    if (selectedProperty.inspectionCoverage && selectedProperty.calculatedUnits != null) {
       navigation.navigate('BuildingInspection' as any, {
         property: selectedProperty,
         calculatedUnits: selectedProperty.calculatedUnits,
@@ -330,7 +332,7 @@ export default function DashboardScreen({
       return;
     }
 
-    const totalUnits = selectedProperty.units || 1;
+    const totalUnits = selectedProperty.units ?? 1;
     setSelectedCoverage('random');
     calculateSelectedUnits('random', totalUnits, selectedProperty);
     setInspectionModalVisible(true);
@@ -347,7 +349,7 @@ export default function DashboardScreen({
     if (!selectedProperty) return;
     navigation.navigate('InspectionSummary' as any, {
       property: selectedProperty,
-      selectedUnits: buildUnitList(selectedProperty.calculatedUnits || selectedProperty.units || 1),
+      selectedUnits: buildUnitList(selectedProperty.calculatedUnits ?? selectedProperty.units ?? 1),
       buildingId: 'B1',
       inspectionData: null,
     });
@@ -399,7 +401,7 @@ export default function DashboardScreen({
   const handleCoverageChange = (coverage: string) => {
     setSelectedCoverage(coverage);
     if (selectedProperty) {
-      const totalUnits = selectedProperty.units || 1;
+      const totalUnits = selectedProperty.units ?? 1;
       calculateSelectedUnits(coverage, totalUnits, selectedProperty);
     }
   };
@@ -545,7 +547,7 @@ export default function DashboardScreen({
 
             <Text style={styles.inspectionPropertyName}>{selectedProperty?.name}</Text>
             <Text style={styles.totalUnitsText}>
-              Total Units: <Text style={styles.totalUnitsValue}>{selectedProperty?.units || 1}</Text>
+              Total Units: <Text style={styles.totalUnitsValue}>{selectedProperty?.units ?? 1}</Text>
             </Text>
 
             <Text style={styles.coverageLabel}>Select Inspection Coverage</Text>

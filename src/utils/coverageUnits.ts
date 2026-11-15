@@ -25,7 +25,11 @@ export function resolveCoverageUnits(
   totalUnits: number,
   propertyId: string
 ): CoverageUnits {
-  const total = Math.max(1, totalUnits);
+  // A property can have no units at all. Its buildings are still inspected,
+  // Outside and Inside; there is just nothing to sample. This used to be
+  // clamped to 1, which handed a unitless property one unit to inspect.
+  const total = Math.max(0, totalUnits);
+  if (total === 0) return { calculatedUnits: 0, selectedUnits: [] };
 
   if (coverage === '100') {
     return { calculatedUnits: total, selectedUnits: buildUnitList(total) };
