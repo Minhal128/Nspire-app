@@ -88,8 +88,16 @@ assert.ok(
   'no Alert in the same tick as the saved panel: offline it wins, the panel never shows, and the screen is stuck',
 );
 assert.ok(
-  detail.includes('setSavedOffline(isOffline);') && detail.includes('{savedOffline && ('),
+  detail.includes('setSavedOffline(isOffline || heldForLater);') && detail.includes('{savedOffline && ('),
   'the offline notice is a line inside the saved panel',
+);
+// A weak signal reads as "connected" while every request fails. The save is
+// queued just the same, so the panel has to say so just the same.
+const failedSave = detail.indexOf("console.warn('Draft save failed, queueing for retry:'");
+assert.ok(failedSave > 0, 'DeficiencyDetailScreen: the queue-on-failure branch moved');
+assert.ok(
+  detail.slice(failedSave, failedSave + 200).includes('heldForLater = true;'),
+  'a save that failed and was queued must be reported as held on the device',
 );
 
 // --- View Summary and Export Reports ----------------------------------------

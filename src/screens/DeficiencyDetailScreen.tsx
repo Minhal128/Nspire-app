@@ -1075,6 +1075,11 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         },
       };
 
+      // Set when the server did not take this save and it is waiting in the
+      // queue instead. That happens with no signal at all, and also with a
+      // signal too weak to carry the request: the phone says "connected", the
+      // request fails, and the work is on the device only all the same.
+      let heldForLater = false;
       try {
         if (isOffline) throw new Error('offline');
         await inspectionService.saveProgress(progressPayload);
@@ -1098,6 +1103,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         // carries the full deficiency set, so one job per property/building
         // is enough however long the outage lasts.
         console.warn('Draft save failed, queueing for retry:', draftSaveError);
+        heldForLater = true;
         await offlineQueue.enqueue(
           'saveProgress',
           `saveProgress:${propertyIdentifier}:${normalizedBuildingLabel}`,
@@ -1135,7 +1141,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       // be an Alert raised in the same tick as the panel, which is that same
       // collision again: offline, the alert won, the panel never appeared, and
       // after OK the screen had nothing left to continue from but Cancel.
-      setSavedOffline(isOffline);
+      setSavedOffline(isOffline || heldForLater);
       if (panelTimerRef.current) clearTimeout(panelTimerRef.current);
       panelTimerRef.current = setTimeout(() => {
         panelTimerRef.current = null;
