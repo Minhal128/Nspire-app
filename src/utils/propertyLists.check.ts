@@ -72,4 +72,61 @@ if (existsSync(fileURLToPath(webApp))) {
   console.log('propertyLists.check.ts: web comparison SKIPPED — inspire-web is not checked out beside the app');
 }
 
+// --- inspections: the same cliff, one layer down --------------------------------
+// GET /inspections answers with ten as well. A list placed those ten against
+// its properties, so the eleventh inspected property showed no report. The
+// lists ask for the server's list view -- every inspection, without pictures
+// and long texts -- and a report fetches the whole inspection it is made from.
+const status = read(new URL('InspectionStatusScreen.tsx', screens));
+const mine = read(new URL('MyInspectionsScreen.tsx', screens));
+for (const [name, source] of [['InspectionStatusScreen', status], ['MyInspectionsScreen', mine]] as const) {
+  assert.ok(
+    source.includes("inspectionService.getInspections({ view: 'list' })"),
+    `${name}: the list must ask for every inspection, in the list view`,
+  );
+  assert.ok(
+    !/inspectionService\.getInspections\(\s*\)/.test(source),
+    `${name}: getInspections() asked plainly gets the ten newest inspections`,
+  );
+}
+const service = read(new URL('src/services/inspectionService.ts', root));
+assert.ok(
+  service.includes("if (filters.view) params.append('view', filters.view);"),
+  'inspectionService.getInspections must pass the view on to the server',
+);
+
+// The list view has no pictures and no long texts, so nothing may build a
+// report straight from a row.
+for (const handler of ['handleDownloadPDF', 'handlePrintExcel', 'handleDownloadExcel', 'handleViewReport']) {
+  const from = status.indexOf(`const ${handler} = async (property: PropertyWithInspection) => {`);
+  assert.ok(from > 0, `InspectionStatusScreen: ${handler} not found`);
+  const body = status.slice(from, status.indexOf('\n  };\n', from));
+  assert.ok(
+    body.includes('await withWholeInspection(property)') && body.includes('buildReport(whole)'),
+    `InspectionStatusScreen: ${handler} must build its report from the whole inspection, not the list's copy`,
+  );
+  assert.ok(!body.includes('buildReport(property)'), `InspectionStatusScreen: ${handler} still reads the list's copy`);
+}
+
+if (existsSync(fileURLToPath(webApp))) {
+  for (const portal of ['dashboard', 'management/dashboard', 'asset-manager/dashboard', 'other/dashboard', 'admin']) {
+    for (const page of ['my-inspection/page.tsx', 'inspection-status/page.tsx']) {
+      const source = read(new URL(`${portal}/${page}`, webApp));
+      assert.ok(
+        source.includes('/api/inspections?view=list`') && !source.includes('/api/inspections`'),
+        `inspire-web ${portal}/${page}: the list must ask for every inspection, in the list view`,
+      );
+    }
+  }
+}
+
+// The server has to know the view, when it is checked out beside the app.
+const backend = new URL('../inspire-backend/controllers/inspectionController.js', root);
+if (existsSync(fileURLToPath(backend))) {
+  assert.ok(
+    read(backend).includes("const listView = view === 'list';"),
+    'inspire-backend: GET /inspections no longer answers view=list',
+  );
+}
+
 console.log('propertyLists.check OK');

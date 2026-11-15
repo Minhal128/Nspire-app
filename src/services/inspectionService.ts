@@ -49,6 +49,12 @@ export interface InspectionFilters {
   property?: string;
   page?: number;
   limit?: number;
+  /**
+   * 'list' asks for every inspection without its pictures and long texts:
+   * what a list of properties needs. Without it the server sends the ten
+   * newest whole records. A report needs the whole one -- getInspection(id).
+   */
+  view?: 'list';
 }
 
 export interface InspectionStats {
@@ -135,6 +141,7 @@ class InspectionService {
         if (filters.property) params.append('property', filters.property);
         if (filters.page) params.append('page', filters.page.toString());
         if (filters.limit) params.append('limit', filters.limit.toString());
+        if (filters.view) params.append('view', filters.view);
       }
 
       const queryString = params.toString();

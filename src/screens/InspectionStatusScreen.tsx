@@ -30,6 +30,7 @@ import { exportNspireExcel, printNspireExcel } from '../utils/nspireExcelExport'
 import { enhancedNspirePDFService } from '../services/enhancedNspirePDFService';
 import { stripeService } from '../utils/stripeService';
 import { usePaymentLink } from '../hooks/usePaymentLink';
+import { withoutGeneralComments } from '../services/web/generalComments';
 
 interface InspectionStatusScreenProps {
   navigation: any;
@@ -88,7 +89,10 @@ export default function InspectionStatusScreen({ navigation }: InspectionStatusS
 
       const [propertiesRes, inspectionsRes] = await Promise.all([
         propertyService.getProperties({ limit: 1000 }).catch(() => ({ success: false, properties: [], pagination: null })),
-        inspectionService.getInspections().catch(() => ({ success: false, inspections: [], pagination: null })),
+        // Every inspection, in the server's list view. Asked plainly it sends
+        // the ten newest, and a property whose inspection was older than those
+        // showed here as never inspected, with no report to download.
+        inspectionService.getInspections({ view: 'list' }).catch(() => ({ success: false, inspections: [], pagination: null })),
       ]);
 
       const allProperties: any[] = propertiesRes.success ? (propertiesRes.properties || []) : [];
@@ -181,6 +185,26 @@ export default function InspectionStatusScreen({ navigation }: InspectionStatusS
     navigation.reset({ index: 0, routes: [{ name: 'Boarding' as never }] });
   };
 
+  // The list holds each inspection without its pictures and long texts, which
+  // is all a row needs. A report needs the whole inspection, so it is fetched
+  // when one is asked for. Null, with the reason shown, when it cannot be.
+  const withWholeInspection = async (
+    property: PropertyWithInspection
+  ): Promise<PropertyWithInspection | null> => {
+    const id = property.inspection?._id;
+    if (!id) return property;
+    try {
+      const response = await inspectionService.getInspection(String(id));
+      if (response?.success && response.inspection) {
+        return { ...property, inspection: response.inspection };
+      }
+    } catch (error) {
+      console.error('Could not load the inspection for its report:', error);
+    }
+    Alert.alert('Report unavailable', 'The report could not be loaded. Check your connection and try again.');
+    return null;
+  };
+
   const buildReport = (property: PropertyWithInspection) => {
     const inspection = property.inspection || {};
     return generateNSPIREReport({
@@ -199,7 +223,9 @@ export default function InspectionStatusScreen({ navigation }: InspectionStatusS
     }
     setDownloadingId(property._id);
     try {
-      const nspireReport = buildReport(property);
+      const whole = await withWholeInspection(property);
+      if (!whole) return;
+      const nspireReport = buildReport(whole);
       const result = await enhancedNspirePDFService.generateAndShareEnhancedPDF(nspireReport as any, {
         includeImages: true,
         imageQuality: 'high',
@@ -226,8 +252,15 @@ export default function InspectionStatusScreen({ navigation }: InspectionStatusS
       Alert.alert('No Report', 'No inspection completed for this property');
       return;
     }
-    const result = await printNspireExcel(buildReport(property));
-    if (!result.success) Alert.alert('Print Failed', result.error || 'Could not print the report.');
+    setDownloadingId(property._id + '_print');
+    try {
+      const whole = await withWholeInspection(property);
+      if (!whole) return;
+      const result = await printNspireExcel(buildReport(whole));
+      if (!result.success) Alert.alert('Print Failed', result.error || 'Could not print the report.');
+    } finally {
+      setDownloadingId(null);
+    }
   };
 
   const handleDownloadExcel = async (property: PropertyWithInspection) => {
@@ -237,7 +270,9 @@ export default function InspectionStatusScreen({ navigation }: InspectionStatusS
     }
     setDownloadingId(property._id + '_excel');
     try {
-      const nspireReport = buildReport(property);
+      const whole = await withWholeInspection(property);
+      if (!whole) return;
+      const nspireReport = buildReport(whole);
       const result = await exportNspireExcel(nspireReport, safeFileName(property.name));
       if (!result.success) {
         Alert.alert('Download Failed', result.error || 'Could not generate the Excel file.');
@@ -276,12 +311,21 @@ export default function InspectionStatusScreen({ navigation }: InspectionStatusS
 
   /** Web lands a locked report on the HUD progress page, which carries the
    *  unlock + View Report actions. Nothing reached NSPIREReport before. */
-  const handleViewReport = (property: PropertyWithInspection) => {
-    navigation.navigate('NSPIREReport' as never, {
-      report: buildReport(property),
-      inspectionData: property.inspection,
-      property,
-    } as never);
+  const handleViewReport = async (property: PropertyWithInspection) => {
+    // Loading the whole inspection takes a moment on a slow connection; the
+    // button shows it, so the press is not taken for one that did nothing.
+    setDownloadingId(property._id + '_view');
+    try {
+      const whole = await withWholeInspection(property);
+      if (!whole) return;
+      navigation.navigate('NSPIREReport' as never, {
+        report: buildReport(whole),
+        inspectionData: whole.inspection,
+        property,
+      } as never);
+    } finally {
+      setDownloadingId(null);
+    }
   };
 
   const handleStartInspection = (property: PropertyWithInspection) => {
@@ -480,9 +524,16 @@ export default function InspectionStatusScreen({ navigation }: InspectionStatusS
                   const meta = renderStatusMeta(property);
                   const progress = propertyProgress[property._id] || 0;
                   const deficiencyCount = property.inspection
-                    ? countUniqueDeficiencies(property.inspection.findings || property.inspection.deficiencies)
+                    ? countUniqueDeficiencies(
+                        // A general comment is an observation, not a deficiency.
+                        withoutGeneralComments(property.inspection.findings || property.inspection.deficiencies)
+                      )
                     : 0;
-                  const isDownloading = downloadingId === property._id || downloadingId === property._id + '_excel';
+                  const isDownloading =
+                    downloadingId === property._id ||
+                    downloadingId === property._id + '_excel' ||
+                    downloadingId === property._id + '_print';
+                  const isOpeningReport = downloadingId === property._id + '_view';
 
                   return (
                     <View
@@ -574,18 +625,29 @@ export default function InspectionStatusScreen({ navigation }: InspectionStatusS
                                 disabled={isDownloading}
                                 onPress={() => handlePrintExcel(property)}
                               >
-                                <Ionicons name="print-outline" size={16} color="#FFFFFF" />
+                                {downloadingId === property._id + '_print' ? (
+                                  <ActivityIndicator size="small" color="#FFFFFF" />
+                                ) : (
+                                  <Ionicons name="print-outline" size={16} color="#FFFFFF" />
+                                )}
                                 <Text style={styles.actionButtonText}>Print Excel</Text>
                               </TouchableOpacity>
                             </>
                           ) : (
                             <>
                               <TouchableOpacity
-                                style={[styles.actionButton, styles.startButton]}
+                                style={[styles.actionButton, styles.startButton, isOpeningReport && styles.buttonDisabled]}
+                                disabled={isOpeningReport}
                                 onPress={() => handleViewReport(property)}
                               >
-                                <Ionicons name="document-text-outline" size={16} color="#FFFFFF" />
-                                <Text style={styles.actionButtonText}>View Report</Text>
+                                {isOpeningReport ? (
+                                  <ActivityIndicator size="small" color="#FFFFFF" />
+                                ) : (
+                                  <Ionicons name="document-text-outline" size={16} color="#FFFFFF" />
+                                )}
+                                <Text style={styles.actionButtonText}>
+                                  {isOpeningReport ? 'Loading...' : 'View Report'}
+                                </Text>
                               </TouchableOpacity>
                             </>
                           )

@@ -130,7 +130,9 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
 
       // Fetch inspections with error handling
       try {
-        const inspectionsResponse = await inspectionService.getInspections();
+        // Every inspection, in the server's list view; asked plainly it sends
+        // only the ten newest.
+        const inspectionsResponse = await inspectionService.getInspections({ view: 'list' });
         if (inspectionsResponse?.success && Array.isArray(inspectionsResponse.inspections)) {
           setInspections(inspectionsResponse.inspections);
           // Build set of property IDs with in-progress inspections
