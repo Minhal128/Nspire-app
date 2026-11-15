@@ -100,35 +100,33 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
     }
   }, []);
 
-  const loadLockData = async () => {
+  // The list on screen is every property now, so the lock is handed that list
+  // and only the saved progress is fetched for it.
+  const loadLockData = async (everyProperty: PropertyType[]) => {
+    setLockProperties(everyProperty);
     try {
-      const [progressRes, allProps] = await Promise.all([
-        inspectionService.getAllProgress(),
-        propertyService.getProperties({ limit: 1000 }),
-      ]);
+      const progressRes = await inspectionService.getAllProgress();
       setProgressRecords(progressRes.success ? progressRes.progress : []);
-      setLockProperties(allProps?.success && Array.isArray(allProps.properties) ? allProps.properties : []);
     } catch (error) {
       // No answer, nothing locked.
       setProgressRecords([]);
-      setLockProperties([]);
     }
   };
 
   const fetchData = async () => {
     try {
       // Fetch properties with error handling
+      let everyProperty: PropertyType[] = [];
       try {
-        const propertiesResponse = await propertyService.getProperties();
+        // Every property: asked for nothing, the server sends the newest ten.
+        const propertiesResponse = await propertyService.getProperties({ limit: 1000 });
         if (propertiesResponse?.success && Array.isArray(propertiesResponse.properties)) {
-          setProperties(propertiesResponse.properties);
-        } else {
-          setProperties([]);
+          everyProperty = propertiesResponse.properties;
         }
       } catch (propError) {
         console.error('Error fetching properties:', propError);
-        setProperties([]);
       }
+      setProperties(everyProperty);
 
       // Fetch inspections with error handling
       try {
@@ -155,7 +153,7 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
 
       // Not awaited: the list is ready without it, and offline there is no
       // answer to wait for.
-      loadLockData();
+      loadLockData(everyProperty);
     } catch (error) {
       console.error('Error in fetchData:', error);
     }

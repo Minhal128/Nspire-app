@@ -127,7 +127,7 @@ export default function ReportsScreen({ navigation, onMenuPress }: ReportsScreen
 
       // Try to load properties - handle errors gracefully
       try {
-        propertiesData = await propertyService.getProperties();
+        propertiesData = await propertyService.getProperties({ limit: 1000 });
       } catch (propErr) {
         console.log('Could not load properties:', propErr);
         // Continue with empty properties

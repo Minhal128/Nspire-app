@@ -167,7 +167,9 @@ export default function DashboardScreen({
 
   const fetchProperties = async (filters?: { search?: string; state?: string; city?: string }) => {
     try {
-      const propertyFilters: any = { limit: 50 };
+      // Every property. The server sends ten unless asked for more, and this
+      // asked for fifty: the fifty-first was nowhere on the list.
+      const propertyFilters: any = { limit: 1000 };
 
       if (filters?.search) propertyFilters.search = filters.search;
       if (filters?.state) propertyFilters.state = filters.state;

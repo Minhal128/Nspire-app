@@ -87,7 +87,7 @@ export default function InspectionStatusScreen({ navigation }: InspectionStatusS
       if (!isRefresh) setLoading(true);
 
       const [propertiesRes, inspectionsRes] = await Promise.all([
-        propertyService.getProperties({ limit: 100 }).catch(() => ({ success: false, properties: [], pagination: null })),
+        propertyService.getProperties({ limit: 1000 }).catch(() => ({ success: false, properties: [], pagination: null })),
         inspectionService.getInspections().catch(() => ({ success: false, inspections: [], pagination: null })),
       ]);
 

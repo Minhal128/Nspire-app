@@ -95,7 +95,7 @@ export default function AnalyticsScreen({ navigation, onMenuPress }: AnalyticsSc
 
       // Try to load properties - handle errors gracefully
       try {
-        propertiesData = await propertyService.getProperties();
+        propertiesData = await propertyService.getProperties({ limit: 1000 });
       } catch (propErr) {
         console.log('Could not load properties:', propErr);
       }

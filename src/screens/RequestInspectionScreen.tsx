@@ -55,7 +55,7 @@ export default function RequestInspectionScreen({ navigation }: RequestInspectio
 
   const loadProperties = async () => {
     try {
-      const response = await propertyService.getProperties();
+      const response = await propertyService.getProperties({ limit: 1000 });
       setProperties(response.properties || response || []);
     } catch (error) {
       console.error('Error loading properties:', error);
