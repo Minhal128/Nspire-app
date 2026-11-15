@@ -25,6 +25,7 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -838,6 +839,13 @@ const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   const handleUnitsPress = () => {
+    // A building can have no units to inspect. Its Outside and Inside above are
+    // still inspected; there is simply no unit to open. The words are the web's,
+    // from its unit picker.
+    if (!selectedUnits || selectedUnits.length === 0) {
+      Alert.alert('No units allocated to this building.', 'This building has 0 allocated inspection units.');
+      return;
+    }
     navigation.navigate('PropertyInfo', {
       property,
       selectedUnits,

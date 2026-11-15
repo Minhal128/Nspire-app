@@ -269,11 +269,11 @@ export default function BuildingInspectionScreen() {
   };
 
   const handleStartInspectionForBuilding = (building: BuildingRow) => {
-    if (building.unitsForInspection <= 0) {
-      Alert.alert('No Units', 'This building has 0 inspection units assigned.');
-      return;
-    }
-
+    // A building with no units to inspect still has an Outside and an Inside,
+    // and they are inspected like any other building's -- as on the web, whose
+    // Start Inspection never refused one. Only its Units section stays empty.
+    // This used to stop here with "No Units", so such a building could not be
+    // inspected at all.
     const buildingUnits: string[] = [];
     for (let i = 1; i <= building.unitsForInspection; i++) {
       const unitNumber = String(i).padStart(3, '0');
@@ -1575,12 +1575,8 @@ export default function BuildingInspectionScreen() {
 
               <View style={styles.colAction}>
                 <TouchableOpacity
-                  style={[
-                    styles.startInspectionBtn,
-                    building.unitsForInspection <= 0 && styles.startInspectionBtnDisabled,
-                  ]}
+                  style={styles.startInspectionBtn}
                   onPress={() => handleStartInspectionForBuilding(building)}
-                  disabled={building.unitsForInspection <= 0}
                 >
                   <Text style={styles.startInspectionBtnText}>Start Inspection</Text>
                 </TouchableOpacity>
@@ -1955,10 +1951,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     minWidth: 110,
     alignItems: 'center',
-  },
-  startInspectionBtnDisabled: {
-    backgroundColor: '#93C5FD',
-    opacity: 0.7,
   },
   startInspectionBtnText: {
     color: '#FFFFFF',
