@@ -172,6 +172,19 @@ assert.ok(
   'DeficiencyDetailScreen: each picked picture is added to the ones already taken',
 );
 
+// The panel that confirms a save says what was saved. It read name, detail and
+// severity from the top of the entry, where the app does not keep them, so
+// every row said "Deficiency" and "Moderate" -- a general comment included.
+assert.ok(
+  detail.includes("finding?.deficiency?.name || finding?.title"),
+  'DeficiencyDetailScreen: the saved panel must name the deficiency that was saved',
+);
+assert.ok(
+  detail.includes("? (savedItemFindings.length === 1 ? 'comment' : 'comments')") &&
+    detail.includes("{isGeneralComment ? 'Add Comment' : 'Add Deficiency'}"),
+  'DeficiencyDetailScreen: a saved general comment is called a comment, not a deficiency',
+);
+
 // --- the web does the same, when it is checked out beside the app ---------------
 const webBase = new URL('../inspire-web/app/dashboard/', root);
 if (existsSync(fileURLToPath(webBase))) {

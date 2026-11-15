@@ -1857,7 +1857,10 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               <Ionicons name="checkmark-circle" size={32} color="#16A34A" style={{ marginBottom: 6 }} />
               <Text style={styles.savedPanelTitle}>Saved for Summary Report</Text>
               <Text style={styles.savedPanelSubtitle}>
-                {savedItemFindings.length} {savedItemFindings.length === 1 ? 'deficiency' : 'deficiencies'} on this item
+                {savedItemFindings.length}{' '}
+                {isGeneralComment
+                  ? (savedItemFindings.length === 1 ? 'comment' : 'comments')
+                  : (savedItemFindings.length === 1 ? 'deficiency' : 'deficiencies')} on this item
               </Text>
               {savedOffline && (
                 <Text style={styles.savedPanelOffline}>
@@ -1883,14 +1886,26 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                         <Ionicons name="image-outline" size={22} color="#D1D5DB" />
                       </View>
                     )}
+                    {/* What was saved keeps its name, detail and severity under
+                        `deficiency`. Read from the top level only, every row here
+                        said "Deficiency" and "Moderate", whatever had been saved.
+                        A general comment is its note, and has no severity. */}
                     <View style={styles.savedFindingBody}>
                       <Text style={styles.savedFindingTitle} numberOfLines={1}>
-                        {finding?.title || finding?.deficiencyName || finding?.name || 'Deficiency'}
+                        {isGeneralComment
+                          ? 'General Comment'
+                          : (finding?.deficiency?.name || finding?.title || finding?.deficiencyName || finding?.name || 'Deficiency')}
                       </Text>
                       <Text style={styles.savedFindingDescription} numberOfLines={2}>
-                        {finding?.description || finding?.detail || finding?.deficiencyDetails || ''}
+                        {isGeneralComment
+                          ? (finding?.note || '')
+                          : (finding?.deficiency?.detail || finding?.description || finding?.detail || finding?.deficiencyDetails || '')}
                       </Text>
-                      <Text style={styles.savedFindingSeverity}>{finding?.severity || 'Moderate'}</Text>
+                      {!isGeneralComment && (
+                        <Text style={styles.savedFindingSeverity}>
+                          {finding?.deficiency?.severity || finding?.deficiency?.aiSeverity || finding?.severity || 'Moderate'}
+                        </Text>
+                      )}
                     </View>
                     <TouchableOpacity
                       style={styles.savedFindingRemove}
@@ -1905,7 +1920,9 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
             <TouchableOpacity style={styles.savedPanelAddButton} onPress={resetFormForNewDeficiency}>
               <Ionicons name="add" size={18} color="#0E7490" />
-              <Text style={[styles.savedPanelButtonText, styles.savedPanelAddButtonText]}>Add Deficiency</Text>
+              <Text style={[styles.savedPanelButtonText, styles.savedPanelAddButtonText]}>
+                {isGeneralComment ? 'Add Comment' : 'Add Deficiency'}
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.savedPanelContinueButton} onPress={handleContinueInspection}>
               <Text style={styles.savedPanelButtonText}>Continue Inspection</Text>
