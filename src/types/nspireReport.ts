@@ -3,6 +3,8 @@
  * HUD National Standards for the Physical Inspection of Real Estate
  */
 
+import type { GeneralCommentEntry } from '../services/web/generalComments';
+
 // Severity levels per NSPIRE standards
 export type DeficiencySeverity = 'Life-Threatening' | 'Severe' | 'Moderate' | 'Low';
 
@@ -187,6 +189,9 @@ export interface NSPIREInspectionReport {
 
   // Additional Information
   generalComments?: string;
+  // General comments: a note and its pictures, per building, unit and area.
+  // Observations, not deficiencies -- not among `deficiencies`, in no total.
+  generalCommentEntries?: GeneralCommentEntry[];
   recommendations?: string[];
   attachments?: ReportAttachment[];
 

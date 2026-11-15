@@ -126,6 +126,15 @@ checked++;
   );
   checked++;
 
+  // What counts as a general comment, and how one is gathered for the report,
+  // is the web's file too: the report generator beside it imports it.
+  assert.strictEqual(
+    read(new URL('src/services/web/generalComments.ts', root)),
+    read(new URL('generalComments.ts', webLib)),
+    'src/services/web/generalComments.ts has drifted from inspire-web/lib/generalComments.ts — re-copy it'
+  );
+  checked++;
+
   // The one deviation from the original: RN has no window, so the logo is injected.
   const LOGO_FROM = [
     `} from './nspireReport';

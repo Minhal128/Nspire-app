@@ -16,6 +16,7 @@ import {
   SEVERITY_COLORS,
 } from '../types/nspireReport';
 import { InspectionFinding } from '../services/openaiService';
+import { collectGeneralComments, withoutGeneralComments } from '../services/web/generalComments';
 
 /**
  * Sanitize description from AI to remove any potential JSON residue
@@ -454,8 +455,13 @@ export const generateNSPIREReport = (
   const runtimeStatus = (inspectionData as any).status;
   const runtimeProgressData = (inspectionData as any).progressData;
 
+  // Web parity: a general comment is an observation, not a deficiency. It gets
+  // no row, no severity and no points; the report lists it under General
+  // Comments. It used to be scored as a Low deficiency.
+  const generalCommentEntries = collectGeneralComments(findings as any[]);
+
   // Convert findings to deficiencies
-  const deficiencies = convertFindingsToDeficiencies(findings, {
+  const deficiencies = convertFindingsToDeficiencies(withoutGeneralComments(findings as any[]), {
     building: buildingName || property?.building || property?.buildingName,
     unit: property?.unit || (selectedUnits && selectedUnits.length === 1 ? selectedUnits[0] : undefined),
   });
@@ -580,6 +586,7 @@ export const generateNSPIREReport = (
     categoryBreakdown,
     deficiencies,
     generalComments: notes,
+    generalCommentEntries,
     recommendations,
     certification: {
       certifiedBy: inspectorName || 'Inspector',

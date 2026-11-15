@@ -4,6 +4,8 @@
  * Ported from mobile app types for web/mobile parity
  */
 
+import type { GeneralCommentEntry } from './generalComments';
+
 // Severity levels per NSPIRE standards
 export type DeficiencySeverity = 'Life-Threatening' | 'Severe' | 'Moderate' | 'Low';
 
@@ -189,6 +191,10 @@ export interface NSPIREInspectionReport {
 
     // Additional Information
     generalComments?: string;
+    // General comments: a note and its pictures, per building, unit and area.
+    // Observations, not deficiencies -- they are not among `deficiencies` and
+    // count toward no total.
+    generalCommentEntries?: GeneralCommentEntry[];
     recommendations?: string[];
 
     // Certification

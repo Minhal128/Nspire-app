@@ -5,6 +5,13 @@
  */
 
 import {
+  collectGeneralComments,
+  generalCommentFindings,
+  generalCommentHeading,
+  withoutGeneralComments,
+} from './generalComments';
+import type { GeneralCommentEntry } from './generalComments';
+import {
   NSPIREInspectionReport,
   DeficiencyEntry,
   DeficiencySummary,
@@ -242,6 +249,47 @@ function generateEnhancedStyles(options: PDFGenerationOptions): string {
       margin: 0 auto;
     }
     
+    .general-comments-box {
+      border: 1px solid #000000;
+      padding: 10px;
+    }
+
+    .general-comment {
+      margin-bottom: 12px;
+    }
+
+    .general-comment:last-child {
+      margin-bottom: 0;
+    }
+
+    .general-comment-where {
+      font-size: 8pt;
+      font-weight: bold;
+      text-transform: uppercase;
+    }
+
+    .general-comment-note {
+      font-size: 9pt;
+      line-height: 1.4;
+      margin-top: 3px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .general-comment-photos {
+      margin-top: 6px;
+    }
+
+    .general-comment-photo {
+      width: 100px;
+      height: 75px;
+      object-fit: cover;
+      border: 1px solid #000000;
+      display: inline-block;
+      vertical-align: top;
+      margin: 0 6px 6px 0;
+    }
+
     .deficiency-name {
       font-weight: bold;
       margin-bottom: 2px;
@@ -604,6 +652,40 @@ function generateEnhancedDeficiencyTable(deficiencies: DeficiencyEntry[], option
   return html;
 }
 
+const escapeHtml = (value: string): string =>
+  String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+
+/**
+ * General comments: the inspector's notes and their pictures, per building,
+ * unit and area. They are observations, not deficiencies, so they sit under
+ * the deficiency tables in a block of their own, and add nothing to a total.
+ */
+function generateGeneralCommentsSection(entries: GeneralCommentEntry[], options: PDFGenerationOptions): string {
+  if (entries.length === 0) return '';
+  return `
+    <div class="general-comments-section">
+      <h3 class="section-title">General Comments</h3>
+      <div class="general-comments-box">
+        ${entries.map(entry => `
+          <div class="general-comment avoid-break">
+            <div class="general-comment-where">${escapeHtml(generalCommentHeading(entry))}</div>
+            ${entry.note ? `<div class="general-comment-note">${escapeHtml(entry.note)}</div>` : ''}
+            ${options.includeImages && entry.photos.length > 0 ? `
+              <div class="general-comment-photos">
+                ${entry.photos.map((photo, index) => `<img src="${escapeHtml(photo)}" alt="Comment photo ${index + 1}" class="general-comment-photo" onerror="this.style.display='none';" />`).join('')}
+              </div>
+            ` : ''}
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+
 /**
  * Generate certificates table as specified
  */
@@ -689,6 +771,15 @@ export function generateEnhancedNSPIREReportHTML(
   report: NSPIREInspectionReport,
   options: PDFGenerationOptions = DEFAULT_PDF_OPTIONS
 ): string {
+  // A general comment is a comment however it reached here: listed for the
+  // report, or still sitting among the rows. Either way it is shown once, in
+  // the comments block, and never as a deficiency.
+  const generalComments = collectGeneralComments([
+    ...generalCommentFindings(report.generalCommentEntries),
+    ...report.deficiencies,
+  ]);
+  const deficiencies = withoutGeneralComments(report.deficiencies);
+
   return `
 <!DOCTYPE html>
 <html lang="en">
@@ -710,7 +801,9 @@ export function generateEnhancedNSPIREReportHTML(
       report.occupancyInfo
     ) : ''}
     
-    ${options.includeDetailedDeficiencies ? generateEnhancedDeficiencyTable(report.deficiencies, options) : ''}
+    ${options.includeDetailedDeficiencies ? generateEnhancedDeficiencyTable(deficiencies, options) : ''}
+
+    ${generateGeneralCommentsSection(generalComments, options)}
     
     ${generateCertificatesTable()}
     
@@ -768,8 +861,13 @@ export function getEnhancedReportHTML(report: NSPIREInspectionReport, options: P
 export function convertToEnhancedNSPIREFormat(data: any): NSPIREInspectionReport {
   const now = new Date();
 
+  // General comments are observations, not deficiencies: they get a block of
+  // their own in the report, and no row, severity or points here.
+  const allFindings: any[] = data.findings || data.deficiencies || [];
+  const generalCommentEntries = collectGeneralComments(allFindings);
+
   // Convert findings/deficiencies to enhanced NSPIRE format
-  const deficiencies = (data.findings || data.deficiencies || []).map((item: any, index: number) => ({
+  const deficiencies: any[] = withoutGeneralComments(allFindings).map((item: any, index: number) => ({
     id: item.id || item._id || `DEF-${index + 1}`,
     imageUri: item.imageUrl || item.imageUri || item.photos?.[0]?.url || '',
     building: item.building || data.building || 'Building A',
@@ -867,6 +965,7 @@ export function convertToEnhancedNSPIREFormat(data: any): NSPIREInspectionReport
     deficiencies,
 
     generalComments: data.notes || data.generalComments || '',
+    generalCommentEntries,
     recommendations: data.recommendations || [],
 
     certification: {

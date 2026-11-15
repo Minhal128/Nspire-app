@@ -10,6 +10,7 @@ import {
   Modal,
   Platform,
   TextInput,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
@@ -22,6 +23,12 @@ import * as Sharing from 'expo-sharing';
 import { exportNspireExcel } from '../utils/nspireExcelExport';
 import { enhancedNspirePDFService } from '../services/enhancedNspirePDFService';
 import { calculateDeductionPoints } from '../services/web/nspireReport';
+import {
+  collectGeneralComments,
+  generalCommentHeading,
+  isGeneralCommentFinding,
+  withoutGeneralComments,
+} from '../services/web/generalComments';
 import { storeData, getData } from '../utils/storage';
 import { stripeService } from '../utils/stripeService';
 import { resolveUnlockReference } from '../utils/stripeUnlock';
@@ -44,7 +51,7 @@ type InspectionSummaryScreenRouteProp = RouteProp<RootStackParamList, 'Inspectio
 const reportRowSeverity = (defItem: any): string =>
   defItem?.deficiency?.severity || defItem?.deficiency?.aiSeverity || 'Moderate';
 const reportRowPoints = (defItem: any): number =>
-  defItem?.isGeneralComment ? 0 : calculateDeductionPoints(reportRowSeverity(defItem));
+  isGeneralCommentFinding(defItem) ? 0 : calculateDeductionPoints(reportRowSeverity(defItem));
 
 interface Props {
   navigation: InspectionSummaryScreenNavigationProp;
@@ -139,6 +146,14 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
   // If there are deficiencies and user navigates here via inspection, show payment modal
   const [showPaymentOnMount, setShowPaymentOnMount] = useState(false);
   const hasDeficienciesToExport = mergedDeficiencies.length > 0;
+
+  // Web parity: a general comment is an observation, not a deficiency. It is
+  // saved among the deficiencies, but on this screen it has no row, no
+  // severity and no points -- it is listed in a card of its own. Nothing set
+  // the flag this used to look for, so a general comment was scored as a Low
+  // deficiency and counted as one.
+  const deficiencyItems = withoutGeneralComments(mergedDeficiencies);
+  const generalComments = collectGeneralComments(mergedDeficiencies);
 
   // On mount: load any previously saved deficiencies and merge with the new ones
   useEffect(() => {
@@ -269,20 +284,20 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
 
   // Calculate actual deficiency counts from mergedDeficiencies
   const deficiencyCounts = {
-    lifeThreadening: mergedDeficiencies.filter((d: any) =>
+    lifeThreadening: deficiencyItems.filter((d: any) =>
       (d.deficiency?.aiSeverity || d.deficiency?.severity) === 'Life-Threatening'
     ).length,
-    severe: mergedDeficiencies.filter((d: any) =>
+    severe: deficiencyItems.filter((d: any) =>
       (d.deficiency?.aiSeverity || d.deficiency?.severity) === 'Severe'
     ).length,
-    moderate: mergedDeficiencies.filter((d: any) =>
+    moderate: deficiencyItems.filter((d: any) =>
       (d.deficiency?.aiSeverity || d.deficiency?.severity) === 'Moderate'
     ).length,
-    low: mergedDeficiencies.filter((d: any) =>
+    low: deficiencyItems.filter((d: any) =>
       (d.deficiency?.aiSeverity || d.deficiency?.severity) === 'Low'
     ).length,
     // Web parity: the summary also splits repeats from new findings.
-    repeat: mergedDeficiencies.filter((d: any) =>
+    repeat: deficiencyItems.filter((d: any) =>
       !!(d.repeatIndicator ?? d.deficiency?.repeatIndicator)
     ).length,
   };
@@ -292,8 +307,8 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
   // on the report rows, and the calculated and final scores are both 5 under
   // that. The card used to weigh severities itself while every report row
   // carried a flat 3, so the screen and the report it produced never added up.
-  const totalDeficiencies = mergedDeficiencies.length;
-  const deductionPoints = mergedDeficiencies.reduce(
+  const totalDeficiencies = deficiencyItems.length;
+  const deductionPoints = deficiencyItems.reduce(
     (sum: number, d: any) => sum + reportRowPoints(d),
     0,
   );
@@ -303,7 +318,9 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
   const calculatedScore = finalScore;
   const isPassing = finalScore >= 60;
 
-  const handleContinueInspection = async () => {
+  // What this screen holds, written back to the device before it is left, so
+  // that leaving loses nothing.
+  const keepDeficienciesOnDevice = async () => {
     const nextArea: string = inspectionData?.isOutsideInspection
       ? 'Outside'
       : (inspectionData?.location === 'Inside' ? 'Inside' : 'Units');
@@ -330,15 +347,34 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
     } catch (e) {
       console.warn('Could not save inspection data:', e);
     }
+  };
 
-    // Back to the building's categories (Outside / Inside / Units), which is
-    // where the web's CONTINUE INSPECTION goes. This used to reopen the location
-    // screen for the area just inspected instead.
+  const handleContinueInspection = async () => {
+    await keepDeficienciesOnDevice();
+
+    // Back to the building's categories (Outside / Inside / Units), the screen
+    // the inspection was being done from, as the web's CONTINUE INSPECTION
+    // returns to that building's page.
     navigation.navigate('InspectionCategories', {
       property,
       propertyId: String(property?._id || property?.id || property?.propertyId || ''),
       selectedUnits,
       buildingId: buildingId || 'default',
+    });
+  };
+
+  // Web parity (summary page, handleBackToInspection): Back goes to the
+  // property screen, where the buildings are listed. The header arrow used to
+  // throw the whole stack away and land on the Dashboard.
+  const handleBackToProperty = async () => {
+    await keepDeficienciesOnDevice();
+
+    const units = Number((property as any)?.calculatedUnits ?? property?.units ?? 0) || 0;
+    navigation.navigate('BuildingInspection' as any, {
+      property,
+      calculatedUnits: (property as any)?.calculatedUnits,
+      selectedUnits: Array.from({ length: units }, (_, i) => `Unit ${String(i + 1).padStart(3, '0')}`),
+      coverage: (property as any)?.inspectionCoverage,
     });
   };
 
@@ -375,6 +411,8 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
 
   const buildReportData = async () => {
     const deficienciesArray: any[] = [];
+    // General comments, with the picture a row would have carried.
+    const commentFindings: any[] = [];
     const buildingName = property.name || buildingId || 'B1';
     const user: any = await authService.getCurrentUser().catch(() => null);
     const inspectorName: string =
@@ -418,6 +456,13 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
         }
 
         const finalImageUri = imageBase64 || cloudinaryUrl || defItem.imageUri || null;
+
+        // A general comment goes to the report's comments block, not into a
+        // deficiency row.
+        if (isGeneralCommentFinding(defItem)) {
+          commentFindings.push({ ...defItem, imageUrl: undefined, imageUri: finalImageUri });
+          continue;
+        }
         // Use per-deficiency saved area (_area) if available (set when continuing inspection),
         // otherwise fall back to the current session's area from inspectionData.
         const inspectionArea: string = defItem._area
@@ -526,6 +571,7 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
       }],
       deficiencies: deficienciesArray,
       generalComments: `${deficienciesArray.length} deficiencies analyzed with AI.`,
+      generalCommentEntries: collectGeneralComments(commentFindings),
       certification: {
         certifiedBy: inspectorName,
         certificationDate: inspectionDate,
@@ -664,10 +710,7 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
-          onPress={() => navigation.reset({
-            index: 0,
-            routes: [{ name: 'Dashboard' as never }],
-          })}
+          onPress={handleBackToProperty}
           style={styles.backButton}
         >
           <Ionicons name="arrow-back" size={24} color="#1A1A1A" />
@@ -849,7 +892,7 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
         </View>
 
         <View style={styles.hudFooterRow}>
-          <TouchableOpacity style={styles.hudFooterPrimary} onPress={handleContinueInspection}>
+          <TouchableOpacity style={styles.hudFooterPrimary} onPress={handleBackToProperty}>
             <Text style={styles.hudFooterPrimaryText}>BACK TO INSPECTION</Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -972,8 +1015,8 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
           <View style={styles.deficienciesCard}>
             <Text style={styles.deficienciesTitle}>Recorded Deficiencies</Text>
 
-            {mergedDeficiencies.length > 0 ? (
-              mergedDeficiencies.map((defItem: any, index: number) => (
+            {deficiencyItems.length > 0 ? (
+              deficiencyItems.map((defItem: any, index: number) => (
                 <View key={index} style={[styles.deficiencyDetailCard, index > 0 && { marginTop: 16 }]}>
                   {(() => {
                     const deficiency = defItem?.deficiency || {};
@@ -1031,6 +1074,28 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
                 <Text style={styles.noDeficienciesText}>No deficiencies recorded</Text>
               </View>
             )}
+          </View>
+        )}
+
+        {/* Web parity (summary page, General Comments): the inspector's notes
+            and their pictures. Observations, not deficiencies, so they are
+            listed here and not among the deficiencies above. */}
+        {generalComments.length > 0 && (
+          <View style={styles.generalCommentsCard}>
+            <Text style={styles.generalCommentsTitle}>General Comments</Text>
+            {generalComments.map((entry, index) => (
+              <View key={index} style={[styles.generalComment, index > 0 && styles.generalCommentDivider]}>
+                <Text style={styles.generalCommentWhere}>{generalCommentHeading(entry).toUpperCase()}</Text>
+                {!!entry.note && <Text style={styles.generalCommentNote}>{entry.note}</Text>}
+                {entry.photos.length > 0 && (
+                  <View style={styles.generalCommentPhotos}>
+                    {entry.photos.map((photo, photoIndex) => (
+                      <Image key={photoIndex} source={{ uri: photo }} style={styles.generalCommentPhoto} />
+                    ))}
+                  </View>
+                )}
+              </View>
+            ))}
           </View>
         )}
       </ScrollView>
@@ -1755,6 +1820,56 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#1A1A1A',
     lineHeight: 20,
+  },
+  generalCommentsCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    marginTop: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: '#006795',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  generalCommentsTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#006795',
+    marginBottom: 8,
+  },
+  generalComment: {
+    paddingVertical: 10,
+  },
+  generalCommentDivider: {
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+  },
+  generalCommentWhere: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#374151',
+  },
+  generalCommentNote: {
+    fontSize: 14,
+    color: '#374151',
+    marginTop: 4,
+  },
+  generalCommentPhotos: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 8,
+  },
+  generalCommentPhoto: {
+    width: 80,
+    height: 80,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    marginRight: 8,
+    marginBottom: 8,
   },
   noDeficienciesContainer: {
     alignItems: 'center',

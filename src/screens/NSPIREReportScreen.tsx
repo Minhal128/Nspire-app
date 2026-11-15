@@ -42,6 +42,7 @@ import { enhancedNspirePDFService } from '../services/enhancedNspirePDFService';
 import { inspectionService } from '../services/inspectionService';
 import { api } from '../services/api';
 import { sanitizeAIDescription } from '../utils/nspireReportUtils';
+import { collectGeneralComments, withoutGeneralComments } from '../services/web/generalComments';
 
 const { width, height } = Dimensions.get('window');
 
@@ -172,8 +173,13 @@ export default function NSPIREReportScreen({ navigation, route }: NSPIREReportSc
   const convertToNSPIREReport = (data: any, property: any): NSPIREInspectionReport => {
     const now = new Date();
 
+    // Web parity (summary page): general comments are observations, not
+    // deficiencies. No row and no points; the report lists them on their own.
+    const allFindings: any[] = data.findings || [];
+    const generalCommentEntries = collectGeneralComments(allFindings);
+
     // Convert findings to deficiency entries
-    const deficiencies: DeficiencyEntry[] = (data.findings || []).map((finding: any, index: number) => ({
+    const deficiencies: DeficiencyEntry[] = withoutGeneralComments(allFindings).map((finding: any, index: number) => ({
       id: finding.id || `DEF-${index + 1}`,
       deficiencyQRId: finding.deficiencyQRId || `QR-${Math.floor(10000000 + Math.random() * 90000000)}`,
       imageUri: finding.imageUri || '',
@@ -373,6 +379,7 @@ export default function NSPIREReportScreen({ navigation, route }: NSPIREReportSc
       categoryBreakdown: [],
       deficiencies,
       generalComments: data.notes || '',
+      generalCommentEntries,
       recommendations: [],
       certification: {
         certifiedBy: data.inspectorName || 'Inspector',
