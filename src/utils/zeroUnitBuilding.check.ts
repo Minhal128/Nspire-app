@@ -19,7 +19,7 @@ const read = (url: URL) => readFileSync(url, 'utf8').replace(/\r\n/g, '\n');
 
 // --- the property screen opens the building whatever its unit count ----------
 const building = read(new URL('src/screens/BuildingInspectionScreen.tsx', root));
-const start = building.match(/const handleStartInspectionForBuilding = \([\s\S]*?\n  \};\n/)?.[0];
+const start = building.match(/const handleStartInspectionForBuilding = (?:async )?\([\s\S]*?\n  \};\n/)?.[0];
 assert.ok(start, 'BuildingInspectionScreen: handleStartInspectionForBuilding not found');
 assert.ok(
   !/unitsForInspection\s*<=\s*0[\s\S]*?return;/.test(start),

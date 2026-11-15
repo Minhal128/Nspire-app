@@ -36,7 +36,13 @@ import { COVERAGE_OPTIONS } from '../constants/inspectionCoverage';
 import authService from '../services/authService';
 import { inspectionService } from '../services/inspectionService';
 import offlineQueue from '../services/offlineQueue';
+import networkService from '../services/networkService';
+import { blockingInspection } from '../services/web/inspectionLock';
 import { useReportPreview } from '../contexts/ReportPreviewContext';
+
+// How long Start Inspection waits to learn whether another property is being
+// inspected. Past this it stops asking and opens the building.
+const LOCK_LOOKUP_MS = 6000;
 
 type BuildingInspectionRouteProp = RouteProp<RootStackParamList, 'BuildingInspection'>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'BuildingInspection'>;
@@ -144,6 +150,9 @@ export default function BuildingInspectionScreen() {
   }, [totalBuildings, totalUnits, calculatedUnits]);
 
   const [buildings, setBuildings] = useState<BuildingRow[]>(initBuildings);
+  // The building whose Start Inspection is being checked against the lock, so
+  // a second tap does not start a second check.
+  const [startingBuildingId, setStartingBuildingId] = useState<string | null>(null);
 
   // Web parity: per-building completed tasks + renamable ID column
   const [completedUnitsMap, setCompletedUnitsMap] = useState<Record<string, string[]>>({});
@@ -269,7 +278,72 @@ export default function BuildingInspectionScreen() {
     }
   };
 
-  const handleStartInspectionForBuilding = (building: BuildingRow) => {
+  // Web parity (property page, findBlockingProperty): one property is inspected
+  // at a time, and the rule is the web's own file, copied to src/services/web/.
+  // Answers with the property that has to be finished or put on hold before
+  // this one can be inspected, and with this property as the server has it now
+  // -- the copy this screen was opened with can be hours old.
+  //
+  // No answer is not a refusal. Offline, or with the server slow to reply, the
+  // inspection goes ahead: field work does not wait on a lookup.
+  const lookUpInspectionLock = async (): Promise<{ blocker: any; current: any }> => {
+    const nothing = { blocker: null, current: null };
+    const propId = String(property._id || (property as any).id || '');
+    if (!propId || networkService.hasNoConnection()) return nothing;
+
+    let giveUpTimer: ReturnType<typeof setTimeout> | undefined;
+    const giveUp = new Promise<typeof nothing>((resolve) => {
+      giveUpTimer = setTimeout(() => resolve(nothing), LOCK_LOOKUP_MS);
+    });
+    const lookup = (async () => {
+      const [progressRes, propsRes] = await Promise.all([
+        inspectionService.getAllProgress({ timeoutMs: LOCK_LOOKUP_MS }),
+        // Every property, not the page of ten the lists ask for: the one being
+        // inspected can be older than those ten.
+        propertyService.getProperties({ limit: 1000 }),
+      ]);
+      if (!progressRes.success || !propsRes?.success || !Array.isArray(propsRes.properties)) return nothing;
+      const current = propsRes.properties.find((p: any) => String(p._id) === propId) || null;
+      // This property counts whether or not that list has it, so that its
+      // being the one worked on last is never missed.
+      const everyProperty: any[] = current ? propsRes.properties : [...propsRes.properties, property];
+      return { blocker: blockingInspection<any>(propId, everyProperty, progressRes.progress), current };
+    })().catch(() => nothing);
+
+    try {
+      return await Promise.race([lookup, giveUp]);
+    } finally {
+      if (giveUpTimer) clearTimeout(giveUpTimer);
+    }
+  };
+
+  const handleStartInspectionForBuilding = async (building: BuildingRow) => {
+    if (startingBuildingId) return;
+    setStartingBuildingId(building.buildingId);
+    try {
+      const { blocker, current } = await lookUpInspectionLock();
+      if (blocker) {
+        // The web's sentence, over the alert's title and body.
+        Alert.alert(
+          'Cannot start inspection',
+          `Property "${blocker.name}" is already in progress. Please put it on hold or complete it first.`
+        );
+        return;
+      }
+      // On hold and about to be inspected: it is the active inspection again,
+      // so it is this property the next one has to wait for.
+      if (current?.status === 'hold') {
+        try {
+          await propertyService.hold(String(current._id));
+        } catch (error: any) {
+          Alert.alert('Error', error.message || 'Failed to resume inspection');
+          return;
+        }
+      }
+    } finally {
+      setStartingBuildingId(null);
+    }
+
     // A building with no units to inspect still has an Outside and an Inside,
     // and they are inspected like any other building's -- as on the web, whose
     // Start Inspection never refused one. Only its Units section stays empty.
@@ -1576,8 +1650,12 @@ export default function BuildingInspectionScreen() {
 
               <View style={styles.colAction}>
                 <TouchableOpacity
-                  style={styles.startInspectionBtn}
+                  style={[
+                    styles.startInspectionBtn,
+                    startingBuildingId === building.buildingId && styles.startInspectionBtnBusy,
+                  ]}
                   onPress={() => handleStartInspectionForBuilding(building)}
+                  disabled={startingBuildingId !== null}
                 >
                   <Text style={styles.startInspectionBtnText}>Start Inspection</Text>
                 </TouchableOpacity>
@@ -1957,6 +2035,9 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '600',
+  },
+  startInspectionBtnBusy: {
+    opacity: 0.6,
   },
   // Editable cells
   // Export Button

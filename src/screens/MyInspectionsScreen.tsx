@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -22,6 +22,7 @@ import {
   authService,
   inspectionService,
   propertyService,
+  networkService,
   generateRandomUnitSample,
   isRandomSelectionAvailable
 } from '../services';
@@ -30,6 +31,8 @@ import { Inspection, Property as PropertyType, User } from '../services/api';
 import { US_STATES } from '../constants/usStates';
 import { US_STATE_OPTIONS } from '../utils/iosPickerUtils';
 import { unitCount } from '../utils/propertyForm';
+import { calculatePropertyProgressPercent } from '../utils/inspectionProgressUtils';
+import { findActiveInspection } from '../services/web/inspectionLock';
 
 // State options with "All States" as first option
 const STATE_OPTIONS = [
@@ -56,6 +59,10 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
   const [properties, setProperties] = useState<PropertyType[]>([]);
   const [inspections, setInspections] = useState<Inspection[]>([]);
   const [inProgressInspections, setInProgressInspections] = useState<Set<string>>(new Set());
+  // What the one-at-a-time lock goes by (web my-inspection): every saved
+  // progress record, and every property -- the list on screen is one page.
+  const [progressRecords, setProgressRecords] = useState<any[]>([]);
+  const [lockProperties, setLockProperties] = useState<PropertyType[]>([]);
   // Web parity: multi-select + bulk delete
   const [selectedProperties, setSelectedProperties] = useState<Set<string>>(new Set());
 
@@ -92,6 +99,21 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
       setLoading(false);
     }
   }, []);
+
+  const loadLockData = async () => {
+    try {
+      const [progressRes, allProps] = await Promise.all([
+        inspectionService.getAllProgress(),
+        propertyService.getProperties({ limit: 1000 }),
+      ]);
+      setProgressRecords(progressRes.success ? progressRes.progress : []);
+      setLockProperties(allProps?.success && Array.isArray(allProps.properties) ? allProps.properties : []);
+    } catch (error) {
+      // No answer, nothing locked.
+      setProgressRecords([]);
+      setLockProperties([]);
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -130,6 +152,10 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
         console.error('Error fetching inspections:', inspError);
         setInspections([]);
       }
+
+      // Not awaited: the list is ready without it, and offline there is no
+      // answer to wait for.
+      loadLockData();
     } catch (error) {
       console.error('Error in fetchData:', error);
     }
@@ -230,7 +256,27 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
     );
   };
 
+  // Web parity (my-inspection activeInspectionPropertyId): the property being
+  // inspected right now -- started, not finished, not on hold, and the one
+  // worked on last.
+  const activeInspection = useMemo(
+    () => findActiveInspection<PropertyType>(lockProperties, progressRecords),
+    [lockProperties, progressRecords]
+  );
+
+  // Web parity (handleInitiate): while one property is being inspected, the
+  // others do not open. True when `property` is one of the others.
+  const heldBackByActiveInspection = (property: PropertyType): boolean => {
+    if (!activeInspection || activeInspection._id === property._id) return false;
+    Alert.alert(
+      'Inspection In Progress',
+      `"${activeInspection.name || 'Another property'}" is currently being inspected. Please put it on hold before starting a new inspection.`
+    );
+    return true;
+  };
+
   const handleEditPress = (property: PropertyType, hasInProgressInspection: boolean = false) => {
+    if (heldBackByActiveInspection(property)) return;
     if (hasInProgressInspection) {
       Alert.alert(
         'Inspection In Progress',
@@ -247,6 +293,7 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
   };
 
   const handleContinueInspection = (property: PropertyType) => {
+    if (heldBackByActiveInspection(property)) return;
     const inProgressInspection = inspections.find(
       (ins =>
         (typeof ins.property === 'object' ? ins.property._id : ins.property) === property._id &&
@@ -414,6 +461,7 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
   };
 
   const handlePropertyCardPress = (property: PropertyType) => {
+    if (heldBackByActiveInspection(property)) return;
     // Open the Ready for Inspection modal when clicking on property card
     setSelectedProperty(property);
     const totalUnits = property.units ?? 1;
@@ -421,6 +469,27 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
     setSelectedCoverage('100');
     calculateSelectedUnits('100', totalUnits, property);
     setInspectionModalVisible(true);
+  };
+
+  // Web parity (handleHoldInspection): putting a started inspection on hold is
+  // what lets another property be inspected before it is finished.
+  const handleHoldInspection = async () => {
+    if (!selectedProperty?._id) return;
+    // Hold is a change on the server, and not one the offline queue carries.
+    if (networkService.hasNoConnection()) {
+      Alert.alert('Offline', 'Connect to the internet to put an inspection on hold.');
+      return;
+    }
+    setActionModalVisible(false);
+    try {
+      const response = await propertyService.hold(selectedProperty._id);
+      if (response.success) {
+        Alert.alert('Success', response.message || `Inspection for ${selectedProperty.name} put on hold`);
+        await fetchData();
+      }
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to hold inspection');
+    }
   };
 
   const handleRemoveProperty = async () => {
@@ -499,6 +568,20 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
             >
               <Text style={[styles.actionButtonText, inProgressInspections.has(selectedProperty?._id || '') && styles.disabledActionButtonText]}>Edit Property</Text>
             </TouchableOpacity>
+
+            {/* Web parity (ActionModal): shown once the inspection has started.
+                A property already on hold needs no button -- it comes off hold
+                by itself when its inspection is continued. */}
+            {!!selectedProperty &&
+              selectedProperty.status !== 'hold' &&
+              calculatePropertyProgressPercent(selectedProperty, progressRecords) > 0 && (
+              <TouchableOpacity
+                style={[styles.actionButton, styles.holdButton]}
+                onPress={handleHoldInspection}
+              >
+                <Text style={[styles.actionButtonText, styles.holdButtonText]}>Hold Inspection</Text>
+              </TouchableOpacity>
+            )}
 
             <TouchableOpacity
               style={[styles.actionButton, styles.inspectionButton]}
@@ -602,9 +685,14 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
                         />
                       </TouchableOpacity>
                       <Text style={styles.propertyName}>{property.name || 'Unnamed Property'}</Text>
-                      {hasInProgressInspection && (
+                      {hasInProgressInspection && property.status !== 'hold' && (
                         <View style={styles.inProgressBadge}>
                           <Text style={styles.inProgressBadgeText}>In Progress</Text>
+                        </View>
+                      )}
+                      {property.status === 'hold' && (
+                        <View style={styles.inProgressBadge}>
+                          <Text style={styles.inProgressBadgeText}>On Hold</Text>
                         </View>
                       )}
                     </View>
@@ -1110,6 +1198,14 @@ const styles = StyleSheet.create({
     borderWidth: 0,
   },
   removeButtonText: {
+    color: '#FFFFFF',
+  },
+  holdButton: {
+    backgroundColor: '#F59E0B',
+    borderColor: '#F59E0B',
+    borderWidth: 0,
+  },
+  holdButtonText: {
     color: '#FFFFFF',
   },
   loadingContainer: {
