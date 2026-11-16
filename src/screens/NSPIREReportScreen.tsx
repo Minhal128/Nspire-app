@@ -43,6 +43,17 @@ import { inspectionService } from '../services/inspectionService';
 import { api } from '../services/api';
 import { sanitizeAIDescription } from '../utils/nspireReportUtils';
 import { collectGeneralComments, withoutGeneralComments } from '../services/web/generalComments';
+import {
+  CERTIFICATE_STATEMENT,
+  INSPECTION_TYPE,
+  formatPoints,
+  propertyBuildings,
+  reportScores,
+  rowRules,
+  sampleSize as sampleSizeFor,
+  scoreArea,
+} from '../services/web/reportRules';
+import { inspectedUnitKey } from '../utils/inspectionProgressUtils';
 
 const { width, height } = Dimensions.get('window');
 
@@ -178,8 +189,17 @@ export default function NSPIREReportScreen({ navigation, route }: NSPIREReportSc
     const allFindings: any[] = data.findings || [];
     const generalCommentEntries = collectGeneralComments(allFindings);
 
+    // The property's sample size: what a deficiency's points are divided by,
+    // and what the report prints beside the unit counts.
+    const totalUnits = Number(property?.units ?? property?.totalUnits ?? 0) || 0;
+    const sampleSize = sampleSizeFor(totalUnits);
+    const buildingNames = propertyBuildings(property);
+
     // Convert findings to deficiency entries
     const deficiencies: DeficiencyEntry[] = withoutGeneralComments(allFindings).map((finding: any, index: number) => ({
+      // PTS, points lost, possible score, repair time and date (services/web/reportRules).
+      ...rowRules(finding, sampleSize),
+      repairTimeline: rowRules(finding, sampleSize).repairTime,
       id: finding.id || `DEF-${index + 1}`,
       deficiencyQRId: finding.deficiencyQRId || `QR-${Math.floor(10000000 + Math.random() * 90000000)}`,
       imageUri: finding.imageUri || '',
@@ -191,7 +211,8 @@ export default function NSPIREReportScreen({ navigation, route }: NSPIREReportSc
       nspireCode: finding.nspireCode || mapCategoryToNSPIRECode(finding.category),
       deficiencyDetails: finding.description || '',
       comments: finding.comments || finding.recommendedAction || '',
-      deductionPts: calculateDeductionPoints(finding.severity),
+      // What the deficiency takes off the score: its PTS over the sample size.
+      deductionPts: rowRules(finding, sampleSize).ptsLost,
       repeatIndicator: finding.repeat || false,
       severity: mapSeverity(finding.severity),
       inspectedDate: now.toLocaleDateString(),
@@ -325,6 +346,15 @@ export default function NSPIREReportScreen({ navigation, route }: NSPIREReportSc
 
     console.log(`[NSPIREReport] Total deficiencies: ${deficiencies.length}`);
 
+    // The scores, by the report's own rules; and the units inspected: every
+    // unit something was found or noted in.
+    const scores = reportScores(deficiencies);
+    const unitsInspected = new Set(
+      [...deficiencies, ...generalCommentEntries]
+        .filter((row) => scoreArea(row.area) === 'unit' && row.unit && row.unit !== '-')
+        .map((row) => inspectedUnitKey(row.building, row.unit)),
+    ).size;
+
     // Calculate summary
     const summary: DeficiencySummary = {
       lifeThreatening: deficiencies.filter(d => d.severity === 'Life-Threatening').length,
@@ -344,7 +374,7 @@ export default function NSPIREReportScreen({ navigation, route }: NSPIREReportSc
       generatedAt: now.toISOString(),
       metadata: {
         inspectionNo: data.inspectionNo || `INSP-${Date.now().toString(36).toUpperCase()}`,
-        inspectionType: 'General NSPIRE',
+        inspectionType: INSPECTION_TYPE,
         escortName: data.escortName || property?.contactName || '-',
         propertyAddress: property?.address || data.address || '-',
         propertyName: property?.name || data.propertyName || '-',
@@ -354,21 +384,23 @@ export default function NSPIREReportScreen({ navigation, route }: NSPIREReportSc
         endDate: data.endDate || now.toLocaleDateString(),
         endTime: data.endTime || now.toLocaleTimeString(),
         reportCreatedDate: now.toLocaleDateString(),
-        preliminaryScore: data.complianceScore || 100 - (deficiencies.length * 2),
-        finalScore: data.finalScore || data.complianceScore || 100 - (deficiencies.length * 2),
-        calculatedScore: data.calculatedScore || data.complianceScore || 100 - (deficiencies.length * 2),
+        // 100 to begin with (outside 25, inside 25, units 50), the points
+        // the deficiencies lost, and what is left of the 100.
+        preliminaryScore: scores.preliminary,
+        finalScore: scores.final,
+        calculatedScore: scores.calculated,
         healthSafetyThreshold: 60,
         physicalConditionThreshold: 60,
         inspectorName: data.inspectorName || 'Inspector',
         inspectorId: data.inspectorId || 'INS-001',
       },
       inspectionData: [
-        { type: 'Building', propertyTotal: property?.buildings || 1, sampleSize: 1, totalUnitsInspected: 1 },
-        // A property with no units has none sampled and none inspected.
-        { type: 'Unit', propertyTotal: property?.units ?? 1, sampleSize: property?.units === 0 ? 0 : 1, totalUnitsInspected: property?.units === 0 ? 0 : 1 },
-        { type: 'Site', propertyTotal: 1, sampleSize: 1, totalUnitsInspected: 1 },
-        { type: 'Common Area', propertyTotal: 1, sampleSize: 1, totalUnitsInspected: 1 },
+        { type: 'Building', propertyTotal: buildingNames.length, sampleSize: buildingNames.length, totalUnitsInspected: buildingNames.length },
+        { type: 'Unit', propertyTotal: totalUnits, sampleSize, totalUnitsInspected: unitsInspected },
       ],
+      inspectionCounts: { buildings: buildingNames.length, units: totalUnits, sampleSize, unitsInspected },
+      // Every building of the property has its block in the report.
+      buildingNames,
       occupancyInfo: {
         totalUnits: property?.units ?? 1,
         occupiedUnits: property?.occupiedUnits || (property?.units ?? 1),
@@ -384,7 +416,7 @@ export default function NSPIREReportScreen({ navigation, route }: NSPIREReportSc
       certification: {
         certifiedBy: data.inspectorName || 'Inspector',
         certificationDate: now.toLocaleDateString(),
-        certificationStatement: 'I certify that this inspection was conducted in accordance with HUD NSPIRE protocols.',
+        certificationStatement: CERTIFICATE_STATEMENT,
       },
     };
   };
@@ -787,15 +819,15 @@ export default function NSPIREReportScreen({ navigation, route }: NSPIREReportSc
           <View style={styles.scoreBannerRow}>
             <View style={styles.scoreBannerCell}>
               <Text style={styles.scoreBannerLabel}>PRELIMINARY</Text>
-              <Text style={styles.scoreBannerValue}>{m.preliminaryScore}</Text>
+              <Text style={styles.scoreBannerValue}>{formatPoints(m.preliminaryScore)}</Text>
             </View>
             <View style={styles.scoreBannerCell}>
               <Text style={styles.scoreBannerLabel}>CALCULATED</Text>
-              <Text style={styles.scoreBannerValue}>{m.calculatedScore}</Text>
+              <Text style={styles.scoreBannerValue}>{formatPoints(m.calculatedScore)}</Text>
             </View>
             <View style={styles.scoreBannerCell}>
               <Text style={styles.scoreBannerLabel}>FINAL SCORE</Text>
-              <Text style={styles.scoreBannerValue}>{m.finalScore}</Text>
+              <Text style={styles.scoreBannerValue}>{formatPoints(m.finalScore)}</Text>
             </View>
           </View>
         </View>

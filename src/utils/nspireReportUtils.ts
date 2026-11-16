@@ -17,6 +17,17 @@ import {
 } from '../types/nspireReport';
 import { InspectionFinding } from '../services/openaiService';
 import { collectGeneralComments, withoutGeneralComments } from '../services/web/generalComments';
+import {
+  CERTIFICATE_STATEMENT,
+  INSPECTION_TYPE,
+  findingSeverity,
+  propertyBuildings,
+  reportScores,
+  rowRules,
+  sampleSize as sampleSizeFor,
+  scoreArea,
+} from '../services/web/reportRules';
+import { inspectedUnitKey } from './inspectionProgressUtils';
 
 /**
  * Sanitize description from AI to remove any potential JSON residue
@@ -205,13 +216,17 @@ const resolveAreaBucket = (value: unknown, fallbackIsUnit = false): string => {
  */
 export const convertFindingsToDeficiencies = (
   findings: InspectionFinding[],
-  propertyInfo?: { building?: string; unit?: string }
+  propertyInfo?: { building?: string; unit?: string },
+  // The property's sample size: what a deficiency's points are divided by.
+  sampleSize: number = 1
 ): DeficiencyEntry[] => {
   const now = new Date();
 
   return findings.map((finding: any, index: number) => {
     finding.deficiencyQRId = '';
-    const severity = mapFindingSeverityToNSPIRE(finding.severity);
+    // A finding keeps its severity at the top (the web's) or inside its
+    // deficiency (the app's); the report's rules read both.
+    const severity: DeficiencySeverity = findingSeverity(finding);
     const sourceArea =
       finding.area ||
       finding._area ||
@@ -288,6 +303,8 @@ export const convertFindingsToDeficiencies = (
       finding?.name ||
       '';
     const detailsText = sanitizeAIDescription(rawDetails) || 'Issue recorded';
+    // PTS, points lost, possible score, repair time and date (services/web/reportRules).
+    const rules = rowRules({ ...finding, area: areaBucket, severity }, sampleSize);
 
     return {
       id: finding.id || `DEF-${index + 1}`, deficiencyQRId: '', imageUri,
@@ -302,7 +319,10 @@ export const convertFindingsToDeficiencies = (
       deficiencyDetails: detailsText,
       comments: finding.comments || finding.note || finding.recommendedAction || finding.aiAnalysis || '',
       note: finding.note || finding.comments || '',
-      deductionPts: calculateDeductionPoints(severity),
+      // What the deficiency takes off the score: its PTS over the sample size.
+      deductionPts: rules.ptsLost,
+      ...rules,
+      repairTimeline: rules.repairTime,
       repeatIndicator: false,
       severity,
       inspectedDate: now.toLocaleDateString(),
@@ -425,11 +445,9 @@ export const calculateCategoryBreakdown = (deficiencies: DeficiencyEntry[]): Cat
 /**
  * Calculate overall inspection score
  */
-export const calculateInspectionScore = (deficiencies: DeficiencyEntry[]): number => {
-  const baseScore = 100;
-  const totalDeductions = deficiencies.reduce((sum, def) => sum + def.deductionPts, 0);
-  return Math.max(0, baseScore - totalDeductions);
-};
+export const calculateInspectionScore = (deficiencies: DeficiencyEntry[]): number =>
+  // 100 less the points the deficiencies lost, never below 0.
+  reportScores(deficiencies.map((def) => ({ ptsLost: def.ptsLost ?? def.deductionPts, area: def.area }))).final;
 
 /**
  * Generate complete NSPIRE report from inspection data
@@ -460,16 +478,27 @@ export const generateNSPIREReport = (
   // Comments. It used to be scored as a Low deficiency.
   const generalCommentEntries = collectGeneralComments(findings as any[]);
 
+  // The property's sample size: what a deficiency's points are divided by,
+  // and what the report prints beside the unit counts.
+  const totalUnits = Number(property?.units ?? property?.totalUnits ?? 0) || 0;
+  const sampleSize = sampleSizeFor(totalUnits);
+
   // Convert findings to deficiencies
   const deficiencies = convertFindingsToDeficiencies(withoutGeneralComments(findings as any[]), {
-    building: buildingName || property?.building || property?.buildingName,
+    // The building a finding without one of its own is filed under. Some
+    // callers hand the property's name in as the building's; that is no
+    // building, and the report would give it a block of its own.
+    building: (buildingName && buildingName !== property?.name ? buildingName : undefined)
+      || property?.building || property?.buildingName,
     unit: property?.unit || (selectedUnits && selectedUnits.length === 1 ? selectedUnits[0] : undefined),
-  });
+  }, sampleSize);
 
   // Calculate summary and breakdown
   const summary = calculateDeficiencySummary(deficiencies);
   const categoryBreakdown = calculateCategoryBreakdown(deficiencies);
-  const score = calculateInspectionScore(deficiencies);
+  // The scores: 100 to begin with (outside 25, inside 25, units 50), the
+  // points the deficiencies lost, and what is left of the 100.
+  const scores = reportScores(deficiencies);
 
   const buildingProgressMap = runtimeProgressData?.buildingProgressMap || {};
   const buildingRows = runtimeProgressData?.buildingRows || [];
@@ -494,7 +523,7 @@ export const generateNSPIREReport = (
   // Build metadata
   const metadata: InspectionMetadata = {
     inspectionNo: `INSP-${Date.now().toString(36).toUpperCase()}`,
-    inspectionType: 'General NSPIRE',
+    inspectionType: INSPECTION_TYPE,
     escortName: escortName || property?.contactName || '-',
     propertyAddress: property?.address || '-',
     propertyName: property?.name || '-',
@@ -504,9 +533,9 @@ export const generateNSPIREReport = (
     endDate: (endDate || now).toLocaleDateString(),
     endTime: (endDate || now).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     reportCreatedDate: now.toLocaleDateString(),
-    preliminaryScore: score,
-    finalScore: score,
-    calculatedScore: score,
+    preliminaryScore: scores.preliminary,
+    finalScore: scores.final,
+    calculatedScore: scores.calculated,
     healthSafetyThreshold: 60,
     physicalConditionThreshold: 60,
     inspectorName: inspectorName || 'Inspector',
@@ -556,6 +585,21 @@ export const generateNSPIREReport = (
     marketRateUnits: property?.marketRateUnits,
   };
 
+  // The four counts the report prints. A unit is inspected when the progress
+  // data says so, or when something was found or noted in it.
+  const buildingNames = propertyBuildings(property);
+  const unitsWithFindings = new Set(
+    [...deficiencies, ...generalCommentEntries]
+      .filter((row) => scoreArea(row.area) === 'unit' && row.unit && row.unit !== '-')
+      .map((row) => inspectedUnitKey(row.building, row.unit)),
+  ).size;
+  const inspectionCounts = {
+    buildings: buildingNames.length,
+    units: totalUnits,
+    sampleSize,
+    unitsInspected: Math.max(inspectedUnitCount, unitsWithFindings),
+  };
+
   // Generate recommendations based on findings
   const recommendations: string[] = [];
 
@@ -582,6 +626,9 @@ export const generateNSPIREReport = (
     metadata,
     inspectionData: inspectionDataRows,
     occupancyInfo,
+    inspectionCounts,
+    // Every building of the property has its block in the report.
+    buildingNames,
     summary,
     categoryBreakdown,
     deficiencies,
@@ -591,7 +638,7 @@ export const generateNSPIREReport = (
     certification: {
       certifiedBy: inspectorName || 'Inspector',
       certificationDate: now.toLocaleDateString(),
-      certificationStatement: 'I certify that this inspection was conducted in accordance with HUD NSPIRE protocols and that the findings documented in this report accurately reflect the conditions observed during the inspection.',
+      certificationStatement: CERTIFICATE_STATEMENT,
     },
   };
 };

@@ -4,12 +4,13 @@
  */
 
 import type { GeneralCommentEntry } from '../services/web/generalComments';
+import type { InspectionCounts } from '../services/web/reportRules';
 
 // Severity levels per NSPIRE standards
 export type DeficiencySeverity = 'Life-Threatening' | 'Severe' | 'Moderate' | 'Low';
 
 // Inspection type
-export type InspectionType = 'General NSPIRE' | 'Follow-up' | 'Complaint' | 'Special';
+export type InspectionType = 'NSPIRE Public' | 'General NSPIRE' | 'Follow-up' | 'Complaint' | 'Special';
 
 // Building/Unit type for inspection data
 export type InspectionUnitType = 'Building' | 'Unit' | 'Site' | 'Common Area';
@@ -114,6 +115,14 @@ export interface DeficiencyEntry {
 
   // Scoring Impact
   deductionPts: number;
+  // The points, repair time and date columns (services/web/reportRules). A
+  // row built without them gets them when the report is drawn.
+  pts?: number;
+  ptsLost?: number;
+  possibleScore?: number | null;
+  repairTime?: string;
+  repairTimeline?: string;
+  recordedAt?: string;
 
   // History
   repeatIndicator: boolean;
@@ -179,6 +188,11 @@ export interface NSPIREInspectionReport {
   // Inspection Data Tables
   inspectionData: InspectionDataRow[];
   occupancyInfo: OccupancyInfo;
+  // How many buildings and units the property has, its sample size and how
+  // many units were inspected; and the property's buildings by name, so the
+  // report has a block for each of them, the ones with nothing found too.
+  inspectionCounts?: InspectionCounts;
+  buildingNames?: string[];
 
   // Deficiency Summary (shown at beginning)
   summary: DeficiencySummary;

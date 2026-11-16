@@ -209,7 +209,10 @@ export default function InspectionStatusScreen({ navigation }: InspectionStatusS
     const inspection = property.inspection || {};
     return generateNSPIREReport({
       findings: inspection.findings || inspection.deficiencies || [],
-      property: typeof inspection.property === 'object' ? inspection.property : property,
+      // The list's property over the inspection's own copy of it: the copy has
+      // a name and an address but not the buildings, and the report has a
+      // block for every building.
+      property: { ...(typeof inspection.property === 'object' ? inspection.property : {}), ...property },
       inspectorName: inspection.inspector?.fullName || inspection.inspectorName,
       notes: inspection.notes,
       status: inspection.status,

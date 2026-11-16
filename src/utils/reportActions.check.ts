@@ -20,7 +20,6 @@
 import assert from 'node:assert';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { calculateDeductionPoints } from '../services/web/nspireReport.ts';
 
 const root = new URL('../..', import.meta.url);
 // Normalised: git's autocrlf leaves the working tree CRLF.
@@ -89,27 +88,33 @@ for (const file of sources) {
   );
 }
 
-// --- scores: the web's table, on the card and on the rows --------------------
-assert.deepStrictEqual(
-  ['Life-Threatening', 'Severe', 'Moderate', 'Low'].map(calculateDeductionPoints),
-  [10, 6, 3, 1],
-  'the web deduction table changed — the summary screen follows it, so check the score card'
-);
+// --- scores: the report's rules, on the card and on the rows ------------------
+// The client's correction sheet replaced the flat table this used to hold the
+// screen to (10 / 6 / 3 / 1 a row, the final score five under the preliminary).
+// A property starts at 100; a deficiency loses it its PTS over the sample
+// size; the calculated score is the points lost and the final score what is
+// left. reportRules.check.ts holds the rules themselves, this holds the screen
+// to them.
 const summary = read(new URL('src/screens/InspectionSummaryScreen.tsx', root));
 assert.ok(
-  summary.includes("import { calculateDeductionPoints } from '../services/web/nspireReport';"),
-  'InspectionSummaryScreen: deduction points must come from the web table in src/services/web/'
+  summary.includes("} from '../services/web/reportRules';"),
+  'InspectionSummaryScreen: its scores must come from the report rules in src/services/web/'
 );
 assert.ok(
-  summary.includes('deductionPts: reportRowPoints(defItem),') &&
-    summary.includes('(sum: number, d: any) => sum + reportRowPoints(d)'),
-  'InspectionSummaryScreen: the score card and the report rows must read the same reportRowPoints()'
+  summary.includes('const rules = rowScore(defItem);') &&
+    summary.includes('deductionPts: rules.ptsLost,') &&
+    summary.includes('deficiencyItems.map((d: any) => ({ ptsLost: rowScore(d).ptsLost, area: rowArea(d) }))'),
+  'InspectionSummaryScreen: the score card and the report rows must be scored by the same rowScore()'
 );
+assert.ok(!summary.includes('calculateDeductionPoints'), 'InspectionSummaryScreen: the flat points table is back');
 assert.ok(!/deductionPts: isGC \? 0 : 3\b/.test(summary), 'InspectionSummaryScreen: a report row is back to a flat 3 points');
 assert.ok(!summary.includes('deficienciesArray.length * 3'), 'InspectionSummaryScreen: total deductions are back to 3 a row');
+assert.ok(!/preliminaryScore - 5\b/.test(summary), 'InspectionSummaryScreen: the final score is five under the preliminary again');
 assert.ok(
-  summary.includes('const calculatedScore = finalScore;'),
-  'InspectionSummaryScreen: on the web the calculated score is the final score'
+  summary.includes('const preliminaryScore = scores.preliminary;') &&
+    summary.includes('const calculatedScore = scores.calculated;') &&
+    summary.includes('const finalScore = scores.final;'),
+  'InspectionSummaryScreen: preliminary is 100, calculated the points lost, final what is left of the 100'
 );
 
 // --- CONTINUE INSPECTION ------------------------------------------------------

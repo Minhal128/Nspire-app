@@ -22,13 +22,25 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { exportNspireExcel } from '../utils/nspireExcelExport';
 import { enhancedNspirePDFService } from '../services/enhancedNspirePDFService';
-import { calculateDeductionPoints } from '../services/web/nspireReport';
 import {
   collectGeneralComments,
   generalCommentHeading,
   isGeneralCommentFinding,
   withoutGeneralComments,
 } from '../services/web/generalComments';
+import {
+  CERTIFICATE_STATEMENT,
+  COUNT_COLUMNS,
+  INSPECTION_TYPE,
+  formatPoints,
+  propertyBuildings,
+  reportScores,
+  rowRules,
+  sampleSize as sampleSizeFor,
+  scoreArea,
+} from '../services/web/reportRules';
+import inspectionService from '../services/inspectionService';
+import { inspectedUnitKey, inspectedUnitKeys } from '../utils/inspectionProgressUtils';
 import { storeData, getData } from '../utils/storage';
 import { stripeService } from '../utils/stripeService';
 import { resolveUnlockReference } from '../utils/stripeUnlock';
@@ -43,15 +55,13 @@ type InspectionSummaryScreenNavigationProp = NativeStackNavigationProp<
 type InspectionSummaryScreenRouteProp = RouteProp<RootStackParamList, 'InspectionSummary'>;
 
 /**
- * A saved deficiency as its report row prints it: the severity, and the points
- * that severity costs under the web's own table. The score card and the report
- * rows both read these, so the screen cannot disagree with the report it makes.
- * A general comment is not a deficiency and costs nothing.
+ * The severity a saved deficiency's report row prints. Its points -- PTS,
+ * points lost, possible score -- come from the report's own rules
+ * (services/web/reportRules, the web's file), which the score card on this
+ * screen reads too, so the screen cannot disagree with the report it makes.
  */
 const reportRowSeverity = (defItem: any): string =>
   defItem?.deficiency?.severity || defItem?.deficiency?.aiSeverity || 'Moderate';
-const reportRowPoints = (defItem: any): number =>
-  isGeneralCommentFinding(defItem) ? 0 : calculateDeductionPoints(reportRowSeverity(defItem));
 
 interface Props {
   navigation: InspectionSummaryScreenNavigationProp;
@@ -154,6 +164,60 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
   // deficiency and counted as one.
   const deficiencyItems = withoutGeneralComments(mergedDeficiencies);
   const generalComments = collectGeneralComments(mergedDeficiencies);
+
+  // Where a saved deficiency was found. Its report row prints these, and it is
+  // scored and counted by them.
+  const rowArea = (defItem: any): string =>
+    defItem?._area
+    || (inspectionData?.isOutsideInspection
+      ? 'Outside'
+      : (inspectionData?.location === 'Inside' ? 'Inside' : 'Units'));
+  const rowUnit = (defItem: any): string =>
+    defItem?._unit !== undefined
+      ? defItem._unit
+      : ((rowArea(defItem) === 'Inside' || rowArea(defItem) === 'Outside')
+        ? '-'
+        : (selectedUnits.join(', ') || 'Unit Multiple'));
+  const rowBuilding = (defItem: any): string =>
+    String(defItem?.building || defItem?.buildingInspectionId || buildingId || 'B1');
+
+  // The units inspected, for the counts on this screen and in the report: the
+  // units with a record of their own on the server, and the units something
+  // was found or noted in. Offline only the second kind is known.
+  const [recordedUnitKeys, setRecordedUnitKeys] = useState<string[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    inspectionService
+      .getAllProgress({ propertyId, timeoutMs: 8000 })
+      .then((response) => {
+        if (!cancelled && response?.success) {
+          setRecordedUnitKeys(inspectedUnitKeys(propertyId, response.progress));
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [propertyId]);
+  const unitsInspected = new Set<string>([
+    ...recordedUnitKeys,
+    ...mergedDeficiencies
+      .filter((d: any) => scoreArea(rowArea(d)) === 'unit' && rowUnit(d) && rowUnit(d) !== '-')
+      .map((d: any) => inspectedUnitKey(rowBuilding(d), rowUnit(d))),
+  ]).size;
+  const totalUnits = Number(property?.units ?? property?.totalUnits ?? 0) || 0;
+  // The sample size: what a deficiency's points are divided by.
+  const sampleSize = sampleSizeFor(totalUnits);
+  const buildingNames = propertyBuildings({
+    ...property,
+    buildings: property?.buildings ?? property?.totalBuildings,
+  });
+  const inspectionCounts = {
+    buildings: buildingNames.length,
+    units: totalUnits,
+    sampleSize,
+    unitsInspected,
+  };
 
   // On mount: load any previously saved deficiencies and merge with the new ones
   useEffect(() => {
@@ -302,20 +366,21 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
     ).length,
   };
 
-  // Scores, worked out the way the web summary does (buildReport in
-  // inspection/summary/page.tsx): the preliminary score is 100 less the points
-  // on the report rows, and the calculated and final scores are both 5 under
-  // that. The card used to weigh severities itself while every report row
-  // carried a flat 3, so the screen and the report it produced never added up.
+  // Scores, by the report's own rules (services/web/reportRules): the property
+  // starts at 100 -- outside 25, inside 25, units 50 -- each deficiency loses
+  // it its points over the sample size, the calculated score is the points
+  // lost, and the final score is what is left of the 100. The card and the
+  // report rows are scored by the same call, so they cannot disagree.
   const totalDeficiencies = deficiencyItems.length;
-  const deductionPoints = deficiencyItems.reduce(
-    (sum: number, d: any) => sum + reportRowPoints(d),
-    0,
+  const rowScore = (defItem: any) =>
+    rowRules({ ...defItem, area: rowArea(defItem), severity: reportRowSeverity(defItem) }, sampleSize);
+  const scores = reportScores(
+    deficiencyItems.map((d: any) => ({ ptsLost: rowScore(d).ptsLost, area: rowArea(d) })),
   );
 
-  const preliminaryScore = Math.max(0, 100 - deductionPoints);
-  const finalScore = Math.max(0, preliminaryScore - 5);
-  const calculatedScore = finalScore;
+  const preliminaryScore = scores.preliminary;
+  const calculatedScore = scores.calculated;
+  const finalScore = scores.final;
   const isPassing = finalScore >= 60;
 
   // What this screen holds, written back to the device before it is left, so
@@ -463,24 +528,19 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
           commentFindings.push({ ...defItem, imageUrl: undefined, imageUri: finalImageUri });
           continue;
         }
-        // Use per-deficiency saved area (_area) if available (set when continuing inspection),
-        // otherwise fall back to the current session's area from inspectionData.
-        const inspectionArea: string = defItem._area
-          || (inspectionData?.isOutsideInspection
-            ? 'Outside'
-            : (inspectionData?.location === 'Inside' ? 'Inside' : 'Units'));
+        // The deficiency's own saved area and unit (_area, _unit) when it has
+        // them, the current session's otherwise.
+        const inspectionArea: string = rowArea(defItem);
         const isGC = !!(defItem as any).isGeneralComment;
-        // Use per-deficiency saved unit (_unit) if available, otherwise compute for current session
-        const defUnit: string = defItem._unit !== undefined
-          ? defItem._unit
-          : ((inspectionArea === 'Inside' || inspectionArea === 'Outside')
-            ? '-'
-            : (selectedUnits.join(', ') || 'Unit Multiple'));
+        const defUnit: string = rowUnit(defItem);
+        // PTS, points lost, possible score, repair time and date.
+        const rules = rowScore(defItem);
 
         deficienciesArray.push({
           id: `${i + 1}`,
           deficiencyQRId: defItem.deficiencyQRId || `QR-${Math.floor(10000000 + Math.random() * 90000000)}`,
-          building: buildingName,
+          // The building it was found in: the report has a block for each.
+          building: rowBuilding(defItem),
           unit: defUnit,
           room: defItem.location || 'Multiple',
           area: inspectionArea,
@@ -492,7 +552,10 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
           deficiencyDetails: isGC ? '-' : (deficiency.detail || 'Damaged or vandalized'),
           comments: defItem.note || (isGC ? '' : (deficiency.aiAnalysis || 'AI analyzed')),
           note: defItem.note || '',
-          deductionPts: reportRowPoints(defItem),
+          // What the deficiency takes off the score: its PTS over the sample size.
+          deductionPts: rules.ptsLost,
+          ...rules,
+          repairTimeline: rules.repairTime,
           repeatIndicator: false,
           severity: isGC ? '-' : reportRowSeverity(defItem),
           inspectedDate: inspectionDate,
@@ -518,7 +581,7 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
       generatedAt: new Date().toISOString(),
       metadata: {
         inspectionNo: inspectionId,
-        inspectionType: 'General NSPIRE' as const,
+        inspectionType: INSPECTION_TYPE,
         escortName: 'Property Manager',
         propertyAddress: property.address || '',
         propertyName: property.name || 'Property',
@@ -539,9 +602,12 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
         inspectedUnits: selectedUnits.length > 0 ? selectedUnits : undefined,
       },
       inspectionData: [
-        { type: 'Building' as const, propertyTotal: property.buildings || property.totalBuildings || 1, sampleSize: 1, totalUnitsInspected: 1 },
-        { type: 'Unit' as const, propertyTotal: property.units || property.totalUnits || selectedUnits.length || 1, sampleSize: selectedUnits.length || 1, totalUnitsInspected: selectedUnits.length || 1 },
+        { type: 'Building' as const, propertyTotal: inspectionCounts.buildings, sampleSize: inspectionCounts.buildings, totalUnitsInspected: inspectionCounts.buildings },
+        { type: 'Unit' as const, propertyTotal: inspectionCounts.units, sampleSize: inspectionCounts.sampleSize, totalUnitsInspected: inspectionCounts.unitsInspected },
       ],
+      inspectionCounts,
+      // Every building of the property has its block in the report.
+      buildingNames,
       occupancyInfo: {
         totalUnits: property.totalUnits || selectedUnits.length,
         occupiedUnits: property.totalUnits || selectedUnits.length,
@@ -575,7 +641,7 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
       certification: {
         certifiedBy: inspectorName,
         certificationDate: inspectionDate,
-        certificationStatement: 'I certify this inspection was conducted per INSPIRE standards.',
+        certificationStatement: CERTIFICATE_STATEMENT,
       },
     };
   };
@@ -816,58 +882,49 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
         <View style={styles.hudCard}>
           <Text style={styles.hudHeading}>INSPECTION DATA</Text>
           <View style={styles.hudHeadingRule} />
-          {[
-            ['Building', property.totalBuildings || property.buildings || 0],
-            ['Unit', property.totalUnits || property.units || 0],
-            ['Site', 1],
-            ['Common Area', 1],
-          ].map(([label, total]) => (
-            <View key={label as string} style={styles.dataBlock}>
-              <Text style={styles.dataBlockTitle}>{label as string}</Text>
+          {/* The same four counts the report prints. */}
+          {[0, 2].map((first) => (
+            <View key={COUNT_COLUMNS[first]} style={styles.dataBlock}>
               <View style={styles.dataBlockRow}>
-                <View style={styles.dataBlockCell}>
-                  <Text style={styles.dataBlockLabel}>Property Total</Text>
-                  <Text style={styles.dataBlockValue}>{String(total)}</Text>
-                </View>
-                <View style={styles.dataBlockCell}>
-                  <Text style={styles.dataBlockLabel}>Sample Size</Text>
-                  <Text style={styles.dataBlockValue}>1</Text>
-                </View>
-                <View style={styles.dataBlockCell}>
-                  <Text style={styles.dataBlockLabel}>Inspected</Text>
-                  <Text style={styles.dataBlockValue}>1</Text>
-                </View>
+                {[first, first + 1].map((column) => (
+                  <View key={COUNT_COLUMNS[column]} style={styles.dataBlockCell}>
+                    <Text style={styles.dataBlockLabel}>{COUNT_COLUMNS[column]}</Text>
+                    <Text style={styles.dataBlockValue}>
+                      {String([
+                        inspectionCounts.buildings,
+                        inspectionCounts.units,
+                        inspectionCounts.sampleSize,
+                        inspectionCounts.unitsInspected,
+                      ][column])}
+                    </Text>
+                  </View>
+                ))}
               </View>
             </View>
           ))}
         </View>
 
-        {/* Score Card */}
+        {/* Score Card: 100 to begin with, the points lost, and what is left. */}
         <View style={styles.scoreCard}>
           <View style={styles.scoreSection}>
             <Text style={styles.scoreLabel}>PRELIMINARY SCORE</Text>
-            <Text style={styles.scoreValue}>{preliminaryScore}</Text>
-          </View>
-
-          <View style={styles.scoreDivider} />
-
-          <View style={styles.scoreSection}>
-            <Text style={styles.scoreLabel}>POINTS LOST</Text>
-            <Text style={[styles.scoreValue, styles.pointsLostValue]}>-{deductionPoints}</Text>
+            <Text style={styles.scoreValue}>{formatPoints(preliminaryScore)}</Text>
+            <Text style={styles.scoreLabel}>OUTSIDE 25 + INSIDE 25 + UNITS 50</Text>
           </View>
 
           <View style={styles.scoreDivider} />
 
           <View style={styles.scoreSection}>
             <Text style={styles.scoreLabel}>CALCULATED SCORE</Text>
-            <Text style={styles.scoreValue}>{calculatedScore}</Text>
+            <Text style={[styles.scoreValue, styles.pointsLostValue]}>{formatPoints(calculatedScore)}</Text>
+            <Text style={styles.scoreLabel}>POINTS LOST</Text>
           </View>
 
           <View style={styles.scoreDivider} />
 
           <View style={styles.scoreSection}>
             <Text style={styles.scoreLabel}>FINAL SCORE</Text>
-            <Text style={styles.scoreFinal}>{finalScore}</Text>
+            <Text style={styles.scoreFinal}>{formatPoints(finalScore)}</Text>
             <View style={styles.passingBadge}>
               <Ionicons name="checkmark" size={16} color="#FFFFFF" />
               <Text style={styles.passingText}>{isPassing ? 'Passing' : 'Failing'}</Text>

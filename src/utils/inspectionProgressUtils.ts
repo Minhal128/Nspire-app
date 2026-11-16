@@ -257,6 +257,32 @@ export const calculatePropertyProgressPercent = (
 };
 
 /**
+ * One unit of one building as a key, however the two were written down:
+ * "Unit 003" in "b2" and "3" in "B2" are the same unit.
+ */
+export const inspectedUnitKey = (building: unknown, unit: unknown): string => {
+  const name = String(unit ?? '').trim().toUpperCase().replace(/^UNIT[\s_-]*/, '').replace(/^0+(?=\d)/, '');
+  return `${String(building ?? '').trim().toUpperCase() || 'B1'}|${name}`;
+};
+
+/**
+ * The units of a property that have a progress record of their own: the units
+ * an inspector has been through. A report's "Total Unit Inspected" counts
+ * these together with any unit a finding names.
+ */
+export const inspectedUnitKeys = (propertyId: string | undefined, progressRecords: any[]): string[] => {
+  const keys = new Set<string>();
+  (progressRecords || []).forEach((p: any) => {
+    if (propertyId && !(p?.propertyId === propertyId || p?.propertyId?._id === propertyId)) return;
+    const type = String(p?.inspectionType || '').toLowerCase();
+    const unit = String(p?.unitId ?? '').trim();
+    if (!type.startsWith('unit') || !unit) return;
+    keys.add(inspectedUnitKey(p?.buildingId, unit));
+  });
+  return [...keys];
+};
+
+/**
  * Count findings after collapsing duplicates that describe the same defect.
  * Same key as the web portal so the two surfaces report identical numbers.
  */

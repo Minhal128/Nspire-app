@@ -117,9 +117,10 @@ assert.deepStrictEqual(collectGeneralComments(rows), all);
 // --- the report draws them in their own block, never as a row -------------------
 const generator = read(new URL('src/services/web/enhancedNspirePDFService.ts', root));
 assert.ok(
-  generator.includes('const deficiencies = withoutGeneralComments(report.deficiencies);') &&
-    generator.includes('generateEnhancedDeficiencyTable(deficiencies, options)'),
-  'the report must keep general comments out of the deficiency tables',
+  generator.includes('const rows: ReportRow[] = withoutGeneralComments(report.deficiencies).map((deficiency) => ({') &&
+    generator.includes('generateEnhancedDeficiencyTable(buildings, rows, options)') &&
+    generator.includes('const scores = reportScores(rows);'),
+  'the report must keep general comments out of the deficiency tables, and out of the scores',
 );
 assert.ok(
   generator.includes('${generateGeneralCommentsSection(generalComments, options)}'),
@@ -134,7 +135,7 @@ assert.ok(
 const summary = read(new URL('src/screens/InspectionSummaryScreen.tsx', root));
 assert.ok(
   summary.includes('const deficiencyItems = withoutGeneralComments(mergedDeficiencies);') &&
-    summary.includes('const deductionPoints = deficiencyItems.reduce('),
+    summary.includes('const scores = reportScores(\n    deficiencyItems.map('),
   'InspectionSummaryScreen: a general comment must not be counted or scored as a deficiency',
 );
 assert.ok(

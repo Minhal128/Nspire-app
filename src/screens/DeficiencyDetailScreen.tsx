@@ -748,6 +748,15 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       // Upload all images to Cloudinary and analyze with AI
       const propertyIdentifier = String(property?._id || property?.id || property?.propertyId || 'unknown');
       const analyzedDeficiencies = [];
+      // The deficiency's own points, whichever area it is in. The report prints
+      // them as PTS and works the points lost out from them
+      // (services/web/reportRules), so they are saved with the deficiency.
+      const recordedPoints = {
+        ...(scoringResult ? { pointsLostRaw: scoringResult.ptsLostRaw } : {}),
+        ...(insideScoringResult?.specialFormula === 'divide_50n'
+          ? { pointsFormula: `${insideScoringResult.pointsLostRaw}/50xn` }
+          : {}),
+      };
       // True once a photo is left waiting on the queue. The progress save below
       // has to be replayed in that case, or the server keeps the local file://
       // URI forever and the photo never reaches web.
@@ -823,6 +832,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                 pointsLostRaw: outsideScoringResult.pointsLostRaw,
                 isDeficiencyOverride: outsideScoringResult.isDeficiencyOverride,
               }),
+              ...recordedPoints,
             },
             deficiencyQRId: generateDeficiencyQRId(), // Unique QR-XXXXX ID per image
             imageUrl: uploadResult.success ? uploadResult.url : null, // Cloudinary URL for storage
@@ -864,6 +874,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                 pointsLostRaw: outsideScoringResult.pointsLostRaw,
                 isDeficiencyOverride: outsideScoringResult.isDeficiencyOverride,
               }),
+              ...recordedPoints,
             },
             deficiencyQRId: generateDeficiencyQRId(), // Unique QR-XXXXX ID per image
             imageUrl: null,
@@ -898,6 +909,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               pointsLostRaw: outsideScoringResult.pointsLostRaw,
               isDeficiencyOverride: outsideScoringResult.isDeficiencyOverride,
             }),
+            ...recordedPoints,
           },
           deficiencyQRId: generateDeficiencyQRId(),
           imageUrl: null,
