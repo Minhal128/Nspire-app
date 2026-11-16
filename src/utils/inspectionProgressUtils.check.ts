@@ -127,4 +127,34 @@ assert.strictEqual(
   'alternate field names normalise to one defect',
 );
 
+// A finding saved by this app keeps its name and description inside
+// `deficiency`, and its place as _area / _unit. Read only at the top it had
+// neither, was skipped as a blank, and a property inspected on a phone showed
+// no deficiencies in the list.
+const fromApp = (name: string, area: string, unit: string, building = 'B1') => ({
+  deficiency: { name, detail: `${name} (detail)`, severity: 'Moderate' },
+  building,
+  _area: area,
+  _unit: unit,
+});
+assert.strictEqual(
+  countUniqueDeficiencies([fromApp('Chimney is damaged', 'Outside', 'B1'), fromApp('Drain is blocked', 'Outside', 'B1')]),
+  2,
+  'findings saved by the app are counted',
+);
+assert.strictEqual(
+  countUniqueDeficiencies([fromApp('Outlet is dead', 'Unit', 'Unit 003'), fromApp('Outlet is dead', 'Unit', 'Unit 004')]),
+  2,
+  'the same deficiency in two units, saved by the app, is two',
+);
+// The same deficiency recorded on the website and on a phone is one.
+assert.strictEqual(
+  countUniqueDeficiencies([
+    { area: 'outside', building: 'B1', unit: '-', title: 'Chimney is damaged', description: 'Chimney is damaged (detail)' },
+    fromApp('Chimney is damaged', 'Outside', 'B1'),
+  ]),
+  1,
+  'one deficiency saved by both the web and the app is counted once',
+);
+
 console.log('inspectionProgressUtils: all checks passed');

@@ -33,6 +33,8 @@ import {
   POSSIBLE_SCORE,
   PRELIMINARY_SCORE,
   deficiencyScore,
+  findingFacts,
+  findingKey,
   formatDateTime,
   formatPoints,
   propertyBuildings,
@@ -133,6 +135,41 @@ assert.strictEqual(scoreArea('Common Area'), 'inside');
 assert.strictEqual(scoreArea('Site'), 'outside');
 assert.strictEqual(scoreArea('UNITS'), 'unit');
 assert.strictEqual(scoreArea('-'), null);
+
+// --- reading a finding: the web's shape and the app's ---------------------------------
+const webFinding = {
+  area: 'outside', building: 'B1', unit: '-', title: 'Chimney is damaged', description: 'Flue is cracked',
+  notes: 'North side', nspireCode: 'chim_out_1', severity: 'Life-Threatening', imageUri: 'https://x/y.jpg',
+};
+const appFinding = {
+  deficiency: { id: 'chim_out_1', name: 'Chimney is damaged', detail: 'Flue is cracked', severity: 'Life-Threatening', code: 'chim_out_1' },
+  building: 'B1', buildingInspectionId: 'B1', _area: 'Outside', _unit: 'B1', note: 'North side', imageUrl: 'https://x/y.jpg', imageUri: null,
+};
+const expectedFacts = { name: 'Chimney is damaged', details: 'Flue is cracked', note: 'North side', code: 'chim_out_1', building: 'B1', unit: '', area: 'outside', severity: 'Life-Threatening', picture: 'https://x/y.jpg' };
+assert.deepStrictEqual(findingFacts(webFinding), expectedFacts, 'a finding the web saved');
+assert.deepStrictEqual(findingFacts(appFinding), expectedFacts, 'the same finding as the app saves it reads the same');
+assert.strictEqual(findingKey(appFinding), findingKey(webFinding), 'and is the same finding');
+assert.notStrictEqual(findingKey(appFinding), '', 'a finding from the app is not a blank record');
+assert.strictEqual(findingKey({ area: 'unit', building: 'B1', unit: '101' }), '', 'a record with no name and no description is');
+// The summary stamps a record's own place on a finding that has none; the
+// app's findings sit in a record whose place is "ALL_UNITS", which is no unit.
+assert.strictEqual(
+  findingFacts({ ...appFinding, deficiency: { ...appFinding.deficiency }, _area: 'Unit', _unit: 'Unit 003', unit: 'ALL_UNITS', area: 'Report_draft_property' }).unit,
+  'Unit 003',
+  'a finding keeps its own unit over a record\'s "ALL_UNITS"',
+);
+assert.strictEqual(findingFacts({ area: 'Report_draft_property', _area: 'Unit' }).area, 'unit');
+// A finding in none of the three areas keeps its unit and its place apart.
+assert.notStrictEqual(
+  findingKey({ area: 'Kitchen', building: 'B1', unit: '101', title: 'Leak' }),
+  findingKey({ area: 'Kitchen', building: 'B1', unit: '102', title: 'Leak' }),
+);
+assert.notStrictEqual(
+  findingKey({ area: 'Kitchen', building: 'B1', unit: '101', title: 'Leak' }),
+  findingKey({ area: 'Bath', building: 'B1', unit: '101', title: 'Leak' }),
+);
+// A report row, read again, says what it said.
+assert.strictEqual(findingFacts({ deficiencyName: 'Leak', deficiencyDetails: 'Under sink', comments: 'noted', area: 'Units', unit: 'Unit 002', building: 'B2' }).unit, 'Unit 002');
 
 // --- D: the buildings ---------------------------------------------------------------
 const property = {

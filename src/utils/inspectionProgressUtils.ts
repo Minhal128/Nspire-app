@@ -1,3 +1,5 @@
+import { findingKey } from '../services/web/reportRules';
+
 type ProgressRecordLike = {
   propertyId?: any;
   unitId?: any;
@@ -290,13 +292,12 @@ export const countUniqueDeficiencies = (findings: any[] | undefined): number => 
   if (!findings || findings.length === 0) return 0;
   const seen = new Set<string>();
   findings.forEach((f: any) => {
-    const areaStr = String(f?.area || f?.subCategory || f?.category || '').toLowerCase();
-    const titleStr = String(f?.title || f?.deficiencyName || f?.name || '').toLowerCase();
-    const descStr = String(f?.description || f?.details || f?.deficiencyDetails || '').toLowerCase();
-    const bldgStr = String(f?.building || f?.buildingName || '').toLowerCase();
-    const unitStr = String(f?.unit || f?.unitNumber || '').toLowerCase();
-    if (!titleStr && !descStr) return;
-    seen.add(`${areaStr}|${bldgStr}|${unitStr}|${titleStr}|${descStr}`);
+    // Read from whichever shape the finding was saved in (the web's rule,
+    // services/web/reportRules). This app keeps a finding's name and
+    // description inside `deficiency`; read only at the top, its own findings
+    // were skipped here as blank records and counted as none.
+    const key = findingKey(f);
+    if (key) seen.add(key);
   });
   return seen.size;
 };

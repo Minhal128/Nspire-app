@@ -110,6 +110,97 @@ export function findingSeverity(finding: Loose | null | undefined): ScoreSeverit
   return scoreSeverity(finding?.severity ?? finding?.healthAndSafety ?? inner.severity ?? inner.healthAndSafety);
 }
 
+// --- reading a finding ---------------------------------------------------------
+
+/**
+ * What a finding says.
+ *
+ * The web saves a finding with its name and description at the top (title,
+ * description, notes, unit). The app saves one with them inside
+ * (deficiency.name, deficiency.detail, note, _unit). Everything that lists,
+ * counts or scores findings reads them through here, so a deficiency recorded
+ * on a phone is a deficiency on the website too. Read only at the top, a
+ * finding from the app has no name and no description, and was taken for a
+ * blank record and dropped.
+ */
+export interface FindingFacts {
+  name: string;
+  details: string;
+  /** The inspector's note. */
+  note: string;
+  code: string;
+  /** The building it was found in; '' when the finding names none. */
+  building: string;
+  /** The unit it was found in; '' for an outside or inside finding, or one that names none. */
+  unit: string;
+  area: ScoreArea | null;
+  severity: ScoreSeverity;
+  picture: string;
+}
+
+/** What stands where a place should be and names none. */
+const NO_PLACE = /^(-|n\/?a|all[\s_-]*units?|unit multiple|multiple|property|building|unknown(-building)?|unspecified-unit|null|undefined)$/i;
+
+const firstText = (...values: unknown[]): string => {
+  for (const value of values) {
+    const text = typeof value === 'string' ? value.trim() : typeof value === 'number' ? String(value) : '';
+    if (text) return text;
+  }
+  return '';
+};
+
+/** The first of the values that names a real place: not blank, not "-", not "ALL_UNITS". */
+const firstPlace = (...values: unknown[]): string => {
+  for (const value of values) {
+    const text = firstText(value);
+    if (text && !NO_PLACE.test(text)) return text;
+  }
+  return '';
+};
+
+export function findingFacts(finding: Loose | null | undefined): FindingFacts {
+  const row: Loose = finding || {};
+  const inner: Loose = row.deficiency && typeof row.deficiency === 'object' ? row.deficiency : {};
+  const area = findingArea(row);
+  const photo = Array.isArray(row.photos) ? row.photos[0] : undefined;
+  return {
+    name: firstText(row.title, row.deficiencyName, row.selected, inner.name, inner.selected, row.name),
+    details: firstText(row.description, row.details, row.detail, row.deficiencyDetails, inner.detail, inner.description),
+    note: firstText(row.notes, row.note, row.comments),
+    code: firstText(row.nspireCode, row.code, inner.code, inner.id),
+    // An outside or inside finding has no unit: the web writes "-" there, and
+    // the app writes the building again, as "_unit".
+    building: firstPlace(
+      row.building,
+      row.buildingInspectionId,
+      row.buildingId,
+      row.buildingName,
+      area === 'outside' || area === 'inside' ? row._unit : ''
+    ),
+    unit: area === 'outside' || area === 'inside'
+      ? ''
+      : firstPlace(row.unit, row.unitId, row.unitNumber, row._unit),
+    area,
+    severity: findingSeverity(row),
+    picture: firstText(row.imageUri, row.imageUrl, typeof photo === 'string' ? photo : photo?.url, photo?.uri),
+  };
+}
+
+/**
+ * What makes two findings the same finding: where it was found and what it
+ * says. '' for a record that says nothing -- a blank the database keeps from an
+ * interrupted save -- which is not a finding at all.
+ */
+export function findingKey(finding: Loose | null | undefined): string {
+  const facts = findingFacts(finding);
+  if (!facts.name && !facts.details) return '';
+  const row: Loose = finding || {};
+  // A finding in none of the three areas is told apart by the place it does
+  // name ("Kitchen", "Bath").
+  const where = facts.area ?? firstText(row.area, row._area, row.subCategory, row.category);
+  return [where, facts.building, facts.unit, facts.name, facts.details].join('|').toLowerCase();
+}
+
 // --- the sample size -----------------------------------------------------------
 
 /**
