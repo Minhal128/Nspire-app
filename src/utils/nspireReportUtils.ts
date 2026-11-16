@@ -312,13 +312,22 @@ export const convertFindingsToDeficiencies = (
       building: resolvedBuilding,
       unit: resolvedUnit,
       room: finding.location || 'General',
+      // The item inspected. The spreadsheet names it beside the area; the
+      // website saves it as `item`, this app as `itemName`.
+      itemName: finding.itemName || finding.item || '',
       area: areaBucket,
       deficiencyName: finding.deficiencyName || finding?.deficiency?.name || finding.title || finding.name || 'Deficiency',
       nspireCode,
       codeReference: finding.codeReference || finding?.deficiency?.codeReference || finding?.deficiency?.source || '',
       deficiencyDetails: detailsText,
-      comments: finding.comments || finding.note || finding.recommendedAction || finding.aiAnalysis || '',
-      note: finding.note || finding.comments || '',
+      // What the inspector wrote. The website saves it as `notes`, this app as
+      // `note`; read only as `note`, a note typed on the website was left out
+      // of the report and the spreadsheet made here.
+      comments: finding.notes || finding.note || finding.comments || finding.recommendedAction || finding.aiAnalysis || '',
+      note: finding.notes || finding.note || finding.comments || '',
+      // Saved with a finding made on the website; the spreadsheet has a column for each.
+      standard: finding.standard || '',
+      inspectionProtocol: finding.inspectionProtocol || finding.protocol || '',
       // What the deficiency takes off the score: its PTS over the sample size.
       deductionPts: rules.ptsLost,
       ...rules,

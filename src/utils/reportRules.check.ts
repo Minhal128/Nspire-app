@@ -350,6 +350,38 @@ for (const file of ['src/screens/InspectionSummaryScreen.tsx', 'src/screens/NSPI
 }
 assert.strictEqual(deficiencyScore({ area: 'outside', severity: 'Severe' }, sampleSize(0)).ptsLost, 12.2, 'no units: an outside deficiency still scores');
 
+// --- the spreadsheet's rows -----------------------------------------------------
+// The server draws the sheet from the rows a screen sends, and can show only
+// what a row carries. The report made from a saved inspection (Inspection
+// Status) left out the item inspected, a note typed on the website (saved as
+// `notes`, where this app saves `note`), and the standard and protocol saved
+// with a finding made there; the website's summary left out the item too. So
+// one inspection came out as a different sheet from each button.
+{
+  const builder = readFileSync(fileURLToPath(new URL('src/utils/nspireReportUtils.ts', root)), 'utf8');
+  for (const field of [
+    "itemName: finding.itemName || finding.item || ''",
+    "note: finding.notes || finding.note || finding.comments || ''",
+    "standard: finding.standard || ''",
+    "inspectionProtocol: finding.inspectionProtocol || finding.protocol || ''",
+  ]) {
+    assert.ok(builder.includes(field), `nspireReportUtils.ts: a report row should carry \`${field}\``);
+  }
+  const summaryScreen = readFileSync(fileURLToPath(new URL('src/screens/InspectionSummaryScreen.tsx', root)), 'utf8');
+  assert.ok(summaryScreen.includes('itemName: defItem.itemName'), 'InspectionSummaryScreen.tsx: a report row should carry the item inspected');
+
+  const webApp = new URL('../inspire-web/app/', root);
+  if (existsSync(fileURLToPath(webApp))) {
+    for (const portal of ['dashboard', 'management/dashboard', 'asset-manager/dashboard', 'other/dashboard', 'admin']) {
+      const page = readFileSync(fileURLToPath(new URL(`${portal}/inspection/summary/page.tsx`, webApp)), 'utf8');
+      assert.ok(
+        page.includes("itemName: finding.itemName || finding.item || ''"),
+        `inspire-web/app/${portal}/inspection/summary/page.tsx: a report row should carry the item inspected`,
+      );
+    }
+  }
+}
+
 // --- the server draws the same document, by the same rules ------------------------
 const require = createRequire(import.meta.url);
 const read = (url: URL) => readFileSync(fileURLToPath(url), 'utf8').replace(/\r\n/g, '\n');
