@@ -49,6 +49,7 @@ export type QueueListener = (pending: number) => void;
 
 class OfflineQueue {
   private flushing = false;
+  private flushRequested = false;
   private started = false;
   private listeners = new Set<QueueListener>();
   private unsubscribeNetwork: (() => void) | null = null;
@@ -76,6 +77,7 @@ class OfflineQueue {
       this.notify(jobs.length);
     } catch (error) {
       console.warn('offlineQueue: could not write the queue', error);
+      throw error;
     }
   }
 
@@ -109,6 +111,15 @@ class OfflineQueue {
   async enqueue(kind: QueuedJobKind, dedupeKey: string, payload: any): Promise<void> {
     const jobs = await this.mutate((current) => upsertJob(current, makeJob(kind, dedupeKey, payload)));
     console.log(`offlineQueue: queued ${kind} (${jobs.length} pending)`);
+  }
+
+  syncInBackground(): void {
+    if (!networkService.isOnline()) return;
+    if (this.flushing) {
+      this.flushRequested = true;
+      return;
+    }
+    void this.flush().catch(error => console.warn('offlineQueue: background sync failed', error));
   }
 
   async pendingCount(): Promise<number> {
@@ -196,18 +207,17 @@ class OfflineQueue {
   async flush(): Promise<FlushResult> {
     if (this.flushing) return { sent: 0, remaining: await this.pendingCount() };
 
-    let jobs = await this.read();
-    if (jobs.length === 0) return { sent: 0, remaining: 0 };
-
     if (!networkService.isOnline()) {
-      return { sent: 0, remaining: jobs.length };
+      return { sent: 0, remaining: await this.pendingCount() };
     }
-
     this.flushing = true;
+
+    let jobs: QueuedJob[] = [];
     let sent = 0;
     const allMapping: Record<string, string> = {};
 
     try {
+      jobs = await this.read();
       // Iterate by id, not over a snapshot: a createProperty or uploadImage
       // earlier in the run rewrites the jobs still waiting, and sending the
       // stale copy would post that work against an id the server never issued.
@@ -217,6 +227,16 @@ class OfflineQueue {
 
         const job = jobs.find((j) => j.id === jobId);
         if (!job) continue;
+        if (job.kind === 'saveProgress') {
+          const uploads = jobs.filter(candidate => candidate.kind === 'uploadImage');
+          if (uploads.length) {
+            const needed = new Set(uploads.map(upload => upload.payload.imageUri));
+            const referencesPendingImage = (value: any): boolean =>
+              typeof value === 'string' ? needed.has(value) :
+                !!value && typeof value === 'object' && Object.values(value).some(referencesPendingImage);
+            if (referencesPendingImage(job.payload)) continue;
+          }
+        }
 
         try {
           const mapping = await this.run(job);
@@ -235,8 +255,15 @@ class OfflineQueue {
     } finally {
       // Once per flush: it scans every draft, so doing it per photo froze the
       // app for as long as the offline session had been long.
-      if (Object.keys(allMapping).length > 0) await this.applyMapping(allMapping);
-      this.flushing = false;
+      try {
+        if (Object.keys(allMapping).length > 0) await this.applyMapping(allMapping);
+      } finally {
+        this.flushing = false;
+        if (this.flushRequested) {
+          this.flushRequested = false;
+          this.syncInBackground();
+        }
+      }
     }
 
     if (sent > 0) console.log(`offlineQueue: sent ${sent}, ${jobs.length} still pending`);
@@ -307,12 +334,12 @@ class OfflineQueue {
     this.unsubscribeNetwork = networkService.addListener((isConnected) => {
       if (isConnected) {
         console.log('offlineQueue: connection restored, flushing');
-        this.flush().catch((e) => console.warn('offlineQueue: flush failed', e));
+        this.syncInBackground();
       }
     });
 
     // Anything left over from a previous run.
-    this.flush().catch((e) => console.warn('offlineQueue: initial flush failed', e));
+    this.syncInBackground();
   }
 
   stop(): void {

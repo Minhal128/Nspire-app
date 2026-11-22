@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { globalInspectionProgress } from '../utils/globalState';
 import {
   computeSelectAllResponses,
@@ -30,6 +30,7 @@ import { canonicalizeInspectionType } from '../utils/inspectionProgressUtils';
 import { markUnitCompleted } from '../utils/unitInspectionStorage';
 import offlineQueue from '../services/offlineQueue';
 import inspectionService from '../services/inspectionService';
+import networkService from '../services/networkService';
 import { serverAnswersWin } from '../utils/offlineQueueCore';
 import { savedFindingScope, draftStorageKeys, findingsForItem } from '../utils/savedDeficiencies';
 
@@ -55,6 +56,7 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
   const [showDeficiencyModal, setShowDeficiencyModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState<{ id: string; name: string } | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
+  const savingProgress = useRef(false);
   const [savedFindings, setSavedFindings] = useState<any[]>([]);
   const [loadingSavedFindings, setLoadingSavedFindings] = useState(false);
   const [selectedFinding, setSelectedFinding] = useState<any | null>(null);
@@ -100,6 +102,7 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
 
   // Load responses on mount
   useEffect(() => {
+    let cancelled = false;
     const fetchProgress = async () => {
       try {
         const [deviceRaw, unsent, ...draftPayloads] = await Promise.all(
@@ -116,45 +119,48 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
           console.warn('Failed to parse locally saved progress:', parseError);
         }
 
-        // Offline this fails at once and the device copy is all there is.
-        let serverItems: any = null;
+        const parsedDrafts = draftPayloads.map(raw => {
+          try { return raw ? JSON.parse(raw) : null; } catch { return null; }
+        });
+        const withSavedFindings = (answers: Record<string, ResponseType>) => {
+          const next = { ...answers };
+          inspectionItems.forEach(item => {
+            if (!next[item.id] && findingsForItem(parsedDrafts, findingScope, item.name).length > 0) {
+              next[item.id] = 'OD';
+            }
+          });
+          return next;
+        };
+        const local = withSavedFindings(device && typeof device === 'object'
+          ? device : (!unsent && globalInspectionProgress[saveKey]) || {});
+        if (cancelled) return;
+        setResponses(local);
+        globalInspectionProgress[saveKey] = local;
+        setIsLoaded(true);
+        if (!networkService.isOnline() || unsent) return;
+        if ((await offlineQueue.list()).some(job => job.dedupeKey === queueKey)) return;
+
         try {
           const propertyId = property?._id || property?.id || property?.propertyId || 'unknown';
           const result: any = await api.get(`/inspections/progress?property_id=${propertyId}&unit_id=${buildingId}&inspection_type=${encodeURIComponent(canonicalInspectionType)}`);
-          serverItems = result?.items;
-        } catch (error) {
-          // Unreachable or not deployed: carry on with what the device has.
+          const [jobs, hasUnsentEdits] = await Promise.all([offlineQueue.list(), AsyncStorage.getItem(unsentKey)]);
+          if (cancelled || !serverAnswersWin(jobs, queueKey, result?.items, !!hasUnsentEdits)) return;
+          const next = withSavedFindings(result.items);
+          setResponses(current => {
+            if (current !== local) return current;
+            globalInspectionProgress[saveKey] = next;
+            return next;
+          });
+        } catch {
+          // Keep the local answers if the server is slow or unreachable.
         }
-
-        // The server's copy only replaces the device's if it has answers and
-        // the device holds nothing it has not been sent — its empty or older
-        // copy erased answers tapped offline, or tapped without Save Progress.
-        const useServer = serverAnswersWin(await offlineQueue.list(), queueKey, serverItems, !!unsent);
-        // Memory comes last: other screens overwrite it with the server's copy.
-        const answers = useServer
-          ? serverItems
-          : (device && typeof device === 'object' ? device : (!unsent && globalInspectionProgress[saveKey]) || {});
-
-        // A recorded deficiency reaches the server on its own, the item's answer
-        // only with Save Progress — so an item can have one without the other.
-        // It is OD either way; show it as answered.
-        // ponytail: re-parses the drafts once per item; parse once if the list grows.
-        const next = { ...answers };
-        inspectionItems.forEach((item) => {
-          if (!next[item.id] && findingsForItem(draftPayloads, findingScope, item.name).length > 0) {
-            next[item.id] = 'OD';
-          }
-        });
-
-        setResponses(next);
-        globalInspectionProgress[saveKey] = next;
-        if (useServer) await persistResponsesToDevice(next, false);
       } finally {
-        setIsLoaded(true);
+        if (!cancelled) setIsLoaded(true);
       }
     };
 
     fetchProgress();
+    return () => { cancelled = true; };
   }, [saveKey, property, buildingId, location]);
 
   // What the OD modal shows. The answers in `responses` only say OD/No OD/N/A;
@@ -277,9 +283,8 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   const handleSaveProgress = async () => {
-    let remoteSaved = false;
-    let progressPayload: any = null;
-
+    if (savingProgress.current) return;
+    savingProgress.current = true;
     try {
       const propertyId = property?._id || property?.id || property?.propertyId || 'unknown';
 
@@ -301,7 +306,7 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
         });
       }
 
-      progressPayload = {
+      const progressPayload = {
         property_id: propertyId,
         unit_id: buildingId,
         building_id: buildingId,
@@ -318,84 +323,32 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
         },
       };
 
-      // Save to remote backend
-      await api.put('/inspections/progress', progressPayload);
-
-      remoteSaved = true;
-
-    } catch (e) {
-      console.error('Error saving responses to backend:', e);
-      // Keep local save, and queue the write so the server gets it on reconnect —
-      // the server is what marks the unit / Outside / Inside complete.
-      if (progressPayload) {
-        await offlineQueue.enqueue('saveProgress', queueKey, progressPayload);
-        // The property screen learns what is done from the server, which will
-        // not hear of this until the queue drains. Note a finished area on the
-        // device too, or it reads "Not started" for the whole outage.
-        if (progressPayload.inspectionData?.isComplete) {
-          const doneLabel = location === 'Outside' || location === 'Inside'
-            ? location
-            : String(currentUnit || selectedUnits?.[0] || '').trim();
-          await inspectionService.rememberInspectedOffline(
-            String(progressPayload.property_id),
-            String(buildingId || ''),
-            doneLabel,
-          );
-        }
+      await offlineQueue.enqueue('saveProgress', queueKey, progressPayload);
+      if (progressPayload.inspectionData.isComplete) {
+        const doneLabel = location === 'Outside' || location === 'Inside' ? location : unitNameToMark;
+        await inspectionService.rememberInspectedOffline(propertyId, String(buildingId || ''), doneLabel);
       }
+      await AsyncStorage.removeItem(unsentKey);
+      offlineQueue.syncInBackground();
+    } catch (error) {
+      console.warn('Could not save checklist progress:', error);
+      Alert.alert('Could not save progress', 'Please try again before leaving this checklist.');
+      return;
+    } finally {
+      savingProgress.current = false;
     }
-    // Sent or queued either way, so the server's copy can be trusted again.
-    if (progressPayload) AsyncStorage.removeItem(unsentKey).catch(() => undefined);
 
-    const successTitle = remoteSaved ? 'Progress Saved' : 'Saved Locally';
-    const successMessage = remoteSaved
-      ? 'Your inspection progress has been saved successfully.'
-      : 'Your inspection progress is saved on this device. It will sync to server when connection is available.';
+    if (isUnitLocation) {
+      navigation.navigate('PropertyInfo', { property, selectedUnits, buildingId });
+    } else {
+      navigation.navigate('InspectionCategories', {
+        property,
+        propertyId: String(property?._id || property?.id || property?.propertyId || ''),
+        selectedUnits,
+        buildingId,
+      });
+    }
 
-          if (Platform.OS === 'web') {
-        window.alert(successMessage);
-        if (location === 'Unit' || isUnitLocation) {
-          navigation.navigate('PropertyInfo', {
-            property,
-            selectedUnits,
-            buildingId,
-          });
-        } else {
-          navigation.navigate('InspectionCategories', {
-            property,
-            propertyId: String(property?._id || property?.id || property?.propertyId || ''),
-            selectedUnits,
-            buildingId,
-          });
-        }
-      } else {
-        Alert.alert(
-          successTitle,
-          successMessage,
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                // Navigate back to the correct parent screen
-                if (location === 'Unit' || isUnitLocation) {
-                  navigation.navigate('PropertyInfo', {
-                    property,
-                    selectedUnits,
-                    buildingId,
-                  });
-                } else {
-                  navigation.navigate('InspectionCategories', {
-                    property,
-                    propertyId: String(property?._id || property?.id || property?.propertyId || ''),
-                    selectedUnits,
-                    buildingId,
-                  });
-                }
-              },
-            },
-          ]
-        );
-      }
   };
 
   const itemIds = inspectionItems.map((item) => item.id);

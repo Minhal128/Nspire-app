@@ -757,11 +757,6 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           ? { pointsFormula: `${insideScoringResult.pointsLostRaw}/50xn` }
           : {}),
       };
-      // True once a photo is left waiting on the queue. The progress save below
-      // has to be replayed in that case, or the server keeps the local file://
-      // URI forever and the photo never reaches web.
-      let hasPendingImageUpload = false;
-
       for (let i = 0; i < images.length; i++) {
         // The camera returns a URI in the app's cache, which the OS clears
         // under storage pressure. Offline that file is the only copy of the
@@ -779,39 +774,21 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         try {
           if (isOffline) throw new Error('offline');
 
-          // Upload to Cloudinary
-          setProcessingMessage(`Uploading photo${ofN}...`);
-          const uploadResult = await cloudinaryService.uploadImage(imageUri, 'nspire-inspections');
-
-          // A refused upload used to leave imageUrl null with nothing queued,
-          // so that photo was never uploaded at all. Treat it like a failure.
-          if (!uploadResult.success) {
-            hasPendingImageUpload = true;
-            offlineQueue
-              .enqueue('uploadImage', `uploadImage:${imageUri}`, {
-                imageUri,
-                folder: 'nspire-inspections',
-              })
-              .catch((e) => console.warn('Could not queue image upload:', e));
-          }
-
-          // Call AI analysis (Gemini service) - use LOCAL imageUri, not Cloudinary URL
-          let aiAnalysis;
-          try {
-            setProcessingMessage(`Analyzing photo${ofN}...`);
-            aiAnalysis = await geminiService.analyzeDeficiency(
-              imageUri, // Use local URI for AI analysis
-              currentDeficiency.name,
-              itemName
-            );
-          } catch (aiError) {
-            console.error('AI analysis error:', aiError);
-            // Fallback if AI analysis fails
-            aiAnalysis = {
+          setProcessingMessage(`Uploading and analyzing photo${ofN}...`);
+          const [uploadResult, aiAnalysis] = await Promise.all([
+            cloudinaryService.uploadImage(imageUri, 'nspire-inspections').catch(() => ({ success: false, url: undefined })),
+            geminiService.analyzeDeficiency(imageUri, currentDeficiency.name, itemName).catch(() => ({
               analysis: `${currentDeficiency.name} observed in ${itemName}`,
               severity: currentDeficiency.severity,
               recommendations: currentDeficiency.detail,
-            };
+            })),
+          ]);
+
+          if (!uploadResult.success) {
+            await offlineQueue.enqueue('uploadImage', `uploadImage:${imageUri}`, {
+              imageUri,
+              folder: 'nspire-inspections',
+            });
           }
 
           // Create deficiency entry with AI analysis
@@ -849,16 +826,14 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             analyzedAt: new Date().toISOString(),
           });
         } catch (error) {
-          console.error(`Error processing image ${i + 1}:`, error);
+          if (!isOffline) console.error(`Error processing image ${i + 1}:`, error);
           // The deficiency below keeps the local imageUri; queue the upload so the
           // Cloudinary URL replaces it everywhere once the connection is back.
-          hasPendingImageUpload = true;
-          offlineQueue
+          await offlineQueue
             .enqueue('uploadImage', `uploadImage:${imageUri}`, {
               imageUri,
               folder: 'nspire-inspections',
-            })
-            .catch((e) => console.warn('Could not queue image upload:', e));
+            });
           // Still add the deficiency without AI analysis
           analyzedDeficiencies.push({
             deficiency: {
@@ -1087,41 +1062,12 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         },
       };
 
-      // Set when the server did not take this save and it is waiting in the
-      // queue instead. That happens with no signal at all, and also with a
-      // signal too weak to carry the request: the phone says "connected", the
-      // request fails, and the work is on the device only all the same.
-      let heldForLater = false;
-      try {
-        if (isOffline) throw new Error('offline');
-        await inspectionService.saveProgress(progressPayload);
-        console.log('Backend sync: Saved', mergedDeficiencies.length, 'deficiencies for property', propertyIdentifier);
-
-        // The save just told the server about a photo that has not been
-        // uploaded yet, so what it stored points at a file:// path on this
-        // phone — useless to web. Queue the same payload again: the upload
-        // job runs first, the queue rewrites the URI to the uploaded one, and
-        // this replay carries the real URL to the server.
-        if (hasPendingImageUpload) {
-          await offlineQueue.enqueue(
-            'saveProgress',
-            `saveProgress:${propertyIdentifier}:${normalizedBuildingLabel}`,
-            progressPayload,
-          );
-        }
-      } catch (draftSaveError) {
-        // Offline (or the server is unreachable): hold the write and let
-        // offlineQueue replay it when the connection returns. The payload
-        // carries the full deficiency set, so one job per property/building
-        // is enough however long the outage lasts.
-        console.warn('Draft save failed, queueing for retry:', draftSaveError);
-        heldForLater = true;
-        await offlineQueue.enqueue(
-          'saveProgress',
-          `saveProgress:${propertyIdentifier}:${normalizedBuildingLabel}`,
-          progressPayload,
-        );
-      }
+      await offlineQueue.enqueue(
+        'saveProgress',
+        `saveProgress:${propertyIdentifier}:${normalizedBuildingLabel}`,
+        progressPayload,
+      );
+      offlineQueue.syncInBackground();
 
       // Hide processing modal before navigation
       if (processingTimerRef.current) {
@@ -1153,7 +1099,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       // be an Alert raised in the same tick as the panel, which is that same
       // collision again: offline, the alert won, the panel never appeared, and
       // after OK the screen had nothing left to continue from but Cancel.
-      setSavedOffline(isOffline || heldForLater);
+      setSavedOffline(true);
       if (panelTimerRef.current) clearTimeout(panelTimerRef.current);
       panelTimerRef.current = setTimeout(() => {
         panelTimerRef.current = null;
@@ -1876,7 +1822,7 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               </Text>
               {savedOffline && (
                 <Text style={styles.savedPanelOffline}>
-                  Offline: saved on this device. It will sync automatically when you are back online.
+                  Saved on this device. Changes sync automatically when connected.
                 </Text>
               )}
             </View>

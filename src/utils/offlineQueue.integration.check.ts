@@ -13,6 +13,7 @@
 
 import assert from 'node:assert';
 import offlineQueue from '../services/offlineQueue.ts';
+import { findingsForItem } from './savedDeficiencies.ts';
 
 const stub: any = (globalThis as any).__offlineStub;
 
@@ -70,6 +71,67 @@ const ok = () => ({ success: true });
 
   assert.strictEqual(queued().length, 1, 'a file that exists is kept for the next reconnect');
   assert.strictEqual(queued()[0].attempts, 1, 'the failed attempt is recorded');
+}
+
+/* ---- reopen immediately offline, then keep the draft until its photo uploads ---- */
+{
+  reset(false);
+  const imageUri = 'file:///data/app/files/inspection_images/reconnect.jpg';
+  const uploaded = 'https://cdn.example/reconnect.jpg';
+  stub.files[imageUri] = 'bytes';
+  const entry = { deficiencyQRId: 'QA-RECONNECT-1', itemName: 'Chimney', _area: 'Outside', _unit: 'B1', building: 'B1', imageUri };
+  const scope = { propertyId: 'p1', buildingLabel: 'B1', area: 'Outside', unit: 'B1' };
+  const draftKey = 'saved_inspection_p1_B1';
+  stub.storage[draftKey] = JSON.stringify({ deficiencies: [entry] });
+  await offlineQueue.enqueue('uploadImage', `uploadImage:${imageUri}`, { imageUri });
+  await offlineQueue.enqueue('saveProgress', 'p1:B1', { property_id: 'p1', inspectionData: { deficiencies: [entry] } });
+  offlineQueue.syncInBackground();
+  assert.equal(stub.calls.length, 0, 'reopening offline requires no request');
+  assert.equal(findingsForItem([stub.storage[draftKey]], scope, 'Chimney')[0].imageUri, imageUri);
+
+  stub.online = true;
+  stub.responders.uploadImage = () => { throw Error('weak connection'); };
+  stub.responders.saveProgress = ok;
+  await offlineQueue.flush();
+  assert.equal(queued().length, 2, 'a failed photo upload keeps its deficiency queued');
+  assert.equal(stub.calls.some((call: any) => call.kind === 'saveProgress'), false);
+
+  stub.responders.uploadImage = () => ({ success: true, url: uploaded });
+  await offlineQueue.flush();
+  assert.equal(queued().length, 0);
+  const sent = stub.calls.find((call: any) => call.kind === 'saveProgress');
+  assert.equal(sent.payload.inspectionData.deficiencies[0].imageUri, uploaded);
+  assert.equal(findingsForItem([stub.storage[draftKey]], scope, 'Chimney')[0].imageUri, uploaded);
+}
+
+/* ---- a background sync and a reconnect cannot send the same job twice ---- */
+{
+  reset(true);
+  stub.responders.saveProgress = ok;
+  await offlineQueue.enqueue('saveProgress', 'p1:B1', { property_id: 'p1' });
+  await Promise.all([offlineQueue.flush(), offlineQueue.flush()]);
+  assert.equal(stub.calls.filter((call: any) => call.kind === 'saveProgress').length, 1);
+}
+
+/* ---- online saves remain durable while the first response is still pending ---- */
+{
+  reset(true);
+  let release: () => void = () => {};
+  const pendingReply = new Promise<void>(resolve => { release = resolve; });
+  stub.responders.saveProgress = async (payload: any) => {
+    if (payload.n === 1) await pendingReply;
+    return ok();
+  };
+  await offlineQueue.enqueue('saveProgress', 'p1:B1', { n: 1 });
+  offlineQueue.syncInBackground();
+  await new Promise(resolve => setTimeout(resolve, 5));
+  await offlineQueue.enqueue('saveProgress', 'p1:B1', { n: 2 });
+  offlineQueue.syncInBackground();
+  assert.equal(queued()[0].payload.n, 2, 'the second save must be stored while the network is blocked');
+  release();
+  await new Promise(resolve => setTimeout(resolve, 40));
+  assert.deepEqual(stub.calls.filter((call: any) => call.kind === 'saveProgress').map((call: any) => call.payload.n), [1, 2]);
+  assert.equal(queued().length, 0);
 }
 
 /* ---- offline: nothing is sent, everything is kept ---- */

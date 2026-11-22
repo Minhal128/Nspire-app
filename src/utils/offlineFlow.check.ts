@@ -88,17 +88,16 @@ assert.ok(
   'no Alert in the same tick as the saved panel: offline it wins, the panel never shows, and the screen is stuck',
 );
 assert.ok(
-  detail.includes('setSavedOffline(isOffline || heldForLater);') && detail.includes('{savedOffline && ('),
+  detail.includes('setSavedOffline(true);') && detail.includes('{savedOffline && ('),
   'the offline notice is a line inside the saved panel',
 );
-// A weak signal reads as "connected" while every request fails. The save is
-// queued just the same, so the panel has to say so just the same.
-const failedSave = detail.indexOf("console.warn('Draft save failed, queueing for retry:'");
-assert.ok(failedSave > 0, 'DeficiencyDetailScreen: the queue-on-failure branch moved');
-assert.ok(
-  detail.slice(failedSave, failedSave + 200).includes('heldForLater = true;'),
-  'a save that failed and was queued must be reported as held on the device',
-);
+const draftQueue = detail.indexOf("await offlineQueue.enqueue(\n        'saveProgress',");
+assert.ok(draftQueue > 0 && detail.indexOf('offlineQueue.syncInBackground();', draftQueue) > draftQueue,
+  'a deficiency is durably queued before starting background sync');
+assert.ok(location.indexOf('setIsLoaded(true);') < location.indexOf('await api.get('),
+  'the checklist renders local answers before refreshing from the server');
+assert.ok(location.indexOf('offlineQueue.syncInBackground();', queued) > queued,
+  'checklist save schedules sync without waiting for it');
 
 // --- View Summary and Export Reports ----------------------------------------
 const building = read('src/screens/BuildingInspectionScreen.tsx');

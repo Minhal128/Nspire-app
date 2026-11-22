@@ -78,7 +78,7 @@ const entryBuilding = (entry: any): string =>
  * unit names repeat across buildings, so the building gates the match too.
  */
 export function findingsForItem(
-  rawPayloads: (string | null | undefined)[],
+  rawPayloads: (string | object | null | undefined)[],
   scope: SavedFindingScope,
   itemName: unknown,
 ): any[] {
@@ -89,7 +89,7 @@ export function findingsForItem(
 
     let payload: any;
     try {
-      payload = JSON.parse(raw) || {};
+      payload = (typeof raw === 'string' ? JSON.parse(raw) : raw) || {};
     } catch {
       return;
     }
