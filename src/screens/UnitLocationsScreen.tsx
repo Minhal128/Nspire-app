@@ -1,5 +1,7 @@
+import propertyService from '../services/propertyService';
 import React from 'react';
 import {
+  Alert,
   View,
   Text,
   StyleSheet,
@@ -27,7 +29,13 @@ interface Props {
 const UnitLocationsScreen: React.FC<Props> = ({ navigation, route }) => {
   const { property, selectedUnits, buildingId } = route.params;
 
-  const handleLocationPress = (location: string) => {
+  const handleLocationPress = async (location: string) => {
+    try {
+      await propertyService.startInspection(String(property?._id || property?.id || ''));
+    } catch (error: any) {
+      Alert.alert('Cannot start inspection', error.message || 'Could not start inspection');
+      return;
+    }
     navigation.navigate('LocationInspection', {
       property,
       selectedUnits,

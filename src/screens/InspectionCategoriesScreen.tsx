@@ -2,6 +2,9 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { globalInspectionProgress } from '../utils/globalState';
 import { inspectionService } from '../services/inspectionService';
+import { findingFacts, findingsFromProgress, uniqueReportFindings } from '../services/web/reportRules';
+import type { ScoreArea } from '../services/web/reportRules';
+import { withoutGeneralComments } from '../services/web/generalComments';
 import { progressSocketService } from '../services/progressSocketService';
 import {
   normalizeUnitIdentifier,
@@ -17,6 +20,7 @@ import {
 import {
   View,
   Text,
+  Image,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
@@ -112,11 +116,10 @@ const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
   const [outsideProgress, setOutsideProgress] = useState(0);
   const [insideProgress, setInsideProgress] = useState(0);
   const [unitsProgress, setUnitsProgress] = useState(0);
-  // Web shows a "View Deficiency Summary (n)" pill per section; n is the number
-  // of items answered OD in that section's response map.
-  const [outsideDeficiencies, setOutsideDeficiencies] = useState(0);
-  const [insideDeficiencies, setInsideDeficiencies] = useState(0);
-  const [unitsDeficiencies, setUnitsDeficiencies] = useState(0);
+  const [buildingFindings, setBuildingFindings] = useState<any[]>([]);
+  const [deficiencyArea, setDeficiencyArea] = useState<ScoreArea | null>(null);
+  const findingsForArea = (area: ScoreArea) =>
+    buildingFindings.map(findingFacts).filter(finding => finding.area === area);
   // Web counts the UNITS section in whole units ("(0/1)"), not in answered
   // items — the item-level tally still drives the other sections.
   const [unitsCompleted, setUnitsCompleted] = useState(0);
@@ -589,20 +592,13 @@ const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
       return isInsideInspectionTypeToken(inspectionTypeToken);
     });
 
-    const countOD = (responses?: Record<string, any> | null) =>
-      Object.values(responses || {}).filter((r) => r === 'OD').length;
-
     setOutsideProgress(outsideEntry ? Object.keys(outsideEntry[1] || {}).length : 0);
     setInsideProgress(insideEntry ? Object.keys(insideEntry[1] || {}).length : 0);
-    setOutsideDeficiencies(countOD(outsideEntry?.[1]));
-    setInsideDeficiencies(countOD(insideEntry?.[1]));
 
     const unitEntries = progressEntries.filter(([key]) => {
       const inspectionTypeToken = extractInspectionTypeTokenFromProgressKey(key, keyPrefix);
       return isUnitInspectionTypeToken(inspectionTypeToken);
     });
-
-    setUnitsDeficiencies(unitEntries.reduce((sum, [, responses]) => sum + countOD(responses), 0));
 
     let totalUn = 0;
     const selectedUnitSet = new Set(
@@ -662,6 +658,14 @@ const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
           }
 
           const propId = await resolvePropertyIdentifier();
+
+          inspectionService.getAllProgress({ propertyId: propId, buildingId, timeoutMs: 8000 })
+            .then(({ success, progress }) => {
+              if (success && !isCancelled) {
+                setBuildingFindings(uniqueReportFindings(withoutGeneralComments(findingsFromProgress(progress))));
+              }
+            })
+            .catch(() => {});
 
           await hydrateSectionProgressFromDeviceCache(propId);
           updateLocalState(propId, cachedUnitStatusMapRef.current);
@@ -747,11 +751,13 @@ const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
         hasMatchingExplicitPropertyId ||
         canFallbackToSocketPropertyId;
 
+      if (!shouldApplySocketProgress) return;
+
       const effectiveSocketPropertyId = currentPropertyId || socketPropertyId || normalizePropertyIdentifier(resolvedPropertyId);
       const inspectionTypeToken = String(progressUpdate.inspectionType || '').trim();
       const isUnitProgressUpdate = isUnitInspectionTypeToken(inspectionTypeToken);
 
-      if (shouldApplySocketProgress && effectiveSocketPropertyId) {
+      if (effectiveSocketPropertyId) {
         const key = buildInspectionProgressKey({
           propertyId: effectiveSocketPropertyId,
           buildingId: buildingId,
@@ -899,22 +905,26 @@ const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
             title: 'OUTSIDE (AREAS AFFECTED BY RAIN, SNOW, WIND)',
             done: outsideProgress,
             total: OUTSIDE_ITEMS.length,
-            deficiencies: outsideDeficiencies,
+            area: 'outside' as const,
+            deficiencies: findingsForArea('outside').length,
             onPress: handleOutsidePress,
           },
           {
             title: 'INSIDE (INTERIOR COMMON AREA, UTILITY CLOSET, MECHANICAL ROOMS)',
             done: insideProgress,
             total: INSIDE_ITEMS.length,
-            deficiencies: insideDeficiencies,
+            area: 'inside' as const,
+            deficiencies: findingsForArea('inside').length,
             onPress: handleInsidePress,
           },
           {
             title: 'UNITS (INDIVIDUAL UNIT INSPECTIONS)',
             done: unitsCompleted,
             total: selectedUnits?.length || 0,
-            deficiencies: unitsDeficiencies,
+            area: 'unit' as const,
+            deficiencies: findingsForArea('unit').length,
             onPress: handleUnitsPress,
+            showNext: true,
           },
         ].map((section) => {
           const pct = section.total > 0
@@ -939,26 +949,48 @@ const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
                   {section.deficiencies > 0 && (
                     <TouchableOpacity
                       style={styles.deficiencyButton}
-                      onPress={() => navigation.navigate('InspectionSummary' as any, {
-                        property,
-                        selectedUnits,
-                        buildingId,
-                        inspectionData: null,
-                      })}
+                      onPress={() => setDeficiencyArea(section.area)}
                     >
                       <Ionicons name="document-text-outline" size={12} color="#FFFFFF" />
                       <Text style={styles.deficiencyButtonText}>
-                        View Deficiency Summary ({section.deficiencies})
+                        {buildingId} {section.area === 'unit' ? 'Units' : section.area === 'outside' ? 'Outside' : 'Inside'} Deficiencies ({section.deficiencies})
                       </Text>
                     </TouchableOpacity>
                   )}
                 </View>
-                <Ionicons name="chevron-down" size={24} color="#006795" />
+                {section.showNext && section.total > 0 ? (
+                  <Text style={{ color: '#006795', fontSize: 14, fontWeight: '800' }}>Next</Text>
+                ) : (
+                  <Ionicons name="chevron-down" size={24} color="#006795" />
+                )}
               </TouchableOpacity>
             </View>
           );
         })}
       </ScrollView>
+
+      <Modal visible={deficiencyArea !== null} transparent animationType="fade" onRequestClose={() => setDeficiencyArea(null)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>{buildingId} · {deficiencyArea === 'unit' ? 'Units' : deficiencyArea === 'inside' ? 'Inside' : 'Outside'} Deficiencies</Text>
+              <TouchableOpacity accessibilityLabel="Close deficiencies" onPress={() => setDeficiencyArea(null)}>
+                <Ionicons name="close" size={24} color="#006795" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={{ maxHeight: 420 }} contentContainerStyle={{ padding: 16, gap: 12 }}>
+              {deficiencyArea && findingsForArea(deficiencyArea).map((finding, index) => (
+                <View key={index} style={{ gap: 4 }}>
+                  <Text style={{ fontWeight: '700' }}>{finding.name || finding.details}</Text>
+                  {!!finding.unit && <Text>{finding.unit}</Text>}
+                  {!!finding.note && <Text>{finding.note}</Text>}
+                  {!!finding.picture && <Image accessibilityLabel="Saved deficiency photo" source={{ uri: finding.picture }} style={{ width: 96, height: 72, borderRadius: 6 }} />}
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
 
       {/* Edit Building Name Modal */}
       <Modal

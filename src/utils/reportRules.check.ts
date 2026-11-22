@@ -278,20 +278,20 @@ const order = (...parts: string[]) => {
 
 // K
 order('Inspection No: INSP-MWH4ZR6T', 'Inspection Type: NSPIRE Public', 'Inspector Name: Dana Inspector', 'Property Type:');
-assert.ok(!text.includes('Escort Name'), 'K: "Escort Name" is "Inspector Name" now');
+assert.ok(text.includes('Escort Name:'), 'reference metadata includes Escort Name');
 assert.ok(!text.includes('General NSPIRE') && !/Inspection Type: general/.test(text), 'K: the inspection type is NSPIRE Public');
 
 // A -- 14.8/9 + 4.5/9 + 49.6/9 + 27.25/9 + 5/9 + 14.8/9 + 30/9 + 0 + 5.5/9, each rounded to the cent
 const lost = [1.64, 0.5, 5.51, 3.03, 0.56, 1.64, 3.33, 0, 0.61];
 const calculated = lost.reduce((sum, points) => sum + points, 0);
 order(
-  'Preliminary Scores', 'Outside: 25.00', 'Inside: 25.00', 'Units: 50.00', 'Preliminary Inspection Score: 100.00',
+  'Preliminary Scores', 'Outside: 25', 'Inside: 25', 'Units: 50', 'Preliminary Inspection Score: 100.00',
   'Final Scores', 'Preliminary Inspection Score: 100.00', `Calculated Score: ${calculated.toFixed(2)}`, `Final Score: ${(100 - calculated).toFixed(2)}`,
 );
 assert.ok(!text.includes('Threshold'), 'A: the thresholds are gone');
 
 // B
-order('Building/Unit Inspection Data', ...COUNT_COLUMNS, '4 11 9 6');
+order('Building/Unit Inspection Data', ...COUNT_COLUMNS, '4 11 6 9 6');
 assert.ok(!text.includes('Property Total') && !text.includes('Common Area'), 'B: the per-type table is replaced');
 
 // C
@@ -306,14 +306,14 @@ order('Building: BLDG C', 'Unit 001', 'Carbon monoxide alarm is inoperable', 'Un
 assert.ok(!text.includes('Building: b3'), 'D: a row recorded against B3 is filed under the building\'s own name');
 
 // R
-order('Building: B1', ...DEFICIENCY_COLUMNS, 'Call-for-aid system is blocked', '14.80 Severe 24 Hours 1.64 50.00 11/14/2026 10:30 AM');
-order('Chimney is damaged', '49.60 Life-Threatening 24 Hours 5.51 25.00');
-order('Carbon monoxide alarm is inoperable', '0.00 Life-Threatening 24 Hours 0.00 50.00');
+order('Building: B1', ...DEFICIENCY_COLUMNS, 'Call-for-aid system is blocked', '14.80 Severe 24 hrs 1.64 50 11/14/2026 10:30 AM');
+order('Chimney is damaged', '49.60 Life-Threatening 24 hrs 5.51 25');
+order('Carbon monoxide alarm is inoperable', '0.00 Life-Threatening 24 hrs 0.00 50');
 assert.ok(!/Repeat/.test(text), 'R: the Repeat column is gone');
 assert.ok(text.includes('North side &lt;garage&gt;'), 'what an inspector typed is shown as text, not read as markup');
 
 // General comments stay a block of their own and score nothing.
-order('Building: B4', 'General Comments', 'needs work', 'Certificate');
+order('Building: B2', 'Unit Deficiencies', 'General Comments', 'needs work', 'Building: BLDG C', 'Certificate');
 assert.strictEqual((text.match(/General Comment /g) || []).length, 0, 'a general comment is not a deficiency row');
 
 // G

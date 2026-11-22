@@ -80,6 +80,7 @@ export interface DeficiencyEntry {
 
     // Deficiency Picture
     imageUri?: string;
+    photos?: string[];
     imagePlaceholder?: boolean;
 
     // Location Details

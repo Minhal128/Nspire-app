@@ -717,11 +717,6 @@ export default function AddPropertyScreen({
             <View style={styles.sheetHeader}>
               <Text style={styles.sheetTitle}>Add New Property</Text>
               <View style={styles.sheetHeaderRight}>
-                <View style={styles.countBadge}>
-                  <Text style={styles.countBadgeText}>
-                    {forms.length} {forms.length === 1 ? 'Property' : 'Properties'}
-                  </Text>
-                </View>
                 <TouchableOpacity
                   onPress={() => { handleSafeBack(); }}
                   hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -861,17 +856,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-  },
-  countBadge: {
-    backgroundColor: '#0E7490',
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  countBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '700',
   },
   scrollView: { flex: 1 },
   scrollContent: { padding: 12 },

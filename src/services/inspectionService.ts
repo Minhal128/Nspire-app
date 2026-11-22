@@ -163,6 +163,7 @@ class InspectionService {
    */
   async getAllProgress(options?: {
     propertyId?: string;
+    buildingId?: string;
     timeoutMs?: number;
     draftOnly?: boolean;
     inspectionTypePrefix?: string;
@@ -191,6 +192,8 @@ class InspectionService {
 
       const timeoutMs = Math.min(Math.max(options?.timeoutMs ?? 15000, 5000), 90000);
       const queryParams = new URLSearchParams();
+
+      if (options?.buildingId) queryParams.append('building_id', options.buildingId);
 
       if (options?.propertyId) {
         queryParams.append('property_id', options.propertyId);

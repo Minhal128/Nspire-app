@@ -11,6 +11,7 @@
  * - Compact 7-8pt fonts matching reference template
  */
 
+import { findingPictures } from './web/reportRules';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -251,8 +252,7 @@ async function fetchImageAsBase64(url: string): Promise<string> {
 async function preloadDeficiencyImages(deficiencies: DeficiencyEntry[]): Promise<Map<string, string>> {
   const imageMap = new Map<string, string>();
   const uniqueUrls = new Set<string>();
-  for (const def of deficiencies) {
-    const rawUri = typeof def.imageUri === 'string' ? def.imageUri.trim() : '';
+  for (const rawUri of new Set(deficiencies.flatMap(findingPictures))) {
     if (rawUri) {
       // If already a base64 data URI, add directly to the map
       if (rawUri.startsWith('data:')) {
@@ -1464,9 +1464,8 @@ function generateEnhancedNSPIREReportHTML(
   const reportForWeb = imageMap.size === 0 ? report : {
     ...report,
     deficiencies: (report.deficiencies || []).map((def: any) => {
-      const raw = def?.imageUri || def?.imageUrl;
-      const embedded = raw ? imageMap.get(raw) : undefined;
-      return embedded ? { ...def, imageUri: embedded } : def;
+      const photos = findingPictures(def).map(photo => imageMap.get(photo) || photo);
+      return { ...def, imageUri: photos[0], photos };
     }),
   };
 
@@ -1670,7 +1669,7 @@ class EnhancedNSPIREPDFReportService {
     options: PDFGenerationOptions = DEFAULT_PDF_OPTIONS
   ): Promise<string> {
     const localDeficiencies = (report.deficiencies || []).filter(def =>
-      !!def.imageUri && !/^(https?:|data:)/i.test(def.imageUri)
+      findingPictures(def).some(photo => !/^(https?:|data:)/i.test(photo))
     );
     const [logo, images] = await Promise.all([
       getLogoBase64(),
@@ -1678,10 +1677,10 @@ class EnhancedNSPIREPDFReportService {
     ]);
     const previewReport = {
       ...report,
-      deficiencies: report.deficiencies.map(def => ({
-        ...def,
-        imageUri: images.get(def.imageUri || '') || def.imageUri,
-      })),
+      deficiencies: report.deficiencies.map(def => {
+        const photos = findingPictures(def).map(photo => images.get(photo) || photo);
+        return { ...def, imageUri: photos[0], photos };
+      }),
     };
     return getReportPreviewHTML(previewReport, logo, options);
   }
@@ -1716,7 +1715,8 @@ class EnhancedNSPIREPDFReportService {
 
       return {
         id: item.id || item._id || `DEF-${index + 1}`,
-        imageUri: item.imageUrl || item.imageUri || item.photos?.[0]?.url || '',
+        imageUri: findingPictures(item)[0] || '',
+        photos: findingPictures(item),
         building: item.buildingInspectionId || item.building_id || item.buildingId || item.building || data.buildingInspectionId || data.buildingId || data.building || 'B1',
         unit: item.unit || item._unit || item.unitId || data.unit || 'Unit Multiple',
         room: item.location || item.room || item.area || 'General Area',

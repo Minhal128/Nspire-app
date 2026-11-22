@@ -21,6 +21,7 @@ import {
   CERTIFICATE_STATEMENT,
   INSPECTION_TYPE,
   findingSeverity,
+  findingPictures,
   propertyBuildings,
   reportScores,
   rowRules,
@@ -307,7 +308,8 @@ export const convertFindingsToDeficiencies = (
     const rules = rowRules({ ...finding, area: areaBucket, severity }, sampleSize);
 
     return {
-      id: finding.id || `DEF-${index + 1}`, deficiencyQRId: '', imageUri,
+      id: finding.id || `DEF-${index + 1}`, deficiencyQRId: (finding as InspectionFinding & { deficiencyQRId?: string }).deficiencyQRId || '', imageUri,
+      photos: findingPictures(finding),
       imagePlaceholder: !imageUri,
       building: resolvedBuilding,
       unit: resolvedUnit,

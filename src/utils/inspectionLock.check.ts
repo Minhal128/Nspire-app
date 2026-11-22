@@ -3,15 +3,6 @@
  *
  *   node --experimental-strip-types src/utils/inspectionLock.check.ts
  *
- * The client: one property is being inspected; a second one cannot be started
- * until the first is finished or put on hold. What they hit on the web was
- * worse than the rule -- with two part-inspected properties, each was refused
- * because of the other, so nothing could be inspected at all.
- *
- * The rule now lives in one file, inspire-web/lib/inspectionLock.ts, and the
- * app runs a copy of it (src/services/web/inspectionLock.ts; dataParity.check
- * keeps the copy honest). This check holds the rule to what the client asked,
- * and the screens to using it.
  */
 
 import assert from 'node:assert';
@@ -63,7 +54,7 @@ const both = [
 ];
 assert.strictEqual(findActiveInspection(all, both), A, 'the one worked on last is the one in progress');
 assert.strictEqual(blockingInspection('A', all, both), null, 'and it can always be continued');
-assert.strictEqual(blockingInspection('B', all, both), A, 'the other waits, and is told which property to finish or hold');
+assert.strictEqual(blockingInspection('B', all, both), A, 'the other waits, and is told which property to finish');
 assert.deepStrictEqual(
   all.filter((p) => blockingInspection(p._id, all, both) === null),
   [A],
@@ -71,12 +62,18 @@ assert.deepStrictEqual(
 );
 assert.strictEqual(findActiveInspection([C, B, A], [...both].reverse()), A, 'whatever order the server answers in');
 
-// Hold hands the turn over.
+// A legacy hold cannot free the account to start a different property.
 const aHeld = [{ ...A, status: 'hold' }, B, C];
-assert.strictEqual(findActiveInspection(aHeld, both)?._id, 'B');
-assert.strictEqual(blockingInspection('B', aHeld, both), null, 'with the first on hold the second can be inspected');
-const allHeld = [{ ...A, status: 'hold' }, { ...B, status: 'hold' }, C];
-assert.strictEqual(blockingInspection('C', allHeld, both), null, 'everything on hold: a new property may start');
+assert.strictEqual(findActiveInspection(aHeld, both)?._id, 'A');
+assert.strictEqual(blockingInspection('B', aHeld, both)?._id, 'A');
+assert.strictEqual(blockingInspection('C', aHeld, both)?._id, 'A');
+
+// Display rounding cannot release an unfinished property.
+const large = prop('L', { buildings: 100, units: 0 });
+const almostDone = Array.from({ length: 199 }, (_, index) =>
+  rec('L', index % 2 ? 'Inside' : 'Outside', '', { buildingId: `B${Math.floor(index / 2)}` }),
+);
+assert.strictEqual(blockingInspection('C', [large, C], almostDone), large);
 
 // Finished is finished, and a report draft is not an inspection.
 const small = prop('S', { buildings: 1, units: 0 });
@@ -91,27 +88,9 @@ assert.strictEqual(findActiveInspection(all, [...both, draft]), A, 'a newer draf
 const building = read(new URL('src/screens/BuildingInspectionScreen.tsx', root));
 const start = building.match(/const handleStartInspectionForBuilding = async \([\s\S]*?\n  \};\n/)?.[0];
 assert.ok(start, 'BuildingInspectionScreen: handleStartInspectionForBuilding not found');
-const asked = start.indexOf('await lookUpInspectionLock()');
+const asked = start.indexOf('await propertyService.startInspection(');
 const opened = start.indexOf("navigation.navigate('InspectionCategories'");
 assert.ok(asked > 0 && opened > asked, 'Start Inspection asks the lock before it opens the building');
-const resumed = start.indexOf('propertyService.hold(');
-assert.ok(
-  resumed > start.indexOf('if (blocker)') && resumed < opened,
-  'a property on hold comes off hold once the lock has let it through, not before',
-);
-
-const lookup = building.match(/const lookUpInspectionLock = async \([\s\S]*?\n  \};\n/)?.[0];
-assert.ok(lookup, 'BuildingInspectionScreen: lookUpInspectionLock not found');
-assert.ok(lookup.includes('blockingInspection<any>('), 'the answer comes from the shared rule');
-assert.ok(
-  lookup.includes('propertyService.getProperties({ limit: 1000 })'),
-  'the lock looks at every property: the server answers with ten unless asked for more',
-);
-// Field work must never wait on this, or be refused by its failing.
-assert.ok(lookup.includes('networkService.hasNoConnection()'), 'offline, the lookup is not attempted');
-assert.ok(lookup.includes('Promise.race([lookup, giveUp])'), 'a slow server is not waited for');
-assert.ok(lookup.includes('.catch(() => nothing)'), 'a failed lookup locks nothing');
-
 // --- My Inspections: the same answer at the door -----------------------------
 const mine = read(new URL('src/screens/MyInspectionsScreen.tsx', root));
 assert.ok(
@@ -129,35 +108,18 @@ for (const handler of [
   );
 }
 
-// --- Hold: the way out the messages name -------------------------------------
 const dashboard = read(new URL('src/screens/DashboardScreen.tsx', root));
-for (const [name, screen] of [['DashboardScreen', dashboard], ['MyInspectionsScreen', mine]] as const) {
-  assert.ok(screen.includes('>Hold Inspection</Text>'), `${name}: the Action modal has no Hold Inspection`);
-  assert.ok(screen.includes('propertyService.hold('), `${name}: Hold Inspection must reach the server`);
-  assert.ok(screen.includes('On Hold'), `${name}: a property on hold must say so`);
-  assert.ok(
-    screen.includes("Alert.alert('Offline', 'Connect to the internet to put an inspection on hold.');"),
-    `${name}: hold is not queued offline, so offline it has to say why nothing happened`,
-  );
-}
+const addProperty = read(new URL('src/screens/AddPropertyScreen.tsx', root));
+assert.ok(!dashboard.includes('Hold Inspection') && !mine.includes('Hold Inspection'));
+assert.ok(!addProperty.includes('styles.countBadge'));
 
-// --- the words are the web's, when it is checked out beside the app ----------
-const webBase = new URL('../inspire-web/app/dashboard/', root);
+const webBase = new URL('../inspire-web/', root);
 if (existsSync(fileURLToPath(webBase))) {
-  const refusal = ' is already in progress. Please put it on hold or complete it first.';
-  const webPage = read(new URL('property-details/[id]/page.tsx', webBase));
-  assert.ok(webPage.includes(`Cannot start inspection. Property "\${blocker.name}"${refusal}`), 'inspire-web: the refusal wording moved');
-  assert.ok(
-    start.includes("'Cannot start inspection'") && start.includes(`Property "\${blocker.name}"${refusal}`),
-    'BuildingInspectionScreen: the refusal must read as the web\'s does',
-  );
-
-  const atTheDoor = ' is currently being inspected. Please put it on hold before starting a new inspection.';
-  const webMine = read(new URL('my-inspection/page.tsx', webBase));
-  assert.ok(webMine.includes(atTheDoor), 'inspire-web: the My Inspection wording moved');
-  assert.ok(mine.includes(atTheDoor), 'MyInspectionsScreen: the wording must be the web\'s');
-} else {
-  console.log('inspectionLock.check.ts: web comparison SKIPPED — inspire-web is not checked out beside the app');
+  const webDetails = read(new URL('app/dashboard/property-details/[id]/page.tsx', webBase));
+  const webModals = read(new URL('components/PropertyModals.tsx', webBase));
+  assert.ok(webDetails.includes('await propertiesAPI.startInspection(propertyId)'));
+  assert.ok(!webModals.includes('Hold Inspection'));
+  assert.ok(!webModals.includes("{properties.length} {properties.length === 1 ? 'Property' : 'Properties'}"));
 }
 
 console.log('inspectionLock.check OK');

@@ -1,3 +1,4 @@
+import propertyService from '../services/propertyService';
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
@@ -25,6 +26,7 @@ import { enhancedNspirePDFService } from '../services/enhancedNspirePDFService';
 import {
   collectGeneralComments,
   generalCommentHeading,
+  generalCommentDedupeToken,
   isGeneralCommentFinding,
   withoutGeneralComments,
 } from '../services/web/generalComments';
@@ -33,6 +35,11 @@ import {
   COUNT_COLUMNS,
   INSPECTION_TYPE,
   formatPoints,
+  findingsFromProgress,
+  findingFacts,
+  findingPictures,
+  findingSeverity,
+  uniqueReportFindings,
   propertyBuildings,
   reportScores,
   rowRules,
@@ -60,8 +67,7 @@ type InspectionSummaryScreenRouteProp = RouteProp<RootStackParamList, 'Inspectio
  * (services/web/reportRules, the web's file), which the score card on this
  * screen reads too, so the screen cannot disagree with the report it makes.
  */
-const reportRowSeverity = (defItem: any): string =>
-  defItem?.deficiency?.severity || defItem?.deficiency?.aiSeverity || 'Moderate';
+const reportRowSeverity = findingSeverity;
 
 interface Props {
   navigation: InspectionSummaryScreenNavigationProp;
@@ -76,9 +82,12 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
   const [exportingExcel, setExportingExcel] = useState(false);
   const [previewModalVisible, setPreviewModalVisible] = useState(false);
   const [previewHtml, setPreviewHtml] = useState('');
-  const [mergedDeficiencies, setMergedDeficiencies] = useState<any[]>(
+  const [localDeficiencies, setLocalDeficiencies] = useState<any[]>(
     inspectionData?.deficiencies || []
   );
+
+  const [serverFindings, setServerFindings] = useState<any[]>([]);
+  const mergedDeficiencies = uniqueReportFindings([...serverFindings, ...localDeficiencies], generalCommentDedupeToken);
 
   // Use the real inspection ID from route params, or derive a stable per-property+building ID.
   // Never use a hardcoded ID — that causes all inspections to share the same unlock record.
@@ -167,17 +176,13 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
 
   // Where a saved deficiency was found. Its report row prints these, and it is
   // scored and counted by them.
-  const rowArea = (defItem: any): string =>
-    defItem?._area
-    || (inspectionData?.isOutsideInspection
-      ? 'Outside'
-      : (inspectionData?.location === 'Inside' ? 'Inside' : 'Units'));
+  const rowArea = (defItem: any): string => {
+    const area = findingFacts(defItem).area;
+    if (area) return area === 'outside' ? 'Outside' : area === 'inside' ? 'Inside' : 'Units';
+    return inspectionData?.isOutsideInspection ? 'Outside' : inspectionData?.location === 'Inside' ? 'Inside' : 'Units';
+  };
   const rowUnit = (defItem: any): string =>
-    defItem?._unit !== undefined
-      ? defItem._unit
-      : ((rowArea(defItem) === 'Inside' || rowArea(defItem) === 'Outside')
-        ? '-'
-        : (selectedUnits.join(', ') || 'Unit Multiple'));
+    findingFacts(defItem).unit || (rowArea(defItem) === 'Units' ? selectedUnits.join(', ') || 'Unit Multiple' : '-');
   const rowBuilding = (defItem: any): string =>
     String(defItem?.building || defItem?.buildingInspectionId || buildingId || 'B1');
 
@@ -187,14 +192,22 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
   const [recordedUnitKeys, setRecordedUnitKeys] = useState<string[]>([]);
   useEffect(() => {
     let cancelled = false;
-    inspectionService
-      .getAllProgress({ propertyId, timeoutMs: 8000 })
-      .then((response) => {
-        if (!cancelled && response?.success) {
-          setRecordedUnitKeys(inspectedUnitKeys(propertyId, response.progress));
-        }
-      })
-      .catch(() => {});
+    Promise.all([
+      inspectionService.getAllProgress({ propertyId, timeoutMs: 8000 }).catch(() => null),
+      inspectionService.getInspections({ property: propertyId, status: 'completed' }).catch(() => null),
+    ]).then(([progress, completed]) => {
+      if (cancelled) return;
+      if (progress?.success) setRecordedUnitKeys(inspectedUnitKeys(propertyId, progress.progress));
+      if (!progress?.success && !completed?.success) return;
+
+      const finalized = (completed?.inspections || []).map((inspection: any) => ({
+        buildingId: inspection.building?.name || inspection.buildingId || inspection.building,
+        unitId: inspection.unit?.name || inspection.unitId || inspection.unit,
+        inspectionType: inspection.inspectionType,
+        inspectionData: { findings: inspection.findings || inspection.deficiencies },
+      }));
+      setServerFindings(findingsFromProgress([...finalized, ...(progress?.progress || [])]));
+    });
     return () => {
       cancelled = true;
     };
@@ -247,7 +260,7 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
             return { ...d, _area: currentArea, _unit: currentUnit };
           });
           const uniqueNew = incoming.filter((d: any) => !existingIds.has(d.deficiencyQRId));
-          setMergedDeficiencies([...saved.deficiencies, ...uniqueNew]);
+          setLocalDeficiencies([...saved.deficiencies, ...uniqueNew]);
         } else {
           // No saved data - stamp all incoming deficiencies with current area
           const currentArea: string = inspectionData?.isOutsideInspection
@@ -262,7 +275,7 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
             _unit: d._unit !== undefined ? d._unit : currentUnit,
           }));
           if (incoming.length > 0) {
-            setMergedDeficiencies(incoming);
+            setLocalDeficiencies(incoming);
           }
         }
       } catch (e) {
@@ -349,20 +362,20 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
   // Calculate actual deficiency counts from mergedDeficiencies
   const deficiencyCounts = {
     lifeThreadening: deficiencyItems.filter((d: any) =>
-      (d.deficiency?.aiSeverity || d.deficiency?.severity) === 'Life-Threatening'
+      reportRowSeverity(d) === 'Life-Threatening'
     ).length,
     severe: deficiencyItems.filter((d: any) =>
-      (d.deficiency?.aiSeverity || d.deficiency?.severity) === 'Severe'
+      reportRowSeverity(d) === 'Severe'
     ).length,
     moderate: deficiencyItems.filter((d: any) =>
-      (d.deficiency?.aiSeverity || d.deficiency?.severity) === 'Moderate'
+      reportRowSeverity(d) === 'Moderate'
     ).length,
     low: deficiencyItems.filter((d: any) =>
-      (d.deficiency?.aiSeverity || d.deficiency?.severity) === 'Low'
+      reportRowSeverity(d) === 'Low'
     ).length,
     // Web parity: the summary also splits repeats from new findings.
     repeat: deficiencyItems.filter((d: any) =>
-      !!(d.repeatIndicator ?? d.deficiency?.repeatIndicator)
+      !!(d.repeatIndicator ?? d.repeat ?? d.deficiency?.repeatIndicator)
     ).length,
   };
 
@@ -399,7 +412,7 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
       // Photos stay as file URIs: inlining them as base64 read every photo in
       // full, all at once, and wrote them into one AsyncStorage row that grew
       // with each unit until the app froze and was killed.
-      const deficienciesWithImages = mergedDeficiencies.map((defItem: any) => ({
+      const deficienciesWithImages = localDeficiencies.map((defItem: any) => ({
         ...defItem,
         _area: defItem._area || nextArea,
         _unit: defItem._unit !== undefined ? defItem._unit : nextUnit,
@@ -420,6 +433,12 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
     // Back to the building's categories (Outside / Inside / Units), the screen
     // the inspection was being done from, as the web's CONTINUE INSPECTION
     // returns to that building's page.
+    try {
+      await propertyService.startInspection(String(property?._id || property?.id || ''));
+    } catch (error: any) {
+      Alert.alert('Cannot start inspection', error.message || 'Could not start inspection');
+      return;
+    }
     navigation.navigate('InspectionCategories', {
       property,
       propertyId: String(property?._id || property?.id || property?.propertyId || ''),
@@ -491,41 +510,24 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
         const defItem = mergedDeficiencies[i];
         const deficiency = defItem?.deficiency || {};
 
-        // Convert local image to base64
-        let imageBase64: string | null = null;
-        const cloudinaryUrl = defItem.imageUrl || null;
-
-        if (defItem.imageUri) {
-          if (defItem.imageUri.startsWith('data:')) {
-            // Already a base64 data URL — use directly (saved by handleContinueInspection)
-            imageBase64 = defItem.imageUri;
-          } else if (defItem.imageUri.startsWith('http://') || defItem.imageUri.startsWith('https://')) {
-            // Remote URL (Cloudinary etc.) — PDF service will download it
-            imageBase64 = defItem.imageUri;
-          } else if (Platform.OS !== 'web') {
-            // Local file path — convert to base64
-            try {
-              const fileInfo = await FileSystem.getInfoAsync(defItem.imageUri);
-              if (fileInfo.exists) {
-                const base64 = await FileSystem.readAsStringAsync(defItem.imageUri, {
-                  encoding: FileSystem.EncodingType.Base64,
-                });
-                if (base64 && base64.length > 100) {
-                  imageBase64 = `data:image/jpeg;base64,${base64}`;
-                }
-              }
-            } catch (imgError) {
-              console.error('Error converting image to base64:', imgError);
-            }
+        const facts = findingFacts(defItem);
+        const photos = await Promise.all(findingPictures(defItem).map(async (photo) => {
+          if (/^(https?:|data:)/i.test(photo) || Platform.OS === 'web') return photo;
+          try {
+            const base64 = await FileSystem.readAsStringAsync(photo, {
+              encoding: FileSystem.EncodingType.Base64,
+            });
+            return base64 ? `data:image/${photo.toLowerCase().endsWith('.png') ? 'png' : 'jpeg'};base64,${base64}` : photo;
+          } catch {
+            return photo;
           }
-        }
-
-        const finalImageUri = imageBase64 || cloudinaryUrl || defItem.imageUri || null;
+        }));
+        const finalImageUri = photos[0] || undefined;
 
         // A general comment goes to the report's comments block, not into a
         // deficiency row.
         if (isGeneralCommentFinding(defItem)) {
-          commentFindings.push({ ...defItem, imageUrl: undefined, imageUri: finalImageUri });
+          commentFindings.push({ ...defItem, imageUrl: undefined, imageUri: finalImageUri, photos });
           continue;
         }
         // The deficiency's own saved area and unit (_area, _unit) when it has
@@ -537,8 +539,8 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
         const rules = rowScore(defItem);
 
         deficienciesArray.push({
-          id: `${i + 1}`,
-          deficiencyQRId: defItem.deficiencyQRId || `QR-${Math.floor(10000000 + Math.random() * 90000000)}`,
+          id: defItem.id || `DEF-${i + 1}`,
+          deficiencyQRId: defItem.deficiencyQRId || '',
           // The building it was found in: the report has a block for each.
           building: rowBuilding(defItem),
           unit: defUnit,
@@ -546,10 +548,10 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
           area: inspectionArea,
           itemName: defItem.itemName || inspectionData?.itemName || '',
           isGeneralComment: isGC,
-          deficiencyName: isGC ? 'General Comment' : (deficiency.name || 'Deficiency'),
+          deficiencyName: isGC ? 'General Comment' : (facts.name || 'Deficiency'),
           nspireCode: isGC ? '-' : (deficiency.code || 'U-1'),
           codeReference: isGC ? '' : (deficiency.codeReference || ''),
-          deficiencyDetails: isGC ? '-' : (deficiency.detail || 'Damaged or vandalized'),
+          deficiencyDetails: isGC ? '-' : (facts.details || 'Damaged or vandalized'),
           comments: defItem.note || (isGC ? '' : (deficiency.aiAnalysis || 'AI analyzed')),
           note: defItem.note || '',
           // What the deficiency takes off the score: its PTS over the sample size.
@@ -562,6 +564,7 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
           inspectedTime: new Date().toLocaleTimeString(),
           inspectorId: 'INS-001',
           imageUri: finalImageUri,
+          photos,
           status: 'Open' as const,
         });
       }
@@ -983,7 +986,7 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
         {/* Content based on active tab */}
         {activeTab === 'summary' ? (
           <View style={styles.summaryCard}>
-            <Text style={styles.summaryTitle}>DEFICIENCY SUMMARY</Text>
+            <Text style={styles.summaryTitle}>PROPERTY-WIDE DEFICIENCY SUMMARY</Text>
 
             <View style={styles.deficiencyGrid}>
               <View style={styles.deficiencyItem}>

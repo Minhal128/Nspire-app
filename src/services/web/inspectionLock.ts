@@ -1,28 +1,4 @@
-/**
- * One property is inspected at a time.
- *
- * A property is "in progress" from the moment one of its areas -- a building's
- * Outside or Inside, or a unit -- has saved progress, until all of them have.
- * While one is in progress no other property can be inspected, unless the
- * first is finished or put on hold.
- *
- * The rule used to be written out twice, and the two copies disagreed. The
- * property page refused a property whenever ANY other one was part-way
- * through, so two part-inspected properties each locked the other and neither
- * could be opened again. It also ignored hold, the one way out its own message
- * offered. My Inspection took whichever part-inspected property came first in
- * the list.
- *
- * Both pages now ask this file, and the answer is a single property: the one
- * that was worked on last. That one is never locked. Every other property is,
- * and the message names it.
- *
- * "In progress" is exactly what the property lists show as In Progress: the
- * same count of started areas over the same total. A report having been
- * exported does not end it -- that happens mid-inspection too, and counting it
- * would hand the lock to an older property while this one is still open.
- */
-
+/** Select an unfinished property from saved inspection areas. */
 export interface LockProperty {
   _id: string
   name?: string
@@ -57,7 +33,7 @@ const recordPropertyId = (record: LockProgressRecord): string => {
 const areaOf = (record: LockProgressRecord): string | null => {
   const type = String(record?.inspectionType || "").toLowerCase()
   const building = record?.buildingId || "B1"
-  if (type.startsWith("unit_")) return `${building}_unit_${record.unitId}`
+  if (type === "unit" || type.startsWith("unit_")) return `${building}_unit_${record.unitId}`
   if (type === "inside" || type === "outside") return `${building}_${type}`
   return null
 }
@@ -104,7 +80,7 @@ export const propertyActivity = (property: LockProperty, records: LockProgressRe
 /**
  * The property being inspected right now, or null when none is.
  *
- * Started, not finished and not on hold -- and, of those, the one saved to
+ * Started and unfinished -- and, of those, the one saved to
  * last. Picking a single one is what keeps two part-inspected properties from
  * locking each other out.
  */
@@ -116,12 +92,10 @@ export const findActiveInspection = <P extends LockProperty>(
   let active: P | null = null
   let activeSavedAt = -1
   for (const property of properties || []) {
-    if (property.status === "hold") continue
     const entry = activity.get(String(property._id))
     if (!entry) continue
     const total = totalAreas(property)
-    const percent = total > 0 ? Math.min(100, Math.round((entry.areas.size / total) * 100)) : 0
-    if (percent <= 0 || percent >= 100) continue
+    if (entry.areas.size >= total) continue
     if (entry.lastSavedAt > activeSavedAt) {
       active = property
       activeSavedAt = entry.lastSavedAt
@@ -131,7 +105,7 @@ export const findActiveInspection = <P extends LockProperty>(
 }
 
 /**
- * The property that has to be finished or put on hold before `propertyId` can
+ * The property that has to be finished before `propertyId` can
  * be inspected, or null when it is free to go. Never the property itself.
  */
 export const blockingInspection = <P extends LockProperty>(

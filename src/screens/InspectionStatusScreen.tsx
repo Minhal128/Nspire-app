@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
+  Platform,
   Text,
   StyleSheet,
   ScrollView,
@@ -28,6 +29,7 @@ import {
 } from '../utils/inspectionProgressUtils';
 import { exportNspireExcel, printNspireExcel } from '../utils/nspireExcelExport';
 import { enhancedNspirePDFService } from '../services/enhancedNspirePDFService';
+import { apiRequestBase64 } from '../services/api';
 import { stripeService } from '../utils/stripeService';
 import { usePaymentLink } from '../hooks/usePaymentLink';
 import { withoutGeneralComments } from '../services/web/generalComments';
@@ -102,21 +104,17 @@ export default function InspectionStatusScreen({ navigation }: InspectionStatusS
       setPropertyProgress(progressMap);
 
       const mapped: PropertyWithInspection[] = allProperties.map((property: any) => {
-        const inspection = completedInspections.find((insp: any) => {
+        const inspections = completedInspections.filter((insp: any) => {
           const inspPropId = typeof insp?.property === 'object' ? insp?.property?._id : insp?.property;
-          if (!inspPropId) return false;
-          return String(inspPropId) === String(property._id);
+          return inspPropId && String(inspPropId) === String(property._id);
         });
-
-        // Progress is the source of truth when we have it; fall back to the DB status.
-        const progressValue = progressMap[property._id];
-        const hasCompletedInspection = !!inspection && inspection.status === 'completed';
-        const isComplete = progressValue !== undefined ? progressValue === 100 : hasCompletedInspection;
+        const completed = inspections.find((insp: any) => insp.status === 'completed');
+        const inspection = completed || inspections[0];
 
         return {
           ...property,
           inspection,
-          hasInspection: isComplete,
+          hasInspection: Boolean(completed),
           isUnlocked: false,
         };
       });
@@ -226,6 +224,19 @@ export default function InspectionStatusScreen({ navigation }: InspectionStatusS
     }
     setDownloadingId(property._id);
     try {
+      if (Platform.OS === 'web') {
+        const endpoint = `/inspections/${encodeURIComponent(property.inspection._id)}/nspire-pdf?includeImages=true`;
+        const binary = atob(await apiRequestBase64(endpoint));
+        if (!binary.startsWith('%PDF-')) throw new Error('The server did not return a PDF.');
+        const blob = new Blob([Uint8Array.from(binary, char => char.charCodeAt(0))], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${safeFileName(property.name).replace(/\.xlsx$/i, '')}.pdf`;
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        return;
+      }
       const whole = await withWholeInspection(property);
       if (!whole) return;
       const nspireReport = buildReport(whole);
@@ -638,20 +649,19 @@ export default function InspectionStatusScreen({ navigation }: InspectionStatusS
                             </>
                           ) : (
                             <>
-                              <TouchableOpacity
-                                style={[styles.actionButton, styles.startButton, isOpeningReport && styles.buttonDisabled]}
-                                disabled={isOpeningReport}
-                                onPress={() => handleViewReport(property)}
-                              >
-                                {isOpeningReport ? (
-                                  <ActivityIndicator size="small" color="#FFFFFF" />
-                                ) : (
-                                  <Ionicons name="document-text-outline" size={16} color="#FFFFFF" />
-                                )}
-                                <Text style={styles.actionButtonText}>
-                                  {isOpeningReport ? 'Loading...' : 'View Report'}
-                                </Text>
-                              </TouchableOpacity>
+                              {(['PDF', 'Excel'] as const).map(format => (
+                                <TouchableOpacity
+                                  key={format}
+                                  accessibilityLabel={`Download ${format}, locked report`}
+                                  accessibilityHint="Opens the report to unlock downloads"
+                                  style={[styles.actionButton, format === 'PDF' ? styles.pdfButton : styles.excelButton, isOpeningReport && styles.buttonDisabled]}
+                                  disabled={isOpeningReport}
+                                  onPress={() => handleViewReport(property)}
+                                >
+                                  <Ionicons name="lock-closed-outline" size={16} color="#FFFFFF" />
+                                  <Text style={styles.actionButtonText}>Download {format}</Text>
+                                </TouchableOpacity>
+                              ))}
                             </>
                           )
                         ) : (
@@ -813,10 +823,10 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     flexGrow: 1,
   },
-  actionButtonText: { color: '#FFFFFF', fontSize: 13, fontWeight: '700' },
+  actionButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
   buttonDisabled: { opacity: 0.6 },
-  pdfButton: { backgroundColor: '#16A34A' },
-  excelButton: { backgroundColor: '#059669' },
+  pdfButton: { backgroundColor: '#B45309', minHeight: 44, borderRadius: 24 },
+  excelButton: { backgroundColor: '#059669', minHeight: 44, borderRadius: 24 },
   printButton: { backgroundColor: '#0E7490' },
   unlockButton: { backgroundColor: '#D97706' },
   startButton: { backgroundColor: '#006795' },

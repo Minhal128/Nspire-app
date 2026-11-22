@@ -29,6 +29,7 @@ import {
   REPORT_TITLE,
   SCORE_AREAS,
   formatPoints,
+  findingPictures,
   inspectionTypeLabel,
   reportBuilding,
   reportBuildings,
@@ -56,7 +57,7 @@ export function setReportLogo(dataUri: string): void {
 type ReportRow = DeficiencyEntry & RowRules & { filedUnder: string; scored: ScoreArea | null };
 
 /** How wide each column of a deficiency table is, in the order of DEFICIENCY_COLUMNS. */
-const DEFICIENCY_COLUMN_WIDTHS = ['17%', '15%', '10%', '13%', '6%', '9.5%', '7.5%', '6%', '7%', '9%'];
+const DEFICIENCY_COLUMN_WIDTHS = ['12.5%', '15%', '8.8%', '17.9%', '4.9%', '9.1%', '7.9%', '6.7%', '8%', '9.2%'];
 
 const SEVERITIES: ScoreSeverity[] = ['Life-Threatening', 'Severe', 'Moderate', 'Low'];
 
@@ -97,10 +98,10 @@ function generateEnhancedStyles(options: PDFGenerationOptions): string {
 
     body {
       font-family: Arial, Helvetica, sans-serif;
-      font-size: 10pt;
-      line-height: 1.3;
+      font-size: 8.5pt;
+      line-height: 1.25;
       color: #000000;
-      padding: 20px;
+      padding: 36px 60px;
       background: #FFFFFF;
     }
 
@@ -111,29 +112,30 @@ function generateEnhancedStyles(options: PDFGenerationOptions): string {
     }
 
     .nspire-logo {
-      width: 180px;
+      width: 200px;
       height: auto;
       object-fit: contain;
-      margin: 0 auto 20px;
+      margin: 0 auto 6px;
       display: block;
     }
 
     .header-title {
-      font-size: 16pt;
+      font-size: 15pt;
       font-weight: bold;
       color: #000000;
       text-align: center;
-      margin-bottom: 20px;
+      margin-bottom: 16px;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
+      letter-spacing: normal;
+      line-height: 1.1;
     }
 
     .header-metadata {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 20px;
+      gap: 16px;
       margin-bottom: 20px;
-      font-size: 9pt;
+      font-size: 8.5pt;
     }
 
     .header-left, .header-right {
@@ -148,7 +150,7 @@ function generateEnhancedStyles(options: PDFGenerationOptions): string {
     .header-label {
       font-weight: bold;
       display: inline-block;
-      width: 140px;
+      width: 92pt;
       flex-shrink: 0;
     }
 
@@ -161,35 +163,35 @@ function generateEnhancedStyles(options: PDFGenerationOptions): string {
     .scores-section {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 20px;
-      margin: 20px 0;
+      gap: 13px;
+      margin: 22px 0 12px;
     }
 
     .score-block {
-      border: 2px solid #000000;
-      padding: 12px 15px;
+      border: 1px solid #555;
+      padding: 6px 10px;
       text-align: left;
     }
 
     .score-block h3 {
-      font-size: 11pt;
+      font-size: 9.5pt;
       font-weight: bold;
-      margin-bottom: 8px;
+      margin-bottom: 4px;
       text-decoration: underline;
     }
 
     .score-row {
       display: flex;
       justify-content: space-between;
-      margin-bottom: 3px;
-      font-size: 9pt;
+      margin-bottom: 1px;
+      font-size: 8.5pt;
     }
 
     .score-row.total {
-      font-weight: bold;
-      border-top: 1px solid #000000;
-      margin-top: 5px;
-      padding-top: 4px;
+      font-weight: normal;
+      border-top: 0;
+      margin-top: 0;
+      padding-top: 0;
     }
 
     .score-label {
@@ -206,22 +208,22 @@ function generateEnhancedStyles(options: PDFGenerationOptions): string {
     table {
       width: 100%;
       border-collapse: collapse;
-      margin: 10px 0 15px 0;
-      font-size: 9pt;
+      margin: 10px 0 12px;
+      font-size: 8.5pt;
     }
 
     th {
-      background: #D3D3D3;
+      background: #FFFFFF;
       color: #000000;
       font-weight: bold;
-      padding: 8px 6px;
+      padding: 4px 4px;
       text-align: center;
-      border: 1px solid #000000;
+      border: 1px solid #777;
     }
 
     td {
-      padding: 6px;
-      border: 1px solid #000000;
+      padding: 4px;
+      border: 1px solid #777;
       vertical-align: top;
       text-align: center;
     }
@@ -234,31 +236,31 @@ function generateEnhancedStyles(options: PDFGenerationOptions): string {
     .section-title {
       font-size: 11pt;
       font-weight: bold;
-      margin: 20px 0 10px 0;
+      margin: 12px 0 9px;
       text-decoration: underline;
     }
 
     .inspection-data-section, .deficiency-summary-section {
-      margin: 20px 0;
+      margin: 12px 0;
     }
 
     /* A building and its deficiencies */
     .building-section {
-      margin: 22px 0 0 0;
+      margin: 12px 0 0;
     }
 
     .building-banner {
-      font-size: 11pt;
+      font-size: 9.5pt;
       font-weight: bold;
       color: #006795;
       background: #E6F0F4;
-      border: 1.5px solid #006795;
-      padding: 6px 10px;
+      border: 1px solid #006795;
+      padding: 2px 6px;
       page-break-after: avoid;
     }
 
     .building-section .section-title {
-      margin: 12px 0 6px 0;
+      margin: 3px 0 9px;
       page-break-after: avoid;
     }
 
@@ -279,30 +281,41 @@ function generateEnhancedStyles(options: PDFGenerationOptions): string {
     /* Deficiency table: ten columns */
     .deficiency-details-table {
       table-layout: fixed;
-      font-size: 7.5pt;
-      margin: 6px 0 12px 0;
+      font-size: 6.8pt;
+      margin: 6px 0 10px;
+      width: 95%;
     }
 
     .deficiency-details-table th {
-      font-size: 7.5pt;
-      padding: 5px 3px;
+      font-size: 6.8pt;
+      padding: 4px 3px;
     }
 
     .deficiency-details-table td {
-      font-size: 7.5pt;
-      padding: 4px 3px;
-      overflow-wrap: break-word;
+      font-size: 6.8pt;
+      padding: 3px;
+      overflow-wrap: anywhere;
       word-wrap: break-word;
     }
 
     .deficiency-image {
       width: 100%;
-      max-width: 84px;
-      height: 63px;
-      object-fit: cover;
-      border: 1px solid #000000;
+      max-width: none;
+      height: 104pt;
+      object-fit: contain;
+      border: 0;
       display: block;
       margin: 0 auto;
+    }
+
+    .deficiency-photos.multiple {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 3px;
+    }
+
+    .deficiency-photos.multiple .deficiency-image {
+      height: 44pt;
     }
 
     .deficiency-name {
@@ -311,24 +324,28 @@ function generateEnhancedStyles(options: PDFGenerationOptions): string {
     }
 
     .nspire-code {
-      font-size: 7pt;
-      color: #666666;
-      font-style: italic;
+      font-size: 6.8pt;
+      color: #000;
+      font-style: normal;
+      font-weight: bold;
     }
 
     .location-info {
-      font-size: 7.5pt;
+      font-size: 6.8pt;
       line-height: 1.2;
+      font-weight: bold;
     }
 
     /* General comments */
     .general-comments-box {
-      border: 1px solid #000000;
-      padding: 10px;
+      border: 0;
+      padding: 0;
     }
 
     .general-comment {
-      margin-bottom: 12px;
+      margin-bottom: 3px;
+      border: 1px solid #aaa;
+      padding: 2px 7px;
     }
 
     .general-comment:last-child {
@@ -342,22 +359,23 @@ function generateEnhancedStyles(options: PDFGenerationOptions): string {
     }
 
     .general-comment-note {
-      font-size: 9pt;
-      line-height: 1.4;
+      font-size: 8.5pt;
+      line-height: 1.25;
       margin-top: 3px;
       white-space: pre-wrap;
       word-break: break-word;
+      overflow-wrap: anywhere;
     }
 
     .general-comment-photos {
-      margin-top: 6px;
+      margin-top: 10px;
     }
 
     .general-comment-photo {
-      width: 100px;
-      height: 75px;
-      object-fit: cover;
-      border: 1px solid #000000;
+      width: 49pt;
+      height: 66pt;
+      object-fit: contain;
+      border: 0;
       display: inline-block;
       vertical-align: top;
       margin: 0 6px 6px 0;
@@ -365,9 +383,9 @@ function generateEnhancedStyles(options: PDFGenerationOptions): string {
 
     /* Certificate */
     .certification-section {
-      margin: 30px 0;
-      padding: 20px;
-      border: 1px solid #000000;
+      margin: 0;
+      padding: 5px 7px 14px;
+      border: 1px solid #aaa;
     }
 
     .certification-section .section-title {
@@ -375,43 +393,44 @@ function generateEnhancedStyles(options: PDFGenerationOptions): string {
     }
 
     .certificate-statement {
-      margin-bottom: 20px;
-      font-size: 9pt;
-      line-height: 1.4;
+      margin-bottom: 12px;
+      font-size: 8.5pt;
+      line-height: 1.25;
     }
 
     .signature-area {
       display: flex;
-      justify-content: space-between;
-      margin-top: 30px;
+      justify-content: flex-start;
+      margin-top: 24px;
+      gap: 60px;
     }
 
     .signature-name {
-      font-size: 9pt;
+      font-size: 8.5pt;
       font-weight: bold;
       min-height: 12pt;
       margin-bottom: 5px;
     }
 
     .signature-line {
-      border-bottom: 1px solid #000000;
-      width: 200px;
+      border-bottom: 1px solid #999;
+      width: 160pt;
       margin-bottom: 5px;
     }
 
     .signature-label {
-      font-size: 8pt;
+      font-size: 7.5pt;
       color: #666666;
     }
 
     /* Footer */
     .report-footer {
-      margin-top: 30px;
-      text-align: center;
-      font-size: 8pt;
+      margin-top: 12px;
+      text-align: left;
+      font-size: 7.5pt;
       color: #666666;
-      border-top: 1px solid #000000;
-      padding-top: 10px;
+      border-top: 0;
+      padding-top: 0;
     }
 
     /* Page Break Control */
@@ -423,10 +442,29 @@ function generateEnhancedStyles(options: PDFGenerationOptions): string {
       page-break-inside: avoid;
     }
 
+    .general-comments-section .section-title {
+      font-size: 8.5pt;
+      text-decoration: none;
+      margin: 0;
+    }
+
+    .deficiency-details-table thead {
+      display: table-header-group;
+    }
+
+    @page {
+      size: A4;
+      margin: 12mm 16mm;
+    }
+
     /* Print Specific */
     @media print {
       body {
         padding: 0;
+      }
+
+      .deficiency-summary-section {
+        break-before: page;
       }
 
       .page-break {
@@ -462,6 +500,10 @@ function generateEnhancedHeader(metadata: InspectionMetadata, options: PDFGenera
           <div class="header-row">
             <span class="header-label">Inspection Type:</span>
             <span class="header-value">${escapeHtml(inspectionTypeLabel(metadata.inspectionType))}</span>
+          </div>
+          <div class="header-row">
+            <span class="header-label">Escort Name:</span>
+            <span class="header-value">${escapeHtml(metadata.escortName || '-')}</span>
           </div>
           <div class="header-row">
             <span class="header-label">${INSPECTOR_NAME_LABEL}:</span>
@@ -524,7 +566,7 @@ function generateEnhancedSummaryPage(scores: ReportScores, counts: InspectionCou
         ${SCORE_AREAS.map(({ area, label }) => `
         <div class="score-row">
           <span class="score-label">${label}:</span>
-          <span class="score-value">${formatPoints(POSSIBLE_SCORE[area])}</span>
+          <span class="score-value">${POSSIBLE_SCORE[area]}</span>
         </div>`).join('')}
         <div class="score-row total">
           <span class="score-label">Preliminary Inspection Score:</span>
@@ -561,6 +603,7 @@ function generateEnhancedSummaryPage(scores: ReportScores, counts: InspectionCou
           <tr>
             <td>${counts.buildings}</td>
             <td>${counts.units}</td>
+            <td>${counts.unitsInspected}</td>
             <td>${counts.sampleSize}</td>
             <td>${counts.unitsInspected}</td>
           </tr>
@@ -604,7 +647,9 @@ function generateDeficiencyTable(rows: ReportRow[], options: PDFGenerationOption
             </tr>
           </thead>
           <tbody>
-            ${rows.map((row) => `
+            ${rows.map((row) => {
+              const photos = options.includeImages ? findingPictures(row) : [];
+              return `
               <tr class="avoid-break">
                 <td class="left-align">${escapeHtml(row.deficiencyDetails || 'No details provided')}</td>
                 <td class="left-align">
@@ -612,18 +657,18 @@ function generateDeficiencyTable(rows: ReportRow[], options: PDFGenerationOption
                   <div class="nspire-code">${escapeHtml(row.nspireCode)}</div>
                   <div class="location-info">${escapeHtml(row.filedUnder)} | ${escapeHtml(row.unit || '-')}</div>
                 </td>
-                <td class="left-align">${escapeHtml(row.comments || 'Wait for Input')}</td>
-                <td>${options.includeImages && row.imageUri
-                  ? `<img src="${escapeHtml(row.imageUri)}" alt="Deficiency picture" class="deficiency-image" onerror="this.style.display='none';" />`
-                  : ''}</td>
+                <td class="left-align">${escapeHtml(row.comments || '')}</td>
+                <td><div class="deficiency-photos ${photos.length > 1 ? 'multiple' : ''}">${photos.map((photo, index) =>
+                  `<img src="${escapeHtml(photo)}" alt="Deficiency picture ${index + 1}" class="deficiency-image" onerror="this.style.display='none';" />`
+                ).join('')}</div></td>
                 <td>${formatPoints(row.pts)}</td>
                 <td>${escapeHtml(row.severity)}</td>
-                <td>${escapeHtml(row.repairTime)}</td>
+                <td>${escapeHtml(row.repairTime === '24 Hours' ? '24 hrs' : row.repairTime)}</td>
                 <td>${formatPoints(row.ptsLost)}</td>
-                <td>${row.possibleScore === null ? '-' : formatPoints(row.possibleScore)}</td>
+                <td>${row.possibleScore ?? '-'}</td>
                 <td>${escapeHtml(row.recordedAt || '-')}</td>
               </tr>
-            `).join('')}
+            `; }).join('')}
           </tbody>
         </table>
   `;
@@ -633,7 +678,7 @@ function generateDeficiencyTable(rows: ReportRow[], options: PDFGenerationOption
  * A building's block: its outside, inside and unit deficiencies, each said to
  * have none when it has none. The same block is drawn for every building.
  */
-function generateBuildingSection(building: string, rows: ReportRow[], options: PDFGenerationOptions): string {
+function generateBuildingSection(building: string, rows: ReportRow[], comments: GeneralCommentEntry[], options: PDFGenerationOptions): string {
   const areaBlock = (area: ScoreArea, title: string): string => {
     const found = rows.filter((row) => row.scored === area);
     if (found.length === 0) {
@@ -667,10 +712,13 @@ function generateBuildingSection(building: string, rows: ReportRow[], options: P
   return `
     <div class="building-section">
       <div class="building-banner">Building: ${escapeHtml(building)}</div>
-      ${SCORE_AREAS.map(({ area, title }) => areaBlock(area, title)).join('')}
+      ${SCORE_AREAS.map(({ area, title }) =>
+        areaBlock(area, title) + generateGeneralCommentsSection(comments.filter((entry) => scoreArea(entry.area) === area), options)
+      ).join('')}
       ${elsewhere.length > 0 ? `
         <h3 class="section-title">Other Deficiencies</h3>
         ${generateDeficiencyTable(elsewhere, options)}` : ''}
+      ${generateGeneralCommentsSection(comments.filter((entry) => scoreArea(entry.area) === null), options)}
     </div>
   `;
 }
@@ -678,7 +726,7 @@ function generateBuildingSection(building: string, rows: ReportRow[], options: P
 /**
  * Every building of the property, each with its block
  */
-function generateEnhancedDeficiencyTable(buildings: string[], rows: ReportRow[], options: PDFGenerationOptions): string {
+function generateEnhancedDeficiencyTable(buildings: string[], rows: ReportRow[], comments: GeneralCommentEntry[], options: PDFGenerationOptions): string {
   if (buildings.length === 0) {
     return `
       <div class="deficiency-details-section">
@@ -692,6 +740,7 @@ function generateEnhancedDeficiencyTable(buildings: string[], rows: ReportRow[],
       generateBuildingSection(
         building,
         rows.filter((row) => row.filedUnder.toLowerCase() === building.toLowerCase()),
+        comments.filter((entry) => entry.building.toLowerCase() === building.toLowerCase()),
         options
       )
     )
@@ -700,8 +749,7 @@ function generateEnhancedDeficiencyTable(buildings: string[], rows: ReportRow[],
 
 /**
  * General comments: the inspector's notes and their pictures, per building,
- * unit and area. They are observations, not deficiencies, so they sit under
- * the deficiency tables in a block of their own, and add nothing to a total.
+ * unit and area. Each area displays its own notes and photos.
  */
 function generateGeneralCommentsSection(entries: GeneralCommentEntry[], options: PDFGenerationOptions): string {
   if (entries.length === 0) return '';
@@ -743,7 +791,7 @@ function generateEnhancedCertificationSection(certification: any, metadata: Insp
         </div>
         <div>
           <div class="signature-name">${escapeHtml(certification?.certificationDate || '')}</div>
-          <div class="signature-line" style="width: 150px;"></div>
+          <div class="signature-line" style="width: 100pt;"></div>
           <div class="signature-label">Date</div>
         </div>
       </div>
@@ -770,8 +818,7 @@ export function generateEnhancedNSPIREReportHTML(
   options: PDFGenerationOptions = DEFAULT_PDF_OPTIONS
 ): string {
   // A general comment is a comment however it reached here: listed for the
-  // report, or still sitting among the rows. Either way it is shown once, in
-  // the comments block, and never as a deficiency.
+  // report, or still sitting among the rows. Show it once under its area.
   const generalComments = collectGeneralComments([
     ...generalCommentFindings(report.generalCommentEntries),
     ...report.deficiencies,
@@ -788,7 +835,10 @@ export function generateEnhancedNSPIREReportHTML(
     scored: scoreArea(deficiency.area),
   }));
   const scores = reportScores(rows);
-  const buildings = reportBuildings(names, rows);
+  const buildings = reportBuildings(names, [...rows, ...generalComments]);
+  const filedComments = generalComments.map((entry) => ({
+    ...entry, building: reportBuilding(entry.building, names),
+  }));
 
   return `
 <!DOCTYPE html>
@@ -805,9 +855,9 @@ export function generateEnhancedNSPIREReportHTML(
 
     ${options.includeSummaryPage ? generateEnhancedSummaryPage(scores, counts, rows) : ''}
 
-    ${options.includeDetailedDeficiencies ? generateEnhancedDeficiencyTable(buildings, rows, options) : ''}
-
-    ${generateGeneralCommentsSection(generalComments, options)}
+    ${options.includeDetailedDeficiencies
+      ? generateEnhancedDeficiencyTable(buildings, rows, filedComments, options)
+      : generateGeneralCommentsSection(filedComments, options)}
 
     <div class="avoid-break">
       ${options.includeCertification && report.certification ? generateEnhancedCertificationSection(report.certification, report.metadata) : ''}

@@ -145,26 +145,22 @@ export default function UnitInspectionScreen({ navigation, route }: UnitInspecti
     }
   };
 
-  const handleStartInspection = (unit: Unit) => {
-    // Go directly to AI Inspection with the selected unit
-    navigation.navigate('AIInspection' as never, { 
-      property: property,
-      selectedUnits: [unit.name],
-      coverage: '100',
-      totalUnits: 1
-    } as never);
+  const startAIInspection = async (selectedUnits: string[]) => {
+    try {
+      await propertyService.startInspection(String(property?._id || property?.id || ''));
+      navigation.navigate('AIInspection' as never, {
+        property,
+        selectedUnits,
+        coverage: '100',
+        totalUnits: selectedUnits.length,
+      } as never);
+    } catch (error: any) {
+      Alert.alert('Cannot start inspection', error.message || 'Could not start inspection');
+    }
   };
 
-  const handleStartAIInspection = () => {
-    // Start AI inspection for all units
-    const allUnitNames = units.map(u => u.name);
-    navigation.navigate('AIInspection' as never, { 
-      property: property,
-      selectedUnits: allUnitNames,
-      coverage: '100',
-      totalUnits: units.length
-    } as never);
-  };
+  const handleStartInspection = (unit: Unit) => startAIInspection([unit.name]);
+  const handleStartAIInspection = () => startAIInspection(units.map(unit => unit.name));
 
   const handleRandomUnitSelection = () => {
     try {

@@ -28,7 +28,6 @@ import {
   propertyService,
   authService,
   inspectionService,
-  networkService,
   generateRandomUnitSample,
   isRandomSelectionAvailable
 } from "../services";
@@ -440,21 +439,6 @@ export default function DashboardScreen({
         return;
       }
 
-      // Resume this property if it was on hold so it becomes the active inspection
-      if (selectedProperty.status === 'hold') {
-        try {
-          const response = await propertyService.hold(propId);
-          if (response.success) {
-            const newStatus = response.property?.status ?? 'active';
-            setProperties(prev => prev.map(p =>
-              (p._id || p.id) === propId ? { ...p, status: newStatus } : p
-            ));
-          }
-        } catch (error: any) {
-          Alert.alert('Error', error.message || 'Failed to resume inspection');
-          return;
-        }
-      }
       // Navigate to BuildingInspection with selected units divided across buildings
       navigation.navigate('BuildingInspection' as any, {
         property: selectedProperty,
@@ -462,32 +446,6 @@ export default function DashboardScreen({
         selectedUnits: selectedUnits,
         coverage: selectedCoverage,
       });
-    }
-  };
-
-  // Web parity (dashboard handleHoldInspection): putting a started inspection
-  // on hold is what lets another property be inspected before it is finished.
-  const handleHoldInspection = async () => {
-    if (!selectedProperty) return;
-    const propId = selectedProperty._id || selectedProperty.id;
-    // Said over the open modal, as Remove asks its question: hold is a change
-    // on the server, and it is not one the offline queue carries.
-    if (networkService.hasNoConnection()) {
-      Alert.alert('Offline', 'Connect to the internet to put an inspection on hold.');
-      return;
-    }
-    setActionModalVisible(false);
-    try {
-      const response = await propertyService.hold(propId);
-      if (response.success) {
-        const newStatus = response.property?.status ?? 'hold';
-        setProperties(prev => prev.map(p =>
-          (p._id || p.id) === propId ? { ...p, status: newStatus } : p
-        ));
-        Alert.alert('Success', response.message || `Inspection for ${selectedProperty.name} put on hold`);
-      }
-    } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to hold inspection');
     }
   };
 
@@ -674,18 +632,6 @@ export default function DashboardScreen({
               </TouchableOpacity>
             )}
 
-            {/* Web parity (ActionModal): shown once the inspection has started.
-                A property already on hold needs no button -- it comes off hold
-                by itself when its inspection is continued. */}
-            {(propertyProgress[selectedProperty?._id || selectedProperty?.id || ''] || 0) > 0 &&
-              selectedProperty?.status !== 'hold' && (
-              <TouchableOpacity
-                style={[styles.actionButton, styles.holdButton]}
-                onPress={handleHoldInspection}
-              >
-                <Text style={[styles.actionButtonText, styles.holdButtonText]}>Hold Inspection</Text>
-              </TouchableOpacity>
-            )}
 
             <TouchableOpacity
               style={[styles.actionButton, styles.inspectionModalButton]}
@@ -794,7 +740,7 @@ export default function DashboardScreen({
                             style={styles.statusButton}
                             onPress={() => handleEditPress(property)}
                           >
-                            <Text style={styles.statusButtonText}>{property.status === 'hold' ? 'On Hold' : statusLabel(progress)}</Text>
+                            <Text style={styles.statusButtonText}>{statusLabel(progress)}</Text>
                           </TouchableOpacity>
                         </View>
 
@@ -1160,14 +1106,6 @@ const styles = StyleSheet.create({
     borderWidth: 0,
   },
   removeButtonText: {
-    color: "#FFFFFF",
-  },
-  holdButton: {
-    backgroundColor: "#F59E0B",
-    borderColor: "#F59E0B",
-    borderWidth: 0,
-  },
-  holdButtonText: {
     color: "#FFFFFF",
   },
   loadingContainer: {

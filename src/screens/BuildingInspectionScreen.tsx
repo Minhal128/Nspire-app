@@ -36,13 +36,7 @@ import { COVERAGE_OPTIONS } from '../constants/inspectionCoverage';
 import authService from '../services/authService';
 import { inspectionService } from '../services/inspectionService';
 import offlineQueue from '../services/offlineQueue';
-import networkService from '../services/networkService';
-import { blockingInspection } from '../services/web/inspectionLock';
 import { useReportPreview } from '../contexts/ReportPreviewContext';
-
-// How long Start Inspection waits to learn whether another property is being
-// inspected. Past this it stops asking and opens the building.
-const LOCK_LOOKUP_MS = 6000;
 
 type BuildingInspectionRouteProp = RouteProp<RootStackParamList, 'BuildingInspection'>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'BuildingInspection'>;
@@ -153,6 +147,7 @@ export default function BuildingInspectionScreen() {
   // The building whose Start Inspection is being checked against the lock, so
   // a second tap does not start a second check.
   const [startingBuildingId, setStartingBuildingId] = useState<string | null>(null);
+  const [inspectionStartError, setInspectionStartError] = useState('');
 
   // Web parity: per-building completed tasks + renamable ID column
   const [completedUnitsMap, setCompletedUnitsMap] = useState<Record<string, string[]>>({});
@@ -278,68 +273,15 @@ export default function BuildingInspectionScreen() {
     }
   };
 
-  // Web parity (property page, findBlockingProperty): one property is inspected
-  // at a time, and the rule is the web's own file, copied to src/services/web/.
-  // Answers with the property that has to be finished or put on hold before
-  // this one can be inspected, and with this property as the server has it now
-  // -- the copy this screen was opened with can be hours old.
-  //
-  // No answer is not a refusal. Offline, or with the server slow to reply, the
-  // inspection goes ahead: field work does not wait on a lookup.
-  const lookUpInspectionLock = async (): Promise<{ blocker: any; current: any }> => {
-    const nothing = { blocker: null, current: null };
-    const propId = String(property._id || (property as any).id || '');
-    if (!propId || networkService.hasNoConnection()) return nothing;
-
-    let giveUpTimer: ReturnType<typeof setTimeout> | undefined;
-    const giveUp = new Promise<typeof nothing>((resolve) => {
-      giveUpTimer = setTimeout(() => resolve(nothing), LOCK_LOOKUP_MS);
-    });
-    const lookup = (async () => {
-      const [progressRes, propsRes] = await Promise.all([
-        inspectionService.getAllProgress({ timeoutMs: LOCK_LOOKUP_MS }),
-        // Every property, not the page of ten the lists ask for: the one being
-        // inspected can be older than those ten.
-        propertyService.getProperties({ limit: 1000 }),
-      ]);
-      if (!progressRes.success || !propsRes?.success || !Array.isArray(propsRes.properties)) return nothing;
-      const current = propsRes.properties.find((p: any) => String(p._id) === propId) || null;
-      // This property counts whether or not that list has it, so that its
-      // being the one worked on last is never missed.
-      const everyProperty: any[] = current ? propsRes.properties : [...propsRes.properties, property];
-      return { blocker: blockingInspection<any>(propId, everyProperty, progressRes.progress), current };
-    })().catch(() => nothing);
-
-    try {
-      return await Promise.race([lookup, giveUp]);
-    } finally {
-      if (giveUpTimer) clearTimeout(giveUpTimer);
-    }
-  };
-
   const handleStartInspectionForBuilding = async (building: BuildingRow) => {
     if (startingBuildingId) return;
+    setInspectionStartError('');
     setStartingBuildingId(building.buildingId);
     try {
-      const { blocker, current } = await lookUpInspectionLock();
-      if (blocker) {
-        // The web's sentence, over the alert's title and body.
-        Alert.alert(
-          'Cannot start inspection',
-          `Property "${blocker.name}" is already in progress. Please put it on hold or complete it first.`
-        );
-        return;
-      }
-      // On hold and about to be inspected: it is the active inspection again,
-      // so it is this property the next one has to wait for.
-      if (current?.status === 'hold') {
-        try {
-          await propertyService.hold(String(current._id));
-        } catch (error: any) {
-          Alert.alert('Error', error.message || 'Failed to resume inspection');
-          return;
-        }
-      }
+      await propertyService.startInspection(String(property._id || property.id || ''));
+    } catch (error: any) {
+      setInspectionStartError(error.message || 'Could not start inspection');
+      return;
     } finally {
       setStartingBuildingId(null);
     }
@@ -1572,6 +1514,11 @@ export default function BuildingInspectionScreen() {
           </View>
 
           {/* Building Table */}
+          {!!inspectionStartError && (
+            <Text accessibilityRole="alert" accessibilityLiveRegion="polite" style={[styles.warningBanner, styles.warningText]}>
+              {inspectionStartError}
+            </Text>
+          )}
           <View style={styles.sectionRow}>
             <Text style={styles.sectionTitle}>Building</Text>
             <Text style={styles.unitsBadge}>
@@ -1764,7 +1711,7 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
   },
   summaryHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  summaryLabel: { fontSize: 12, fontWeight: '800', color: '#6B7280', textTransform: 'uppercase' },
+  summaryLabel: { flexShrink: 1, paddingRight: 8, fontSize: 16, fontWeight: '800', color: '#6B7280', textTransform: 'uppercase' },
   summaryPercent: { fontSize: 22, fontWeight: '800', color: '#006795' },
   summaryTrack: {
     height: 14,
@@ -1774,7 +1721,7 @@ const styles = StyleSheet.create({
     marginVertical: 8,
   },
   summaryFill: { height: 14, borderRadius: 7, backgroundColor: '#006795' },
-  summaryEndLabel: { fontSize: 10, fontWeight: '700', color: '#9CA3AF', textTransform: 'uppercase' },
+  summaryEndLabel: { fontSize: 14, fontWeight: '800', color: '#4B5563', textTransform: 'uppercase' },
   summaryStatsRow: {
     flexDirection: 'row',
     justifyContent: 'space-around',
@@ -1785,7 +1732,7 @@ const styles = StyleSheet.create({
   },
   summaryStat: { alignItems: 'center' },
   summaryStatValue: { fontSize: 22, fontWeight: '800', color: '#111827' },
-  summaryStatLabel: { fontSize: 10, fontWeight: '800', color: '#9CA3AF', textTransform: 'uppercase' },
+  summaryStatLabel: { fontSize: 14, fontWeight: '800', color: '#4B5563', textTransform: 'uppercase' },
   colProgress: { flex: 1.1, paddingHorizontal: 2 },
   notStartedText: { fontSize: 10, fontWeight: '700', color: '#9CA3AF', textAlign: 'center' },
   progressLine: { fontSize: 10, fontWeight: '700', textAlign: 'center' },
@@ -1880,8 +1827,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 24,
+    fontWeight: '800',
     color: '#1F2937',
   },
   placeholder: {
@@ -1911,20 +1858,20 @@ const styles = StyleSheet.create({
   },
   infoPair: {
     width: '48%',
-    flexDirection: 'row',
+    gap: 2,
     marginBottom: 4,
   },
   infoLabel: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 16,
+    fontWeight: '800',
     color: '#6B7280',
     marginRight: 4,
   },
   infoValue: {
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: 17,
+    fontWeight: '800',
     color: '#1F2937',
-    flex: 1,
+    flexShrink: 1,
   },
   // Section
   sectionRow: {
@@ -1934,8 +1881,8 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 22,
+    fontWeight: '800',
     color: '#1F2937',
   },
   unitsBadge: {

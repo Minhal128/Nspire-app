@@ -118,12 +118,12 @@ assert.deepStrictEqual(collectGeneralComments(rows), all);
 const generator = read(new URL('src/services/web/enhancedNspirePDFService.ts', root));
 assert.ok(
   generator.includes('const rows: ReportRow[] = withoutGeneralComments(report.deficiencies).map((deficiency) => ({') &&
-    generator.includes('generateEnhancedDeficiencyTable(buildings, rows, options)') &&
+    generator.includes('generateEnhancedDeficiencyTable(buildings, rows, filedComments, options)') &&
     generator.includes('const scores = reportScores(rows);'),
   'the report must keep general comments out of the deficiency tables, and out of the scores',
 );
 assert.ok(
-  generator.includes('${generateGeneralCommentsSection(generalComments, options)}'),
+  generator.includes('generateGeneralCommentsSection(comments.filter((entry) => scoreArea(entry.area) === area), options)'),
   'the report must print the General Comments block',
 );
 assert.ok(

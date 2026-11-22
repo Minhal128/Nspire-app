@@ -22,7 +22,6 @@ import {
   authService,
   inspectionService,
   propertyService,
-  networkService,
   generateRandomUnitSample,
   isRandomSelectionAvailable
 } from '../services';
@@ -257,7 +256,7 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
   };
 
   // Web parity (my-inspection activeInspectionPropertyId): the property being
-  // inspected right now -- started, not finished, not on hold, and the one
+  // inspected right now -- started and unfinished, and the one
   // worked on last.
   const activeInspection = useMemo(
     () => findActiveInspection<PropertyType>(lockProperties, progressRecords),
@@ -270,7 +269,7 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
     if (!activeInspection || activeInspection._id === property._id) return false;
     Alert.alert(
       'Inspection In Progress',
-      `"${activeInspection.name || 'Another property'}" is currently being inspected. Please put it on hold before starting a new inspection.`
+      `"${activeInspection.name || 'Another property'}" is currently being inspected. Please complete it before starting a new inspection.`
     );
     return true;
   };
@@ -471,27 +470,6 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
     setInspectionModalVisible(true);
   };
 
-  // Web parity (handleHoldInspection): putting a started inspection on hold is
-  // what lets another property be inspected before it is finished.
-  const handleHoldInspection = async () => {
-    if (!selectedProperty?._id) return;
-    // Hold is a change on the server, and not one the offline queue carries.
-    if (networkService.hasNoConnection()) {
-      Alert.alert('Offline', 'Connect to the internet to put an inspection on hold.');
-      return;
-    }
-    setActionModalVisible(false);
-    try {
-      const response = await propertyService.hold(selectedProperty._id);
-      if (response.success) {
-        Alert.alert('Success', response.message || `Inspection for ${selectedProperty.name} put on hold`);
-        await fetchData();
-      }
-    } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to hold inspection');
-    }
-  };
-
   const handleRemoveProperty = async () => {
     if (!selectedProperty?._id) return;
 
@@ -569,19 +547,6 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
               <Text style={[styles.actionButtonText, inProgressInspections.has(selectedProperty?._id || '') && styles.disabledActionButtonText]}>Edit Property</Text>
             </TouchableOpacity>
 
-            {/* Web parity (ActionModal): shown once the inspection has started.
-                A property already on hold needs no button -- it comes off hold
-                by itself when its inspection is continued. */}
-            {!!selectedProperty &&
-              selectedProperty.status !== 'hold' &&
-              calculatePropertyProgressPercent(selectedProperty, progressRecords) > 0 && (
-              <TouchableOpacity
-                style={[styles.actionButton, styles.holdButton]}
-                onPress={handleHoldInspection}
-              >
-                <Text style={[styles.actionButtonText, styles.holdButtonText]}>Hold Inspection</Text>
-              </TouchableOpacity>
-            )}
 
             <TouchableOpacity
               style={[styles.actionButton, styles.inspectionButton]}
@@ -685,14 +650,9 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
                         />
                       </TouchableOpacity>
                       <Text style={styles.propertyName}>{property.name || 'Unnamed Property'}</Text>
-                      {hasInProgressInspection && property.status !== 'hold' && (
+                      {hasInProgressInspection && (
                         <View style={styles.inProgressBadge}>
                           <Text style={styles.inProgressBadgeText}>In Progress</Text>
-                        </View>
-                      )}
-                      {property.status === 'hold' && (
-                        <View style={styles.inProgressBadge}>
-                          <Text style={styles.inProgressBadgeText}>On Hold</Text>
                         </View>
                       )}
                     </View>
@@ -1016,14 +976,14 @@ const styles = StyleSheet.create({
     paddingRight: 8,
   },
   propertyMetaLabel: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
     color: '#9CA3AF',
     textTransform: 'uppercase',
     marginBottom: 2,
   },
   propertyMetaValue: {
-    fontSize: 13,
+    fontSize: 15,
     fontWeight: '600',
     color: '#111827',
   },
@@ -1070,7 +1030,7 @@ const styles = StyleSheet.create({
   },
   addButtonText: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
     textAlign: 'center',
   },
@@ -1090,7 +1050,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   propertyName: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '700',
     color: '#1F2937',
     flex: 1,
@@ -1099,7 +1059,7 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   propertyDetail: {
-    fontSize: 13,
+    fontSize: 15,
     color: '#374151',
     marginBottom: 4,
   },
@@ -1133,6 +1093,8 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   editButton: {
+    minHeight: 44,
+    justifyContent: 'center',
     backgroundColor: '#84CC16',
     borderRadius: 8,
     paddingVertical: 10,
@@ -1142,7 +1104,7 @@ const styles = StyleSheet.create({
   },
   editButtonText: {
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
   },
   actionModalOverlay: {
@@ -1198,14 +1160,6 @@ const styles = StyleSheet.create({
     borderWidth: 0,
   },
   removeButtonText: {
-    color: '#FFFFFF',
-  },
-  holdButton: {
-    backgroundColor: '#F59E0B',
-    borderColor: '#F59E0B',
-    borderWidth: 0,
-  },
-  holdButtonText: {
     color: '#FFFFFF',
   },
   loadingContainer: {
@@ -1545,6 +1499,8 @@ const styles = StyleSheet.create({
     color: '#D97706',
   },
   continueButton: {
+    minHeight: 44,
+    justifyContent: 'center',
     backgroundColor: '#0E7490',
     borderRadius: 8,
     paddingVertical: 10,
@@ -1554,7 +1510,7 @@ const styles = StyleSheet.create({
   },
   continueButtonText: {
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
   },
   disabledActionButton: {
