@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -31,7 +31,6 @@ import { US_STATES } from '../constants/usStates';
 import { US_STATE_OPTIONS } from '../utils/iosPickerUtils';
 import { unitCount } from '../utils/propertyForm';
 import { calculatePropertyProgressPercent } from '../utils/inspectionProgressUtils';
-import { findActiveInspection } from '../services/web/inspectionLock';
 
 // State options with "All States" as first option
 const STATE_OPTIONS = [
@@ -60,8 +59,6 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
   const [inProgressInspections, setInProgressInspections] = useState<Set<string>>(new Set());
   // What the one-at-a-time lock goes by (web my-inspection): every saved
   // progress record, and every property -- the list on screen is one page.
-  const [progressRecords, setProgressRecords] = useState<any[]>([]);
-  const [lockProperties, setLockProperties] = useState<PropertyType[]>([]);
   // Web parity: multi-select + bulk delete
   const [selectedProperties, setSelectedProperties] = useState<Set<string>>(new Set());
 
@@ -98,19 +95,6 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
       setLoading(false);
     }
   }, []);
-
-  // The list on screen is every property now, so the lock is handed that list
-  // and only the saved progress is fetched for it.
-  const loadLockData = async (everyProperty: PropertyType[]) => {
-    setLockProperties(everyProperty);
-    try {
-      const progressRes = await inspectionService.getAllProgress();
-      setProgressRecords(progressRes.success ? progressRes.progress : []);
-    } catch (error) {
-      // No answer, nothing locked.
-      setProgressRecords([]);
-    }
-  };
 
   const fetchData = async () => {
     try {
@@ -154,7 +138,6 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
 
       // Not awaited: the list is ready without it, and offline there is no
       // answer to wait for.
-      loadLockData(everyProperty);
     } catch (error) {
       console.error('Error in fetchData:', error);
     }
@@ -255,27 +238,7 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
     );
   };
 
-  // Web parity (my-inspection activeInspectionPropertyId): the property being
-  // inspected right now -- started and unfinished, and the one
-  // worked on last.
-  const activeInspection = useMemo(
-    () => findActiveInspection<PropertyType>(lockProperties, progressRecords),
-    [lockProperties, progressRecords]
-  );
-
-  // Web parity (handleInitiate): while one property is being inspected, the
-  // others do not open. True when `property` is one of the others.
-  const heldBackByActiveInspection = (property: PropertyType): boolean => {
-    if (!activeInspection || activeInspection._id === property._id) return false;
-    Alert.alert(
-      'Inspection In Progress',
-      `"${activeInspection.name || 'Another property'}" is currently being inspected. Please complete it before starting a new inspection.`
-    );
-    return true;
-  };
-
   const handleEditPress = (property: PropertyType, hasInProgressInspection: boolean = false) => {
-    if (heldBackByActiveInspection(property)) return;
     if (hasInProgressInspection) {
       Alert.alert(
         'Inspection In Progress',
@@ -292,7 +255,6 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
   };
 
   const handleContinueInspection = (property: PropertyType) => {
-    if (heldBackByActiveInspection(property)) return;
     const inProgressInspection = inspections.find(
       (ins =>
         (typeof ins.property === 'object' ? ins.property._id : ins.property) === property._id &&
@@ -460,7 +422,6 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
   };
 
   const handlePropertyCardPress = (property: PropertyType) => {
-    if (heldBackByActiveInspection(property)) return;
     // Open the Ready for Inspection modal when clicking on property card
     setSelectedProperty(property);
     const totalUnits = property.units ?? 1;

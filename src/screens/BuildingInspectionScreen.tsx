@@ -146,8 +146,6 @@ export default function BuildingInspectionScreen() {
   const [buildings, setBuildings] = useState<BuildingRow[]>(initBuildings);
   // The building whose Start Inspection is being checked against the lock, so
   // a second tap does not start a second check.
-  const [startingBuildingId, setStartingBuildingId] = useState<string | null>(null);
-  const [inspectionStartError, setInspectionStartError] = useState('');
 
   // Web parity: per-building completed tasks + renamable ID column
   const [completedUnitsMap, setCompletedUnitsMap] = useState<Record<string, string[]>>({});
@@ -273,19 +271,7 @@ export default function BuildingInspectionScreen() {
     }
   };
 
-  const handleStartInspectionForBuilding = async (building: BuildingRow) => {
-    if (startingBuildingId) return;
-    setInspectionStartError('');
-    setStartingBuildingId(building.buildingId);
-    try {
-      await propertyService.startInspection(String(property._id || property.id || ''));
-    } catch (error: any) {
-      setInspectionStartError(error.message || 'Could not start inspection');
-      return;
-    } finally {
-      setStartingBuildingId(null);
-    }
-
+  const handleStartInspectionForBuilding = (building: BuildingRow) => {
     // A building with no units to inspect still has an Outside and an Inside,
     // and they are inspected like any other building's -- as on the web, whose
     // Start Inspection never refused one. Only its Units section stays empty.
@@ -1514,11 +1500,6 @@ export default function BuildingInspectionScreen() {
           </View>
 
           {/* Building Table */}
-          {!!inspectionStartError && (
-            <Text accessibilityRole="alert" accessibilityLiveRegion="polite" style={[styles.warningBanner, styles.warningText]}>
-              {inspectionStartError}
-            </Text>
-          )}
           <View style={styles.sectionRow}>
             <Text style={styles.sectionTitle}>Building</Text>
             <Text style={styles.unitsBadge}>
@@ -1599,10 +1580,8 @@ export default function BuildingInspectionScreen() {
                 <TouchableOpacity
                   style={[
                     styles.startInspectionBtn,
-                    startingBuildingId === building.buildingId && styles.startInspectionBtnBusy,
                   ]}
                   onPress={() => handleStartInspectionForBuilding(building)}
-                  disabled={startingBuildingId !== null}
                 >
                   <Text style={styles.startInspectionBtnText}>Start Inspection</Text>
                 </TouchableOpacity>
@@ -1982,9 +1961,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '600',
-  },
-  startInspectionBtnBusy: {
-    opacity: 0.6,
   },
   // Editable cells
   // Export Button

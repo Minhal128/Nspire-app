@@ -1,4 +1,3 @@
-import propertyService from '../services/propertyService';
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
@@ -433,12 +432,6 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
     // Back to the building's categories (Outside / Inside / Units), the screen
     // the inspection was being done from, as the web's CONTINUE INSPECTION
     // returns to that building's page.
-    try {
-      await propertyService.startInspection(String(property?._id || property?.id || ''));
-    } catch (error: any) {
-      Alert.alert('Cannot start inspection', error.message || 'Could not start inspection');
-      return;
-    }
     navigation.navigate('InspectionCategories', {
       property,
       propertyId: String(property?._id || property?.id || property?.propertyId || ''),
@@ -585,7 +578,7 @@ const InspectionSummaryScreen = ({ navigation, route }: Props) => {
       metadata: {
         inspectionNo: inspectionId,
         inspectionType: INSPECTION_TYPE,
-        escortName: 'Property Manager',
+        escortName: inspectorName,
         propertyAddress: property.address || '',
         propertyName: property.name || 'Property',
         propertyId: property._id || property.id || 'PROP-001',

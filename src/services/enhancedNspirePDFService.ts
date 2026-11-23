@@ -363,7 +363,7 @@ function generateEnhancedHeader(metadata: InspectionMetadata, logoBase64: string
       <table class="meta-table">
         <tr><td class="meta-label">Inspection No:</td><td>${esc(metadata.inspectionNo)}</td></tr>
         <tr><td class="meta-label">Inspection Type:</td><td>${esc(metadata.inspectionType)}</td></tr>
-        <tr><td class="meta-label">Escort Name:</td><td>${esc(metadata.escortName)}</td></tr>
+        <tr><td class="meta-label">Escort Name:</td><td>${esc(metadata.inspectorName)}</td></tr>
         <tr><td class="meta-label">Property Type:</td><td>Multifamily</td></tr>
       </table>
     </td>
@@ -1759,7 +1759,7 @@ class EnhancedNSPIREPDFReportService {
       metadata: {
         inspectionNo: data.inspectionNo || data.inspectionId || `INSP-${Date.now().toString(36).toUpperCase()}`,
         inspectionType: data.inspectionType || 'General NSPIRE',
-        escortName: data.escortName || data.property?.contactName || 'Property Manager',
+        escortName: data.inspectorName || data.inspector?.fullName || 'Inspector',
         propertyAddress: data.propertyAddress || data.property?.address || 'pink avenue karachi',
         propertyName: data.propertyName || data.property?.name || 'Property Name',
         propertyId: data.propertyId || data.property?._id || 'PROP-001',

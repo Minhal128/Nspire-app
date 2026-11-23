@@ -503,7 +503,7 @@ function generateEnhancedHeader(metadata: InspectionMetadata, options: PDFGenera
           </div>
           <div class="header-row">
             <span class="header-label">Escort Name:</span>
-            <span class="header-value">${escapeHtml(metadata.escortName || '-')}</span>
+            <span class="header-value">${escapeHtml(metadata.inspectorName || '-')}</span>
           </div>
           <div class="header-row">
             <span class="header-label">${INSPECTOR_NAME_LABEL}:</span>

@@ -3,9 +3,6 @@
  * Handles all property-related API calls
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import authService from './authService';
-import networkService from './networkService';
 import api, { Property, PaginatedResponse } from './api';
 
 export interface CreatePropertyData {
@@ -155,18 +152,6 @@ class PropertyService {
   /**
    * Toggle hold status for a property's inspection
    */
-  async startInspection(id: string): Promise<void> {
-    const user = await authService.getStoredUser();
-    const userId = user?._id || user?.id;
-    const storageKey = userId ? `activeInspectionProperty:${userId}` : null;
-    if (networkService.hasNoConnection()) {
-      if (storageKey && await AsyncStorage.getItem(storageKey) === id) return;
-      throw new Error('Connect to the internet to start this property inspection.');
-    }
-    await api.post(`/inspections/start/${id}`, {});
-    if (storageKey) await AsyncStorage.setItem(storageKey, id).catch(() => {});
-  }
-
   /**
    * Get property statistics
    */

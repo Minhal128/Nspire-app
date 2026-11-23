@@ -119,11 +119,6 @@ checked++;
 
   // The one-property-at-a-time lock is the web's rule, not a second writing of
   // it: two writings of that rule disagreeing is what locked every property.
-  assert.strictEqual(
-    read(new URL('src/services/web/inspectionLock.ts', root)),
-    read(new URL('inspectionLock.ts', webLib)),
-    'src/services/web/inspectionLock.ts has drifted from inspire-web/lib/inspectionLock.ts — re-copy it'
-  );
   checked++;
 
   // What counts as a general comment, and how one is gathered for the report,

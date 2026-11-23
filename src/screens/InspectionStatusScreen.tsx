@@ -114,7 +114,7 @@ export default function InspectionStatusScreen({ navigation }: InspectionStatusS
         return {
           ...property,
           inspection,
-          hasInspection: Boolean(completed),
+          hasInspection: (progressMap[property._id] || 0) >= 100 && Boolean(completed),
           isUnlocked: false,
         };
       });
@@ -122,7 +122,7 @@ export default function InspectionStatusScreen({ navigation }: InspectionStatusS
       // Payment/unlock status for properties with a completed inspection
       const withUnlock = await Promise.all(
         mapped.map(async (property) => {
-          if (property.hasInspection && property.inspection?._id) {
+          if (property.inspection?.status === 'completed' && property.inspection._id) {
             try {
               const unlocked = await stripeService.checkUnlockStatus(property.inspection._id);
               return { ...property, isUnlocked: unlocked };
@@ -603,7 +603,7 @@ export default function InspectionStatusScreen({ navigation }: InspectionStatusS
 
                       {/* Actions (web parity) */}
                       <View style={styles.actionsRow}>
-                        {property.hasInspection ? (
+                        {property.inspection?.status === 'completed' && (
                           property.isUnlocked ? (
                             <>
                               <TouchableOpacity
@@ -664,7 +664,8 @@ export default function InspectionStatusScreen({ navigation }: InspectionStatusS
                               ))}
                             </>
                           )
-                        ) : (
+                        )}
+                        {!property.hasInspection && (
                           <TouchableOpacity
                             style={[styles.actionButton, styles.startButton]}
                             onPress={() => handleStartInspection(property)}
@@ -798,9 +799,9 @@ const styles = StyleSheet.create({
   },
   cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 10 },
   statusIconWrap: { width: 44, height: 44, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  propertyName: { fontSize: 16, fontWeight: '700', color: '#111827', marginBottom: 4 },
+  propertyName: { fontSize: 18, fontWeight: '800', color: '#111827', marginBottom: 4 },
   statusBadge: { alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999 },
-  statusBadgeText: { fontSize: 11, fontWeight: '700' },
+  statusBadgeText: { fontSize: 13, fontWeight: '900' },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
   metaText: { fontSize: 12, color: '#4B5563', flex: 1 },
   deficiencyBadge: {

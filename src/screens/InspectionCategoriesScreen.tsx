@@ -959,7 +959,9 @@ const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
                   )}
                 </View>
                 {section.showNext && section.total > 0 ? (
-                  <Text style={{ color: '#006795', fontSize: 14, fontWeight: '800' }}>Next</Text>
+                  <View style={styles.unitsNextButton}>
+                    <Text style={styles.unitsNextLabel}>NEXT</Text>
+                  </View>
                 ) : (
                   <Ionicons name="chevron-down" size={24} color="#006795" />
                 )}
@@ -1164,6 +1166,19 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#111827',
     flexShrink: 1,
+  },
+  unitsNextButton: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#E5E7EB',
+    borderWidth: 1,
+    borderRadius: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+  },
+  unitsNextLabel: {
+    color: '#374151',
+    fontSize: 12,
+    fontWeight: '800',
   },
   unitsInfo: {
     fontSize: 14,

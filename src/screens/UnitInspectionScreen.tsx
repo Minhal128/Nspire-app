@@ -145,18 +145,13 @@ export default function UnitInspectionScreen({ navigation, route }: UnitInspecti
     }
   };
 
-  const startAIInspection = async (selectedUnits: string[]) => {
-    try {
-      await propertyService.startInspection(String(property?._id || property?.id || ''));
-      navigation.navigate('AIInspection' as never, {
-        property,
-        selectedUnits,
-        coverage: '100',
-        totalUnits: selectedUnits.length,
-      } as never);
-    } catch (error: any) {
-      Alert.alert('Cannot start inspection', error.message || 'Could not start inspection');
-    }
+  const startAIInspection = (selectedUnits: string[]) => {
+    navigation.navigate('AIInspection' as never, {
+      property,
+      selectedUnits,
+      coverage: '100',
+      totalUnits: selectedUnits.length,
+    } as never);
   };
 
   const handleStartInspection = (unit: Unit) => startAIInspection([unit.name]);

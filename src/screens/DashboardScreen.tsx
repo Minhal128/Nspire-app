@@ -102,6 +102,7 @@ export default function DashboardScreen({
 
   // Web parity: per-property completion percentage
   const [propertyProgress, setPropertyProgress] = useState<Record<string, number>>({});
+  const [completedPropertyIds, setCompletedPropertyIds] = useState<Set<string>>(new Set());
 
   // Load user and properties on mount
   useEffect(() => {
@@ -198,6 +199,7 @@ export default function DashboardScreen({
         // and carry on working; the writes they make are queued by offlineQueue.
         cacheProperties(mappedProperties);
         fetchProgress(mappedProperties);
+        fetchCompletedProperties();
         return mappedProperties;
       }
       return [];
@@ -211,6 +213,21 @@ export default function DashboardScreen({
         return cached;
       }
       return [];
+    }
+  };
+
+  const fetchCompletedProperties = async () => {
+    try {
+      const response = await inspectionService.getInspections({ view: 'list' });
+      if (!response.success || !Array.isArray(response.inspections)) return;
+      const ids = new Set<string>();
+      for (const inspection of response.inspections) {
+        const propertyId = typeof inspection.property === 'object' ? inspection.property?._id : inspection.property;
+        if (inspection.status === 'completed' && propertyId) ids.add(propertyId);
+      }
+      setCompletedPropertyIds(ids);
+    } catch (error) {
+      console.error('Error fetching completed inspections:', error);
     }
   };
 
@@ -294,8 +311,8 @@ export default function DashboardScreen({
 
   // Web parity: the dashboard ACTIONS column is labelled by progress, not by a
   // fixed "Inspection Status"/"Initiate" pair.
-  const statusLabel = (progress: number) =>
-    progress >= 100 ? 'Completed' : progress > 0 ? 'In Progress' : 'Not Started';
+  const statusLabel = (propertyId: string, progress: number) =>
+    progress >= 100 && completedPropertyIds.has(propertyId) ? 'Completed' : progress > 0 ? 'In Progress' : 'Not Started';
 
   const handleEditPress = (property: Property) => {
     setSelectedProperty(property);
@@ -740,7 +757,7 @@ export default function DashboardScreen({
                             style={styles.statusButton}
                             onPress={() => handleEditPress(property)}
                           >
-                            <Text style={styles.statusButtonText}>{statusLabel(progress)}</Text>
+                            <Text style={styles.statusButtonText}>{statusLabel(propId, progress)}</Text>
                           </TouchableOpacity>
                         </View>
 

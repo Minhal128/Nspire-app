@@ -1,4 +1,3 @@
-import propertyService from '../services/propertyService';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
@@ -420,13 +419,7 @@ const PropertyInfoScreen: React.FC<Props> = ({ navigation, route }) => {
     navigateToInspection(unitName);
   };
 
-  const navigateToInspection = async (unitName: string) => {
-    try {
-      await propertyService.startInspection(String(property?._id || property?.id || ''));
-    } catch (error: any) {
-      Alert.alert('Cannot start inspection', error.message || 'Could not start inspection');
-      return;
-    }
+  const navigateToInspection = (unitName: string) => {
     navigation.navigate('LocationInspection', {
       property,
       selectedUnits: unitNames,
