@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,6 @@ import {
   ScrollView,
   Modal,
   RefreshControl,
-  ActivityIndicator,
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -36,77 +35,50 @@ interface Unit {
 
 export default function UnitInspectionScreen({ navigation, route }: UnitInspectionScreenProps) {
   const [sidebarVisible, setSidebarVisible] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [units, setUnits] = useState<Unit[]>([]);
+  const [refreshVersion, setRefreshVersion] = useState(0);
   const [user, setUser] = useState<any>(null);
   const [randomSample, setRandomSample] = useState<UnitSample | null>(null);
   const [showRandomSample, setShowRandomSample] = useState(false);
   const { property: routeProperty } = route.params || {};
-  const [property, setProperty] = useState<any>(routeProperty);
-
-  const loadUnits = useCallback(async () => {
-    try {
-      // Load user data
-      const storedUser = await authService.getStoredUser();
-      setUser(storedUser);
-      if (property?._id) {
-        // Try to fetch property details with units from API
-        const propertyData = await propertyService.getProperty(property._id);
-        
-        // Update property state with fetched data that includes zipCode
-        if (propertyData?.property) {
-          setProperty(propertyData.property);
-        }
-        
-        const unitCount = propertyData?.property?.units || property?.units || 1;
-        
-        // Generate units based on unit count
-        const generatedUnits: Unit[] = Array.from({ length: unitCount }, (_, i) => ({
-          id: `${i + 1}`.padStart(3, '0'),
-          name: `Unit ${(i + 1).toString().padStart(3, '0')}`,
-          status: 'needs-attention' as const,
-        }));
-        
-        setUnits(generatedUnits);
-      } else if (property?.units && typeof property.units === 'number') {
-        // Generate units from route params unit count
-        const generatedUnits: Unit[] = Array.from({ length: property.units }, (_, i) => ({
-          id: `${i + 1}`.padStart(3, '0'),
-          name: `Unit ${(i + 1).toString().padStart(3, '0')}`,
-          status: 'needs-attention' as const,
-        }));
-        setUnits(generatedUnits);
-      } else {
-        // Generate at least 1 unit if none specified
-        setUnits([
-          { id: '001', name: 'Unit 001', status: 'needs-attention' },
-        ]);
-      }
-    } catch (error) {
-      console.error('Error loading units:', error);
-      // Generate units based on property.units or default to 1
-      const unitCount = property?.units || 1;
-      const generatedUnits: Unit[] = Array.from({ length: unitCount }, (_, i) => ({
-        id: `${i + 1}`.padStart(3, '0'),
-        name: `Unit ${(i + 1).toString().padStart(3, '0')}`,
-        status: 'needs-attention' as const,
-      }));
-      setUnits(generatedUnits);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [property]);
+  const propertyId = routeProperty?._id || routeProperty?.id;
+  const [remote, setRemote] = useState<{ id: string; property: any }>();
+  const property = remote?.id === propertyId ? remote?.property ?? routeProperty : routeProperty;
+  const unitCount = property?.units ?? 1;
+  const units = useMemo<Unit[]>(() => Array.from({ length: unitCount }, (_, index) => {
+    const id = String(index + 1).padStart(3, '0');
+    return { id, name: `Unit ${id}`, status: 'needs-attention' };
+  }), [unitCount]);
 
   useEffect(() => {
-    loadUnits();
-  }, [loadUnits]);
+    let active = true;
+    authService.getStoredUser()
+      .then((storedUser) => { if (active) setUser(storedUser); })
+      .catch(console.error);
+    return () => { active = false; };
+  }, []);
 
-  const onRefresh = useCallback(() => {
+  useEffect(() => {
+    let active = true;
+    if (!propertyId) {
+      setRefreshing(false);
+      return;
+    }
+
+    propertyService.getProperty(propertyId)
+      .then((result) => {
+        if (active && result?.property) setRemote({ id: propertyId, property: result.property });
+      })
+      .catch((error) => console.log('Could not refresh property units:', error))
+      .finally(() => { if (active) setRefreshing(false); });
+
+    return () => { active = false; };
+  }, [propertyId, refreshVersion]);
+
+  const onRefresh = () => {
     setRefreshing(true);
-    loadUnits();
-  }, [loadUnits]);
+    setRefreshVersion((version) => version + 1);
+  };
 
   const handleMenuPress = () => {
     setSidebarVisible(true);
@@ -222,17 +194,6 @@ export default function UnitInspectionScreen({ navigation, route }: UnitInspecti
         return '';
     }
   };
-
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#0E7490" />
-          <Text style={styles.loadingText}>Loading units...</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
 
   return (
     <>
@@ -437,16 +398,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#CEF8FF',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: '#6B7280',
   },
   headerContainer: {
     backgroundColor: '#CEF8FF',
