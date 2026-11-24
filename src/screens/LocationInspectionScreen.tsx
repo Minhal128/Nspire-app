@@ -612,7 +612,8 @@ const LocationInspectionScreen: React.FC<Props> = ({ navigation, route }) => {
 
                     {!!selectedFinding?.note && (
                       <>
-                        <Text style={styles.findingLabel}>COMMENT</Text>
+                        {/* The note's label is red (client's "Final correction", C1). */}
+                        <Text style={[styles.findingLabel, styles.noteLabel]}>COMMENT</Text>
                         <Text style={styles.findingValue}>{selectedFinding.note}</Text>
                       </>
                     )}
@@ -1072,6 +1073,10 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     letterSpacing: 0.5,
     marginTop: 14,
+  },
+  // The label of the note alone, over findingLabel.
+  noteLabel: {
+    color: '#DC2626',
   },
   findingValue: {
     fontSize: 14,

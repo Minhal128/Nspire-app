@@ -38,6 +38,7 @@ import { UNIT_SELECTION_OPTIONS } from "../utils/iosPickerUtils";
 
 // Coverage options for inspection
 import { COVERAGE_OPTIONS } from '../constants/inspectionCoverage';
+import { IN_PROGRESS_SUMMARY_ENABLED } from '../config/featureFlags';
 
 interface DashboardScreenProps {
   navigation: DashboardScreenNavigationProp;
@@ -364,6 +365,9 @@ export default function DashboardScreen({
   };
 
   const handleViewSummary = () => {
+    // Switched off in config/featureFlags. The button is not drawn while the
+    // switch is off; this keeps anything else from opening the summary.
+    if (!IN_PROGRESS_SUMMARY_ENABLED) return;
     setActionModalVisible(false);
     if (!selectedProperty) return;
     navigation.navigate('InspectionSummary' as any, {
@@ -634,12 +638,18 @@ export default function DashboardScreen({
             <Text style={styles.actionModalTitle}>Action</Text>
 
             {(propertyProgress[selectedProperty?._id || selectedProperty?.id || ''] || 0) > 0 ? (
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={handleViewSummary}
-              >
-                <Text style={styles.actionButtonText}>View Summary</Text>
-              </TouchableOpacity>
+              // Drawn only while IN_PROGRESS_SUMMARY_ENABLED is on
+              // (config/featureFlags). While it is off this place stays empty:
+              // "Edit Property" below is for a property whose inspection has
+              // not started, and is not offered in its stead.
+              IN_PROGRESS_SUMMARY_ENABLED ? (
+                <TouchableOpacity
+                  style={styles.actionButton}
+                  onPress={handleViewSummary}
+                >
+                  <Text style={styles.actionButtonText}>View Summary</Text>
+                </TouchableOpacity>
+              ) : null
             ) : (
               <TouchableOpacity
                 style={styles.actionButton}
@@ -837,9 +847,11 @@ const styles = StyleSheet.create({
     paddingTop: 24,
     paddingBottom: 20,
   },
+  // "Property Dashboard": bigger and bolder at the user's request (24 Nov 2026).
+  // It was 26 / 700.
   pageTitle: {
-    fontSize: 26,
-    fontWeight: '700',
+    fontSize: 31,
+    fontWeight: '800',
     color: '#0F2942',
     marginBottom: 6,
   },

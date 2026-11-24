@@ -39,6 +39,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { OUTSIDE_ITEMS, INSIDE_ITEMS, UNIT_ITEMS, UNIT_LOCATIONS } from '../data/inspectionData';
 import { getCompletedUnits } from '../utils/unitInspectionStorage';
 import authService from '../services/authService';
+import { IN_PROGRESS_SUMMARY_ENABLED } from '../config/featureFlags';
 
 type InspectionCategoriesScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -883,21 +884,30 @@ const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
           <View style={styles.buildingRowLeft}>
             <Text style={styles.buildingTitle}>BUILDING UNIQUE ID: {buildingLabel}</Text>
             <TouchableOpacity onPress={openBuildingEditModal} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Ionicons name="create-outline" size={18} color="#006795" />
+              {/* The edit pen is red (client's "Final correction", C3). */}
+              <Ionicons name="create-outline" size={18} color="#DC2626" />
             </TouchableOpacity>
           </View>
-          <TouchableOpacity
-            style={styles.summaryButton}
-            onPress={() => navigation.navigate('InspectionSummary' as any, {
-              property,
-              selectedUnits,
-              buildingId,
-              inspectionData: null,
-            })}
-          >
-            <Ionicons name="document-text-outline" size={14} color="#FFFFFF" />
-            <Text style={styles.summaryButtonText}>SUMMARY</Text>
-          </TouchableOpacity>
+          {/* Drawn only while IN_PROGRESS_SUMMARY_ENABLED is on
+              (config/featureFlags): opening the summary in the middle of an
+              inspection cleared the unit inspection. */}
+          {IN_PROGRESS_SUMMARY_ENABLED && (
+            <TouchableOpacity
+              style={styles.summaryButton}
+              onPress={() => {
+                if (!IN_PROGRESS_SUMMARY_ENABLED) return;
+                navigation.navigate('InspectionSummary' as any, {
+                  property,
+                  selectedUnits,
+                  buildingId,
+                  inspectionData: null,
+                });
+              }}
+            >
+              <Ionicons name="document-text-outline" size={14} color="#FFFFFF" />
+              <Text style={styles.summaryButtonText}>SUMMARY</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {[
@@ -1190,10 +1200,12 @@ const styles = StyleSheet.create({
   categoryInfo: {
     flex: 1,
   },
+  // The area to inspect -- Outside, Inside, Units -- is named in red
+  // (client's "Final correction", C2: area selection).
   categoryTitle: {
     fontSize: 14,
     fontWeight: '900',
-    color: '#006795',
+    color: '#DC2626',
     marginBottom: 4,
     letterSpacing: -0.3,
   },

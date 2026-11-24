@@ -1318,9 +1318,10 @@ const DeficiencyDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             </TouchableOpacity>
           </View>
         </View>
-        {/* Comment */}
+        {/* Comment: the note of a deficiency, and the text of a general comment.
+            Its label is red (client's "Final correction", C1: work order / note). */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>COMMENT</Text>
+          <Text style={[styles.sectionLabel, styles.noteLabel]}>COMMENT</Text>
           <View style={styles.textAreaContainer}>
             <TextInput
               style={styles.textArea}
@@ -2185,6 +2186,10 @@ const styles = StyleSheet.create({
     color: '#111827',
     marginBottom: 8,
     letterSpacing: 0.7,
+  },
+  // The label of the note field alone, over sectionLabel.
+  noteLabel: {
+    color: '#DC2626',
   },
   dropdown: {
     backgroundColor: '#FFFFFF',

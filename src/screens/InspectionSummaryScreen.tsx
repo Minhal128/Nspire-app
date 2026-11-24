@@ -53,6 +53,7 @@ import { resolveUnlockReference } from '../utils/stripeUnlock';
 import { usePaymentLink } from '../hooks/usePaymentLink';
 import { api } from '../services/api';
 import authService from '../services/authService';
+import { IN_PROGRESS_SUMMARY_ENABLED } from '../config/featureFlags';
 
 type InspectionSummaryScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -2281,4 +2282,27 @@ const styles = StyleSheet.create({
   },
 });
 
-export default InspectionSummaryScreen;
+/**
+ * The screen as it is registered.
+ *
+ * The in-progress summary is switched off (config/featureFlags,
+ * IN_PROGRESS_SUMMARY_ENABLED). The buttons that open it are not drawn, and
+ * this closes the route itself, so nothing else -- a deep link, an older
+ * screen -- can land here. While it is off the summary is never mounted and
+ * none of its effects run: as it opens it loads the unit's saved deficiencies
+ * and writes them back. A wrapper, so the summary's own hooks keep their order.
+ */
+const GuardedInspectionSummaryScreen = (props: Props) => {
+  const { navigation } = props;
+
+  useEffect(() => {
+    if (IN_PROGRESS_SUMMARY_ENABLED) return;
+    if (navigation.canGoBack()) navigation.goBack();
+    else navigation.navigate('Dashboard');
+  }, [navigation]);
+
+  if (!IN_PROGRESS_SUMMARY_ENABLED) return null;
+  return <InspectionSummaryScreen {...props} />;
+};
+
+export default GuardedInspectionSummaryScreen;

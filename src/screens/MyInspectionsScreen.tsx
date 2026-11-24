@@ -57,6 +57,9 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
   const [properties, setProperties] = useState<PropertyType[]>([]);
   const [inspections, setInspections] = useState<Inspection[]>([]);
   const [inProgressInspections, setInProgressInspections] = useState<Set<string>>(new Set());
+  // How far each property's inspection has got: the figure the dashboard and
+  // Inspection Status show.
+  const [propertyProgress, setPropertyProgress] = useState<Record<string, number>>({});
   // What the one-at-a-time lock goes by (web my-inspection): every saved
   // progress record, and every property -- the list on screen is one page.
   // Web parity: multi-select + bulk delete
@@ -110,6 +113,23 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
         console.error('Error fetching properties:', propError);
       }
       setProperties(everyProperty);
+
+      // Progress, from the progress records and by the same rule as the
+      // dashboard and Inspection Status. This screen used to know a property
+      // was in progress only from its saved inspections, so a property being
+      // inspected showed a percentage on those two screens and nothing here.
+      try {
+        const progressResponse = await inspectionService.getAllProgress();
+        if (progressResponse?.success && Array.isArray(progressResponse.progress)) {
+          const progressMap: Record<string, number> = {};
+          everyProperty.forEach((prop) => {
+            progressMap[prop._id || ''] = calculatePropertyProgressPercent(prop as any, progressResponse.progress);
+          });
+          setPropertyProgress(progressMap);
+        }
+      } catch (progressError) {
+        console.error('Error fetching progress:', progressError);
+      }
 
       // Fetch inspections with error handling
       try {
@@ -587,6 +607,7 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
               {filteredProperties.map((property) => {
                 if (!property) return null;
                 const hasInProgressInspection = inProgressInspections.has(property._id || '');
+                const progress = propertyProgress[property._id || ''] || 0;
                 return (
                 <TouchableOpacity
                   key={property._id || Math.random().toString()}
@@ -611,7 +632,7 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
                         />
                       </TouchableOpacity>
                       <Text style={styles.propertyName}>{property.name || 'Unnamed Property'}</Text>
-                      {hasInProgressInspection && (
+                      {(hasInProgressInspection || progress > 0) && (
                         <View style={styles.inProgressBadge}>
                           <Text style={styles.inProgressBadgeText}>In Progress</Text>
                         </View>
@@ -653,6 +674,17 @@ export default function MyInspectionsScreen({ navigation, onMenuPress }: MyInspe
                     <View style={styles.propertyMetaCell}>
                       <Text style={styles.propertyMetaLabel}>Units</Text>
                       <Text style={styles.propertyMetaValue}>{property.units || 0}</Text>
+                    </View>
+                  </View>
+
+                  {/* The same progress the dashboard and Inspection Status show. */}
+                  <View style={styles.progressBlock}>
+                    <View style={styles.progressLabelRow}>
+                      <Text style={styles.progressLabel}>Progress</Text>
+                      <Text style={styles.progressPercent}>{progress} %</Text>
+                    </View>
+                    <View style={styles.progressTrack}>
+                      <View style={[styles.progressFill, { width: (progress + '%') as any }]} />
                     </View>
                   </View>
 
@@ -1446,6 +1478,43 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
+  },
+  // The dashboard's progress block, as it is there.
+  progressBlock: {
+    width: '100%',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 10,
+    padding: 12,
+    marginTop: 10,
+  },
+  progressLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#6B7280',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  progressLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  progressPercent: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#2563EB',
+  },
+  progressTrack: {
+    height: 10,
+    borderRadius: 999,
+    backgroundColor: '#E5E7EB',
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: 10,
+    borderRadius: 999,
+    backgroundColor: '#2563EB',
   },
   inProgressBadge: {
     backgroundColor: '#FEF3C7',

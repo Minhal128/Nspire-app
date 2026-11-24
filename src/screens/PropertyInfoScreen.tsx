@@ -546,7 +546,8 @@ const PropertyInfoScreen: React.FC<Props> = ({ navigation, route }) => {
             <Text style={styles.unitsListTitle}>Units for Inspection</Text>
             <View style={styles.unitsListActions}>
               <TouchableOpacity style={styles.editButton} onPress={openEditModal}>
-                <Ionicons name="pencil-outline" size={14} color="#0E7490" />
+                {/* The edit pen is red (client's "Final correction", C3). */}
+                <Ionicons name="pencil-outline" size={14} color="#DC2626" />
                 <Text style={styles.editButtonText}>Edit</Text>
               </TouchableOpacity>
               {completedCount > 0 && (

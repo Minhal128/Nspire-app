@@ -37,6 +37,7 @@ import authService from '../services/authService';
 import { inspectionService } from '../services/inspectionService';
 import offlineQueue from '../services/offlineQueue';
 import { useReportPreview } from '../contexts/ReportPreviewContext';
+import { EXPORT_IN_PROGRESS_ENABLED, IN_PROGRESS_SUMMARY_ENABLED } from '../config/featureFlags';
 
 type BuildingInspectionRouteProp = RouteProp<RootStackParamList, 'BuildingInspection'>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'BuildingInspection'>;
@@ -297,6 +298,11 @@ export default function BuildingInspectionScreen() {
   // page, the last screen of the flow, which is where the web's Export In
   // Progress goes.
   const handleExportInProgress = async (destination: 'summary' | 'reports' = 'summary') => {
+    // Switched off in config/featureFlags. The two buttons are not drawn while
+    // their switch is off; this keeps anything else from running the export.
+    const switchedOn = destination === 'reports' ? EXPORT_IN_PROGRESS_ENABLED : IN_PROGRESS_SUMMARY_ENABLED;
+    if (!switchedOn) return;
+
     try {
       setExportTarget(destination);
       setIsExporting(true);
@@ -1467,7 +1473,8 @@ export default function BuildingInspectionScreen() {
               <View style={styles.selectionValueRow}>
                 <Text style={styles.infoValue}>{getCoverageLabel()} ({calculatedUnits} units)</Text>
                 <TouchableOpacity onPress={openCoverageModal} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                  <Ionicons name="create-outline" size={16} color="#006795" />
+                  {/* The edit pen is red (client's "Final correction", C3). */}
+                  <Ionicons name="create-outline" size={16} color="#DC2626" />
                 </TouchableOpacity>
               </View>
             </View>
@@ -1589,37 +1596,43 @@ export default function BuildingInspectionScreen() {
             </View>
           ))}
 
-          {/* View Summary: the in-progress report, shown here. */}
-          <TouchableOpacity
-            style={[styles.exportButton, styles.exportSummaryButton]}
-            onPress={() => handleExportInProgress('summary')}
-            disabled={isExporting}
-          >
-            {isExporting && exportTarget === 'summary' ? (
-              <ActivityIndicator color="#FFFFFF" size="small" />
-            ) : (
-              <>
-                <Ionicons name="document-text-outline" size={20} color="#FFFFFF" />
-                <Text style={styles.exportButtonText}>View Summary</Text>
-              </>
-            )}
-          </TouchableOpacity>
+          {/* View Summary: the in-progress report, shown here. Drawn only while
+              IN_PROGRESS_SUMMARY_ENABLED is on (config/featureFlags). */}
+          {IN_PROGRESS_SUMMARY_ENABLED && (
+            <TouchableOpacity
+              style={[styles.exportButton, styles.exportSummaryButton]}
+              onPress={() => handleExportInProgress('summary')}
+              disabled={isExporting}
+            >
+              {isExporting && exportTarget === 'summary' ? (
+                <ActivityIndicator color="#FFFFFF" size="small" />
+              ) : (
+                <>
+                  <Ionicons name="document-text-outline" size={20} color="#FFFFFF" />
+                  <Text style={styles.exportButtonText}>View Summary</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          )}
 
-          {/* Export Reports: on to the report page, the last screen of the flow. */}
-          <TouchableOpacity
-            style={[styles.exportButton, styles.exportReportsButton]}
-            onPress={() => handleExportInProgress('reports')}
-            disabled={isExporting}
-          >
-            {isExporting && exportTarget === 'reports' ? (
-              <ActivityIndicator color="#FFFFFF" size="small" />
-            ) : (
-              <>
-                <Ionicons name="share-outline" size={20} color="#FFFFFF" />
-                <Text style={styles.exportButtonText}>Export Reports</Text>
-              </>
-            )}
-          </TouchableOpacity>
+          {/* Export Reports: on to the report page, the last screen of the flow.
+              Drawn only while EXPORT_IN_PROGRESS_ENABLED is on (config/featureFlags). */}
+          {EXPORT_IN_PROGRESS_ENABLED && (
+            <TouchableOpacity
+              style={[styles.exportButton, styles.exportReportsButton]}
+              onPress={() => handleExportInProgress('reports')}
+              disabled={isExporting}
+            >
+              {isExporting && exportTarget === 'reports' ? (
+                <ActivityIndicator color="#FFFFFF" size="small" />
+              ) : (
+                <>
+                  <Ionicons name="share-outline" size={20} color="#FFFFFF" />
+                  <Text style={styles.exportButtonText}>Export Reports</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
 
