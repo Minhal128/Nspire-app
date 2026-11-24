@@ -210,7 +210,18 @@ assert.ok(
 );
 redStyle(location, 'noteLabel', 'LocationInspectionScreen');
 
-// C2. "Area selection": Outside, Inside, Units.
+// C2. "Area selection": the headings of the Add New Property form, as the
+// client put it on 25 Nov 2026 -- not the three area titles of the unit
+// screen, which were made red first and are teal again.
+const addProperty = read('src/screens/AddPropertyScreen.tsx');
+for (const heading of ['Property ID (Optional)', 'Address ', 'Property Name ', 'City (Area) ', 'Number Of Buildings ', 'State (Province) ', 'Number Of Units ', 'Zip ']) {
+  assert.ok(addProperty.includes(`Label text="${heading}"`), `AddPropertyScreen: the heading "${heading.trim()}" is gone`);
+}
+assert.ok(
+  addProperty.includes('<Text style={styles.label}>') && addProperty.includes('<Text style={styles.label}>{text}</Text>'),
+  'AddPropertyScreen: the form\'s headings are drawn with the label style',
+);
+redStyle(addProperty, 'label', 'AddPropertyScreen');
 for (const title of [
   'OUTSIDE (AREAS AFFECTED BY RAIN, SNOW, WIND)',
   'INSIDE (INTERIOR COMMON AREA, UTILITY CLOSET, MECHANICAL ROOMS)',
@@ -219,10 +230,9 @@ for (const title of [
   assert.ok(categories.includes(`title: '${title}'`), `InspectionCategoriesScreen: the area "${title}" is gone`);
 }
 assert.ok(
-  categories.includes('<Text style={styles.categoryTitle}>{section.title}</Text>'),
-  'InspectionCategoriesScreen: the three areas are named with categoryTitle',
+  /\n  categoryTitle: \{[^}]*\bcolor: '#006795'/.test(categories),
+  'InspectionCategoriesScreen: the three area titles are teal, not red; the client took the red back',
 );
-redStyle(categories, 'categoryTitle', 'InspectionCategoriesScreen');
 
 // C3. "Edit Pen": every pencil, wherever one is drawn.
 const PEN = /<[A-Za-z]+ name="(?:pencil|create)[a-z-]*"[^>]*>/g;

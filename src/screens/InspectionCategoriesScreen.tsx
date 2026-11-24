@@ -1236,7 +1236,7 @@ const styles = StyleSheet.create({
   categoryTitle: {
     fontSize: 14,
     fontWeight: '900',
-    color: '#DC2626',
+    color: '#006795',
     marginBottom: 4,
     letterSpacing: -0.3,
   },

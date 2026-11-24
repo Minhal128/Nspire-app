@@ -901,10 +901,12 @@ const styles = StyleSheet.create({
   },
 
   /* ---- labels ---- */
+  // The form's headings are red (client's "Final correction", point C, as
+  // they put it on 25 Nov 2026: the headings of Add New Property).
   label: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#0E7490',
+    color: '#DC2626',
     marginBottom: 6,
   },
   requiredAsterisk: {
