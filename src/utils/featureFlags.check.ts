@@ -135,15 +135,24 @@ assert.ok(
   'InspectionSummaryScreen: the screen that is registered must be the guarded one',
 );
 const guarded = summary.slice(summary.indexOf('const GuardedInspectionSummaryScreen = '));
-const closed = guarded.indexOf('if (!IN_PROGRESS_SUMMARY_ENABLED) return null;');
+const closed = guarded.indexOf('if (!opened) return null;');
 assert.ok(
   closed > 0 && closed < guarded.indexOf('<InspectionSummaryScreen {...props} />'),
   'InspectionSummaryScreen: while switched off the summary must not be mounted at all; as it opens it loads the unit\'s saved deficiencies and writes them back',
 );
 assert.ok(
-  /if \(IN_PROGRESS_SUMMARY_ENABLED\) return;\s*if \(navigation\.canGoBack\(\)\) navigation\.goBack\(\);\s*else navigation\.navigate\('Dashboard'\);/.test(guarded),
+  /if \(opened\) return;\s*if \(navigation\.canGoBack\(\)\) navigation\.goBack\(\);\s*else navigation\.navigate\('Dashboard'\);/.test(guarded),
   'InspectionSummaryScreen: while switched off it sends whoever landed here back',
 );
+// Export in the unit screen's header is the one way in while an inspection
+// is in progress: the client's reference site has it there.
+assert.ok(
+  guarded.includes('const opened = IN_PROGRESS_SUMMARY_ENABLED || Boolean(route?.params?.openedFromExport);'),
+  'InspectionSummaryScreen: opened from the header\'s Export, the summary opens',
+);
+const exportPill = categories.slice(categories.indexOf('styles.exportPill'), categories.indexOf('>EXPORT</Text>'));
+assert.ok(exportPill.length > 0 && exportPill.includes('openedFromExport: true'), 'InspectionCategoriesScreen: the header\'s Export opens the summary as the export');
+assert.ok(!exportPill.includes('IN_PROGRESS_SUMMARY_ENABLED'), 'InspectionCategoriesScreen: Export is drawn whatever the switch says, as on the reference site');
 const app = read('App.tsx');
 assert.ok(
   app.includes('import InspectionSummaryScreen from "./src/screens/InspectionSummaryScreen";')

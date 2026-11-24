@@ -536,7 +536,10 @@ export default function NSPIREReportScreen({ navigation, route }: NSPIREReportSc
     setExporting(true);
     try {
       // First, ensure inspection is saved to backend
-      if (inspectionData && property && !inspectionData.savedInspectionId) {
+      // A report opened from Inspection Status is a saved inspection already
+      // (it has an _id): nothing to create. Creating one made a second record
+      // of it, with half of each finding.
+      if (inspectionData && property && !inspectionData.savedInspectionId && !inspectionData._id) {
         console.log('Saving inspection to backend from NSPIREReport...');
         try {
           const createData = {
@@ -554,14 +557,19 @@ export default function NSPIREReportScreen({ navigation, route }: NSPIREReportSc
           if (createResult.success && createResult.inspection?._id) {
             const completeData = {
               complianceScore: report.metadata.finalScore || inspectionData.complianceScore || 0,
+              // The finding whole, with these on top. The report and the
+              // spreadsheet read a finding through the web's rule; cut down to
+              // these seven fields it lost its building and its unit, and its
+              // row came out "Unassigned".
               findings: (inspectionData.findings || []).map((f: any) => ({
-                area: f.inspectionType || f.category || 'General',
+                ...f,
+                area: f.area || f._area || f.inspectionType || f.category || 'General',
                 location: f.location || 'Property',
-                severity: f.severity || 'minor',
-                description: f.description || '',
+                severity: f.severity || f.deficiency?.severity || 'minor',
+                description: f.description || f.deficiency?.detail || f.deficiencyDetails || '',
                 recommendation: f.recommendations?.join(', ') || f.recommendedAction || '',
-                imageUrl: f.imageUri || '',
-                nspireCode: f.nspireCode || '',
+                imageUrl: f.imageUrl || f.imageUri || '',
+                nspireCode: f.nspireCode || f.deficiency?.code || '',
               })),
               notes: `INSPIRE Inspection - Score: ${report.metadata.finalScore}`,
             };

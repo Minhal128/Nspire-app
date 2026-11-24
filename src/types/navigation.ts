@@ -48,6 +48,8 @@ export type RootStackParamList = {
     currentUnit?: string;
     allUnits?: string[];
     inspectionId?: string;
+    /** Opened by Export in the unit screen's header: the summary opens for it. */
+    openedFromExport?: boolean;
   };
 };
 

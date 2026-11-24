@@ -873,6 +873,21 @@ const InspectionCategoriesScreen: React.FC<Props> = ({ navigation, route }) => {
           <Text style={styles.nspirePillText}>NSPIRE INSPECTION</Text>
         </View>
         <Text style={styles.nspireUser} numberOfLines={1}>{userLabel}</Text>
+        {/* Export: the way to the summary of an inspection in progress, where
+            the client's reference site has it (its header, top right). */}
+        <TouchableOpacity
+          style={styles.exportPill}
+          onPress={() => navigation.navigate('InspectionSummary' as any, {
+            property,
+            selectedUnits,
+            buildingId,
+            inspectionData: null,
+            openedFromExport: true,
+          })}
+        >
+          <Ionicons name="document-text-outline" size={14} color="#FFFFFF" />
+          <Text style={styles.exportPillText}>EXPORT</Text>
+        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -1084,11 +1099,27 @@ const styles = StyleSheet.create({
     color: '#006795',
     letterSpacing: -0.3,
   },
+  // The inspector's name, in a size that can be read.
   nspireUser: {
-    fontSize: 12,
+    fontSize: 15,
     fontWeight: '700',
     color: '#FFFFFF',
-    maxWidth: 70,
+    maxWidth: 110,
+  },
+  exportPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#059669',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+  },
+  exportPillText: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
   },
   buildingRow: {
     flexDirection: 'row',

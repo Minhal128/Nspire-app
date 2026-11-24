@@ -170,6 +170,17 @@ export function findingPictures(finding: Loose | null | undefined): string[] {
   ).filter((photo) => photo && !/^blob:/i.test(photo)))];
 }
 
+/**
+ * The unit named by where a finding was found: "Unit 104", "Apt 3B", "104".
+ * A finding the app sends when it completes an inspection keeps its unit only
+ * there, and its row came out as "Unit Multiple" or "Unassigned" without this.
+ */
+const unitNamedBy = (location: unknown): string => {
+  const text = firstText(location);
+  const named = /^(?:unit|apt\.?|apartment)\s*#?\s*[A-Za-z0-9-]+$/i.test(text) || /^#?\d{1,4}[A-Za-z]?$/.test(text);
+  return named ? text : '';
+};
+
 export function findingFacts(finding: Loose | null | undefined): FindingFacts {
   const row: Loose = finding || {};
   const inner: Loose = row.deficiency && typeof row.deficiency === 'object' ? row.deficiency : {};
@@ -190,7 +201,7 @@ export function findingFacts(finding: Loose | null | undefined): FindingFacts {
     ),
     unit: area === 'outside' || area === 'inside'
       ? ''
-      : firstPlace(row.unit, row.unitId, row.unitNumber, row._unit),
+      : firstPlace(row.unit, row.unitId, row.unitNumber, row._unit, unitNamedBy(row.location)),
     area,
     severity: findingSeverity(row),
     picture: findingPictures(row)[0] || '',

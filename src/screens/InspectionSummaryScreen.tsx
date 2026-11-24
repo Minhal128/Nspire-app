@@ -2293,15 +2293,18 @@ const styles = StyleSheet.create({
  * and writes them back. A wrapper, so the summary's own hooks keep their order.
  */
 const GuardedInspectionSummaryScreen = (props: Props) => {
-  const { navigation } = props;
+  const { navigation, route } = props;
+  // Export in the unit screen's header is the way in while an inspection is
+  // in progress: the client's reference site has it there.
+  const opened = IN_PROGRESS_SUMMARY_ENABLED || Boolean(route?.params?.openedFromExport);
 
   useEffect(() => {
-    if (IN_PROGRESS_SUMMARY_ENABLED) return;
+    if (opened) return;
     if (navigation.canGoBack()) navigation.goBack();
     else navigation.navigate('Dashboard');
-  }, [navigation]);
+  }, [navigation, opened]);
 
-  if (!IN_PROGRESS_SUMMARY_ENABLED) return null;
+  if (!opened) return null;
   return <InspectionSummaryScreen {...props} />;
 };
 
