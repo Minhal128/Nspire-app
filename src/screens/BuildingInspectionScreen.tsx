@@ -221,6 +221,10 @@ export default function BuildingInspectionScreen() {
   const overallProgress = totalTasks > 0
     ? Math.min(100, Math.round((tasksDone / totalTasks) * 100))
     : 0;
+  // Every building's outside, inside and units are done: the report is due.
+  // The summary and the export are switched off only for an inspection still
+  // in progress (config/featureFlags); at 100% they are the way to the report.
+  const inspectionComplete = overallProgress >= 100;
 
   const openCoverageModal = () => {
     setPendingCoverage(coverage);
@@ -298,10 +302,11 @@ export default function BuildingInspectionScreen() {
   // page, the last screen of the flow, which is where the web's Export In
   // Progress goes.
   const handleExportInProgress = async (destination: 'summary' | 'reports' = 'summary') => {
-    // Switched off in config/featureFlags. The two buttons are not drawn while
-    // their switch is off; this keeps anything else from running the export.
+    // Switched off in config/featureFlags for an inspection in progress. The
+    // two buttons are not drawn then; this keeps anything else from running
+    // the export. A finished inspection (100%) has its report.
     const switchedOn = destination === 'reports' ? EXPORT_IN_PROGRESS_ENABLED : IN_PROGRESS_SUMMARY_ENABLED;
-    if (!switchedOn) return;
+    if (!switchedOn && !inspectionComplete) return;
 
     try {
       setExportTarget(destination);
@@ -1596,9 +1601,10 @@ export default function BuildingInspectionScreen() {
             </View>
           ))}
 
-          {/* View Summary: the in-progress report, shown here. Drawn only while
-              IN_PROGRESS_SUMMARY_ENABLED is on (config/featureFlags). */}
-          {IN_PROGRESS_SUMMARY_ENABLED && (
+          {/* View Summary: the report, shown here. Not drawn for an inspection in
+              progress while IN_PROGRESS_SUMMARY_ENABLED is off (config/featureFlags);
+              drawn once the inspection is 100% done. */}
+          {(IN_PROGRESS_SUMMARY_ENABLED || inspectionComplete) && (
             <TouchableOpacity
               style={[styles.exportButton, styles.exportSummaryButton]}
               onPress={() => handleExportInProgress('summary')}
@@ -1616,8 +1622,10 @@ export default function BuildingInspectionScreen() {
           )}
 
           {/* Export Reports: on to the report page, the last screen of the flow.
-              Drawn only while EXPORT_IN_PROGRESS_ENABLED is on (config/featureFlags). */}
-          {EXPORT_IN_PROGRESS_ENABLED && (
+              Not drawn for an inspection in progress while
+              EXPORT_IN_PROGRESS_ENABLED is off (config/featureFlags); drawn once
+              the inspection is 100% done, when it is the way to finish it. */}
+          {(EXPORT_IN_PROGRESS_ENABLED || inspectionComplete) && (
             <TouchableOpacity
               style={[styles.exportButton, styles.exportReportsButton]}
               onPress={() => handleExportInProgress('reports')}

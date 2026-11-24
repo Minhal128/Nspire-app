@@ -39,15 +39,19 @@ assert.strictEqual(IN_PROGRESS_SUMMARY_ENABLED, false, 'the in-progress Summary 
  * that the button is drawn only while `flag` is on: what opens the expression
  * it sits in is the switch and nothing else, `{FLAG && (` or `FLAG ? (`.
  */
-const drawnOnlyWhile = (source: string, label: string, flag: string, file: string): string => {
+const drawnOnlyWhile = (source: string, label: string, flag: string, file: string, orWhen?: string): string => {
   const end = source.indexOf(`>${label}</Text>`);
   assert.ok(end > 0, `${file}: the ${label} button is gone from the code; it is switched off, not removed`);
   const start = source.lastIndexOf('<TouchableOpacity', end);
   assert.ok(start > 0, `${file}: ${label} is no longer a TouchableOpacity`);
   const before = source.slice(0, start).trimEnd();
+  // `orWhen` names the one other thing that brings the button back: on the
+  // building screen, an inspection that is 100% done.
   assert.ok(
-    before.endsWith(`{${flag} && (`) || before.endsWith(`${flag} ? (`),
-    `${file}: ${label} must be drawn only while ${flag} is on, and not drawn at all while it is off`,
+    orWhen
+      ? before.endsWith(`{(${flag} || ${orWhen}) && (`)
+      : before.endsWith(`{${flag} && (`) || before.endsWith(`${flag} ? (`),
+    `${file}: ${label} must be drawn only while ${flag} is on${orWhen ? ` or ${orWhen}` : ''}, and not drawn at all otherwise`,
   );
   const jsx = source.slice(start, end);
   // Hidden, not greyed out: no switched-off look left on the button.
@@ -62,8 +66,14 @@ const building = read('src/screens/BuildingInspectionScreen.tsx');
 const categories = read('src/screens/InspectionCategoriesScreen.tsx');
 const dashboard = read('src/screens/DashboardScreen.tsx');
 
-const viewSummary = drawnOnlyWhile(building, 'View Summary', 'IN_PROGRESS_SUMMARY_ENABLED', 'BuildingInspectionScreen');
-const exportReports = drawnOnlyWhile(building, 'Export Reports', 'EXPORT_IN_PROGRESS_ENABLED', 'BuildingInspectionScreen');
+// On the building screen the two come back once the inspection is 100% done:
+// switched off for good, the app had no way left to finish an inspection.
+assert.ok(
+  building.includes('const inspectionComplete = overallProgress >= 100;'),
+  'BuildingInspectionScreen: an inspection is complete at 100% of its tasks, the figure the screen shows',
+);
+const viewSummary = drawnOnlyWhile(building, 'View Summary', 'IN_PROGRESS_SUMMARY_ENABLED', 'BuildingInspectionScreen', 'inspectionComplete');
+const exportReports = drawnOnlyWhile(building, 'Export Reports', 'EXPORT_IN_PROGRESS_ENABLED', 'BuildingInspectionScreen', 'inspectionComplete');
 assert.ok(!viewSummary.includes('EXPORT_IN_PROGRESS_ENABLED'), 'BuildingInspectionScreen: View Summary answers to the summary switch alone');
 assert.ok(!exportReports.includes('IN_PROGRESS_SUMMARY_ENABLED'), 'BuildingInspectionScreen: Export Reports answers to the export switch alone');
 
@@ -90,7 +100,7 @@ for (const [name, source] of [['BuildingInspectionScreen', building], ['Inspecti
 // --- the handlers refuse, whoever calls them ------------------------------------
 const exportFn = building.match(/const handleExportInProgress = async \([\s\S]*?\n  \};\n/)?.[0];
 assert.ok(exportFn, 'BuildingInspectionScreen: handleExportInProgress not found');
-const refusal = exportFn.indexOf('if (!switchedOn) return;');
+const refusal = exportFn.indexOf('if (!switchedOn && !inspectionComplete) return;');
 assert.ok(
   refusal > 0 && refusal < exportFn.indexOf('try {'),
   'BuildingInspectionScreen: handleExportInProgress must refuse before it does anything',

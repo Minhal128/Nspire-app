@@ -8,6 +8,11 @@
  * them are still in the code. Set a flag to true to bring its button and its
  * screen back.
  *
+ * One thing is not behind them: an inspection that is 100% done. Under the
+ * building table, View Summary and Export Reports are drawn again once every
+ * task is done, because that is the way to the report and the only way the app
+ * finishes an inspection.
+ *
  * The website keeps the same two switches in inspire-web/lib/featureFlags.ts.
  */
 
